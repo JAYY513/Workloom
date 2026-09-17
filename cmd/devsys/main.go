@@ -1,6 +1,6 @@
 // Command devsys is the CLI entry point for the project-local agent
-// development infrastructure described in 独立于Harness的Agent开发基础设施方案.md
-// and 实施计划.md.
+// development infrastructure described in docs/原始文档/
+// (方案 = specification, 实施计划 = step plan).
 //
 // Scope of step M0.1: argument dispatch, help text, and a deterministic exit
 // code. No business logic lives here yet; M0.2 adds subcommands and the global
