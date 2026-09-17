@@ -15,7 +15,8 @@
 | 里程碑 | 状态 |
 |---|---|
 | M0.1 语言与工程骨架 | 已完成（Go 1.26，`devsys --version` 可跑） |
-| M0.2 CLI 骨架与 `devsys init` | 未开始 |
+| M0.2 CLI 骨架与 `devsys init` | 已完成（2026-09-17；退出码 0/1/2/3、`--json`/`--quiet`、`init` 幂等、用户级注册表、非 Git 拒绝） |
+| M0.3 文本存储基元 | 未开始 |
 
 ## 构建与验收
 
@@ -23,8 +24,16 @@
 go build -o bin/devsys.exe ./cmd/devsys
 bin/devsys.exe --version      # devsys 0.1.0-dev
 bin/devsys.exe --help
-bin/devsys.exe bogus; echo $? # 2
+bin/devsys.exe bogus; echo $? # 2（用法错误）
+
+# 在 Git 仓库根目录初始化项目状态目录（幂等；重复执行不覆盖已有内容）
+bin/devsys.exe init
+bin/devsys.exe init --json    # 机器可读输出
+bin/devsys.exe init; echo $?  # 非 Git 目录：3（前置条件错误）
 ```
+
+`init` 创建 `.devsys/`（方案 §14.3，另含 `.devsys/.gitignore` 排除 `local/` 与 `.cache/`），
+并在用户级注册表（`DEVSYS_CONFIG_DIR` 可覆盖）登记项目路径。
 
 带版本信息构建（发布用）：
 
@@ -35,8 +44,11 @@ go build -ldflags "-X workloom/internal/version.Version=0.1.0 -X workloom/intern
 ## 目录结构
 
 ```
-cmd/devsys/          命令入口（参数分发、全局开关、退出码）
-internal/            内部包（后续：storage / domain / access / execute）
+cmd/devsys/          命令入口（进程退出码）
+internal/cli/        命令分发、全局开关、输出与退出码
+internal/project/    init 与项目内布局（后续：存储 / 领域）
+internal/registry/   用户级项目路径注册表
+internal/minyaml/    M0.2 占位序列化（M0.3 起替换为存储基元）
 internal/version/    构建标识（可用 -ldflags 覆盖）
 docs/原始文档/       方案与实施计划（源文档，不再拆分）
 bin/                 构建产物（不提交）
