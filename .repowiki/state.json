@@ -3,9 +3,9 @@
   "partition": {
     "locale": "zh"
   },
-  "generated_at": "2026-09-17T14:01:22.196Z",
+  "generated_at": "2026-09-17T14:49:22.829Z",
   "git": {
-    "commit": "2735f627fa108567e29e15fe20dea0947b404ef9",
+    "commit": "4ad8f9eca6bb97a97543c3e2f1a51697a9bd33ea",
     "branch": "master"
   },
   "pages": {
@@ -32,7 +32,7 @@
         "go.mod",
         "go.sum"
       ],
-      "content_hash": "6cd2fbac4713bb0628d4444ea893f109a7ad8635856162c86d115e51b843c4a4"
+      "content_hash": "6bd6621bb303f542dbe94cea6774c8af62f394eb071598dc879d1c9fc6a2a31a"
     },
     "content/快速开始.md": {
       "sources": [
@@ -55,7 +55,7 @@
         "go.mod",
         "go.sum"
       ],
-      "content_hash": "e1c2690aa051567b98d36cff4692e1f585ec9aeaa202204c728518ff72e08413"
+      "content_hash": "d4bad31f81024fd49631f77d6de9dd67e6b8cd5806bb65e55799ab30f78533a7"
     },
     "content/项目总览.md": {
       "sources": [
@@ -78,7 +78,7 @@
         "go.mod",
         "go.sum"
       ],
-      "content_hash": "be34a4a1942cb54b1bc37e43ddb82da75251f04d7fc53484d488e14edc9b4467"
+      "content_hash": "066f7291c949bd240d5f41efe4aa633c4015747bf6397f71175a6eaf25c43b68"
     },
     "index.md": {
       "sources": [],
@@ -97,7 +97,7 @@
         "go.mod",
         "go.sum"
       ],
-      "content_hash": "94bf39193fb038e1f5ed4ee9ddda2425b707aa07972a6f72b7c82a50bc261b0e"
+      "content_hash": "6ebfcfd8b30402e5ec32b43fb9b25841aaf2225621c8c46e9d4623bb88b0df27"
     },
     "knowledge/可靠文本存储/存储错误语义.md": {
       "sources": [
@@ -112,7 +112,7 @@
         "go.mod",
         "go.sum"
       ],
-      "content_hash": "d37381eb7f34c5eff37c52ce3312c82a6faeea7a9808d9708be8f67606afe557"
+      "content_hash": "3096a0d02abf57a688d70f109ed7d1742d6b14b72d94583a2061fc04ac6135c7"
     },
     "knowledge/可靠文本存储/架构设计.md": {
       "sources": [
@@ -127,7 +127,7 @@
         "go.mod",
         "go.sum"
       ],
-      "content_hash": "5b4fd049486ecd74de714c7faa9a4c11b5c16a4e44d64db7cdf3722e5f3987cd"
+      "content_hash": "47db9a117e5f88c1435d98e7140b72645ae112d26bb1d37ee167701a9e7a2756"
     },
     "knowledge/可靠文本存储/概述.md": {
       "sources": [
@@ -142,7 +142,7 @@
         "go.mod",
         "go.sum"
       ],
-      "content_hash": "9709152b4214fb493c1f8ae4577fbcc4b120033eb6dbf818d61022bd73ae4eff"
+      "content_hash": "a58a3039c139bd0d4c36fe2c3cb9f10512f55750b68f4cf2a78ec834b8aea18c"
     },
     "knowledge/可靠文本存储/特殊配置与命令.md": {
       "sources": [
@@ -157,7 +157,7 @@
         "go.mod",
         "go.sum"
       ],
-      "content_hash": "b1c59c9c16cba9c22c196e1e20ae5ae6fc9c3b13aa37147f9f1dade27e272c03"
+      "content_hash": "edb37e399b3912286f7280ccde7d0908634a9f546b85b9471d3f06827517d409"
     },
     "knowledge/可靠文本存储/编码规范.md": {
       "sources": [
@@ -172,7 +172,7 @@
         "go.mod",
         "go.sum"
       ],
-      "content_hash": "d6c0613ff89d98b02337d0bf0dc1b20f472874f5d86cc1bbd6e8c67d0d61e2b7"
+      "content_hash": "2922de4a214cab6fb92e6cf6d2cc39942475f9dedaeed4f7a5e0af126ecbae6b"
     },
     "knowledge/可靠文本存储/领域记录与事件.md": {
       "sources": [
@@ -187,7 +187,7 @@
         "go.mod",
         "go.sum"
       ],
-      "content_hash": "1cd1f7eadb0b69bad0be9dc4d9cd49265854acf8b829be26072bda0346fff586"
+      "content_hash": "52b5ab2d4d3f7b50e801eea2aa783800064846c2a5b42eb4d09033c992a97b8d"
     },
     "knowledge/项目接入与配置/Schema与错误契约.md": {
       "sources": [
@@ -269,16 +269,16 @@
     },
     "log.md": {
       "sources": [],
-      "content_hash": "bf07c3bc29eeaf7441614f47d300ceeed63ba13885e989a34093bbabfd5dbc12"
+      "content_hash": "7ef020a73f18e71ed40b4e97a59aa1bed751bfac75ce4580b86a64c0ac35177a"
     }
   },
-  "snapshot_digest": "c1c4325c6626674fc5e90641fdedad6d2b8f93bcb39f0c7a6b14b457140d6a36",
+  "snapshot_digest": "266328ebcec908f9aadd1f689744be295ee3e130dd4e8fda48c20b8294afc2d5",
   "snapshot_file": ".repowiki/snapshot.json",
   "last_run": {
     "status": "success",
     "phase": "finalize",
-    "started_at": "2026-09-17T13:07:04.194Z",
-    "finished_at": "2026-09-17T14:01:22.196Z",
+    "started_at": "2026-09-17T14:45:09.232Z",
+    "finished_at": "2026-09-17T14:49:22.829Z",
     "error": ""
   }
 }

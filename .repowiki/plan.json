@@ -1,14 +1,14 @@
 {
   "schema": 2,
   "budget": {
-    "tier": "扁平单层",
-    "reason": "72 个扫描文件、30 个非测试 Go 文件；功能聚合仍是两个单层模块（接入与配置、可靠存储），M1 新增领域存储/事件/Run/记录/检索按能力并入两模块。保持既有最小档 caps 与既有大纲，只扩展 scope。",
-    "max_total_modules": 2,
-    "max_depth": 1,
-    "max_total_articles": 6,
-    "max_top_articles": 3,
-    "max_sub_per_parent": 3,
-    "max_article_words": 1500
+    "tier": "模块树",
+    "reason": "72 个扫描文件、多层目录，按规模表采用模块树档位；保持既有两个功能模块与三篇文章，不为填满 caps 扩写。",
+    "max_total_modules": 8,
+    "max_depth": 2,
+    "max_total_articles": 30,
+    "max_top_articles": 8,
+    "max_sub_per_parent": 5,
+    "max_article_words": 2500
   },
   "modules": [
     {

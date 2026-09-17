@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "generated_at": "2026-09-17T13:07:04.194Z",
+  "generated_at": "2026-09-17T14:43:16.130Z",
   "files": [
     {
       "path": ".gitattributes",
@@ -32,10 +32,10 @@
     },
     {
       "path": "docs/开发记录.md",
-      "size": 10066,
-      "hash": "9d59c2f6023534ee184815ff00471cc88986057ccf657b04a928f868b63c338c",
+      "size": 11240,
+      "hash": "0690416e1d77b598e5cbd1b12a42140aff460cefc165bc7f8f3fc8fefa6ed7b4",
       "language": "markdown",
-      "lines": 82
+      "lines": 85
     },
     {
       "path": "docs/原始文档/独立于Harness的Agent开发基础设施方案.md",
@@ -312,10 +312,10 @@
     },
     {
       "path": "internal/search/search_test.go",
-      "size": 3678,
-      "hash": "89ce47a800d2846b6f495019c71d2cd7bdae013ee13f161e5adc8a79be071b46",
+      "size": 5149,
+      "hash": "adb44d630a79ee3b6653fd0b8ed636d7d529991c367f4b45a50b6a293cd2f9e2",
       "language": "go",
-      "lines": 132
+      "lines": 179
     },
     {
       "path": "internal/search/search.go",
@@ -509,8 +509,8 @@
   ],
   "stats": {
     "total_files": 72,
-    "total_size": 415341,
-    "total_lines": 12719,
+    "total_size": 417986,
+    "total_lines": 12769,
     "languages": {
       "other": 6,
       "markdown": 5,

@@ -1,5 +1,14 @@
 # Repowiki 生成日志
 
+## 2026-09-17 · 4ad8f9e 增量刷新
+
+- 源码基线：`4ad8f9e`（提交后仅 search 测试与 benchmark 变化；未跑 Go 测试）；任务 #136。
+- 增量：六张未受保护的可靠文本存储卡刷新基线并核对引注；两篇未受保护文章更新摘要与 benchmark 链接；index、导航不变。
+- 保护：`content/开发与故障诊断.md`、`knowledge/可靠文本存储/特殊配置与命令.md` 与生成基线 hash 不一致，按规则保留原文，未重生成。
+- 规模档位：72 个扫描文件、多层目录 → 模块树档位（caps 调整为 8/30/5/2500），两个功能模块与三篇文章路径保持不变；模块 scope 覆盖 66/72。
+- 文档校验：`repowiki validate` 18 files、0 errors、0 warnings。
+- 收尾：`repowiki state --update` 以当前提交刷新页面 hash 与 scope；`repowiki status` 确认基线对齐 `4ad8f9e`。
+
 ## 2026-09-17 · M1 增量刷新
 
 - 源码基线：`2735f62`；任务 #126；保留两个模块与既有文章路径。
