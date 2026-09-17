@@ -1,9 +1,9 @@
 # 独立于 Harness 的 Agent 开发基础设施方案
 
-**文档版本：** 1.7  
-**文档状态：** 方案设计稿  
-**本版要点：** 保留无数据库路线，明确 CLI/MCP 访问纪律、本机文件事务与恢复、跨设备接力边界；同步补充实施验收，不改变里程碑顺序。  
-**上一版要点：** 新增配套《实施计划.md》（M0–M9、52 步），§19 增加指向实施计划的引用。  
+**文档版本：** 1.8
+**文档状态：** 方案设计稿
+**本版要点：** 补齐四个结构性缺口（调度触发形态 §4.8、审批模型与流程 §4.9/§5.8、知识生成器契约与 RepoWiki 定位 §12.6、工作流实例与条件求值 §5.3）；落地五处悬空承诺（领取质量门、评论、记录传播、审批拒绝语义、多工作区知识差异）；统一规范补丁（`priority` 数值化 §5.2/§7.4、时间戳 UTC §14.4、`schema_version` §14.1、Git 前置 §14.1、用户级注册表 §14.4、MCP 工具分级 §8.6、HTTP 与 SDK 后置 §8.5）。
+**上一版要点：** v1.7 保留无数据库路线，明确 CLI/MCP 访问纪律、本机文件事务与恢复、跨设备接力边界；同步补充实施验收，不改变里程碑顺序。
 **目标：** 构建一个独立运行、可被多个 Harness Agent 调用的智能开发系统
 
 **参考项目：**
@@ -174,6 +174,8 @@ Skill 是可选的使用说明和行为约束。
 | Agent 执行状态 | Run 运行记录 |
 | 代码实际结构 | 代码知识索引 |
 | 错误、发现和经验 | 项目记录系统 |
+| 评论与讨论 | 事件流（`comment` 事件，§4.6） |
+| 阶段与危险操作审批 | 审批记录（`.devsys/approvals/`，§4.9） |
 | 生成的文档和报告 | 产物系统 |
 
 不能让多个系统同时成为同一类信息的“最终真相”。
@@ -504,11 +506,14 @@ WorkItem 不应被限制为传统 Issue。
 - Error：错误；
 - Risk：风险；
 - Event：项目事件；
+- Comment：评论（事件流的 `comment` 类型，支持一级回复；门禁 `require_comment` 的判定对象）；
 - Observation：观察；
 - Lesson：经验；
 - Question：待解决问题。
 
 这些信息不能全部混入普通日志。
+
+系统不内建通知服务：需要人介入的状态（待审批、等待评审）通过 `devsys status`、`devsys next`、`devsys approval list` 与工作区视图暴露，提醒由外部工具负责（见 §18.3）。
 
 例如：
 
@@ -530,11 +535,11 @@ Risk：
 
 工作项推进必须经过显式门禁，不能依赖 Agent 自觉声明（采纳 agent-tasks 的阶段门禁）。
 
-- **阶段门禁**：每个阶段可配置 `require_artifacts`（必须存在的产物）、`require_min_artifacts`（最少产物数）、`require_comment`（至少一条说明）、`require_approval`（需要审批）；`exempt_stages` 声明豁免阶段；
+- **阶段门禁**：每个阶段可配置 `require_artifacts`（必须存在的产物）、`require_min_artifacts`（最少产物数）、`require_comment`（至少一条评论事件）、`require_approval`（需要有效审批，见 §4.9）；`exempt_stages` 声明豁免阶段；
 - **回退需理由**：任何状态回退都必须附带 `reason` 工件，并写入事件流；
 - **就绪门**：进入实施前做一次就绪检查，结论只允许 `PASS` / `CONCERNS` / `FAIL`；`FAIL` 必须按严重度列出修复项及应触发的工作流（采纳 BMAD 的实现就绪检查）；
-- **领取质量门**：领取前用确定性启发式评分（标题词数、描述长度与结构，不调用模型）拦截信息量过低的任务，避免模糊任务消耗 Agent 上下文；
-- **记录传播**：任务完成时，其 `decision` 与 `learning` 记录沿任务图传播到父任务与兄弟任务；只沿已有链接传播，不做全项目广播。
+- **领取质量门**：领取前用确定性启发式评分（标题词数、描述长度与结构、路径与验收语言，不调用模型）拦截信息量过低的任务；阈值由策略文件 `quality_gate` 声明，被拦任务返回缺失项清单，避免模糊任务消耗 Agent 上下文；
+- **记录传播**：任务完成时，其 `decision` 与 `learning` 记录**以引用形式**沿已有链接传播到父任务与直接兄弟任务（写入对方 `context_refs` 并记事件）；不复制内容、不修改对方状态，无链接不广播。
 
 ---
 
@@ -589,6 +594,28 @@ git 报错     -> 不得标记完成，转人工复核并记录事件
 - 后续轮次只发送续跑指引，不重复完整提示词（线程内已有上下文）；
 - 单次会话的轮数上限由策略文件配置；
 - 干净退出后安排一次短延迟续跑检查，确认任务是否仍需推进。
+
+**调度触发（tick 语义，不引入常驻守护进程）：**
+
+- 派发、对账、到期重试与停滞评估统一在一次**调度 tick** 中完成：校验并恢复事务 → 对账租约与孤儿 → 触发到期重试 → 评估停滞 → 按排序与并发上限启动执行；
+- tick 实现为一次性命令 `devsys dispatch`（幂等：同一状态重复执行不重复派发）；`devsys dispatch --watch` 仅作为前台便利循环，不注册为后台服务；
+- 无 tick 时不自行推进：`devsys status`、`devsys next` 与打开项目只做只读对账；重试与停滞的时间判定只在 tick 时求值；
+- 设备交接前必须停止 `--watch` 并结束执行（见 §14.4）。
+
+---
+
+### 4.9 审批（Approval）
+
+审批把「门禁要求」与「人工或规则授权」连接起来；模型见 §5.8，工具面见 §8.2。
+
+- **请求**：`approval_request`（CLI：`devsys approval request`）针对具体工作项与门禁阶段（或危险操作）创建审批记录，状态 `pending`；
+- **决定**：`approval_decide`（CLI：`devsys approval approve|reject`）由人或规则执行，写入 `decided_by`、`decided_at` 与 `comment`；
+- **消费**：门禁检查到该阶段（或该操作）存在 `approved` 且未被消费的审批后放行，并写入 `consumed_at` 与事件；审批被消费后即失效，工作项再次进入同一阶段需重新请求；
+- **拒绝语义**：默认将工作项转为 `blocked`，附审批引用与拒绝理由，并记事件；解除阻塞走既有的 `block`/`unblock` 流程；策略文件可用 `on_reject: regress:<status>` 改为回退到指定状态（回退必须带理由工件，见 §4.7）；
+- **有效期**：批准仅在「工作项处于该阶段期间」有效；离开该阶段即作废；
+- **持久化**：一审批一文件（`.devsys/approvals/<id>.yaml`，§14.2）；审批的创建与消费同样走 §15.2 的版本校验与事件记录，任何入口不得绕过；
+- **危险操作**：`scope: action` 的审批用于 §16.2 列出的操作，执行前检查并消费；
+- **通知**：系统不推送提醒（§4.6），待审批项通过查询接口暴露。
 
 ---
 
@@ -645,7 +672,7 @@ title: 增加新的温箱协议
 description: ...
 
 status: ready
-priority: high
+priority: 2              # 数值且越大越优先（见 §7.4）
 
 dependencies:
   - TMS-120
@@ -666,7 +693,17 @@ context_refs:
 
 artifact_refs: []
 
-workflow_id: feature-development
+created_from:            # 动态任务来源（§7.2）
+  type: run
+  id: run-001
+reason: 测试发现旧协议长度校验缺失
+proposed_by: codex-local
+approval_required: false
+
+workflow:                # 工作流实例状态（§5.3、§4.3）
+  id: feature-development
+  step: implement
+  step_entered_at: ...
 
 assigned_agent: null
 assigned_harness: null
@@ -715,11 +752,11 @@ steps:
 transitions:
   - from: inspect
     to: clarify
-    when: missing_information == true
+    when: workitem.clarification_needed == true
 
   - from: inspect
     to: plan
-    when: missing_information == false
+    when: workitem.clarification_needed == false
 
   - from: verify
     to: implement
@@ -746,7 +783,16 @@ completion_rules:
   - `gates`：阶段门禁（见 §4.7）；
   - `hooks`：工作区生命周期钩子（见 §4.8）；
   - `concurrency`：全局与按状态的并发上限；
-  - `limits`：轮数上限、超时、停滞阈值、退避上限。
+  - `limits`：轮数上限、超时、停滞阈值、退避上限；
+  - `quality_gate`：领取质量门阈值（§4.7）；
+  - `on_reject`：审批被拒绝时的动作（默认 `block`，可选 `regress:<status>`，见 §4.9）。
+
+附加规则：
+
+- 步骤可声明 `status`：进入该步骤时要求的工作项状态；未声明则步骤推进不改变工作项状态；
+- 条件表达式（`when`）仅支持声明式比较：`<字段> <op> <字面量>`，`op` ∈ `== != < > in exists`；字段限定在工作项已声明字段与步骤记录的白名单内，解析与校验在策略加载期完成，未知字段或操作符按策略错误拒绝（不允许任意代码或自由变量）；
+- 「信息不足」这类判断不引入自由变量：由 Agent 或人通过 `workitem_update` 显式写入布尔字段（如 `clarification_needed`），系统只做确定性求值（§2.4 记录与推理分离）；
+- 工作流实例状态存于工作项文件 `workflow` 字段，步骤历史写入事件流；实例状态不写调度态（§6.4）。
 
 ---
 
@@ -882,6 +928,31 @@ recommended_actions:
 
 ---
 
+### 5.8 Approval
+
+```yaml
+id: approval-001
+project_id: temp-monitor-system
+
+scope: stage_gate        # stage_gate（阶段门禁）| action（危险操作，§16.2）
+workitem_id: TMS-142
+run_id: null             # 触发本次请求的 Run（可选）
+
+requested_by: codex-local
+requested_at: ...
+status: pending          # pending | approved | rejected | withdrawn
+
+decided_by: null
+decided_at: null
+comment: null
+
+consumed_at: null        # 门禁或操作消费后写入；消费即失效（§4.9）
+created_at: ...
+updated_at: ...
+```
+
+---
+
 ## 6. 任务状态设计
 
 ### 6.1 基础状态
@@ -963,7 +1034,7 @@ in_progress -> done
 
 约束：
 
-- 只有调度器可以写调度态，Agent 只能写工作项状态与记录；
+- 只有调度器可以写调度态，Agent 只能写工作项状态与记录；工作流步骤状态（§5.3）不写入调度态，也不替代工作项状态：调度态回答「谁在做」，工作项状态回答「做到哪一步」，工作流步骤回答「流程走到哪里」；
 - `claimed` 与 `running` 检查必须先于任何启动动作；
 - 调度态写入依赖租约与心跳（见 §15.3），跨机器冲突按 §14.4 处理。
 
@@ -1077,7 +1148,7 @@ approval_required: false
 5. 运行未完成的项目级回顾；
 6. 报告完成。
 
-派发排序（同优先级内）：`priority` 升序 → `created_at` 最早 → 标识符字典序；同时受全局与按状态并发上限、`blocked_by` 先决条件约束（采纳 Symphony SPEC §8.2/§8.3）。
+派发排序（同优先级内）：`priority` 降序（数值大者优先）→ `created_at` 最早 → 标识符字典序；同时受全局与按状态并发上限、`blocked_by` 先决条件约束（采纳 Symphony SPEC §8.2/§8.3）。派发由显式调度 tick 执行（`devsys dispatch`，见 §4.8）；`next` 只做推荐，不启动执行。
 
 要求：
 
@@ -1141,6 +1212,7 @@ workitem_block
 workitem_complete
 workitem_add_dependency
 workitem_remove_dependency
+workitem_comment
 ```
 
 #### 工作流工具
@@ -1208,6 +1280,15 @@ finding_resolve
 
 event_list
 event_record
+```
+
+#### 审批工具
+
+```text
+approval_list
+approval_get
+approval_request
+approval_decide
 ```
 
 #### 产物工具
@@ -1310,6 +1391,17 @@ devsys knowledge module "Protocol"
 devsys decision create
 devsys finding create
 devsys event record
+devsys task comment TMS-142 --text "协议长度校验已补，等审查"
+
+# 审批
+devsys approval list --pending
+devsys approval request --task TMS-142 --gate verification
+devsys approval approve approval-001
+devsys approval reject approval-001 --reason "验收标准未满足"
+
+# 调度（一次 tick；--watch 仅前台便利循环）
+devsys dispatch --once
+devsys dispatch --watch
 
 # 运行
 devsys run list
@@ -1321,7 +1413,7 @@ devsys run complete run-001
 
 ### 8.5 HTTP API
 
-HTTP API 用于：
+HTTP API 属于**后置扩展，不在 M0–M9 范围**（见 §18.3）；启用时用于：
 
 - Web UI；
 - 外部自动化；
@@ -1352,6 +1444,15 @@ HTTP API 用于：
 - 事件订阅；
 
 实现。
+
+---
+
+### 8.6 工具分级与开放策略
+
+- 工具面按里程碑分批开放，不要求 MVP 一次暴露全部工具；
+- MCP server 支持按 profile 暴露子集：`session`（会话与查询）、`executor`（领取、Run、上下文）、`reviewer`（审查、验证、审批决定）、`admin`（策略、工作区、危险操作）；
+- 默认 profile 为 `session` + `executor`，其余显式启用；CLI 不受 profile 限制（本机操作者已持有项目目录访问权）；
+- 理由：控制 Agent 的选择成本与上下文占用（§20.3），并让危险操作入口显式化。
 
 ---
 
@@ -1465,6 +1566,8 @@ BMAD 作为“开发方法和规划能力”（参考实现：<https://github.co
 
 本系统不应直接把 BMAD 的文件结构作为内部数据模型。
 
+注（v1.8）：就绪门在 BMAD 现版本中已并入 `bmad-sprint-planning`（原 `bmad-check-implementation-readiness` 已移除），机制不变；对齐基准见 §10.7 的固定 commit。
+
 ---
 
 ### 10.2 RepoWiki 的定位
@@ -1491,6 +1594,8 @@ RepoWiki 作为“代码知识和上下文能力”（参考实现：<https://gi
 - 决策和任务关联；
 - 多工作区或 Worktree 的差异；
 - 只返回当前任务所需的最小上下文。
+
+**定位（v1.8 明确）**：RepoWiki 保持为**独立产品**，与本系统**不合并代码、不作为内置组件**：它面向任意 Git 仓库（不依赖 `.devsys/`）提供 Wiki 生成与保鲜；本系统只共享其**页面契约与保鲜机制**（front matter、基线 commit、退出码语义），并通过**生成器契约**（§12.6）把它作为首选可选生成器接入。本系统**不自研完整 Wiki 生成器**：索引层与生成器接口自研，页面层由生成器产出。
 
 ---
 
@@ -1620,6 +1725,8 @@ Run 结果
 | 17 | 凭据隔离：配置只写引用，宿主密钥不下传子进程 | Symphony SPEC §1、§3.3 | §16.3 |
 | 18 | 单写者 + 原子 rename + 追加 JSONL + 文件锁 | Contrabass | §15.2 |
 | 19 | 状态修复：先推断真实状态，人工确认后重写并校验；只有修复路径允许降低完成度 | BMAD | §15.4 |
+| 20 | 审批服务：请求 / 批准 / 拒绝与拒绝回退 | agent-tasks `domain/approvals.ts` | §4.9、§5.8（M3.7） |
+| 21 | 评论：事件一等类型 + 一级回复 + 门禁检查 | agent-tasks `domain/comments.ts` | §4.6、§4.7（M3.3） |
 
 #### 明确拒绝
 
@@ -1764,6 +1871,7 @@ context_snapshot:
   artifact_versions:
     - artifact-001:v2
   knowledge_revision: 20260917-03
+  workspace_head: ...        # Run 工作区 HEAD；与知识基线不一致时在上下文标注差异（不按 worktree 分裂知识）
   decision_ids:
     - decision-001
 ```
@@ -1885,6 +1993,32 @@ conflicted
 - 生成过程写入 `run.json` 检查点（含 pid 互斥），中断后可续跑而不是重来；
 - 管理块幂等：向 `AGENTS.md` 注入的说明必须位于标记区间内，重复执行不重复写入，手写内容原样保留；
 - git 不可用或命令失败时必须显式报错，**不允许静默降级为「未知基线」**。
+
+---
+
+### 12.6 生成器契约与 RepoWiki 定位
+
+知识层分两层，职责与生命周期不同：
+
+| 层 | 内容 | 生产者 | 是否可人工编辑 |
+|---|---|---|---|
+| 索引层 | 文件/目录/文档索引、语言与构建识别、全文检索、任务关联 | 本系统扫描（§12.2） | 否（可重建） |
+| 页面层 | Markdown 知识页（front matter + 正文），供人与 Agent 阅读 | 外部生成器（契约见下） | 是（`content_hash`/`protected` 保护） |
+
+与 RepoWiki 的关系：RepoWiki 的产出是面向阅读的叙述型 Wiki（独立产品，见 §10.2）；本系统除页面层外还需要面向机器查询的索引与任务上下文装配（索引层）。两者重叠的只是**页面契约与保鲜机制**，因此不合并、只做契约集成。
+
+生成器契约：
+
+- 输入：项目根、生成范围（全量或 `affected_pages`）、页面格式版本（§12.5 的 front matter 契约）；
+- 输出：符合契约的页面集 + 页面→源映射与 `content_hash` + 运行清单（`run.json`）；
+- 规则：幂等；尊重 `protected` 与手工修改保护；维护基线 commit；失败或中断可续跑；
+- 验收：更换生成器不改变 `knowledge status` 与上下文装配接口的行为。
+
+定位与默认路径：
+
+- **RepoWiki 是首选的可选生成器**（独立产品，不合并、不内置）；其它实现或由 Agent 按同一契约写作的流程同样可用；
+- 未安装生成器时系统只提供索引层与检索：`knowledge status` 报告「页面层未生成」（退出码 11 语义），上下文装配退化为索引检索，**不报错、不阻塞**；
+- 本系统不自研完整 Wiki 生成器，避免与 RepoWiki 重复（§20.1）；RepoWiki 不需要感知 `.devsys/` 的存在，适配层负责两侧格式映射与校验。
 
 ---
 
@@ -2031,7 +2165,9 @@ conflicted
 
 ### 14.1 存储原则
 
-- 项目内状态文件是唯一权威来源：蓝图、任务、Run、决策、发现、事件和产物元数据全部写入项目仓库内的 `.devsys/`；
+- 项目内状态文件是唯一权威来源：蓝图、任务、Run、决策、发现、事件、审批和产物元数据全部写入项目仓库内的 `.devsys/`；
+- 项目必须是 Git 仓库：完成校验（§4.8）、worktree 工作区（§4.8）与跨设备同步（§14.4）都依赖 Git；`devsys init` 在非 Git 目录给出明确错误与指引，非 Git 项目不在支持范围；
+- 版本化：所有受管状态文件顶层带 `schema_version`；读到未知版本时拒绝写入、仅允许只读诊断，迁移由显式命令完成（§14.4、M9.2）；
 - 文本优先：YAML / Markdown / JSONL，可 diff、可 review、可合并；
 - Git 即同步机制：状态随仓库在不同电脑之间同步，不引入额外的状态服务；
 - 无公共数据区：不把任务或运行状态集中写入用户级数据库；用户级目录只保存项目路径注册表、凭证引用和无项目语义的缓存；
@@ -2063,6 +2199,8 @@ conflicted
 | 运行事件流 | `.devsys/runs/<run-id>.jsonl` | 提交（可裁剪） | 追加写 |
 | 事件 | `.devsys/events/<YYYY-MM>.jsonl` | 提交（可裁剪） | 追加写、按月分片 |
 | 决策 / 发现 | `.devsys/decisions/`、`.devsys/findings/` | 提交 | 每条一文件 |
+| 审批 | `.devsys/approvals/<id>.yaml` | 提交 | 一审批一文件（§4.9） |
+| 项目路径注册表 | 平台配置目录 `devsys/registry.yaml` | 不提交（用户级） | 仅项目路径与标识，见 §14.4 |
 | 代码知识 | `.devsys/knowledge/` | 提交 | Markdown + 元数据 |
 | 检索缓存（可选） | `.devsys/.cache/` | 不提交 | 普通缓存文件，可删除重建，不是数据库 |
 | 日志、大型产物、临时工作区 | `.devsys/local/` | 不提交 | 由 `.gitignore` 排除 |
@@ -2086,6 +2224,7 @@ project-root/
 │   ├── runs/
 │   ├── decisions/
 │   ├── findings/
+│   ├── approvals/
 │   ├── events/
 │   ├── artifacts/
 │   ├── context/
@@ -2125,7 +2264,7 @@ project-root/
 约定：
 
 - 一任务一文件、一决策一文件，事件按月分片追加，避免单一巨型文件造成冲突；
-- 每个状态文件带 `updated_at`、`updated_by`（机器或 Agent 标识）与版本号；
+- 每个状态文件带 `updated_at`、`updated_by`（机器或 Agent 标识）、`schema_version` 与版本号；时间戳一律使用 RFC 3339 UTC（`Z`），本地时区只用于展示；
 - 任务领取写入独立租约文件；本机按 §15.2 串行校验和更新。跨设备出现租约分叉时保留双方并阻止相关任务继续派发，禁止依据时间戳较新者自动覆盖；
 - 状态提交与代码提交分开：状态使用独立提交前缀（如 `chore(devsys): ...`），便于回滚与审计；
 - 提供 `devsys sync status`：检测本地与远端分叉、未提交的状态变更和潜在冲突；
@@ -2134,7 +2273,7 @@ project-root/
 
 换电脑流程（先完成交接，再恢复）：
 
-1. 旧设备停止派发并结束或明确中断当前执行，处理未完成事务，确认无写者后释放领取、保存结果；尚未提交的代码、分支和需要转移的本地产物须一并处理。
+1. 旧设备停止调度（含 `devsys dispatch --watch`，§4.8）并结束或明确中断当前执行，处理未完成事务，确认无写者后释放领取、保存结果；尚未提交的代码、分支和需要转移的本地产物须一并处理。
 2. 提交并推送代码与 `.devsys/` 状态；锁和未完成事务恢复材料不作为可移植运行状态提交，存在待恢复事务时不能宣告交接完成。
 3. 新设备 clone/pull 已交接版本，运行初始化与状态检查；出现冲突或恢复失败时先修复，不开始派发。完成显式交接前旧设备不得继续写入。
 
@@ -2145,6 +2284,19 @@ devsys init      # 校验 .devsys/（没有数据库需要迁移）
   ↓
 devsys status    # 蓝图、任务、Run、记录全部就绪
 ```
+
+用户级项目注册表（唯一允许的用户级项目数据，§2.7）：
+
+```yaml
+# Windows: %APPDATA%\devsys\registry.yaml；macOS/Linux: ~/.config/devsys/registry.yaml
+projects:
+  - id: temp-monitor-system
+    path: D:/Projects/TempMonitorSystem
+    last_seen_at: 2026-09-17T08:00:00Z
+```
+
+- `devsys init` 自动登记或更新对应条目（按路径去重、幂等）；`devsys project list` 以此列出项目；`devsys config path` 打印注册表与配置目录实际位置；
+- 注册表只保存路径与标识，不含项目状态、任务或 Run 数据；删除注册表不影响任何项目。
 
 ---
 
@@ -2216,9 +2368,9 @@ claim:
 
 ### 15.4 退避、停滞与恢复
 
-- **退避**：失败重试使用指数退避，`delay = min(base × 2^(attempt-1), max)`；抖动必须**可复现**，以「任务标识 + 尝试次数」为种子的确定性偏移，保证重启后重试计划一致（采纳 Contrabass）；
+- **退避**：失败重试使用指数退避，`delay = min(base × 2^(attempt-1), max)`；抖动必须**可复现**，以「任务标识 + 尝试次数」为种子的确定性偏移，保证重启后重试计划一致（采纳 Contrabass）；到期重试在调度 tick 时触发（§4.8）；
 - **续跑**：干净退出后的续跑检查使用短固定延迟，而不是指数退避；
-- **停滞检测**：以「最后一次事件时间」为基准，超过阈值即终止本次尝试并按失败处理；阈值配置为 0 表示关闭检测；
+- **停滞检测**：以「最后一次事件时间」为基准，超过阈值即终止本次尝试并按失败处理；阈值配置为 0 表示关闭检测；判定在调度 tick 时求值（§4.8）；
 - **孤儿恢复**：先完成事务恢复，再识别「已领取但没有运行记录」的业务孤儿；按恢复策略释放回 `unclaimed`，并记录恢复事件。`doctor` 和 `repair --dry-run` 只报告，不执行恢复写入；
 - **对账**：每次打开项目或执行 `devsys status` 时，先检查未完成事务，再比对工作项、运行记录与产物；事务日志的确定性恢复不同于业务状态推断，后者不得静默修正；
 - **状态修复**：状态文件与实际漂移（丢失、手工改动、合并后不一致）时，走「先推断、再确认、后重写」：从代码、Git 历史、产物与运行记录推断真实状态，列出一张提议表供确认，确认后才重写并校验；这是唯一允许把任务标记为「比原来更不完整」的路径（采纳 BMAD）。
@@ -2256,6 +2408,8 @@ claim:
 - 覆盖重要架构决策；
 - 批量关闭任务；
 - 删除知识或历史记录。
+
+危险操作的授权使用审批记录（§4.9，`scope: action`）：执行前检查并消费有效批准，无批准不得执行；审批与操作同样写入事件流。
 
 ---
 
@@ -2314,7 +2468,8 @@ UI 不是系统的唯一入口，但应提供可视化管理。
 - Agent 筛选；
 - 时间筛选；
 - 任务详情；
-- 任务历史。
+- 任务历史；
+- 待审批（`approval` 状态与决定入口）。
 
 ### 工作流视图
 
@@ -2325,7 +2480,7 @@ UI 不是系统的唯一入口，但应提供可视化管理。
 - 已完成步骤；
 - 等待条件；
 - 阻塞原因；
-- 审批点；
+- 审批点与待审批状态；
 - 下一步候选动作。
 
 ### Run 视图
@@ -2413,6 +2568,8 @@ MVP 只解决一个核心问题：
 - 基础状态机；
 - 动态创建任务；
 - 任务历史；
+- 审批请求与决定（§4.9）；
+- 评论（§4.6）；
 - Run 记录；
 - 决策记录；
 - Finding 记录；
@@ -2452,6 +2609,10 @@ MVP 可以先实现：
 ### 18.3 MVP 暂不包含
 
 - 完整 Web Dashboard（可写、在线编辑型；只读的工作区视图作为扩展，见 §17）；
+- 内建通知服务（待办通过查询与工作区视图暴露，提醒交由外部工具）；
+- HTTP API 与 SDK（后置扩展，见 §8.5）；
+- 非 Git 项目（§14.1）；
+- 自研完整 Wiki 生成器（页面层由生成器契约承担，§12.6）；
 - 分布式调度；
 - 多租户；
 - 复杂权限系统；
@@ -2468,6 +2629,18 @@ MVP 可以先实现：
 ## 19. 推荐开发顺序
 
 > 详细拆分（步骤、依赖、验收、回退）见 `docs/原始文档/实施计划.md`；本章只给宏观阶段与阶段目标。
+
+阶段与里程碑的对应（实施顺序以里程碑依赖为准，M3 先于 M4；阶段编号表示能力分层，不表示施工顺序）：
+
+| 方案阶段 | 里程碑 |
+|---|---|
+| 阶段 1 核心数据和服务 | M0–M2 |
+| 阶段 2 MCP 接入 | M4.1–M4.3 |
+| 阶段 3 通用 Agent 工作协议 | M4.4–M4.6（依赖 M3 的门禁与审批） |
+| 阶段 4 动态工作流 | M3 |
+| 阶段 5 代码知识层 | M5 |
+| 阶段 6 Harness 执行适配 | M6 |
+| 阶段 7 Web UI 和高级能力 | M7–M8；多项目、远程执行与权限审批为后续 |
 
 ### 阶段 1：核心数据和服务
 
@@ -2532,13 +2705,12 @@ MVP 可以先实现：
 实现：
 
 - Workflow 定义；
-- 工作流实例；
-- 步骤状态；
-- 条件分支；
+- 工作流实例与步骤状态（§5.3）；
+- 声明式条件求值；
 - 动态任务创建；
 - 验证规则；
 - 暂停和恢复；
-- 审批点。
+- 审批（请求 / 批准 / 拒绝，§4.9）。
 
 目标：
 
@@ -2617,7 +2789,8 @@ MVP 可以先实现：
 - 先定义自己的核心数据模型；
 - 只吸收能力，不复制全部实现；
 - 将外部项目视为参考模块或适配器；
-- 先完成最小闭环。
+- 先完成最小闭环；
+- 知识页面生成不自研完整生成器，交由生成器契约与可选生成器（§12.6）。
 
 ---
 
@@ -2750,7 +2923,7 @@ MVP 可以先实现：
 
 ## 21. 成功标准
 
-系统达到以下条件，可以认为 MVP 成功：
+系统达到以下条件，可以认为达到对应阶段的目标（1–12 为 MVP；13、14、15 分别为阶段 7、6、5 的验收；16、17 为阶段 4、6 新增）：
 
 1. 不启动任何特定 Harness，也可以创建和管理项目、任务和记录。
 2. Codex、OpenCode 或其它支持 MCP 的 Agent 可以连接系统。
@@ -2767,6 +2940,8 @@ MVP 可以先实现：
 13. 工作区视图可以只读展示项目内状态（进度、蓝图、Run、决策），并且不构成第二套事实来源。
 14. 完成校验可以拦截「声称完成但分支未推进」的 Run，且不存在 fail-open 通过路径。
 15. 知识新鲜度可计算（基线 commit + affected_pages + 退出码），人工编辑与锁定页面受到保护。
+16. 需要审批的推进可以被请求、批准或拒绝；拒绝后的状态、理由与事件完整；审批不可绕过版本校验，且消费后失效。
+17. 调度以幂等的 `devsys dispatch` tick 推进；无守护进程、无人工干预时，重启后重试与停滞判定仍确定一致。
 
 ---
 
@@ -2789,7 +2964,7 @@ MVP 可以先实现：
 | 项目或方法 | 在本系统中的角色 |
 |---|---|
 | [BMAD](https://github.com/bmad-code-org/BMAD-METHOD) | 需求、规划、架构、验收和开发方法 |
-| [RepoWiki](https://github.com/JAYY513/repowiki) | 代码扫描、知识索引、上下文检索 |
+| [RepoWiki](https://github.com/JAYY513/repowiki) | 独立的 Wiki 生成产品（不合并、不内置）；本系统页面契约与保鲜机制来源、首选可选生成器（§12.6） |
 | [Contrabass](https://github.com/junhoyeo/contrabass) | 可选执行后端（见 §10.3）；看板与工作区实现参考 |
 | [Symphony](https://github.com/openai/symphony) | 执行层对齐规范（见 §10.7）：编排状态机、工作区不变量、重试与对账 |
 | [agent-tasks](https://github.com/keshrath/agent-tasks) | 流水线任务管理、阶段门禁、工件版本化、看板视图（参考；其公共数据库存储模式不采纳） |
