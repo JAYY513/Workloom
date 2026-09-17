@@ -47,9 +47,10 @@ func placeholders() []placeholder {
 	}
 }
 
-// The placeholder shapes are the smallest files M0.4 will parse strictly. They
-// are written through storage.EncodeYAML, so key order is the field order below
-// and repeated runs produce identical bytes.
+// The placeholder shapes match the whitelist internal/config enforces since
+// M0.4: unknown keys in these files are rejected, so the two must move
+// together. They are written through storage.EncodeYAML, so key order is the
+// field order below and repeated runs produce identical bytes.
 
 type projectFile struct {
 	SchemaVersion int    `yaml:"schema_version"`
@@ -76,7 +77,7 @@ type milestonesFile struct {
 }
 
 func projectYAML(id, name string, now time.Time) ([]byte, error) {
-	return withHeader("# devsys 项目元数据（方案 §5.1）；字段自 M0.4 起严格校验，可手工维护。\n", projectFile{
+	return withHeader("# devsys 项目元数据（方案 §5.1）；未知键/类型错误会被 `devsys config check` 与写入命令拒绝。\n", projectFile{
 		SchemaVersion: 1,
 		ID:            id,
 		Name:          name,
@@ -85,7 +86,7 @@ func projectYAML(id, name string, now time.Time) ([]byte, error) {
 }
 
 func configYAML(string, string, time.Time) ([]byte, error) {
-	return withHeader("# devsys 项目配置（方案 §14.2/§14.3）；键位自 M0.4 起严格校验。\n",
+	return withHeader("# devsys 项目配置（方案 §14.2/§14.3）；业务键尚未定义,当前只接受 schema_version。\n",
 		configFile{SchemaVersion: 1})
 }
 

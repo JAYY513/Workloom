@@ -17,7 +17,7 @@
 | M0.1 语言与工程骨架 | 已完成（Go 1.26，`devsys --version` 可跑） |
 | M0.2 CLI 骨架与 `devsys init` | 已完成（2026-09-17；退出码 0/1/2/3、`--json`/`--quiet`、`init` 幂等、用户级注册表、非 Git 拒绝） |
 | M0.3 文本存储基元 | 已完成（2026-09-17；原子写、JSONL 追加与断尾检测、稳定键序序列化、项目级写锁、乐观并发版本校验、可恢复跨文件事务；`gopkg.in/yaml.v3` 已 vendored） |
-| M0.4 严格配置解析 | 未开始 |
+| M0.4 严格配置解析 | 已完成（2026-09-17；`project.yaml`/`config.yaml` 严格解析：未知键、类型错误、缺必填项逐条报 `文件:行号: 字段: 原因`；受管文件 `schema_version` 校验，未知版本拒绝写入、只读诊断可用；新增 `devsys config check` 与退出码 4） |
 
 ## 构建与验收
 
@@ -35,6 +35,17 @@ bin/devsys.exe init; echo $?  # 非 Git 目录：3（前置条件错误）
 
 `init` 创建 `.devsys/`（方案 §14.3，另含 `.devsys/.gitignore` 排除 `local/` 与 `.cache/`），
 并在用户级注册表（`DEVSYS_CONFIG_DIR` 可覆盖）登记项目路径。
+
+校验受管元数据文件（只读：不加锁、不写盘，未知 `schema_version` 时仍可运行，方案 §14.1）：
+
+```sh
+bin/devsys.exe config check
+bin/devsys.exe --json config check    # 问题以结构化数组输出
+bin/devsys.exe config check; echo $?  # 0 通过；4 解析/字段/版本问题；3 未初始化
+```
+
+有问题的文件会逐条给出 `文件:行号: 字段: 原因`（例如 `project.yaml:5: updated_at: unknown key`）；
+写命令（当前为 `init`）在任何改动前先校验既有受管文件，未知 `schema_version` 直接拒绝并提示迁移。
 
 测试与静态检查（`vendor/` 已提交，离线可跑）：
 
@@ -56,11 +67,13 @@ go build -ldflags "-X workloom/internal/version.Version=0.1.0 -X workloom/intern
 cmd/devsys/          命令入口（进程退出码）
 internal/cli/        命令分发、全局开关、输出与退出码
 internal/storage/    存储基元：原子写、JSONL、稳定序列化、项目锁、事务日志与恢复（方案 §15.2）
+internal/config/     严格配置解析、错误定位与 schema_version 校验（方案 §14.1）
 internal/project/    init 与项目内布局（后续：领域 / 访问 / 执行）
 internal/registry/   用户级项目路径注册表（方案 §14.4）
 internal/version/    构建标识（可用 -ldflags 覆盖）
 vendor/              依赖副本（gopkg.in/yaml.v3），保证干净机器离线构建
 docs/原始文档/       方案与实施计划（源文档，不再拆分）
+docs/开发记录.md     实施中的问题、偏差、决策与遗留事项（本地记录）
 bin/                 构建产物（不提交）
 ```
 

@@ -6,10 +6,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
+	"workloom/internal/config"
 	"workloom/internal/storage"
 )
 
@@ -239,5 +241,74 @@ func TestInitRejectsRepositorySubdirectory(t *testing.T) {
 	}
 	if _, statErr := os.Stat(filepath.Join(repo, DevsysDirName)); !errors.Is(statErr, fs.ErrNotExist) {
 		t.Fatal("precondition failure must not create state in the repository root either")
+	}
+}
+
+func TestInitRefusesInvalidMetadata(t *testing.T) {
+	requireGit(t)
+	repo := filepath.Join(t.TempDir(), "BrokenProj")
+	if err := os.MkdirAll(repo, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	initRepo(t, repo)
+	devsys := filepath.Join(repo, DevsysDirName)
+
+	if _, err := Init(repo, Options{Now: fixedNow}); err != nil {
+		t.Fatal(err)
+	}
+	// An unsupported schema_version plus a missing directory init would
+	// otherwise recreate: the write must be refused before any change.
+	broken := []byte("# c\nschema_version: 99\nid: broken\nname: broken\n")
+	if err := os.WriteFile(filepath.Join(devsys, "project.yaml"), broken, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(filepath.Join(devsys, "knowledge")); err != nil {
+		t.Fatal(err)
+	}
+	before := snapshot(t, devsys)
+
+	_, err := Init(repo, Options{Now: fixedNow})
+	var problems config.Problems
+	if !errors.As(err, &problems) {
+		t.Fatalf("err = %v (%T), want config.Problems", err, err)
+	}
+	problem := problems.Error()
+	if len(problems) != 1 || !strings.Contains(problem, "unsupported version 99") ||
+		!strings.Contains(problem, "M9.2") {
+		t.Errorf("problems = %s", problem)
+	}
+	if _, statErr := os.Stat(filepath.Join(devsys, "knowledge")); !errors.Is(statErr, fs.ErrNotExist) {
+		t.Error("init must not create anything while metadata is invalid")
+	}
+	assertSameSnapshot(t, before, snapshot(t, devsys))
+}
+
+func TestInitRecreatesMissingManagedFiles(t *testing.T) {
+	requireGit(t)
+	repo := filepath.Join(t.TempDir(), "PartialProj")
+	if err := os.MkdirAll(repo, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	initRepo(t, repo)
+	devsys := filepath.Join(repo, DevsysDirName)
+
+	if _, err := Init(repo, Options{Now: fixedNow}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(devsys, "state", "current.yaml")); err != nil {
+		t.Fatal(err)
+	}
+
+	// A missing managed file is not an invalid state: init creates it.
+	res, err := Init(repo, Options{Now: fixedNow})
+	if err != nil {
+		t.Fatalf("init over a missing managed file: %v", err)
+	}
+	want := DevsysDirName + "/state/current.yaml"
+	if !slices.Contains(res.Created, want) {
+		t.Errorf("created = %v, want it to contain %s", res.Created, want)
+	}
+	if _, err := os.Stat(filepath.Join(devsys, "state", "current.yaml")); err != nil {
+		t.Errorf("state/current.yaml was not recreated: %v", err)
 	}
 }

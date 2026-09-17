@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"workloom/internal/config"
 	"workloom/internal/storage"
 )
 
@@ -57,6 +58,14 @@ func Init(dir string, opts Options) (*Result, error) {
 	}
 	if err := requireSameDir(abs, root); err != nil {
 		return nil, err
+	}
+
+	// A write command must not touch a project whose managed files are already
+	// invalid (方案 §14.1: 读到未知版本时拒绝写入). Missing files are not problems
+	// here — creating them is exactly init's job. This runs before anything on
+	// disk changes.
+	if _, problems := config.Load(root); len(problems) > 0 {
+		return nil, problems
 	}
 
 	name := filepath.Base(root)
