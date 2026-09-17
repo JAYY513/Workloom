@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"workloom/internal/config"
+	"workloom/internal/domain"
 	"workloom/internal/storage"
 )
 
@@ -128,19 +129,14 @@ func TestInitCreatesLayoutIdempotently(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var parsed struct {
-		SchemaVersion int    `yaml:"schema_version"`
-		ID            string `yaml:"id"`
-		Name          string `yaml:"name"`
-		CreatedAt     string `yaml:"created_at"`
-	}
+	var parsed domain.Project
 	if err := storage.DecodeYAML(pj, &parsed); err != nil {
 		t.Fatalf("project.yaml does not parse: %v\n%s", err, pj)
 	}
 	if parsed.SchemaVersion != 1 || parsed.ID != "tempmonitorsystem" || parsed.Name != "TempMonitorSystem" {
 		t.Errorf("project.yaml = %+v", parsed)
 	}
-	if parsed.CreatedAt != fixedNow.UTC().Format(time.RFC3339) {
+	if !parsed.CreatedAt.Equal(fixedNow) {
 		t.Errorf("created_at = %q", parsed.CreatedAt)
 	}
 

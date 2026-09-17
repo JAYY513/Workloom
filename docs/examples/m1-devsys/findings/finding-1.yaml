@@ -1,0 +1,13 @@
+schema_version: 1
+id: finding-1
+project_id: demo-project
+type: risk
+title: 示例风险：实施前需验证边界条件
+description: M1 剧本中的示例风险，不代表已观测到的生产故障
+evidence: []
+severity: medium
+status: open
+discovered_by_run_id: ""
+related_workitems:
+  - WLM-1
+recommended_actions: []

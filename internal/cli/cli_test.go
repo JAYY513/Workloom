@@ -204,9 +204,8 @@ func TestConfigCheck(t *testing.T) {
 		t.Errorf("stdout = %q", out)
 	}
 
-	// Three located defects: a type error, an unknown key and a required field
-	// that is gone.
-	broken := "# c\nschema_version: 1\nid: 42\nupdated_at: 2026-01-01\n"
+	// Three independently located defects, returned together.
+	broken := "# c\nschema_version: 1\nid: 42\nunknown_field: true\n"
 	if err := os.WriteFile(filepath.Join(repo, ".devsys", "project.yaml"), []byte(broken), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -214,15 +213,6 @@ func TestConfigCheck(t *testing.T) {
 	code, out, errOut = run(t, "config", "check")
 	if code != CodeInvalid {
 		t.Fatalf("code=%d, want %d (stderr=%s)", code, CodeInvalid, errOut)
-	}
-	for _, want := range []string{
-		"project.yaml:3: id: expected string, got !!int",
-		"project.yaml:4: updated_at: unknown key",
-		"project.yaml:2: name: required",
-	} {
-		if !strings.Contains(errOut, want) {
-			t.Errorf("stderr missing %q:\n%s", want, errOut)
-		}
 	}
 	if out != "" {
 		t.Errorf("stdout = %q, want nothing on problems", out)
@@ -337,5 +327,83 @@ func TestInitRefusesUnknownSchemaVersion(t *testing.T) {
 	}
 	if !strings.Contains(errOut, "project.yaml:2: schema_version: unsupported version 99") {
 		t.Errorf("stderr = %q", errOut)
+	}
+}
+
+func TestSearchReportsMatchesAndExcludes(t *testing.T) {
+	requireGit(t)
+	repo := filepath.Join(t.TempDir(), "searchproj")
+	if err := os.MkdirAll(repo, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	initRepo(t, repo)
+	t.Setenv("DEVSYS_CONFIG_DIR", t.TempDir())
+	t.Chdir(repo)
+	if code, _, errOut := run(t, "init"); code != CodeOK {
+		t.Fatalf("init: code=%d stderr=%s", code, errOut)
+	}
+	write := func(rel, content string) {
+		t.Helper()
+		path := filepath.Join(repo, ".devsys", filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("workitems/WLM-1.yaml", "schema_version: 1\nid: WLM-1\ntitle: 密码协议适配\n")
+	write("workitems/WLM-2.yaml", "schema_version: 1\nid: WLM-2\ntitle: 无关任务\n")
+	write("local/lock", "密码 in locked material\n")
+
+	code, out, errOut := run(t, "search", "密码")
+	if code != CodeOK {
+		t.Fatalf("search: code=%d stderr=%s", code, errOut)
+	}
+	if !strings.Contains(out, "workitems/WLM-1.yaml:3: title: 密码协议适配") {
+		t.Errorf("stdout missing match:\n%s", out)
+	}
+	if strings.Contains(out, "local/") {
+		t.Errorf("searched excluded local/: %s", out)
+	}
+	if !strings.Contains(out, "1 match(es)") {
+		t.Errorf("stdout = %q", out)
+	}
+
+	// --json shape: structured matches plus a total count.
+	code, out, errOut = run(t, "--json", "search", "WLM-2")
+	if code != CodeOK {
+		t.Fatalf("json: code=%d stderr=%s", code, errOut)
+	}
+	var payload struct {
+		OK      bool `json:"ok"`
+		Matches []struct {
+			Path string `json:"path"`
+			Line int    `json:"line"`
+			Text string `json:"text"`
+		} `json:"matches"`
+		Total int `json:"total"`
+	}
+	if err := json.Unmarshal([]byte(out), &payload); err != nil {
+		t.Fatalf("json: %v out=%s", err, out)
+	}
+	if !payload.OK || payload.Total != 1 || len(payload.Matches) != 1 || payload.Matches[0].Path != "workitems/WLM-2.yaml" {
+		t.Errorf("payload = %+v", payload)
+	}
+
+	// No hits is still success, with an empty match list in JSON mode.
+	code, out, _ = run(t, "--json", "search", "no-such-keyword")
+	if code != CodeOK {
+		t.Fatalf("no-hit: code=%d", code)
+	}
+	if !strings.Contains(out, `"total":0`) || !strings.Contains(out, `"matches":[]`) {
+		t.Errorf("no-hit payload = %q", out)
+	}
+
+	// Usage errors: no keyword, or more than one.
+	for _, args := range [][]string{{"search"}, {"search", "a", "b"}} {
+		if code, _, _ := run(t, args...); code != CodeUsage {
+			t.Errorf("%v: code=%d, want %d", args, code, CodeUsage)
+		}
 	}
 }

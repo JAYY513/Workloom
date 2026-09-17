@@ -1,0 +1,2 @@
+# devsys 项目配置（方案 §14.2/§14.3）；业务键尚未定义,当前只接受 schema_version。
+schema_version: 1

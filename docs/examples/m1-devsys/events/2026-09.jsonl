@@ -1,0 +1,2 @@
+{"schema_version":1,"id":"ev-20260917150001.000000-adf8","project_id":"demo-project","type":"comment","subject":{"type":"workitem","id":"WLM-1"},"time":"2026-09-17T15:00:01Z","actor":"smoke-script","related":null,"content":"任务拆解已对齐，准备进入实施。","reply_to":null}
+{"schema_version":1,"id":"ev-20260917150002.000000-6307","project_id":"demo-project","type":"comment","subject":{"type":"workitem","id":"WLM-1"},"time":"2026-09-17T15:00:02Z","actor":"smoke-script","related":null,"content":"已读完规格，批准开工。","reply_to":"ev-20260917150001.000000-adf8"}

@@ -1,0 +1,18 @@
+schema_version: 1
+id: decision-1
+project_id: demo-project
+title: M1 采用事件溯源 + 文本快照
+context: 单机协调与 Git 接力，无需数据库
+options:
+  - SQLite
+  - 纯文本 + 事务日志
+decision: 纯文本 + 事务日志
+reasoning: 方案 §14.1：项目内文本 + Git 同步
+consequences:
+  - 检索走文本扫描
+status: approved
+created_by: smoke-script
+approved_by: ""
+related_workitems:
+  - WLM-1
+created_at: 2026-09-17T15:00:00Z

@@ -164,6 +164,18 @@ func (tx *Tx) AppendJSONL(rel string, record any) error {
 	return nil
 }
 
+// ReadForExpect returns the current bytes of rel inside an open transaction
+// so callers can decode the exact content their ExpectHash guard will
+// replace. It performs no locking: Store.Write already holds the exclusive
+// project lock.
+func (tx *Tx) ReadForExpect(rel string) ([]byte, bool, error) {
+	abs, err := tx.s.resolve(rel)
+	if err != nil {
+		return nil, false, err
+	}
+	return readFileMaybe(abs)
+}
+
 func (tx *Tx) claim(rel, abs string) error {
 	if tx.seen[abs] {
 		return fmt.Errorf("storage: %s is staged twice in one transaction", rel)

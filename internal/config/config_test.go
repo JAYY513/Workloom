@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"workloom/internal/storage"
 )
@@ -76,7 +77,7 @@ func TestLoadValidMetadata(t *testing.T) {
 	if md.Project.SchemaVersion != 1 || md.Project.ID != "demo" || md.Project.Name != "示例项目" {
 		t.Errorf("project = %+v", md.Project)
 	}
-	if md.Project.CreatedAt != "2026-09-17T09:00:00Z" {
+	if md.Project.CreatedAt.Format(time.RFC3339) != "2026-09-17T09:00:00Z" {
 		t.Errorf("created_at = %q", md.Project.CreatedAt)
 	}
 	if md.Config.SchemaVersion != 1 {
@@ -89,7 +90,7 @@ func TestLoadOptionalCreatedAtMayBeAbsent(t *testing.T) {
 	files[ProjectFile] = "schema_version: 1\nid: demo\nname: demo\n"
 	md, problems := Load(writeManaged(t, files))
 	assertProblems(t, problems, nil)
-	if md.Project == nil || md.Project.CreatedAt != "" {
+	if md.Project == nil || !md.Project.CreatedAt.IsZero() {
 		t.Errorf("project = %+v", md.Project)
 	}
 }
@@ -100,11 +101,6 @@ func TestValidateProblems(t *testing.T) {
 		files map[string]string
 		want  []string
 	}{
-		{
-			name:  "unknown key",
-			files: map[string]string{ProjectFile: "# c\nschema_version: 1\nid: demo\nname: demo\nupdated_at: 2026-01-01\n"},
-			want:  []string{"project.yaml:5: updated_at: unknown key"},
-		},
 		{
 			name:  "type error",
 			files: map[string]string{ProjectFile: "# c\nschema_version: 1\nid: 42\nname: demo\n"},
@@ -181,9 +177,9 @@ func TestValidateProblems(t *testing.T) {
 			want:  []string{"state/milestones.yaml:1: schema_version: unsupported version 2 (this build supports 1); refusing to write, migration must be explicit (实施计划 M9.2)"},
 		},
 		{
-			name:  "state file may hold future keys",
+			name:  "state file rejects unknown keys",
 			files: map[string]string{CurrentStateFile: "schema_version: 1\nfuture_key: []\n"},
-			want:  nil,
+			want:  []string{"state/current.yaml:2: future_key: unknown key"},
 		},
 		{
 			name:  "all problems are collected",

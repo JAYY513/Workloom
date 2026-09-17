@@ -18,6 +18,10 @@ const (
 	kindInt fieldKind = iota
 	kindString
 	kindTimestamp // scalar rendered as RFC3339
+	kindStrings
+	kindScope
+	kindCurrent
+	kindMilestones
 )
 
 type fieldSpec struct {
@@ -26,11 +30,11 @@ type fieldSpec struct {
 	required bool
 }
 
-// fileSpec is the whitelist for one managed file.
+// fileSpec is the whitelist for one managed file or nested mapping.
 type fileSpec struct {
 	fields []fieldSpec
-	// allowExtra permits keys outside the whitelist (state files: M0.4 checks
-	// only their schema_version).
+	// allowExtra permits keys outside the whitelist (config.yaml: M0.4 checks
+	// only schema_version).
 	allowExtra bool
 }
 
@@ -39,16 +43,34 @@ var projectSpec = fileSpec{fields: []fieldSpec{
 	{name: "id", kind: kindString, required: true},
 	{name: "name", kind: kindString, required: true},
 	{name: "created_at", kind: kindTimestamp},
+	{name: "updated_at", kind: kindTimestamp},
+	{name: "description", kind: kindString},
+	{name: "status", kind: kindString},
+	{name: "current_phase", kind: kindString},
+	{name: "goals", kind: kindStrings},
+	{name: "constraints", kind: kindStrings},
+	{name: "tech_stack", kind: kindStrings},
+	{name: "scope", kind: kindScope},
+	{name: "current_state", kind: kindCurrent},
+	{name: "milestones", kind: kindMilestones},
+	{name: "blueprint_artifact_id", kind: kindString},
 }}
 
 var configSpec = fileSpec{fields: []fieldSpec{
 	{name: "schema_version", kind: kindInt, required: true},
 }}
 
-var stateSpec = fileSpec{
-	fields:     []fieldSpec{{name: "schema_version", kind: kindInt, required: true}},
-	allowExtra: true,
+var currentFields = []fieldSpec{
+	{name: "summary", kind: kindString},
+	{name: "risks", kind: kindStrings},
+	{name: "blockers", kind: kindStrings},
+	{name: "next_focus", kind: kindStrings},
 }
+var currentSpec = fileSpec{fields: append([]fieldSpec{{name: "schema_version", kind: kindInt, required: true}}, currentFields...)}
+var milestonesSpec = fileSpec{fields: []fieldSpec{
+	{name: "schema_version", kind: kindInt, required: true},
+	{name: "milestones", kind: kindMilestones},
+}}
 
 func findField(spec fileSpec, name string) *fieldSpec {
 	for i := range spec.fields {
@@ -118,6 +140,7 @@ func validate(rel string, data []byte, spec fileSpec) (map[string]*yaml.Node, Pr
 			problems = append(problems, *p)
 			continue
 		}
+		problems = append(problems, checkNested(rel, name, *field, val)...)
 		values[name] = val
 	}
 	for _, field := range spec.fields {
@@ -133,6 +156,15 @@ func validate(rel string, data []byte, spec fileSpec) (map[string]*yaml.Node, Pr
 
 func checkField(rel string, field fieldSpec, val *yaml.Node) *Problem {
 	switch field.kind {
+	case kindStrings, kindMilestones:
+		// null keeps the "not recorded yet" state distinct from an empty list.
+		if val.Tag != "!!null" && val.Kind != yaml.SequenceNode {
+			return &Problem{File: rel, Line: val.Line, Field: field.name, Reason: "expected sequence or null"}
+		}
+	case kindScope, kindCurrent:
+		if val.Kind != yaml.MappingNode {
+			return &Problem{File: rel, Line: val.Line, Field: field.name, Reason: "expected mapping"}
+		}
 	case kindInt:
 		var n int
 		if err := val.Decode(&n); err != nil {

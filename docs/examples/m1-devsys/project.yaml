@@ -1,0 +1,22 @@
+# devsys 项目元数据（方案 §5.1）；由 devsys 命令维护。
+schema_version: 1
+id: demo-project
+name: demo-project
+description: ""
+status: active
+current_phase: ""
+goals: null
+scope:
+  in: null
+  out: null
+constraints: null
+tech_stack: null
+milestones: null
+current_state:
+  summary: ""
+  risks: null
+  blockers: null
+  next_focus: null
+blueprint_artifact_id: ""
+created_at: 2026-09-17T12:49:25.0617087Z
+updated_at: 2026-09-17T12:49:25.0617087Z

@@ -14,8 +14,10 @@ import (
 	"time"
 
 	"workloom/internal/config"
+	"workloom/internal/domain"
 	"workloom/internal/project"
 	"workloom/internal/registry"
+	"workloom/internal/search"
 	"workloom/internal/version"
 )
 
@@ -132,6 +134,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 			return render(stderr, opts, errUsage("`devsys init` takes no arguments (got %q)", rest[0]))
 		}
 		return render(stderr, opts, runInit(stdout, opts))
+	case "search":
+		return render(stderr, opts, runSearch(stdout, opts, rest))
 	case "config":
 		return render(stderr, opts, runConfigCheck(stdout, opts, rest))
 	default:
@@ -243,9 +247,49 @@ func runInit(stdout io.Writer, opts options) error {
 	return nil
 }
 
+// runSearch implements `devsys search <keyword>` (实施计划 M1.6): a plain
+// read-only scan of .devsys/, excluding .cache/ and local/.
+func runSearch(stdout io.Writer, opts options, rest []string) error {
+	if len(rest) != 1 {
+		return errUsage("`devsys search` needs exactly one keyword")
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return errInternal("resolve working directory: %v", err)
+	}
+	devsys := filepath.Join(cwd, project.DevsysDirName)
+	if _, err := os.Stat(devsys); errors.Is(err, fs.ErrNotExist) {
+		return errPrecondition("no %s/ in %s: run `devsys init` first", project.DevsysDirName, cwd)
+	} else if err != nil {
+		return errInternal("inspect %s: %v", devsys, err)
+	}
+	matches, total, err := search.Search(devsys, rest[0])
+	if err != nil {
+		return errInternal("search: %v", err)
+	}
+	if opts.json {
+		out := struct {
+			OK      bool           `json:"ok"`
+			Root    string         `json:"root"`
+			Query   string         `json:"query"`
+			Matches []search.Match `json:"matches"`
+			Total   int            `json:"total"`
+		}{OK: true, Root: cwd, Query: rest[0], Matches: matches, Total: total}
+		if out.Matches == nil {
+			out.Matches = []search.Match{}
+		}
+		return json.NewEncoder(stdout).Encode(out)
+	}
+	if !opts.quiet {
+		for _, m := range matches {
+			fmt.Fprintf(stdout, "%s:%d: %s\n", m.Path, m.Line, m.Text)
+		}
+		fmt.Fprintf(stdout, "%d match(es) in .devsys/ for %q\n", total, rest[0])
+	}
+	return nil
+}
+
 // runConfigCheck implements `devsys config check`: the read-only diagnostic
-// path required by 方案 §14.1 for state this build must not write (unknown
-// schema_version). It reads plainly — no lock, no recovery, no writes.
 func runConfigCheck(stdout io.Writer, opts options, rest []string) error {
 	if len(rest) == 0 {
 		return errUsage("`devsys config` needs a subcommand (try `devsys config check`)")
@@ -277,7 +321,7 @@ func runConfigCheck(stdout io.Writer, opts options, rest []string) error {
 			OK      bool            `json:"ok"`
 			Root    string          `json:"root"`
 			Checked []string        `json:"checked"`
-			Project *config.Project `json:"project,omitempty"`
+			Project *domain.Project `json:"project,omitempty"`
 			Config  *config.Config  `json:"config,omitempty"`
 		}{OK: true, Root: cwd, Checked: config.ManagedFiles(), Project: md.Project, Config: md.Config}
 		return json.NewEncoder(stdout).Encode(out)

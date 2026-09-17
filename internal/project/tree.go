@@ -3,6 +3,7 @@ package project
 import (
 	"time"
 
+	"workloom/internal/domain"
 	"workloom/internal/storage"
 )
 
@@ -47,41 +48,20 @@ func placeholders() []placeholder {
 	}
 }
 
-// The placeholder shapes match the whitelist internal/config enforces since
-// M0.4: unknown keys in these files are rejected, so the two must move
-// together. They are written through storage.EncodeYAML, so key order is the
-// field order below and repeated runs produce identical bytes.
-
-type projectFile struct {
-	SchemaVersion int    `yaml:"schema_version"`
-	ID            string `yaml:"id"`
-	Name          string `yaml:"name"`
-	CreatedAt     string `yaml:"created_at"`
-}
+// The placeholder shapes match the domain contracts internal/config enforces:
+// unknown keys in these files are rejected, so the two must move together.
+// They are written through domain.EncodeYAML, so key order is the field order
+// of the domain structs and repeated runs produce identical bytes.
 
 type configFile struct {
 	SchemaVersion int `yaml:"schema_version"`
 }
 
-type currentStateFile struct {
-	SchemaVersion int      `yaml:"schema_version"`
-	Summary       string   `yaml:"summary"`
-	Risks         []string `yaml:"risks"`
-	Blockers      []string `yaml:"blockers"`
-	NextFocus     []string `yaml:"next_focus"`
-}
-
-type milestonesFile struct {
-	SchemaVersion int      `yaml:"schema_version"`
-	Milestones    []string `yaml:"milestones"`
-}
-
 func projectYAML(id, name string, now time.Time) ([]byte, error) {
-	return withHeader("# devsys 项目元数据（方案 §5.1）；未知键/类型错误会被 `devsys config check` 与写入命令拒绝。\n", projectFile{
-		SchemaVersion: 1,
-		ID:            id,
-		Name:          name,
-		CreatedAt:     now.UTC().Format(time.RFC3339),
+	return withHeader("# devsys 项目元数据（方案 §5.1）；由 devsys 命令维护。\n", domain.Project{
+		SchemaVersion: domain.SchemaVersion,
+		ID:            id, Name: name, Status: "active",
+		CreatedAt: now.UTC(), UpdatedAt: now.UTC(),
 	})
 }
 
@@ -91,25 +71,22 @@ func configYAML(string, string, time.Time) ([]byte, error) {
 }
 
 func currentStateYAML(string, string, time.Time) ([]byte, error) {
-	return withHeader("# 项目当前状态（方案 §5.1 current_state）；由 devsys 命令维护。\n", currentStateFile{
-		SchemaVersion: 1,
-		Risks:         []string{},
-		Blockers:      []string{},
-		NextFocus:     []string{},
+	return withHeader("# 项目当前状态（方案 §5.1 current_state）；由 devsys 命令维护。\n", domain.CurrentStateFile{
+		SchemaVersion: domain.SchemaVersion,
+		CurrentState:  domain.CurrentState{Risks: []string{}, Blockers: []string{}, NextFocus: []string{}},
 	})
 }
 
 func milestonesYAML(string, string, time.Time) ([]byte, error) {
-	return withHeader("# 里程碑（方案 §5.1）；由 devsys 命令维护。\n", milestonesFile{
-		SchemaVersion: 1,
-		Milestones:    []string{},
+	return withHeader("# 里程碑（方案 §5.1）；由 devsys 命令维护。\n", domain.MilestonesFile{
+		SchemaVersion: domain.SchemaVersion, Milestones: []domain.Milestone{},
 	})
 }
 
 // withHeader prepends a comment line to an encoded document so hand editors
 // keep seeing where the file comes from.
 func withHeader(comment string, v any) ([]byte, error) {
-	body, err := storage.EncodeYAML(v)
+	body, err := domain.EncodeYAML(v)
 	if err != nil {
 		return nil, err
 	}

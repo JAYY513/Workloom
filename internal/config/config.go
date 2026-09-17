@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"workloom/internal/domain"
 	"workloom/internal/storage"
 )
 
@@ -77,16 +78,6 @@ func (ps Problems) Error() string {
 	return strings.Join(parts, "; ")
 }
 
-// Project is the strict view of project.yaml. M0.4 covers the metadata header
-// devsys init writes; the full 方案 §5.1 model arrives with the M1.1 domain
-// types, which extend the whitelist together with this struct.
-type Project struct {
-	SchemaVersion int    `json:"schema_version"`
-	ID            string `json:"id"`
-	Name          string `json:"name"`
-	CreatedAt     string `json:"created_at,omitempty"` // RFC3339; empty when absent
-}
-
 // Config is the strict view of config.yaml. No project-level options are
 // defined yet, so only schema_version is accepted; later milestones extend
 // both the whitelist and this struct.
@@ -97,7 +88,7 @@ type Config struct {
 // Metadata is what Load or Diagnose could read. A field is nil when its file
 // was missing or invalid; callers must not fabricate defaults for it.
 type Metadata struct {
-	Project *Project
+	Project *domain.Project
 	Config  *Config
 }
 
@@ -148,19 +139,14 @@ func load(root string, reportMissing bool) (*Metadata, Problems) {
 	return md, problems
 }
 
-func parseProject(rel string, data []byte) (*Project, Problems) {
-	values, problems := validate(rel, data, projectSpec)
+func parseProject(rel string, data []byte) (*domain.Project, Problems) {
+	_, problems := validate(rel, data, projectSpec)
 	if problems != nil {
 		return nil, problems
 	}
-	p := &Project{}
-	if err := values["schema_version"].Decode(&p.SchemaVersion); err != nil {
-		return nil, Problems{{File: rel, Field: "schema_version", Reason: fmt.Sprintf("decode: %v", err)}}
-	}
-	p.ID = values["id"].Value
-	p.Name = values["name"].Value
-	if n, ok := values["created_at"]; ok {
-		p.CreatedAt = n.Value
+	p := &domain.Project{}
+	if err := domain.DecodeYAML(data, p); err != nil {
+		return nil, Problems{{File: rel, Reason: fmt.Sprintf("decode: %v", err)}}
 	}
 	return p, nil
 }
@@ -177,11 +163,12 @@ func parseConfig(rel string, data []byte) (*Config, Problems) {
 	return c, nil
 }
 
-// checkStateFile validates a state file: the root must be a mapping with a
-// supported schema_version. The rest of the shape (summary/risks/milestones)
-// belongs to the M1.1 domain types, so unknown keys are allowed here on
-// purpose.
+// checkStateFile applies the matching versioned state document contract.
 func checkStateFile(rel string, data []byte) Problems {
-	_, problems := validate(rel, data, stateSpec)
+	spec := currentSpec
+	if rel == MilestonesFile {
+		spec = milestonesSpec
+	}
+	_, problems := validate(rel, data, spec)
 	return problems
 }

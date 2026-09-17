@@ -1,0 +1,50 @@
+schema_version: 1
+id: run-20260917-1
+project_id: demo-project
+workitem_id: WLM-1
+workflow_id: ""
+agent:
+  id: smoke-agent
+  harness: shell
+  model: smoke
+workspace:
+  path: ""
+  branch: ""
+  worktree: ""
+claim:
+  head_sha: ""
+  claimed_at: null
+  lease_until: null
+  heartbeat_at: null
+verification:
+  advanced: null
+  head_sha_at_complete: ""
+  verified_by: null
+status: finished
+attempt: 1
+phase: streaming_turns
+started_at: 2026-09-17T15:00:03Z
+finished_at: null
+input_context_refs:
+  - artifact://artifact-3
+  - decision://decision-1
+changed_files: []
+commands: []
+tests: []
+logs: []
+result:
+  summary: null
+  errors: []
+  findings: []
+  decisions: []
+  follow_up_workitems: []
+retry_count: 0
+context_snapshot:
+  project_state_version: 1
+  workitem_version: 1
+  artifact_versions:
+    - artifact-3:v3
+  knowledge_revision: ""
+  workspace_head: ""
+  decision_ids:
+    - decision-1
