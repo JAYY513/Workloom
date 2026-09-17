@@ -1,14 +1,13 @@
 package project
 
 import (
-	"fmt"
 	"time"
 
-	"workloom/internal/minyaml"
+	"workloom/internal/storage"
 )
 
 // DevsysDirName is the per-project state directory (方案 §14.3).
-const DevsysDirName = ".devsys"
+const DevsysDirName = storage.DevsysDirName
 
 // layoutDirs lists the .devsys subdirectories required by 方案 §14.3.
 var layoutDirs = []string{
@@ -36,7 +35,7 @@ var ignoreEntries = []string{"local/", ".cache/"}
 // placeholder describes one minimal file devsys init writes when missing.
 type placeholder struct {
 	rel   string // path inside .devsys, slash-separated
-	build func(id, name string, now time.Time) (string, error)
+	build func(id, name string, now time.Time) ([]byte, error)
 }
 
 func placeholders() []placeholder {
@@ -48,38 +47,70 @@ func placeholders() []placeholder {
 	}
 }
 
-func projectYAML(id, name string, now time.Time) (string, error) {
-	idQ, err := minyaml.QuoteScalar(id)
+// The placeholder shapes are the smallest files M0.4 will parse strictly. They
+// are written through storage.EncodeYAML, so key order is the field order below
+// and repeated runs produce identical bytes.
+
+type projectFile struct {
+	SchemaVersion int    `yaml:"schema_version"`
+	ID            string `yaml:"id"`
+	Name          string `yaml:"name"`
+	CreatedAt     string `yaml:"created_at"`
+}
+
+type configFile struct {
+	SchemaVersion int `yaml:"schema_version"`
+}
+
+type currentStateFile struct {
+	SchemaVersion int      `yaml:"schema_version"`
+	Summary       string   `yaml:"summary"`
+	Risks         []string `yaml:"risks"`
+	Blockers      []string `yaml:"blockers"`
+	NextFocus     []string `yaml:"next_focus"`
+}
+
+type milestonesFile struct {
+	SchemaVersion int      `yaml:"schema_version"`
+	Milestones    []string `yaml:"milestones"`
+}
+
+func projectYAML(id, name string, now time.Time) ([]byte, error) {
+	return withHeader("# devsys 项目元数据（方案 §5.1）；字段自 M0.4 起严格校验，可手工维护。\n", projectFile{
+		SchemaVersion: 1,
+		ID:            id,
+		Name:          name,
+		CreatedAt:     now.UTC().Format(time.RFC3339),
+	})
+}
+
+func configYAML(string, string, time.Time) ([]byte, error) {
+	return withHeader("# devsys 项目配置（方案 §14.2/§14.3）；键位自 M0.4 起严格校验。\n",
+		configFile{SchemaVersion: 1})
+}
+
+func currentStateYAML(string, string, time.Time) ([]byte, error) {
+	return withHeader("# 项目当前状态（方案 §5.1 current_state）；由 devsys 命令维护。\n", currentStateFile{
+		SchemaVersion: 1,
+		Risks:         []string{},
+		Blockers:      []string{},
+		NextFocus:     []string{},
+	})
+}
+
+func milestonesYAML(string, string, time.Time) ([]byte, error) {
+	return withHeader("# 里程碑（方案 §5.1）；由 devsys 命令维护。\n", milestonesFile{
+		SchemaVersion: 1,
+		Milestones:    []string{},
+	})
+}
+
+// withHeader prepends a comment line to an encoded document so hand editors
+// keep seeing where the file comes from.
+func withHeader(comment string, v any) ([]byte, error) {
+	body, err := storage.EncodeYAML(v)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	nameQ, err := minyaml.QuoteScalar(name)
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("# devsys 项目元数据（方案 §5.1）；字段自 M0.4 起严格校验，可手工维护。\n"+
-		"schema_version: 1\n"+
-		"id: %s\n"+
-		"name: %s\n"+
-		"created_at: %s\n", idQ, nameQ, now.UTC().Format(time.RFC3339)), nil
-}
-
-func configYAML(string, string, time.Time) (string, error) {
-	return "# devsys 项目配置（方案 §14.2/§14.3）；键位自 M0.4 起严格校验。\n" +
-		"schema_version: 1\n", nil
-}
-
-func currentStateYAML(string, string, time.Time) (string, error) {
-	return "# 项目当前状态（方案 §5.1 current_state）；由 devsys 命令维护。\n" +
-		"schema_version: 1\n" +
-		"summary: ''\n" +
-		"risks: []\n" +
-		"blockers: []\n" +
-		"next_focus: []\n", nil
-}
-
-func milestonesYAML(string, string, time.Time) (string, error) {
-	return "# 里程碑（方案 §5.1）；由 devsys 命令维护。\n" +
-		"schema_version: 1\n" +
-		"milestones: []\n", nil
+	return append([]byte(comment), body...), nil
 }

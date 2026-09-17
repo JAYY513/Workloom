@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"workloom/internal/storage"
 )
 
 var fixedNow = time.Date(2026, 9, 17, 9, 0, 0, 0, time.UTC)
@@ -124,10 +126,20 @@ func TestInitCreatesLayoutIdempotently(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"schema_version: 1", "id: 'tempmonitorsystem'", "name: 'TempMonitorSystem'", "created_at: 2026-09-17T09:00:00Z"} {
-		if !strings.Contains(string(pj), want) {
-			t.Errorf("project.yaml missing %q:\n%s", want, pj)
-		}
+	var parsed struct {
+		SchemaVersion int    `yaml:"schema_version"`
+		ID            string `yaml:"id"`
+		Name          string `yaml:"name"`
+		CreatedAt     string `yaml:"created_at"`
+	}
+	if err := storage.DecodeYAML(pj, &parsed); err != nil {
+		t.Fatalf("project.yaml does not parse: %v\n%s", err, pj)
+	}
+	if parsed.SchemaVersion != 1 || parsed.ID != "tempmonitorsystem" || parsed.Name != "TempMonitorSystem" {
+		t.Errorf("project.yaml = %+v", parsed)
+	}
+	if parsed.CreatedAt != fixedNow.UTC().Format(time.RFC3339) {
+		t.Errorf("created_at = %q", parsed.CreatedAt)
 	}
 
 	before := snapshot(t, devsys)

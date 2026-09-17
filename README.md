@@ -16,7 +16,8 @@
 |---|---|
 | M0.1 语言与工程骨架 | 已完成（Go 1.26，`devsys --version` 可跑） |
 | M0.2 CLI 骨架与 `devsys init` | 已完成（2026-09-17；退出码 0/1/2/3、`--json`/`--quiet`、`init` 幂等、用户级注册表、非 Git 拒绝） |
-| M0.3 文本存储基元 | 未开始 |
+| M0.3 文本存储基元 | 已完成（2026-09-17；原子写、JSONL 追加与断尾检测、稳定键序序列化、项目级写锁、乐观并发版本校验、可恢复跨文件事务；`gopkg.in/yaml.v3` 已 vendored） |
+| M0.4 严格配置解析 | 未开始 |
 
 ## 构建与验收
 
@@ -35,6 +36,14 @@ bin/devsys.exe init; echo $?  # 非 Git 目录：3（前置条件错误）
 `init` 创建 `.devsys/`（方案 §14.3，另含 `.devsys/.gitignore` 排除 `local/` 与 `.cache/`），
 并在用户级注册表（`DEVSYS_CONFIG_DIR` 可覆盖）登记项目路径。
 
+测试与静态检查（`vendor/` 已提交，离线可跑）：
+
+```sh
+gofmt -l cmd internal   # 无输出
+go vet ./...
+go test ./...           # vendor 模式下不需要网络
+```
+
 带版本信息构建（发布用）：
 
 ```sh
@@ -46,15 +55,24 @@ go build -ldflags "-X workloom/internal/version.Version=0.1.0 -X workloom/intern
 ```
 cmd/devsys/          命令入口（进程退出码）
 internal/cli/        命令分发、全局开关、输出与退出码
-internal/project/    init 与项目内布局（后续：存储 / 领域）
-internal/registry/   用户级项目路径注册表
-internal/minyaml/    M0.2 占位序列化（M0.3 起替换为存储基元）
+internal/storage/    存储基元：原子写、JSONL、稳定序列化、项目锁、事务日志与恢复（方案 §15.2）
+internal/project/    init 与项目内布局（后续：领域 / 访问 / 执行）
+internal/registry/   用户级项目路径注册表（方案 §14.4）
 internal/version/    构建标识（可用 -ldflags 覆盖）
+vendor/              依赖副本（gopkg.in/yaml.v3），保证干净机器离线构建
 docs/原始文档/       方案与实施计划（源文档，不再拆分）
 bin/                 构建产物（不提交）
 ```
 
 后续面向使用者的手册与迁移说明放在 `docs/` 下（不进 `docs/原始文档/`）。
+
+## 依赖策略
+
+- 唯一外部依赖是 `gopkg.in/yaml.v3`，已 `go mod vendor` 并提交 `vendor/`；干净机器无需网络：
+  `GOFLAGS=-mod=vendor GOPROXY=off go build ./...`。
+- 新增或升级依赖：`GOPROXY=https://goproxy.cn go get <module>`（本机直连 `proxy.golang.org` 实测超时；
+  也可 `HTTPS_PROXY=http://127.0.0.1:10808` 走本地代理），随后 `go mod tidy && go mod vendor` 一起提交。
+- 锁与事务恢复材料只依赖标准库系统调用（Windows 动态调用 LockFileEx，POSIX 用 flock），不引入锁库。
 
 ## 约定
 

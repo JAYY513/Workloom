@@ -12,6 +12,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"workloom/internal/storage"
 )
 
 // PreconditionError marks failures the user can fix in the environment
@@ -92,7 +94,7 @@ func Init(dir string, opts Options) (*Result, error) {
 		if err != nil {
 			return nil, err
 		}
-		if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+		if err := storage.AtomicWrite(p, content, 0o644); err != nil {
 			return nil, fmt.Errorf("write %s: %w", p, err)
 		}
 		res.Created = append(res.Created, DevsysDirName+"/"+ph.rel)
@@ -154,7 +156,7 @@ func ensureIgnoreEntries(path string, entries []string) error {
 	data, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {
 		content := "# devsys 本地文件（方案 §14.2）：不提交，可删除。\n" + strings.Join(entries, "\n") + "\n"
-		return os.WriteFile(path, []byte(content), 0o644)
+		return storage.AtomicWrite(path, []byte(content), 0o644)
 	}
 	if err != nil {
 		return err
@@ -178,5 +180,5 @@ func ensureIgnoreEntries(path string, entries []string) error {
 		out += "\n"
 	}
 	out += strings.Join(missing, "\n") + "\n"
-	return os.WriteFile(path, []byte(out), 0o644)
+	return storage.AtomicWrite(path, []byte(out), 0o644)
 }
