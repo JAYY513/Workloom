@@ -1,0 +1,13 @@
+# Build output
+bin/
+
+# Local-only state inside a managed project (design §14.3)
+.devsys/local/
+.devsys/.cache/
+
+# Go test binaries
+*.test
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
