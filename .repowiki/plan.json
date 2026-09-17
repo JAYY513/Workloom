@@ -2,7 +2,7 @@
   "schema": 2,
   "budget": {
     "tier": "扁平单层",
-    "reason": "42 个扫描文件、33 个 Go 文件；物理目录多层，但功能聚合为两个单层模块，采用最小档 caps，避免过度拆分。",
+    "reason": "72 个扫描文件、30 个非测试 Go 文件；功能聚合仍是两个单层模块（接入与配置、可靠存储），M1 新增领域存储/事件/Run/记录/检索按能力并入两模块。保持既有最小档 caps 与既有大纲，只扩展 scope。",
     "max_total_modules": 2,
     "max_depth": 1,
     "max_total_articles": 6,
@@ -22,6 +22,7 @@
         "internal/project/**",
         "internal/registry/**",
         "internal/version/**",
+        "internal/domain/**",
         "README.md"
       ]
     },
@@ -31,6 +32,13 @@
       "dir": "可靠文本存储",
       "scope": [
         "internal/storage/**",
+        "internal/workitem/**",
+        "internal/events/**",
+        "internal/run/**",
+        "internal/record/**",
+        "internal/search/**",
+        "scripts/**",
+        "docs/examples/m1-devsys/**",
         "go.mod",
         "go.sum"
       ]
@@ -73,8 +81,8 @@
     }
   ],
   "coverage_check": {
-    "covered_files": 36,
-    "total_files": 42,
+    "covered_files": 66,
+    "total_files": 72,
     "uncovered": [
       ".gitattributes",
       ".gitignore",

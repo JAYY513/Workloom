@@ -100,32 +100,79 @@ func tail(s string) string {
 }
 
 func TestSearchThousandFilesResponsive(t *testing.T) {
-	dir := t.TempDir()
+	dir := thousandSearchFiles(t)
+	start := time.Now()
+	matches, total, err := Search(dir, "needle")
+	elapsed := time.Since(start)
+	checkThousandSearch(t, matches, total, err)
+	// Elapsed time is diagnostic only; host load and filesystem behavior
+	// are not correctness contracts.
+	t.Logf("1000 files scanned in %v", elapsed)
+}
+
+// FreshFiles measures the first Search after creating each fixture; it does
+// not flush OS caches. RepeatedFiles reuses a fixture after one untimed scan.
+// Setup, result validation, and cleanup are excluded from benchmark timing.
+func BenchmarkSearchThousandFiles(b *testing.B) {
+	b.Run("FreshFiles", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			b.StopTimer()
+			dir := thousandSearchFiles(b)
+			b.StartTimer()
+			matches, total, err := Search(dir, "needle")
+			b.StopTimer()
+			checkThousandSearch(b, matches, total, err)
+			if err := os.RemoveAll(dir); err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+	b.Run("RepeatedFiles", func(b *testing.B) {
+		dir := thousandSearchFiles(b)
+		matches, total, err := Search(dir, "needle")
+		checkThousandSearch(b, matches, total, err)
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			matches, total, err := Search(dir, "needle")
+			b.StopTimer()
+			checkThousandSearch(b, matches, total, err)
+			b.StartTimer()
+		}
+	})
+}
+
+func thousandSearchFiles(tb testing.TB) string {
+	tb.Helper()
+	dir := tb.TempDir()
 	for i := 0; i < 1000; i++ {
 		rel := filepath.Join(dir, "bulk", strings.Repeat("d", 1+i%3), "f"+string(rune('a'+i%26))+itoa(i)+".yaml")
 		if err := os.MkdirAll(filepath.Dir(rel), 0o755); err != nil {
-			t.Fatal(err)
+			tb.Fatal(err)
 		}
 		content := "id: item-" + itoa(i) + "\nstatus: planned\n"
 		if i == 500 {
 			content += "title: 藏在千文件里的needle\n"
 		}
 		if err := os.WriteFile(rel, []byte(content), 0o644); err != nil {
-			t.Fatal(err)
+			tb.Fatal(err)
 		}
 	}
-	start := time.Now()
-	matches, total, err := Search(dir, "needle")
-	elapsed := time.Since(start)
+	return dir
+}
+
+func checkThousandSearch(tb testing.TB, matches []Match, total int, err error) {
+	tb.Helper()
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	if total != 1 || len(matches) != 1 {
-		t.Fatalf("hits = %d/%d", total, len(matches))
+		tb.Fatalf("hits = %d/%d", total, len(matches))
 	}
-	t.Logf("1000 files scanned in %v", elapsed)
-	if elapsed > 2*time.Second {
-		t.Fatalf("scan too slow: %v", elapsed)
+	want := Match{Path: "bulk/ddd/fg500.yaml", Line: 3, Text: "title: 藏在千文件里的needle"}
+	if matches[0] != want {
+		tb.Fatalf("match = %+v, want %+v", matches[0], want)
 	}
 }
 

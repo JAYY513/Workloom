@@ -5,12 +5,12 @@ description: Workloom 是独立于 Harness 的 Agent 开发基础设施，状态
 
 # Workloom 知识库
 
-Workloom 当前实现到 M0.4：`devsys` 命令行（`init`、`config check`）、项目内 `.devsys/` 状态布局、严格配置校验，以及可恢复的文本存储基元。语言 Go 1.26，唯一外部依赖 `gopkg.in/yaml.v3` 已 vendored，支持离线构建。后续里程碑（领域类型、工作流、执行等）尚未实现，Wiki 内容以当前源码为准。
+Workloom 当前实现到 M1：`devsys init`、`config check`、`search`，项目内 `.devsys/` 状态布局与严格配置校验，以及领域模型、WorkItem/事件流/Run/记录存储、不可变 Artifact 版本链和可重复冒烟剧本。领域写入能力目前通过 Go API 提供；状态机、工作流门禁与执行调度不在本轮交付范围。Go 1.26，唯一外部依赖 `gopkg.in/yaml.v3` 已 vendored；Wiki 以当前源码为准。
 
 ## 模块知识
 
 - [项目接入与配置](knowledge/项目接入与配置/概述.md) — 命令入口、初始化边界与严格配置校验｜卡：概述 · 架构设计 · 技术栈 · 编码规范 · 特殊配置与命令 · Schema与错误契约
-- [可靠文本存储](knowledge/可靠文本存储/概述.md) — 原子写、JSONL、锁、事务与恢复协议｜卡：概述 · 架构设计 · 事务与恢复 · 存储错误语义 · 编码规范
+- [可靠文本存储](knowledge/可靠文本存储/概述.md) — 原子写、JSONL、锁、事务恢复与 M1 领域持久化｜卡：概述 · 架构设计 · 领域记录与事件 · 事务与恢复 · 存储错误语义 · 编码规范 · 特殊配置与命令
 
 ## 文章
 

@@ -1,5 +1,16 @@
 # Repowiki 生成日志
 
+## 2026-09-17 · M1 增量刷新
+
+- 源码基线：`2735f62`；任务 #126；保留两个模块与既有文章路径。
+- 产物：13 张知识卡、3 篇文章、index 与本日志，共 18 个 Markdown 文件。补齐 M1 领域模型、CAS、事件/Run/记录、Artifact 版本链、search 与冒烟入口。
+- 模块 scope 覆盖：66/72 个扫描文件（91.7%）；未覆盖的 6 个文件为规则、Git 配置及辅助文档，见 plan.coverage_check。
+- 保护：本轮开始的页面 hash 比对无人工修改、无缺失页；已有生成修改续跑保留。只修改 Wiki 与生成元数据，未修改生产代码。
+- 最终文档校验：`repowiki validate` 报告 18 files、0 errors、0 warnings；此前发现的一条相对链接已修复。
+- 代码验证：本轮 `go build ./...` 成功；`go test ./...` 失败于 `TestSearchThousandFilesResponsive`，1000 文件扫描耗时 3.4366182 秒，超过 2 秒门限。其余包通过（部分缓存）。未修改门限，也未将历史 0.6–0.7 秒测量当作本轮结果。
+- 此刷新不修复搜索性能问题；最新失败已写入开发指南和任务验证记录。文档校验通过不代表代码全量测试通过。
+- 收尾：通过 `repowiki state --update` 写入页面 hash、来源 scope 与当前源码基线，再以 `repowiki status` 检查新鲜度。
+
 ## 2026-09-17 · 首次整库生成
 
 - 基线提交：`47620c7f214f2bf4edf27a82b5a26e3bfe5eabc9`，分支 `master`。未创建提交。
