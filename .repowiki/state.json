@@ -1,0 +1,189 @@
+{
+  "schema": 1,
+  "partition": {
+    "locale": "zh"
+  },
+  "generated_at": "2026-09-17T10:48:36.656Z",
+  "git": {
+    "commit": "47620c7f214f2bf4edf27a82b5a26e3bfe5eabc9",
+    "branch": "master"
+  },
+  "pages": {
+    "content/开发与故障诊断.md": {
+      "sources": [
+        "docs/开发记录.md",
+        ".gitattributes",
+        "cmd/**",
+        "internal/cli/**",
+        "internal/config/**",
+        "internal/project/**",
+        "internal/registry/**",
+        "internal/version/**",
+        "README.md",
+        "internal/storage/**",
+        "go.mod",
+        "go.sum"
+      ],
+      "content_hash": "aa2130cd21f3862eb4a4a290b07e2e4a37beb4f5193eb910dfa91b4c8ca5ff54"
+    },
+    "content/快速开始.md": {
+      "sources": [
+        "cmd/**",
+        "internal/cli/**",
+        "internal/config/**",
+        "internal/project/**",
+        "internal/registry/**",
+        "internal/version/**",
+        "README.md",
+        "internal/storage/**",
+        "go.mod",
+        "go.sum"
+      ],
+      "content_hash": "70192b4684cb66246dda5af07fbf70a99a12c06dce07e087fd3692da71a21c5e"
+    },
+    "content/项目总览.md": {
+      "sources": [
+        "cmd/**",
+        "internal/cli/**",
+        "internal/config/**",
+        "internal/project/**",
+        "internal/registry/**",
+        "internal/version/**",
+        "README.md",
+        "internal/storage/**",
+        "go.mod",
+        "go.sum"
+      ],
+      "content_hash": "c45f40146f3002815d51de7e5d896a865736556d0ad97307908c153bc1c4577b"
+    },
+    "index.md": {
+      "sources": [],
+      "content_hash": "9451b1f3fd5bf81fcf26e3ae3ee167f88ce99479266875832d8b097e602e178c"
+    },
+    "knowledge/可靠文本存储/事务与恢复.md": {
+      "sources": [
+        "internal/storage/**",
+        "go.mod",
+        "go.sum"
+      ],
+      "content_hash": "0a711c4bbb00d0c84c7c00c274b9f959a67b0eed747dd2678c82cf180ec8fa95"
+    },
+    "knowledge/可靠文本存储/存储错误语义.md": {
+      "sources": [
+        "internal/storage/**",
+        "go.mod",
+        "go.sum"
+      ],
+      "content_hash": "e191bb080958767223312a8be031312b29e75b83c03dbb3dc3bcdfa0152d2979"
+    },
+    "knowledge/可靠文本存储/架构设计.md": {
+      "sources": [
+        "internal/storage/**",
+        "go.mod",
+        "go.sum"
+      ],
+      "content_hash": "ff62c36a7122f8ee4d1dd5f038b8448e1f910f897e9dc1413e3696baa89916b6"
+    },
+    "knowledge/可靠文本存储/概述.md": {
+      "sources": [
+        "internal/storage/**",
+        "go.mod",
+        "go.sum"
+      ],
+      "content_hash": "463dcc826a6b8549de3017b67dbbc6c3531cbf6271a2d7a270081df9406b0b4e"
+    },
+    "knowledge/可靠文本存储/编码规范.md": {
+      "sources": [
+        "internal/storage/**",
+        "go.mod",
+        "go.sum"
+      ],
+      "content_hash": "c420343d12f2ee4d2529c64cc9de91c9e03a0ecd186a7f864701624973075029"
+    },
+    "knowledge/项目接入与配置/Schema与错误契约.md": {
+      "sources": [
+        "cmd/**",
+        "internal/cli/**",
+        "internal/config/**",
+        "internal/project/**",
+        "internal/registry/**",
+        "internal/version/**",
+        "README.md"
+      ],
+      "content_hash": "32d4314bfe46b802d6837dfd88f25c11d0caf0a4300c911a78ec507311eea76c"
+    },
+    "knowledge/项目接入与配置/技术栈.md": {
+      "sources": [
+        "cmd/**",
+        "internal/cli/**",
+        "internal/config/**",
+        "internal/project/**",
+        "internal/registry/**",
+        "internal/version/**",
+        "README.md"
+      ],
+      "content_hash": "819619791f871ab7e0ed3634c707de99e9bc37204d3e21bccd102b1dbc174ae2"
+    },
+    "knowledge/项目接入与配置/架构设计.md": {
+      "sources": [
+        "cmd/**",
+        "internal/cli/**",
+        "internal/config/**",
+        "internal/project/**",
+        "internal/registry/**",
+        "internal/version/**",
+        "README.md"
+      ],
+      "content_hash": "e66318a4b27a95caf3c5a99f92695fd5f2a87402dabc2a952ff00fa23146f9db"
+    },
+    "knowledge/项目接入与配置/概述.md": {
+      "sources": [
+        "cmd/**",
+        "internal/cli/**",
+        "internal/config/**",
+        "internal/project/**",
+        "internal/registry/**",
+        "internal/version/**",
+        "README.md"
+      ],
+      "content_hash": "384850ddff8a9efe5f9ae319adebf1de5a92a3fb91a89f5bb1fef6bd7da05e97"
+    },
+    "knowledge/项目接入与配置/特殊配置与命令.md": {
+      "sources": [
+        "cmd/**",
+        "internal/cli/**",
+        "internal/config/**",
+        "internal/project/**",
+        "internal/registry/**",
+        "internal/version/**",
+        "README.md"
+      ],
+      "content_hash": "587dfee536642251b25a8be6153e55283e3f468773c91b5e2897f67466e75830"
+    },
+    "knowledge/项目接入与配置/编码规范.md": {
+      "sources": [
+        "cmd/**",
+        "internal/cli/**",
+        "internal/config/**",
+        "internal/project/**",
+        "internal/registry/**",
+        "internal/version/**",
+        "README.md"
+      ],
+      "content_hash": "9d098485fd370f95ea3a6cb43da0664f3f9d84bc55c996aa807d32cf58bf17a0"
+    },
+    "log.md": {
+      "sources": [],
+      "content_hash": "c9e72d76628e0244dcb03edca95a2f1d3d8a3d410e7891965c4f969f933649d4"
+    }
+  },
+  "snapshot_digest": "906de495c98ff24e0894d4a6abc79b1db9cdbaa72fe49ade9b1644e8aa0f2a99",
+  "snapshot_file": ".repowiki/snapshot.json",
+  "last_run": {
+    "status": "success",
+    "phase": "finalize",
+    "started_at": "2026-09-17T10:48:36.656Z",
+    "finished_at": "2026-09-17T10:48:36.656Z",
+    "error": ""
+  }
+}
