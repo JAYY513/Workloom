@@ -35,10 +35,11 @@ import (
 //	3  precondition error
 //	4  invalid managed state
 //
-// `knowledge status` reserves its own 0/10/11 convention (0 fresh, 10 stale,
-// 11 missing — 方案 §12.5); until the freshness baseline lands (M5.3) it
-// answers 0 with an explicit degradation report, and no other command uses
-// those codes.
+// `knowledge status` (and a refresh that found nothing to regenerate) adds a
+// second, reserved convention on top: 10 = the page layer is stale, 11 = the
+// page layer has not been generated (方案 §12.5). Those commands answer with
+// that state through stdout and then exit with the matching code; no other
+// command uses 10 or 11.
 const (
 	CodeOK           = 0
 	CodeInternal     = 1
@@ -48,6 +49,10 @@ const (
 	// parse errors, unknown keys, wrong types, unsupported schema_version.
 	// Write commands refuse; read-only diagnostics keep working (方案 §14.1).
 	CodeInvalid = 4
+	// CodeStale and CodeMissing are the knowledge layer's own codes
+	// (方案 §12.5): a stale page layer, and a page layer that does not exist.
+	CodeStale   = 10
+	CodeMissing = 11
 )
 
 const usage = `devsys - project-local agent development infrastructure
@@ -73,7 +78,7 @@ commands:
   worktree      prepare | remove | list execution workspaces (方案 §4.8)
   dispatch      one scheduling tick: recover, reconcile, dispatch (--watch loops)
   context       get | workitem | refresh | compact working context (read-only)
-  knowledge         status | scan | validate [dir|page.md...]
+  knowledge         status | scan | validate [dir|page.md...] | refresh
   session start  one-shot session orientation (project, work in flight, next action)
   wire          inject the devsys discipline block into AGENTS.md (idempotent; --dry-run previews)
   doctor        report transactions and orphaned claims (read-only)
@@ -310,11 +315,26 @@ func RunWithIO(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	}
 }
 
+// codedExit is an exit code whose output the command already wrote. Commands
+// that report a state rather than success or failure (`knowledge status`
+// answers fresh/stale/missing) use it so the exit code carries the state
+// without the error path repeating what stdout already said.
+type codedExit struct{ code int }
+
+func (e *codedExit) Error() string { return fmt.Sprintf("exit code %d", e.code) }
+
+// exitWithCode returns an exit-code-only error.
+func exitWithCode(code int) error { return &codedExit{code: code} }
+
 // render prints an error (if any) and returns the exit code; nil means success
 // with output already written by the command.
 func render(stderr io.Writer, opts options, err error) int {
 	if err == nil {
 		return CodeOK
+	}
+	var exit *codedExit
+	if errors.As(err, &exit) {
+		return exit.code
 	}
 	ce := toCoded(err)
 	if opts.json {

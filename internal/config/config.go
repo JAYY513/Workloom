@@ -104,6 +104,10 @@ type Config struct {
 	// the knowledge commands read and validate (M5.1, 方案 §12.6). Empty means
 	// the built-in candidates of knowledge.DefaultRoots.
 	KnowledgePages []string `json:"knowledge_pages,omitempty"`
+	// KnowledgeGenerator is the page generator command a refresh runs
+	// (M5.3, 方案 §12.6). Empty means no page generator is installed, which the
+	// layer reports as the documented degradation rather than as a failure.
+	KnowledgeGenerator string `json:"knowledge_generator,omitempty"`
 }
 
 // Metadata is what Load or Diagnose could read. A field is nil when its file
@@ -194,6 +198,11 @@ func parseConfig(rel string, data []byte) (*Config, Problems) {
 	if node, ok := values["knowledge_pages"]; ok && node.Tag != "!!null" {
 		if err := node.Decode(&c.KnowledgePages); err != nil {
 			return nil, Problems{{File: rel, Field: "knowledge_pages", Reason: fmt.Sprintf("decode: %v", err)}}
+		}
+	}
+	if node, ok := values["knowledge_generator"]; ok {
+		if err := node.Decode(&c.KnowledgeGenerator); err != nil {
+			return nil, Problems{{File: rel, Field: "knowledge_generator", Reason: fmt.Sprintf("decode: %v", err)}}
 		}
 	}
 	return c, nil

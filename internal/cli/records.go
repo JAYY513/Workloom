@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"workloom/internal/app"
@@ -887,7 +888,7 @@ func runContext(stdout io.Writer, opts options, rest []string) error {
 // (M5.1, 方案 §12.5).
 func runKnowledge(stdout io.Writer, opts options, rest []string) error {
 	if len(rest) == 0 {
-		return errUsage("`devsys knowledge` needs a subcommand (status, scan, validate)")
+		return errUsage("`devsys knowledge` needs a subcommand (status, scan, validate, refresh)")
 	}
 	switch rest[0] {
 	case "status":
@@ -895,6 +896,8 @@ func runKnowledge(stdout io.Writer, opts options, rest []string) error {
 			return errUsage("`devsys knowledge status` takes no arguments")
 		}
 		return runKnowledgeStatus(stdout, opts)
+	case "refresh":
+		return runKnowledgeRefresh(stdout, opts, rest[1:])
 	case "validate":
 		return runKnowledgeValidate(stdout, opts, rest[1:])
 	case "scan":
@@ -990,7 +993,9 @@ func runKnowledgeValidate(stdout io.Writer, opts options, rest []string) error {
 	return nil
 }
 
-// runKnowledgeStatus implements `devsys knowledge status`.
+// runKnowledgeStatus implements `devsys knowledge status`: the freshness gate
+// CI and hooks read. The exit code carries the state (0 fresh, 10 stale,
+// 11 missing — 方案 §12.5) after the report has been written.
 func runKnowledgeStatus(stdout io.Writer, opts options) error {
 	svc, err := requireProjectRoot()
 	if err != nil {
@@ -1001,18 +1006,141 @@ func runKnowledgeStatus(stdout io.Writer, opts options) error {
 		return err
 	}
 	if opts.json {
-		return json.NewEncoder(stdout).Encode(struct {
+		if err := json.NewEncoder(stdout).Encode(struct {
 			OK bool `json:"ok"`
 			app.KnowledgeStatusView
-		}{OK: true, KnowledgeStatusView: view})
+		}{OK: true, KnowledgeStatusView: view}); err != nil {
+			return err
+		}
+	} else if !opts.quiet {
+		fmt.Fprintf(stdout, "knowledge: %s\n%s\n", view.Status, view.Reason)
+		if view.Head != "" {
+			fmt.Fprintf(stdout, "  pages: %d  fresh: %d  changed files: %d\n", view.Pages, view.FreshPages, view.ChangedFiles)
+			fmt.Fprintf(stdout, "  baseline: %s  head: %s (%s)\n", shortSHA(view.Baseline), shortSHA(view.Head), view.Branch)
+		}
+		fmt.Fprintf(stdout, "  index: %s\n", indexSummary(view))
+	}
+	// The per-page verdicts are the actionable part of the report, so they stay
+	// visible under --quiet, like the other knowledge commands' findings. The
+	// JSON envelope already carries them, so they are text output only.
+	if !opts.json {
+		for _, page := range view.Affected {
+			fmt.Fprintf(stdout, "  affected: %s\n", page)
+		}
+		for _, page := range view.Unverifiable {
+			fmt.Fprintf(stdout, "  unverifiable: %s\n", page)
+		}
+	}
+	// The report itself is the output: stale and missing are states, not
+	// errors, and the exit code is how a script tells them apart.
+	switch view.Status {
+	case app.KnowledgeStale:
+		return exitWithCode(CodeStale)
+	case app.KnowledgeMissing:
+		return exitWithCode(CodeMissing)
+	default:
+		return nil
+	}
+}
+
+// runKnowledgeRefresh implements `devsys knowledge refresh [--affected|--full]`:
+// regenerate the pages that no longer match the tree, through the configured
+// generator (M5.3, 方案 §12.6).
+func runKnowledgeRefresh(stdout io.Writer, opts options, rest []string) error {
+	fs := flag.NewFlagSet("knowledge refresh", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	full := fs.Bool("full", false, "regenerate every page")
+	affected := fs.Bool("affected", false, "regenerate only the pages a change touches (default)")
+	force := fs.Bool("force", false, "regenerate pages that are protected or hand-edited")
+	if err := fs.Parse(rest); err != nil || fs.NArg() != 0 {
+		return errUsage("knowledge refresh [--affected|--full] [--force]")
+	}
+	if *full && *affected {
+		return errUsage("knowledge refresh takes --affected or --full, not both")
+	}
+	svc, err := requireProjectRoot()
+	if err != nil {
+		return err
+	}
+	view, err := svc.KnowledgeRefresh(context.Background(), app.KnowledgeRefreshRequest{Full: *full, Force: *force})
+	if err != nil {
+		// A failed run still has a report worth printing: the generator's
+		// output is usually the only clue, and the exit code carries the rest.
+		if reportErr := reportRefresh(stdout, opts, view, true); reportErr != nil {
+			return reportErr
+		}
+		return err
+	}
+	if err := reportRefresh(stdout, opts, view, false); err != nil {
+		return err
+	}
+	if view.Missing {
+		// Nothing was regenerated and nothing could be: the degraded answer
+		// carries the page layer's own exit code rather than a success.
+		return exitWithCode(CodeMissing)
+	}
+	return nil
+}
+
+// reportRefresh renders one refresh report. failed says the envelope describes a
+// run that ended badly, so a JSON consumer is not told "ok".
+func reportRefresh(stdout io.Writer, opts options, view app.KnowledgeRefreshView, failed bool) error {
+	if opts.json {
+		return json.NewEncoder(stdout).Encode(struct {
+			OK bool `json:"ok"`
+			app.KnowledgeRefreshView
+		}{OK: !failed, KnowledgeRefreshView: view})
 	}
 	if !opts.quiet {
-		fmt.Fprintf(stdout, "knowledge: %s (%s)\n%s\n", view.Status, view.Layer, view.Reason)
-		for _, p := range view.Paths {
-			fmt.Fprintf(stdout, "  path: %s\n", p)
+		fmt.Fprintf(stdout, "knowledge refresh (%s): %d page(s)\n", view.Scope, len(view.Pages))
+	}
+	if view.Resumed {
+		if view.Checkpoint != "" {
+			fmt.Fprintf(stdout, "  resumed an interrupted run (%s)\n", view.Checkpoint)
+		} else {
+			fmt.Fprintln(stdout, "  resumed an interrupted run")
+		}
+	}
+	if view.Reason != "" {
+		fmt.Fprintf(stdout, "%s\n", view.Reason)
+	}
+	// What the layer kept out of the generator's reach, and the generator's own
+	// output, stay visible under --quiet: they are what a run is judged by.
+	for _, skip := range view.Skipped {
+		fmt.Fprintf(stdout, "  skipped: %s  (%s)\n", skip.Path, skip.Reason)
+	}
+	if view.Ran && view.Output != "" {
+		fmt.Fprint(stdout, view.Output)
+		if !strings.HasSuffix(view.Output, "\n") {
+			fmt.Fprintln(stdout)
+		}
+	}
+	if view.Status != nil {
+		fmt.Fprintf(stdout, "after refresh: %s\n", view.Status.Status)
+		for _, page := range view.Status.Affected {
+			fmt.Fprintf(stdout, "  still stale: %s\n", page)
 		}
 	}
 	return nil
+}
+
+// shortSHA trims a commit for display, tolerating an empty baseline.
+func shortSHA(commit string) string {
+	if commit == "" {
+		return "(none)"
+	}
+	if len(commit) > 7 {
+		return commit[:7]
+	}
+	return commit
+}
+
+// indexSummary describes the file index in the status report.
+func indexSummary(view app.KnowledgeStatusView) string {
+	if !view.IndexReady {
+		return "not built (run `devsys knowledge scan`)"
+	}
+	return fmt.Sprintf("%d files", view.IndexFiles)
 }
 
 // runSession routes the session family: `start` is the one-shot orientation

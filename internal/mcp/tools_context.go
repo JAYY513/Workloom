@@ -87,12 +87,30 @@ type knowledgeStatusInput struct{}
 func registerKnowledgeStatus(s *mcpsdk.Server, cfg Config) {
 	mcpsdk.AddTool(s, &mcpsdk.Tool{
 		Name:        "knowledge_status",
-		Description: "Report the knowledge layer's availability. The index layer arrives with M5 (方案 §12.6); without it the answer is an explicit degradation, not an error.",
+		Description: "Report the knowledge layer's freshness: fresh, stale (with the affected pages) or missing when no page layer has been generated. Read-only.",
 		Annotations: readOnly(),
 	}, func(ctx context.Context, req *mcpsdk.CallToolRequest, _ knowledgeStatusInput) (*mcpsdk.CallToolResult, app.KnowledgeStatusView, error) {
 		view, err := cfg.service().KnowledgeStatus(ctx)
 		if err != nil {
 			return fail[app.KnowledgeStatusView](err)
+		}
+		return nil, view, nil
+	})
+}
+
+type knowledgeRefreshInput struct {
+	Full  bool `json:"full,omitempty" jsonschema:"regenerate every page instead of only the affected ones"`
+	Force bool `json:"force,omitempty" jsonschema:"regenerate pages that are protected or hand-edited"`
+}
+
+func registerKnowledgeRefresh(s *mcpsdk.Server, cfg Config) {
+	mcpsdk.AddTool(s, &mcpsdk.Tool{
+		Name:        "knowledge_refresh",
+		Description: "Regenerate the knowledge pages that no longer match the working tree, through the configured generator. Protected and hand-edited pages are skipped and reported unless force is set. Without a generator the answer is the documented degradation (missing), not an error.",
+	}, func(ctx context.Context, req *mcpsdk.CallToolRequest, in knowledgeRefreshInput) (*mcpsdk.CallToolResult, app.KnowledgeRefreshView, error) {
+		view, err := cfg.service().KnowledgeRefresh(ctx, app.KnowledgeRefreshRequest{Full: in.Full, Force: in.Force})
+		if err != nil {
+			return fail[app.KnowledgeRefreshView](err)
 		}
 		return nil, view, nil
 	})

@@ -104,6 +104,7 @@ func allTools() []toolSpec {
 		{"agent_session_start", []string{ProfileSession}, registerAgentSessionStart},
 		{"knowledge_status", []string{ProfileSession}, registerKnowledgeStatus},
 		{"knowledge_validate", []string{ProfileSession}, registerKnowledgeValidate},
+		{"knowledge_refresh", []string{ProfileSession}, registerKnowledgeRefresh},
 	}
 }
 

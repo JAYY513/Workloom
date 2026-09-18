@@ -67,6 +67,9 @@ var configSpec = fileSpec{fields: []fieldSpec{
 	// knowledge_pages lists the page-layer roots the knowledge commands read
 	// (M5.1, 方案 §12.6); empty selects the built-in candidates.
 	{name: "knowledge_pages", kind: kindStrings},
+	// knowledge_generator is the page generator command a refresh runs
+	// (M5.3, 方案 §12.6); empty means no generator is installed.
+	{name: "knowledge_generator", kind: kindString},
 }}
 
 var currentFields = []fieldSpec{

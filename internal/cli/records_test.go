@@ -286,16 +286,29 @@ func TestArtifactVersionChain(t *testing.T) {
 	}
 }
 
-// TestKnowledgeStatusDegrades checks the documented M5 degradation: the tool
-// answers honestly instead of failing.
+// TestKnowledgeStatusDegrades checks the documented degradation (方案 §12.6):
+// a project without a page layer answers `missing` with the reserved exit code
+// and no error, so the rest of the system keeps working.
 func TestKnowledgeStatusDegrades(t *testing.T) {
 	gatedProject(t)
 	code, out, errOut := run(t, "--json", "knowledge", "status")
-	if code != CodeOK {
-		t.Fatalf("knowledge status: %d %s", code, errOut)
+	if code != CodeMissing {
+		t.Fatalf("knowledge status: code=%d stderr=%q", code, errOut)
 	}
-	if !strings.Contains(out, "unavailable") || !strings.Contains(out, "M5") {
-		t.Fatalf("knowledge status = %s", out)
+	var view struct {
+		OK     bool   `json:"ok"`
+		Status string `json:"status"`
+		Pages  int    `json:"pages"`
+		Reason string `json:"reason"`
+	}
+	if err := json.Unmarshal([]byte(out), &view); err != nil {
+		t.Fatal(err)
+	}
+	if !view.OK || view.Status != "missing" || view.Pages != 0 || !strings.Contains(view.Reason, "generator") {
+		t.Fatalf("view = %s", out)
+	}
+	if strings.Contains(errOut, "devsys:") {
+		t.Fatalf("degradation was reported as an error: %q", errOut)
 	}
 }
 
