@@ -18,12 +18,15 @@ triggers:
   - workflow check 退出码
   - approval kind
   - workflow kind
-  - next verdict
-  - app.Error Class
-  - 10/11 知识层约定
-  - --jsonl 列表流
-  - tool error code
-description: devsys 受管 YAML 文件的严格 schema：每文件白名单 + schema_version 闸门 + 行号定位 + Problems 错误结构 + 退出码 4 的语义边界 + M1 完整 Project 模型 + 嵌套字段校验；M2 新增退出码 3/4 在 workitem 与 repair 中的扩展语义、--expect 64-hex sha256 + fail-closed、--confirm 摘要格式、写命令 --actor/--reason 必填；M3 新增 workflow/approval/next 的 kind 与 code 语义、workitem.TransitionRequest.Guard 签名、policy issue 与 LKG 报错；M4 收口到 *app.Error.Class() 四类（映射 CLI 退出码 + MCP tool error code）、--jsonl 列表流、知识层 10/11 退出码预留。
+  - workspace_root 怎么配
+  - dispatch_command 怎么配
+  - DEVSYS_PROJECT_ROOT
+  - HookEnv
+  - 执行命令族
+  - M6 退出码
+  - run verify exit code
+  - run complete exit code
+description: devsys 受管 YAML 文件的严格 schema：每文件白名单 + schema_version 闸门 + 行号定位 + Problems 错误结构 + 退出码 4 的语义边界 + M1 完整 Project 模型 + 嵌套字段校验；M2 新增退出码 3/4 在 workitem 与 repair 中的扩展语义、--expect 64-hex sha256 + fail-closed、--confirm 摘要格式、写命令 --actor/--reason 必填；M3 新增 workflow/approval/next 的 kind 与 code 语义、workitem.TransitionRequest.Guard 签名、policy issue 与 LKG 报错；M4 收口到 *app.Error.Class() 四类（映射 CLI 退出码 + MCP tool error code）、--jsonl 列表流、知识层 10/11 退出码预留；M6 增 workspace_root / dispatch_command 配置键、HookEnv 注入、run exec / run complete 在执行层的扩展退出码语义。
 generated: true
 source_commit: 997c5f8
 generator: repowiki-gen
@@ -82,19 +85,17 @@ generator: repowiki-gen
 ### `config.yaml`
 
 | 字段 | 类型 | 必填？ | 备注 |
-|---|---|---|---|
 | `schema_version` | `int` | 是 | 必须等于 `SupportedSchemaVersion` |
-
-业务键未定义：写文件目前**仅接受 `schema_version`**，任何其它键会被拒绝（[internal/config/validate.go:133-137](../../../internal/config/validate.go#L133-L137)）。后续里程碑扩字段时必须同步更新这里的白名单、`config.Config` struct、以及 `project.configFile` 占位（[internal/project/tree.go:68-71](../../../internal/project/tree.go#L68-L71)）。
+| `workspace_root` | `string` | 否 | **M6** 工作区根目录；绝对路径或相对项目根；缺失回退 `<project>/.devsys/workspaces`；M6 起 `app.WorkspacePrepare` / `app.RunExec` / `internal/workspace.Root` 共同使用 |
+| `dispatch_command` | `string` | 否 | **M6** 调度 tick 默认每个 attempt 的 argv 模板；M6.4 默认 `"devsys run exec --id {run_id} --actor dispatch --reason tick"`；M6.7 起由 per-workitem `assigned_harness` 取代 |
 
 ### `state/current.yaml` 与 `state/milestones.yaml`
-
+| `current_state` | mapping | 否 | `kindCurrent` 嵌套结构，校验 `summary/risks/blockers/next_focus` |
 两个 state spec 在 M1 起被显式收紧（[internal/config/validate.go:63-73](../../../internal/config/validate.go#L63-L73)）：
 
-- `state/current.yaml` 由 `currentSpec` 校验：`schema_version`（必填 `int`）+ `summary`（`string`）+ `risks` / `blockers` / `next_focus`（皆 `string[]` 或 `null`）。
-- `state/milestones.yaml` 由 `milestonesSpec` 校验：`schema_version`（必填 `int`）+ `milestones`（嵌套序列，每元素必填 `id/name/status`）。
-- 两者仍**没有**全局 `allowExtra`：除白名单外的键会直接被拒绝（`validate` 的统一分支，[internal/config/validate.go:133-137](../../../internal/config/validate.go#L133-L137)）。
-- `Load` 对这两个文件只调用 `checkStateFile`（[internal/config/config.go:167-174](../../../internal/config/config.go#L167-L174)），不做完整领域解析。
+| `schema_version` | `int` | 是 | 必须等于 `SupportedSchemaVersion` |
+| `workspace_root` | `string` | 否 | **M6** 工作区根目录；绝对路径或相对项目根；缺失回退 `<project>/.devsys/workspaces`；M6 起 `app.WorkspacePrepare` / `app.RunExec` / `internal/workspace.Root` 共同使用 |
+| `dispatch_command` | `string` | 否 | **M6** 调度 tick 默认每个 attempt 的 argv 模板；M6.4 默认 `"devsys run exec --id {run_id} --actor dispatch --reason tick"`；M6.7 起由 per-workitem `assigned_harness` 取代 |
 
 > **结果**：M0.4 时 state 文件仅校验 schema_version；M1 起两者都被收紧到 `currentSpec` / `milestonesSpec`，并通过 `internal/domain.CurrentStateFile` / `MilestonesFile` 提供反序列化视图（[internal/project/tree.go:73-84](../../../internal/project/tree.go#L73-L84)）。
 
@@ -546,3 +547,23 @@ Workflow 策略文件新增字段时同步三处：
 3. 示例 `docs/examples/workflows/*.md`（端到端 `smoke-m3` 覆盖）。
 
 写命令前置校验通过 `workflow.Load` 把 issue 转 `config.Problem`，问题定位保持 `file[:line][: field]: reason` 一致风格。
+
+## M6 退出码语义扩展
+
+M6 在 `CodePrecondition = 3` 与 `CodeInvalid = 4` 下扩展执行层错误语义：
+
+| 触发点 | 来源 | 错误分类 |
+|---|---|---|
+| `devsys worktree prepare` 时 git 不可用 | `workspace.ErrGitMissing` → `app.Preconditionf` | `CodePrecondition` |
+| `devsys worktree prepare --path` 越界（不在配置根内） | `workspace.Validate` → `app.Preconditionf` | `CodePrecondition` |
+| `devsys run exec --harness <unknown>` | `harness.ByName` 返回 `false` → `app.Usagef` | `CodeUsage` |
+| `devsys run exec --harness codex` 但 codex 未安装 | `harness.Availability.Installed == false` → `app.Preconditionf` | `CodePrecondition` |
+| `devsys run exec --timeout 30s` 到期 | `harness.Result.TimedOut == true` → run 进 `timeout` 终态 | run 终态（不是 exit code） |
+| `devsys run verify` `Advanced=false` 且未 `--force` | `app.refuseCompletion` → run 进 `failed`，workitem 进 `review` | run 终态（不是 exit code） |
+| `devsys run complete` 验证未 advance | `app.RunFinish` 内部升 `*app.Error{Kind: workflow}` | `CodeInvalid`（kind="workflow"） |
+| `devsys run fail` / `cancel` 已经终态 | `app.isTerminalRun` → `*app.Error{Kind: workflow}` | `CodeInvalid` |
+| `devsys dispatch --once` 无候选 dispatchable | `app.Dispatch` 返回 `Report{Started: nil}` + notice | exit 0（不是错误） |
+| `devsys dispatch --watch` Ctrl-C | `signal.NotifyContext` cancel | exit 0 |
+
+`run verify` 永远是**只读**——exit 恒 0；advanced/not advanced 通过 stdout 行反馈。
+`run complete\|fail\|cancel` 在 `run` 已经是终态时 exit 4（不让两个 actor 抢结果）。

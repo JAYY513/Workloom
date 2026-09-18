@@ -2,7 +2,7 @@
   "schema": 2,
   "budget": {
     "tier": "模块树",
-    "reason": "154 个扫描文件（go:120、yaml:11、markdown:8、other:6、shell:5、powershell:4）、多层目录，沿用模块树档位；M4 在 internal/app 落地共享应用服务（错误分类 + Service + Session/Context/Wire/KnowledgeStatus/Project/Workitem/Workflow/Approval/Decision/Finding/Artifact/Event/Run/Next），internal/mcp 以官方 Go SDK 暴露 profile 过滤的工具族，internal/cli 薄化渲染并拆分 records.go/wire/diagnostics，internal/record/update.go 引入 ReadSnapshot + 守卫 Update，internal/run 提供 ReadSnapshot，scripts/m4helper + scripts/smoke-m4.{sh,ps1} + scripts/exchange-demo.sh 端到端覆盖；go.mod 新增 github.com/modelcontextprotocol/go-sdk v1.8.0（vendored）。新增第三个模块 `shared-app-mcp`（internal/app + internal/mcp），在 `项目接入与配置` 模块新增两张自定义卡（CLI 渲染与交换协议、AGENTS.md 写入），在 `可靠文本存储` 模块新增一张自定义卡（读快照与守卫更新）；两模块与三篇文章的目录与文件路径保持不变。",
+    "reason": "198 个扫描文件（go:161、yaml:11、markdown:9、other:6、shell:6、powershell:5），多层目录，沿用模块树档位；M6 在 internal/harness 落地适配器抽象（Capabilities/Availability/Workspace/Request/Command/Line/Result/Session/Adapter + Shell 适配器 + 三个 CLI 适配器 codex/opencode/claude + stdin 投递 + 进程树终止），internal/workspace 落地 Key/Path/Git/Hook/Workspace（Ensure/Remove/List/RunHook/HookEnv），internal/dispatch 落地 Plan/Report/Caps/ResolveCaps（优先级降序+最早创建+id 决胜，状态白名单 + 依赖 + 全局/状态并发），internal/retry 落地 Delay（base/max/jitter，stable seed 派生），internal/prompt 落地 Assemble（首轮全 brief + 后续轮 delta，sectioned）+ Context（refs only，body on demand），internal/app 新增 RunExec/Dispatch/Workspace/RunVerify/RunFinish/RunPrompt/HookEnv 接线，internal/cli 新增 worktree/dispatch/run exec|prompt|verify|complete|fail|cancel，internal/config 增 workspace_root/dispatch_command，internal/mcp 增 run_complete/fail/cancel/verify，scripts/smoke-m6.{sh,ps1} 端到端覆盖。go.mod 新增 golang.org/x/term（vendored）。新增第四个模块 `execution-layer`（internal/harness + internal/workspace + internal/dispatch + internal/retry + internal/prompt）；在 `项目接入与配置` 模块新增一张自定义卡（执行命令与 DEVSYS_PROJECT_ROOT），在 `可靠文本存储` 模块新增一张自定义卡（运行事件流），在 `共享应用与 MCP` 模块新增两张自定义卡（执行命令族 与 完成校验与人工复核）。三篇文章与既有模块卡片目录与文件路径保持不变。",
     "max_total_modules": 8,
     "max_depth": 2,
     "max_total_articles": 30,
@@ -27,10 +27,14 @@
         "internal/cli/records.go",
         "internal/cli/diagnostics.go",
         "internal/cli/mcp.go",
+        "internal/cli/worktree.go",
+        "internal/cli/dispatch.go",
         "scripts/m4helper",
         "scripts/smoke-m4.sh",
         "scripts/smoke-m4.ps1",
-        "scripts/exchange-demo.sh"
+        "scripts/exchange-demo.sh",
+        "scripts/smoke-m6.sh",
+        "scripts/smoke-m6.ps1"
       ]
     },
     {
@@ -63,6 +67,18 @@
         "internal/app/**",
         "internal/mcp/**"
       ]
+    },
+    {
+      "slug": "execution-layer",
+      "title": "执行层",
+      "dir": "执行层",
+      "scope": [
+        "internal/harness/**",
+        "internal/workspace/**",
+        "internal/dispatch/**",
+        "internal/retry/**",
+        "internal/prompt/**"
+      ]
     }
   ],
   "articles": [
@@ -74,7 +90,8 @@
       "modules": [
         "project-access",
         "durable-storage",
-        "shared-app-mcp"
+        "shared-app-mcp",
+        "execution-layer"
       ]
     },
     {
@@ -85,7 +102,8 @@
       "modules": [
         "project-access",
         "durable-storage",
-        "shared-app-mcp"
+        "shared-app-mcp",
+        "execution-layer"
       ]
     },
     {
@@ -96,24 +114,27 @@
       "modules": [
         "project-access",
         "durable-storage",
-        "shared-app-mcp"
+        "shared-app-mcp",
+        "execution-layer"
       ],
       "scope": [
         "docs/开发记录.md",
+        "docs/M6-一致性自检.md",
         ".gitattributes"
       ]
     }
   ],
   "coverage_check": {
-    "covered_files": 148,
-    "total_files": 154,
+    "covered_files": 191,
+    "total_files": 198,
     "uncovered": [
       ".gitattributes",
       ".gitignore",
       "AGENTS.md",
       "docs/原始文档/实施计划.md",
       "docs/原始文档/独立于Harness的Agent开发基础设施方案.md",
-      "docs/开发记录.md"
+      "docs/开发记录.md",
+      "docs/M6-一致性自检.md"
     ]
   }
 }
