@@ -1,43 +1,42 @@
 // Package cli implements the devsys command surface: global switches, command
 // dispatch, output rendering and the exit-code taxonomy. Keeping dispatch out
 // of main() makes the exit contract testable.
+//
+// Since M4.2 every business operation lives in the shared application service
+// (internal/app); this package only parses flags, calls the service and
+// renders. The MCP server (internal/mcp) calls the same service, so no entry
+// point can bypass a constraint the others enforce.
 package cli
 
 import (
-	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
-	"time"
 
-	"workloom/internal/approval"
+	"workloom/internal/app"
 	"workloom/internal/config"
 	"workloom/internal/domain"
-	"workloom/internal/events"
-	"workloom/internal/next"
 	"workloom/internal/project"
-	"workloom/internal/reconcile"
-	"workloom/internal/record"
-	"workloom/internal/registry"
-	"workloom/internal/search"
-	"workloom/internal/storage"
 	"workloom/internal/version"
 	"workloom/internal/workflow"
-	"workloom/internal/workitem"
 )
 
-// Exit codes, pinned by tests so scripts may rely on them. The knowledge
-// layer adds its own 0/10/11 convention later (方案 §12.5, 实施计划 M4.5).
+// Exit codes, pinned by tests so scripts may rely on them:
+//
+//	0  success
+//	1  internal error
+//	2  usage error
+//	3  precondition error
+//	4  invalid managed state
+//
+// The knowledge layer reserves its own 0/10/11 convention (0 fresh, 10 stale,
+// 11 missing — 方案 §12.5) for `knowledge status`, arriving with M5.
 const (
 	CodeOK           = 0
 	CodeInternal     = 1
@@ -52,23 +51,35 @@ const (
 const usage = `devsys - project-local agent development infrastructure
 
 usage:
-  devsys [--json] [--quiet] <command>
+  devsys [--json | --jsonl] [--quiet] <command>
 
 commands:
   init          create .devsys/ in the current git repository root
   config check  validate the managed metadata files (read-only)
   search <text> search project-local text records
-  workitem      create, inspect, transition and claim work items
+  project       list | get | status | blueprint | update | state-update
+  workitem      list | get | create | update | transition | claim | release | start | block | complete | comment | dep
+  workflow check  validate workflow policy files (read-only)
+  workflow list|get|start|next|step-complete|pause|resume|cancel  drive a work item's workflow instance
+  next          readiness verdict and the recommended next action (read-only)
+  approval      list | get | request | approve | reject governance approvals
+  decision      list | get | create | approve decision records
+  finding       list | get | create | resolve finding records
+  event         list | record project events (append-only)
+  artifact      list | get | register | update | history artifact records
+  run           list | get | log | create | update | heartbeat run records
+  context       get | workitem | refresh | compact working context (read-only)
+  knowledge status  report the knowledge layer's availability
+  session start  one-shot session orientation (project, work in flight, next action)
+  wire          inject the devsys discipline block into AGENTS.md (idempotent; --dry-run previews)
   doctor        report transactions and orphaned claims (read-only)
   recover       recover transactions, release expired/orphaned claims
   repair        --dry-run proposes repairs; --apply --confirm <digest> applies
-  workflow check  validate workflow policy files (read-only)
-  workflow start|next|step-complete|pause|resume|cancel  drive a work item's workflow instance
-  next          readiness verdict and the recommended next action (read-only)
-  approval      list | request | approve | reject governance approvals
+  mcp serve     serve the Model Context Protocol over stdio (--profile ...)
 
 options:
-  --json      machine-readable output
+  --json      machine-readable output (one JSON document)
+  --jsonl     machine-readable lists: one JSON record per line
   --quiet     suppress the human-readable success output
   --version   print build identity
   --help      print this help
@@ -83,6 +94,7 @@ exit codes:
 
 type options struct {
 	json  bool
+	jsonl bool
 	quiet bool
 }
 
@@ -123,8 +135,77 @@ func errInvalid(problems []config.Problem) *codedError {
 	}
 }
 
-// Run executes one CLI invocation and returns the process exit code.
+// toCoded maps the shared application taxonomy onto exit codes and the CLI's
+// rendering shape. Unknown errors are internal failures.
+func toCoded(err error) *codedError {
+	var ae *app.Error
+	if errors.As(err, &ae) {
+		code := CodeInvalid
+		switch ae.Class() {
+		case app.KindUsage:
+			code = CodeUsage
+		case app.KindPrecondition:
+			code = CodePrecondition
+		case app.KindInternal:
+			code = CodeInternal
+		}
+		return &codedError{code: code, kind: ae.Kind, msg: ae.Message, problems: ae.Problems}
+	}
+	var ce *codedError
+	if errors.As(err, &ce) {
+		return ce
+	}
+	return errInternal("%v", err)
+}
+
+// writeJSONL renders a list as one JSON record per line: the exchange format
+// for external scripts, which read a record without parsing an envelope.
+// Records keep the same field names as the --json envelope carries.
+func writeJSONL[T any](w io.Writer, items []T) error {
+	enc := json.NewEncoder(w)
+	for _, item := range items {
+		if err := enc.Encode(item); err != nil {
+			return errInternal("write jsonl: %v", err)
+		}
+	}
+	return nil
+}
+
+// appService binds the shared application service to the working directory.
+func appService() (*app.Service, error) {
+	root, err := os.Getwd()
+	if err != nil {
+		return nil, errInternal("resolve working directory: %v", err)
+	}
+	return app.New(root), nil
+}
+
+// requireProjectRoot verifies .devsys/ exists before a command runs, so the
+// precondition message names the directory the operator is in.
+func requireProjectRoot() (*app.Service, error) {
+	svc, err := appService()
+	if err != nil {
+		return nil, err
+	}
+	if info, statErr := os.Stat(filepath.Join(svc.Root, project.DevsysDirName)); errors.Is(statErr, os.ErrNotExist) {
+		return nil, errPrecondition("no %s/ in %s: run `devsys init` first", project.DevsysDirName, svc.Root)
+	} else if statErr != nil {
+		return nil, errInternal("inspect %s: %v", filepath.Join(svc.Root, project.DevsysDirName), statErr)
+	} else if !info.IsDir() {
+		return nil, errPrecondition("%s is not a directory in %s", project.DevsysDirName, svc.Root)
+	}
+	return svc, nil
+}
+
+// Run executes one CLI invocation against the process streams and returns
+// the process exit code.
 func Run(args []string, stdout, stderr io.Writer) int {
+	return RunWithIO(args, os.Stdin, stdout, stderr)
+}
+
+// RunWithIO is Run with an explicit stdin, so `mcp serve` — and its tests —
+// can drive the stdio protocol over injected streams.
+func RunWithIO(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	var opts options
 	i := 0
 	for ; i < len(args); i++ {
@@ -135,6 +216,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		switch a {
 		case "--json":
 			opts.json = true
+		case "--jsonl":
+			opts.jsonl = true
 		case "--quiet":
 			opts.quiet = true
 		case "--version", "-v":
@@ -150,6 +233,9 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	if i == len(args) {
 		return render(stderr, opts, errUsage("no command given"))
 	}
+	if opts.json && opts.jsonl {
+		return render(stderr, opts, errUsage("--json and --jsonl are mutually exclusive"))
+	}
 
 	cmd, rest := args[i], args[i+1:]
 	switch cmd {
@@ -162,6 +248,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return render(stderr, opts, runConfigCheck(stdout, opts, rest))
 	case "search":
 		return render(stderr, opts, runSearch(stdout, opts, rest))
+	case "project":
+		return render(stderr, opts, runProject(stdout, opts, rest))
 	case "workitem":
 		return render(stderr, opts, runWorkitem(stdout, opts, rest))
 	case "doctor":
@@ -176,6 +264,26 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return render(stderr, opts, runNext(stdout, opts, rest))
 	case "approval":
 		return render(stderr, opts, runApproval(stdout, opts, rest))
+	case "decision":
+		return render(stderr, opts, runDecision(stdout, opts, rest))
+	case "finding":
+		return render(stderr, opts, runFinding(stdout, opts, rest))
+	case "event":
+		return render(stderr, opts, runEvent(stdout, opts, rest))
+	case "artifact":
+		return render(stderr, opts, runArtifact(stdout, opts, rest))
+	case "run":
+		return render(stderr, opts, runRun(stdout, opts, rest))
+	case "context":
+		return render(stderr, opts, runContext(stdout, opts, rest))
+	case "knowledge":
+		return render(stderr, opts, runKnowledge(stdout, opts, rest))
+	case "session":
+		return render(stderr, opts, runSession(stdout, opts, rest))
+	case "wire":
+		return render(stderr, opts, runWire(stdout, opts, rest))
+	case "mcp":
+		return render(stderr, opts, runMCP(opts, stdin, stdout, stderr, rest))
 	default:
 		return render(stderr, opts, errUsage("unknown command %q", cmd))
 	}
@@ -187,10 +295,7 @@ func render(stderr io.Writer, opts options, err error) int {
 	if err == nil {
 		return CodeOK
 	}
-	var ce *codedError
-	if !errors.As(err, &ce) {
-		ce = errInternal("%v", err)
-	}
+	ce := toCoded(err)
 	if opts.json {
 		payload := struct {
 			OK    bool `json:"ok"`
@@ -216,38 +321,14 @@ func render(stderr io.Writer, opts options, err error) int {
 }
 
 func runInit(stdout io.Writer, opts options) error {
-	cwd, err := os.Getwd()
+	svc, err := appService()
 	if err != nil {
-		return errInternal("resolve working directory: %v", err)
+		return err
 	}
-	now := time.Now()
-
-	res, err := project.Init(cwd, project.Options{Now: now})
+	res, regPath, err := svc.ProjectCreate(context.Background(), "")
 	if err != nil {
-		var ps config.Problems
-		if errors.As(err, &ps) {
-			return errInvalid(ps)
-		}
-		var pe *project.PreconditionError
-		if errors.As(err, &pe) {
-			return errPrecondition("%s", pe.Msg)
-		}
-		return errInternal("init failed: %v", err)
+		return err
 	}
-
-	regPath, err := registry.Path()
-	if err != nil {
-		return errPrecondition("%v", err)
-	}
-	reg, err := registry.Load(regPath)
-	if err != nil {
-		return errInternal("read user registry: %v", err)
-	}
-	reg.Upsert(registry.Entry{ID: res.ID, Path: res.Root, LastSeenAt: now})
-	if err := reg.Save(regPath); err != nil {
-		return errPrecondition("write user registry: %v", err)
-	}
-
 	if opts.json {
 		out := struct {
 			OK              bool     `json:"ok"`
@@ -271,7 +352,6 @@ func runInit(stdout io.Writer, opts options) error {
 		}
 		return json.NewEncoder(stdout).Encode(out)
 	}
-
 	if !opts.quiet {
 		fmt.Fprintf(stdout, "initialized %s/ in %s\n", project.DevsysDirName, res.Root)
 		fmt.Fprintf(stdout, "project: %s (%s)\n", res.Name, res.ID)
@@ -285,183 +365,572 @@ func runInit(stdout io.Writer, opts options) error {
 	return nil
 }
 
-// runSearch implements `devsys search <keyword>` (实施计划 M1.6): a plain
-// read-only scan of .devsys/, excluding .cache/ and local/.
-func runSearch(stdout io.Writer, opts options, rest []string) error {
-	if len(rest) != 1 {
-		return errUsage("`devsys search` needs exactly one keyword")
+// runWire implements `devsys wire`: the idempotent AGENTS.md managed block
+// (方案 §12.5, 实施计划 M4.6). Content outside the block — including other
+// tools' blocks — is never touched.
+func runWire(stdout io.Writer, opts options, rest []string) error {
+	fs := flag.NewFlagSet("wire", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	dryRun := fs.Bool("dry-run", false, "preview the change without writing")
+	if err := fs.Parse(rest); err != nil || fs.NArg() != 0 {
+		return errUsage("`devsys wire` takes no arguments (use --dry-run to preview)")
 	}
-	cwd, err := os.Getwd()
+	svc, err := requireProjectRoot()
 	if err != nil {
-		return errInternal("resolve working directory: %v", err)
+		return err
 	}
-	devsys := filepath.Join(cwd, project.DevsysDirName)
-	if _, err := os.Stat(devsys); errors.Is(err, fs.ErrNotExist) {
-		return errPrecondition("no %s/ in %s: run `devsys init` first", project.DevsysDirName, cwd)
-	} else if err != nil {
-		return errInternal("inspect %s: %v", devsys, err)
-	}
-	matches, total, err := search.Search(devsys, rest[0])
+	view, err := svc.Wire(context.Background(), *dryRun)
 	if err != nil {
-		return errInternal("search: %v", err)
+		return err
 	}
 	if opts.json {
-		out := struct {
-			OK      bool           `json:"ok"`
-			Root    string         `json:"root"`
-			Query   string         `json:"query"`
-			Matches []search.Match `json:"matches"`
-			Total   int            `json:"total"`
-		}{OK: true, Root: cwd, Query: rest[0], Matches: matches, Total: total}
-		if out.Matches == nil {
-			out.Matches = []search.Match{}
-		}
-		return json.NewEncoder(stdout).Encode(out)
+		return json.NewEncoder(stdout).Encode(struct {
+			OK     bool `json:"ok"`
+			DryRun bool `json:"dry_run,omitempty"`
+			app.WireView
+		}{OK: true, DryRun: *dryRun, WireView: view})
 	}
 	if !opts.quiet {
-		for _, m := range matches {
-			fmt.Fprintf(stdout, "%s:%d: %s\n", m.Path, m.Line, m.Text)
+		switch {
+		case !view.Changed:
+			fmt.Fprintf(stdout, "%s: already wired (no change)\n", view.Path)
+		case *dryRun:
+			fmt.Fprintf(stdout, "would update %s:\n%s", view.Path, view.Diff)
+		case view.Created:
+			fmt.Fprintf(stdout, "created %s\n", view.Path)
+		default:
+			fmt.Fprintf(stdout, "updated %s\n", view.Path)
 		}
-		fmt.Fprintf(stdout, "%d match(es) in .devsys/ for %q\n", total, rest[0])
 	}
 	return nil
 }
 
-// runConfigCheck implements `devsys config check`: the read-only diagnostic
-func runConfigCheck(stdout io.Writer, opts options, rest []string) error {
+// runProject routes the project family (方案 §8.2 project_*).
+func runProject(stdout io.Writer, opts options, rest []string) error {
 	if len(rest) == 0 {
-		return errUsage("`devsys config` needs a subcommand (try `devsys config check`)")
+		return errUsage("`devsys project` needs a subcommand (list | get | status | blueprint | update | state-update)")
 	}
-	if rest[0] != "check" {
-		return errUsage("unknown `devsys config` subcommand %q (try `devsys config check`)", rest[0])
-	}
-	if len(rest) > 1 {
-		return errUsage("`devsys config check` takes no arguments (got %q)", rest[1])
-	}
-	cwd, err := os.Getwd()
+	svc, err := requireProjectRoot()
 	if err != nil {
-		return errInternal("resolve working directory: %v", err)
+		return err
 	}
-	devsys := filepath.Join(cwd, project.DevsysDirName)
-	if _, err := os.Stat(devsys); errors.Is(err, fs.ErrNotExist) {
-		return errPrecondition("no %s/ in %s: run `devsys init` first", project.DevsysDirName, cwd)
-	} else if err != nil {
-		return errInternal("inspect %s: %v", devsys, err)
-	}
-
-	md, problems := config.Diagnose(cwd)
-	if len(problems) > 0 {
-		return errInvalid(problems)
-	}
-
-	if opts.json {
-		out := struct {
-			OK      bool            `json:"ok"`
-			Root    string          `json:"root"`
-			Checked []string        `json:"checked"`
-			Project *domain.Project `json:"project,omitempty"`
-			Config  *config.Config  `json:"config,omitempty"`
-		}{OK: true, Root: cwd, Checked: config.ManagedFiles(), Project: md.Project, Config: md.Config}
-		return json.NewEncoder(stdout).Encode(out)
-	}
-	if !opts.quiet {
-		fmt.Fprintf(stdout, "config ok: %d files checked\n", len(config.ManagedFiles()))
-		if md.Project != nil {
-			fmt.Fprintf(stdout, "project: %s (%s)\n", md.Project.Name, md.Project.ID)
+	ctx := context.Background()
+	switch rest[0] {
+	case "list":
+		if len(rest) != 1 {
+			return errUsage("`devsys project list` takes no arguments")
 		}
-	}
-	return nil
-}
-
-// policySummary is the JSON view of one valid policy in `workflow check`.
-type policySummary struct {
-	File    string `json:"file"`
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Version int    `json:"version"`
-}
-
-// runWorkflowCheck implements `devsys workflow check`: the read-only policy
-// diagnostic (方案 §5.3, 实施计划 M3.1). Like `config check` it reads plainly —
-// no lock, no recovery, no writes — and reports every located issue as
-// `file:line: field: reason`. Unknown keys are warnings: they are recorded,
-// and a policy carrying only warnings still loads.
-func runWorkflowCheck(stdout io.Writer, opts options, rest []string) error {
-	if len(rest) != 0 {
-		return errUsage("`devsys workflow check` takes no arguments (got %q)", rest[0])
-	}
-	cwd, err := os.Getwd()
-	if err != nil {
-		return errInternal("resolve working directory: %v", err)
-	}
-	devsys := filepath.Join(cwd, project.DevsysDirName)
-	if _, err := os.Stat(devsys); errors.Is(err, fs.ErrNotExist) {
-		return errPrecondition("no %s/ in %s: run `devsys init` first", project.DevsysDirName, cwd)
-	} else if err != nil {
-		return errInternal("inspect %s: %v", devsys, err)
-	}
-
-	results := workflow.Load(cwd)
-	var problems []config.Problem
-	var warnings []workflow.Issue
-	policies := 0
-	for _, res := range results {
-		if res.Policy != nil {
-			policies++
+		entries, err := svc.ProjectList(ctx)
+		if err != nil {
+			return err
 		}
-		for _, is := range res.Issues {
-			switch is.Severity {
-			case workflow.SeverityError:
-				problems = append(problems, config.Problem{File: is.File, Line: is.Line, Field: is.Field, Reason: is.Reason})
-			case workflow.SeverityWarning:
-				warnings = append(warnings, is)
+		if opts.json {
+			return json.NewEncoder(stdout).Encode(struct {
+				OK       bool               `json:"ok"`
+				Projects []app.ProjectEntry `json:"projects"`
+			}{OK: true, Projects: entries})
+		}
+		if !opts.quiet {
+			if len(entries) == 0 {
+				fmt.Fprintln(stdout, "no registered projects")
+			}
+			for _, e := range entries {
+				mark := " "
+				if e.Current {
+					mark = "*"
+				}
+				fmt.Fprintf(stdout, "%s %s\t%s\texists=%t\n", mark, e.ID, e.Path, e.Exists)
 			}
 		}
-	}
-	if len(problems) > 0 {
-		return errInvalid(problems)
-	}
-
-	if opts.json {
-		out := struct {
-			OK       bool             `json:"ok"`
-			Root     string           `json:"root"`
-			Policies []policySummary  `json:"policies"`
-			Warnings []workflow.Issue `json:"warnings,omitempty"`
-		}{OK: true, Root: cwd, Policies: []policySummary{}}
-		for _, res := range results {
-			if res.Policy == nil {
-				continue
-			}
-			out.Policies = append(out.Policies, policySummary{
-				File: res.File, ID: res.Policy.ID, Name: res.Policy.Name, Version: res.Policy.Version,
-			})
+		return nil
+	case "get":
+		if len(rest) != 1 {
+			return errUsage("`devsys project get` takes no arguments")
 		}
-		out.Warnings = append(out.Warnings, warnings...)
-		return json.NewEncoder(stdout).Encode(out)
+		view, err := svc.ProjectGet(ctx)
+		if err != nil {
+			return err
+		}
+		if opts.json {
+			return json.NewEncoder(stdout).Encode(struct {
+				OK      bool            `json:"ok"`
+				Project *domain.Project `json:"project"`
+				Version string          `json:"version"`
+			}{OK: true, Project: view.Project, Version: view.Version})
+		}
+		if !opts.quiet {
+			p := view.Project
+			fmt.Fprintf(stdout, "%s\t%s\t%s\nphase: %s\nversion: %s\n", p.ID, p.Name, p.Status, p.CurrentPhase, view.Version)
+		}
+		return nil
+	case "status":
+		if len(rest) != 1 {
+			return errUsage("`devsys project status` takes no arguments")
+		}
+		view, err := svc.ProjectStatus(ctx)
+		if err != nil {
+			return err
+		}
+		if opts.json {
+			return json.NewEncoder(stdout).Encode(struct {
+				OK bool `json:"ok"`
+				app.ProjectStatusView
+			}{OK: true, ProjectStatusView: view})
+		}
+		if !opts.quiet {
+			fmt.Fprintf(stdout, "project: %s (%s)\n", view.Project.Name, view.Project.ID)
+			fmt.Fprintf(stdout, "phase: %s\n", view.Project.CurrentPhase)
+			fmt.Fprintf(stdout, "readiness: %s\n", view.Verdict)
+			statuses := make([]string, 0, len(view.Counts))
+			for status := range view.Counts {
+				statuses = append(statuses, status)
+			}
+			sortStrings(statuses)
+			for _, status := range statuses {
+				fmt.Fprintf(stdout, "  %s: %d\n", status, view.Counts[status])
+			}
+			for _, r := range view.Risks {
+				fmt.Fprintf(stdout, "  risk: %s: %s\n", r.Kind, r.Detail)
+			}
+		}
+		return nil
+	case "blueprint":
+		if len(rest) != 1 {
+			return errUsage("`devsys project blueprint` takes no arguments")
+		}
+		art, err := svc.ProjectBlueprint(ctx)
+		if err != nil {
+			return err
+		}
+		if opts.json {
+			return json.NewEncoder(stdout).Encode(struct {
+				OK       bool             `json:"ok"`
+				Artifact *domain.Artifact `json:"artifact"`
+			}{OK: true, Artifact: art})
+		}
+		if !opts.quiet {
+			fmt.Fprintf(stdout, "%s\t%s\tv%d\t%s\n", art.ID, art.Name, art.Version, art.Path)
+		}
+		return nil
+	case "update":
+		fs := flag.NewFlagSet("project update", flag.ContinueOnError)
+		fs.SetOutput(io.Discard)
+		name := fs.String("name", "", "project name")
+		description := fs.String("description", "", "project description")
+		status := fs.String("status", "", "project status")
+		phase := fs.String("phase", "", "current phase")
+		expect := fs.String("expect", "", "version hash from project get")
+		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 {
+			return errUsage("project update [--name N] [--description D] [--status S] [--phase P] [--expect <hash>]")
+		}
+		req := app.UpdateProjectRequest{Expect: *expect}
+		fs.Visit(func(f *flag.Flag) {
+			switch f.Name {
+			case "name":
+				req.Name = name
+			case "description":
+				req.Description = description
+			case "status":
+				req.Status = status
+			case "phase":
+				req.CurrentPhase = phase
+			}
+		})
+		view, err := svc.ProjectUpdate(ctx, req)
+		if err != nil {
+			return err
+		}
+		if opts.json {
+			return json.NewEncoder(stdout).Encode(struct {
+				OK      bool            `json:"ok"`
+				Project *domain.Project `json:"project"`
+				Version string          `json:"version"`
+			}{OK: true, Project: view.Project, Version: view.Version})
+		}
+		if !opts.quiet {
+			fmt.Fprintf(stdout, "%s\t%s\t%s\nversion: %s\n", view.Project.ID, view.Project.Name, view.Project.Status, view.Version)
+		}
+		return nil
+	case "state-update":
+		fs := flag.NewFlagSet("project state-update", flag.ContinueOnError)
+		fs.SetOutput(io.Discard)
+		summary := fs.String("summary", "", "state summary")
+		risks := fs.String("risks", "", "comma-separated risks")
+		blockers := fs.String("blockers", "", "comma-separated blockers")
+		focus := fs.String("next-focus", "", "comma-separated next focus items")
+		expect := fs.String("expect", "", "version hash from project state")
+		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 {
+			return errUsage("project state-update [--summary S] [--risks a,b] [--blockers a,b] [--next-focus a,b] [--expect <hash>]")
+		}
+		req := app.UpdateStateRequest{Expect: *expect}
+		fs.Visit(func(f *flag.Flag) {
+			switch f.Name {
+			case "summary":
+				req.Summary = summary
+			case "risks":
+				req.Risks = splitList(*risks)
+			case "blockers":
+				req.Blockers = splitList(*blockers)
+			case "next-focus":
+				req.NextFocus = splitList(*focus)
+			}
+		})
+		view, err := svc.ProjectStateUpdate(ctx, req)
+		if err != nil {
+			return err
+		}
+		if opts.json {
+			return json.NewEncoder(stdout).Encode(struct {
+				OK      bool                     `json:"ok"`
+				State   *domain.CurrentStateFile `json:"state"`
+				Version string                   `json:"version"`
+			}{OK: true, State: view.State, Version: view.Version})
+		}
+		if !opts.quiet {
+			fmt.Fprintf(stdout, "%s\nversion: %s\n", view.State.Summary, view.Version)
+		}
+		return nil
+	default:
+		return errUsage("unknown `devsys project` subcommand %q", rest[0])
+	}
+}
+
+// splitList parses a comma-separated flag value into a trimmed list.
+func splitList(raw string) []string {
+	if strings.TrimSpace(raw) == "" {
+		return []string{}
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if t := strings.TrimSpace(p); t != "" {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+func sortStrings(list []string) {
+	for i := 1; i < len(list); i++ {
+		for j := i; j > 0 && list[j] < list[j-1]; j-- {
+			list[j], list[j-1] = list[j-1], list[j]
+		}
+	}
+}
+
+// runWorkitem exposes the work item family through the shared service.
+func runWorkitem(stdout io.Writer, opts options, rest []string) error {
+	if len(rest) == 0 {
+		return errUsage("workitem needs a subcommand (list | get | create | update | transition | claim | release | start | block | complete | comment | dep)")
+	}
+	svc, err := requireProjectRoot()
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	switch rest[0] {
+	case "list":
+		fs := flag.NewFlagSet("workitem list", flag.ContinueOnError)
+		fs.SetOutput(io.Discard)
+		status := fs.String("status", "", "filter by status")
+		kind := fs.String("type", "", "filter by type")
+		parent := fs.String("parent", "", "filter by parent work item")
+		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 {
+			return errUsage("workitem list [--status S] [--type T] [--parent <id>]")
+		}
+		items, err := svc.WorkitemList(ctx, app.WorkitemFilter{Status: *status, Type: *kind, Parent: *parent})
+		if err != nil {
+			return err
+		}
+		if opts.jsonl {
+			return writeJSONL(stdout, items)
+		}
+		if opts.json {
+			return json.NewEncoder(stdout).Encode(struct {
+				OK    bool               `json:"ok"`
+				Items []*domain.WorkItem `json:"items"`
+			}{OK: true, Items: items})
+		}
+		if !opts.quiet {
+			if len(items) == 0 {
+				fmt.Fprintln(stdout, "no work items")
+			}
+			for _, wi := range items {
+				fmt.Fprintf(stdout, "%s\t%s\t%s\t%s\n", wi.ID, wi.Status, wi.Type, wi.Title)
+			}
+		}
+		return nil
+	case "get":
+		if len(rest) != 2 {
+			return errUsage("workitem get <id>")
+		}
+		view, err := svc.WorkitemGet(ctx, rest[1])
+		if err != nil {
+			return err
+		}
+		if opts.json {
+			return json.NewEncoder(stdout).Encode(struct {
+				OK      bool             `json:"ok"`
+				Item    *domain.WorkItem `json:"item"`
+				Version string           `json:"version"`
+			}{OK: true, Item: view.Item, Version: view.Version})
+		}
+		if !opts.quiet {
+			fmt.Fprintf(stdout, "%s\t%s\t%s\nversion: %s\n", view.Item.ID, view.Item.Status, view.Item.Title, view.Version)
+		}
+		return nil
+	case "create":
+		fs := flag.NewFlagSet("workitem create", flag.ContinueOnError)
+		fs.SetOutput(io.Discard)
+		title := fs.String("title", "", "work item title")
+		prefix := fs.String("prefix", "WLM", "ID prefix")
+		description := fs.String("description", "", "work item description")
+		kind := fs.String("type", "task", "work item type")
+		priority := fs.Int("priority", 0, "numeric priority (higher first)")
+		parent := fs.String("parent", "", "parent work item id")
+		actor := fs.String("actor", "", "operator")
+		reason := fs.String("reason", "", "creation reason")
+		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *title == "" || *actor == "" || *reason == "" {
+			return errUsage("workitem create --title <title> --actor <actor> --reason <reason> [--prefix WLM] [--description D] [--type T] [--priority N] [--parent <id>]")
+		}
+		view, err := svc.WorkitemCreate(ctx, app.CreateWorkitemRequest{
+			Title: *title, Description: *description, Type: *kind, Prefix: *prefix,
+			ParentID: *parent, Priority: *priority, Actor: *actor, Reason: *reason,
+		})
+		if err != nil {
+			return err
+		}
+		return outputWorkitem(stdout, opts, view)
+	case "update":
+		fs := flag.NewFlagSet("workitem update", flag.ContinueOnError)
+		fs.SetOutput(io.Discard)
+		id := fs.String("id", "", "work item id")
+		title := fs.String("title", "", "new title")
+		description := fs.String("description", "", "new description")
+		priority := fs.Int("priority", 0, "new priority")
+		acceptance := fs.String("acceptance", "", "comma-separated acceptance criteria (replaces the list)")
+		expect := fs.String("expect", "", "version hash from workitem get")
+		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *id == "" {
+			return errUsage("workitem update --id <id> [--title T] [--description D] [--priority N] [--acceptance a,b] [--expect <hash>]")
+		}
+		req := app.UpdateWorkitemRequest{Expect: *expect}
+		fs.Visit(func(f *flag.Flag) {
+			switch f.Name {
+			case "title":
+				req.Title = title
+			case "description":
+				req.Description = description
+			case "priority":
+				req.Priority = priority
+			case "acceptance":
+				req.AcceptanceCriteria = splitList(*acceptance)
+			}
+		})
+		view, err := svc.WorkitemUpdate(ctx, *id, req)
+		if err != nil {
+			return err
+		}
+		return outputWorkitem(stdout, opts, view)
+	case "transition":
+		fs := flag.NewFlagSet("workitem transition", flag.ContinueOnError)
+		fs.SetOutput(io.Discard)
+		id := fs.String("id", "", "work item id")
+		to := fs.String("to", "", "target status")
+		actor := fs.String("actor", "", "operator")
+		reason := fs.String("reason", "", "transition reason")
+		expect := fs.String("expect", "", "version hash from workitem get")
+		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 {
+			return errUsage("workitem transition --id <id> --to <status> --actor <a> --reason <r> --expect <hash>")
+		}
+		view, notice, err := svc.WorkitemTransition(ctx, *id, *to, *actor, *reason, *expect)
+		if notice != "" && !opts.quiet {
+			fmt.Fprintf(stdout, "warning: %s\n", notice)
+		}
+		if err != nil {
+			return err
+		}
+		if !opts.quiet {
+			fmt.Fprintf(stdout, "%s: %s\n", view.Item.ID, view.Item.Status)
+		}
+		return nil
+	case "claim":
+		fs := flag.NewFlagSet("workitem claim", flag.ContinueOnError)
+		fs.SetOutput(io.Discard)
+		id := fs.String("id", "", "work item id")
+		owner := fs.String("owner", "", "claimer identity")
+		reason := fs.String("reason", "", "claim reason")
+		expect := fs.String("expect", "", "version hash from workitem get")
+		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 {
+			return errUsage("workitem claim --id <id> --owner <owner> --reason <reason> [--expect <hash>]")
+		}
+		res, err := svc.WorkitemClaim(ctx, *id, *owner, *reason, *expect)
+		if err != nil {
+			return err
+		}
+		if opts.json {
+			return json.NewEncoder(stdout).Encode(struct {
+				OK     bool   `json:"ok"`
+				RunID  string `json:"run_id"`
+				Token  string `json:"token"`
+				Status string `json:"status"`
+			}{true, res.RunID, res.Token, res.Status})
+		}
+		if !opts.quiet {
+			fmt.Fprintf(stdout, "claimed %s: run=%s token=%s\n", *id, res.RunID, res.Token)
+		}
+		return nil
+	case "release":
+		fs := flag.NewFlagSet("workitem release", flag.ContinueOnError)
+		fs.SetOutput(io.Discard)
+		id := fs.String("id", "", "work item id")
+		owner := fs.String("owner", "", "lease owner")
+		token := fs.String("token", "", "lease token")
+		actor := fs.String("actor", "", "operator")
+		reason := fs.String("reason", "", "release reason")
+		expect := fs.String("expect", "", "version hash from workitem get")
+		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 {
+			return errUsage("workitem release --id <id> --owner <owner> --token <token> --actor <a> --reason <r> [--expect <hash>]")
+		}
+		view, err := svc.WorkitemRelease(ctx, *id, *owner, *token, *actor, *reason, *expect)
+		if err != nil {
+			return err
+		}
+		return outputWorkitem(stdout, opts, view)
+	case "start":
+		fs := flag.NewFlagSet("workitem start", flag.ContinueOnError)
+		fs.SetOutput(io.Discard)
+		id := fs.String("id", "", "work item id")
+		owner := fs.String("owner", "", "lease owner")
+		token := fs.String("token", "", "lease token")
+		actor := fs.String("actor", "", "operator")
+		reason := fs.String("reason", "", "start reason")
+		expect := fs.String("expect", "", "version hash from workitem get")
+		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 {
+			return errUsage("workitem start --id <id> --owner <owner> --token <token> --actor <a> --reason <r> [--expect <hash>]")
+		}
+		res, err := svc.WorkitemStart(ctx, *id, *owner, *token, *actor, *reason, *expect)
+		if err != nil {
+			return err
+		}
+		if opts.json {
+			return json.NewEncoder(stdout).Encode(struct {
+				OK     bool   `json:"ok"`
+				RunID  string `json:"run_id"`
+				Token  string `json:"token"`
+				Status string `json:"status"`
+			}{true, res.RunID, res.Token, res.Status})
+		}
+		if !opts.quiet {
+			fmt.Fprintf(stdout, "started %s: run=%s\n", res.WorkitemID, res.RunID)
+		}
+		return nil
+	case "block", "complete":
+		target := domain.StatusBlocked
+		if rest[0] == "complete" {
+			target = domain.StatusDone
+		}
+		fs := flag.NewFlagSet("workitem "+rest[0], flag.ContinueOnError)
+		fs.SetOutput(io.Discard)
+		id := fs.String("id", "", "work item id")
+		actor := fs.String("actor", "", "operator")
+		reason := fs.String("reason", "", "reason")
+		expect := fs.String("expect", "", "version hash from workitem get")
+		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 {
+			return errUsage("workitem %s --id <id> --actor <a> --reason <r> [--expect <hash>]", rest[0])
+		}
+		view, notice, err := svc.WorkitemTransition(ctx, *id, target, *actor, *reason, *expect)
+		if notice != "" && !opts.quiet {
+			fmt.Fprintf(stdout, "warning: %s\n", notice)
+		}
+		if err != nil {
+			return err
+		}
+		return outputWorkitem(stdout, opts, view)
+	case "comment":
+		fs := flag.NewFlagSet("workitem comment", flag.ContinueOnError)
+		fs.SetOutput(io.Discard)
+		id := fs.String("id", "", "work item id")
+		text := fs.String("text", "", "comment text")
+		actor := fs.String("actor", "", "author")
+		replyTo := fs.String("reply-to", "", "event id this comment replies to")
+		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 {
+			return errUsage("workitem comment --id <id> --text <text> --actor <a> [--reply-to <event-id>]")
+		}
+		view, err := svc.WorkitemComment(ctx, *id, *text, *actor, *replyTo)
+		if err != nil {
+			return err
+		}
+		if opts.json {
+			return json.NewEncoder(stdout).Encode(struct {
+				OK    bool          `json:"ok"`
+				Event *domain.Event `json:"event"`
+			}{OK: true, Event: view.Event})
+		}
+		if !opts.quiet {
+			fmt.Fprintf(stdout, "%s\n", view.Event.ID)
+		}
+		return nil
+	case "dep":
+		if len(rest) < 2 {
+			return errUsage("workitem dep add|remove --id <id> --depends-on <id> [--expect <hash>]")
+		}
+		action := rest[1]
+		if action != "add" && action != "remove" {
+			return errUsage("workitem dep add|remove --id <id> --depends-on <id> [--expect <hash>]")
+		}
+		fs := flag.NewFlagSet("workitem dep "+action, flag.ContinueOnError)
+		fs.SetOutput(io.Discard)
+		id := fs.String("id", "", "work item id")
+		dependsOn := fs.String("depends-on", "", "dependency target id")
+		expect := fs.String("expect", "", "version hash from workitem get")
+		if err := fs.Parse(rest[2:]); err != nil || fs.NArg() != 0 || *id == "" || *dependsOn == "" {
+			return errUsage("workitem dep %s --id <id> --depends-on <id> [--expect <hash>]", action)
+		}
+		var view app.WorkItemView
+		var err error
+		if action == "add" {
+			view, err = svc.WorkitemAddDependency(ctx, *id, *dependsOn, *expect)
+		} else {
+			view, err = svc.WorkitemRemoveDependency(ctx, *id, *dependsOn, *expect)
+		}
+		if err != nil {
+			return err
+		}
+		return outputWorkitem(stdout, opts, view)
+	default:
+		return errUsage("unknown workitem operation %q", rest[0])
+	}
+}
+
+// outputWorkitem renders one work item and its version hash.
+func outputWorkitem(stdout io.Writer, opts options, view app.WorkItemView) error {
+	if opts.json {
+		return json.NewEncoder(stdout).Encode(struct {
+			OK      bool             `json:"ok"`
+			Item    *domain.WorkItem `json:"item"`
+			Version string           `json:"version"`
+		}{OK: true, Item: view.Item, Version: view.Version})
 	}
 	if !opts.quiet {
-		fmt.Fprintf(stdout, "workflow ok: %d policies checked\n", policies)
-	}
-	// Warnings are diagnostics, not success banners: they stay visible under
-	// --quiet so recorded issues are not silently dropped.
-	for _, w := range warnings {
-		fmt.Fprintf(stdout, "warning: %s\n", w.String())
+		fmt.Fprintf(stdout, "%s\t%s\t%s\nversion: %s\n", view.Item.ID, view.Item.Status, view.Item.Title, view.Version)
 	}
 	return nil
 }
 
 // runWorkflow routes the workflow family: `check` validates policy files
 // (read-only); the instance subcommands drive a work item's workflow
-// instance through the domain layer (实施计划 M3.6). M4.2 exposes the same
-// operations as MCP tools.
+// instance through the shared service (实施计划 M3.6).
 func runWorkflow(stdout io.Writer, opts options, rest []string) error {
 	if len(rest) == 0 {
-		return errUsage("`devsys workflow` needs a subcommand (check | start | next | step-complete | pause | resume | cancel)")
+		return errUsage("`devsys workflow` needs a subcommand (check | list | get | start | next | step-complete | pause | resume | cancel)")
 	}
 	switch rest[0] {
 	case "check":
 		return runWorkflowCheck(stdout, opts, rest[1:])
+	case "list":
+		return runWorkflowList(stdout, opts, rest[1:])
+	case "get":
+		return runWorkflowGet(stdout, opts, rest[1:])
 	case "start":
 		return runWorkflowStart(stdout, opts, rest[1:])
 	case "next":
@@ -475,102 +944,120 @@ func runWorkflow(stdout io.Writer, opts options, rest []string) error {
 	}
 }
 
-// rootContext resolves the project root and verifies .devsys/ exists.
-func rootContext() (string, context.Context, error) {
-	root, err := os.Getwd()
+// runWorkflowCheck implements `devsys workflow check`: the read-only policy
+// diagnostic (方案 §5.3, 实施计划 M3.1). Unknown keys are warnings: they are
+// recorded, and a policy carrying only warnings still loads.
+func runWorkflowCheck(stdout io.Writer, opts options, rest []string) error {
+	if len(rest) != 0 {
+		return errUsage("`devsys workflow check` takes no arguments (got %q)", rest[0])
+	}
+	svc, err := requireProjectRoot()
 	if err != nil {
-		return "", nil, errInternal("resolve working directory: %v", err)
+		return err
 	}
-	devsys := filepath.Join(root, project.DevsysDirName)
-	if _, err := os.Stat(devsys); errors.Is(err, fs.ErrNotExist) {
-		return "", nil, errPrecondition("no %s/ in %s: run `devsys init` first", project.DevsysDirName, root)
-	} else if err != nil {
-		return "", nil, errInternal("inspect %s: %v", devsys, err)
+	policies, warnings, err := svc.WorkflowList(context.Background())
+	if err != nil {
+		return err
 	}
-	return root, context.Background(), nil
+	if opts.json {
+		out := struct {
+			OK       bool                `json:"ok"`
+			Root     string              `json:"root"`
+			Policies []app.PolicySummary `json:"policies"`
+			Warnings []workflow.Issue    `json:"warnings,omitempty"`
+		}{OK: true, Root: svc.Root, Policies: []app.PolicySummary{}}
+		out.Policies = append(out.Policies, policies...)
+		out.Warnings = append(out.Warnings, warnings...)
+		return json.NewEncoder(stdout).Encode(out)
+	}
+	if !opts.quiet {
+		fmt.Fprintf(stdout, "workflow ok: %d policies checked\n", len(policies))
+	}
+	// Warnings are diagnostics, not success banners: they stay visible under
+	// --quiet so recorded issues are not silently dropped.
+	for _, w := range warnings {
+		fmt.Fprintf(stdout, "warning: %s\n", w.String())
+	}
+	return nil
 }
 
-// workflowContext prepares the shared context for instance subcommands.
-func workflowContext() (string, *workitem.Store, context.Context, error) {
-	root, ctx, err := rootContext()
+// runWorkflowList lists the policy files with their identity (M4.2).
+func runWorkflowList(stdout io.Writer, opts options, rest []string) error {
+	if len(rest) != 0 {
+		return errUsage("`devsys workflow list` takes no arguments (got %q)", rest[0])
+	}
+	svc, err := requireProjectRoot()
 	if err != nil {
-		return "", nil, nil, err
+		return err
 	}
-	return root, workitem.New(root), ctx, nil
-}
-
-// workflowPolicy resolves the policy an instance operation consumes. start
-// is dispatch-like and requires a currently valid file; advancing and read
-// operations accept the last-known-good snapshot and report the fallback in
-// a notice (实施计划 M3.5).
-func workflowPolicy(ctx context.Context, root string, wi *domain.WorkItem, policyID string, requireCurrent bool) (*workflow.Policy, string, error) {
-	id := policyID
-	if id == "" && wi.Workflow != nil {
-		id = wi.Workflow.ID
-	}
-	if id == "" {
-		return nil, "", errUsage("--policy <id> is required when the work item has no workflow instance")
-	}
-	res, err := workflow.Resolve(ctx, root, id)
+	policies, warnings, err := svc.WorkflowList(context.Background())
 	if err != nil {
-		return nil, "", errWorkflowPolicy(err)
+		return err
 	}
-	notice := ""
-	if res.Issue != nil {
-		notice = fmt.Sprintf("workflow policy %q is invalid: %s; using %s", res.ID, res.Issue.String(), res.Source)
-		if requireCurrent {
-			return nil, "", errWorkflowPolicy(fmt.Errorf(
-				"workflow policy %q is invalid: %s; the operation is blocked until the file is fixed (%s is retained for read paths)",
-				res.ID, res.Issue.String(), res.Source))
+	if opts.json {
+		return json.NewEncoder(stdout).Encode(struct {
+			OK       bool                `json:"ok"`
+			Policies []app.PolicySummary `json:"policies"`
+			Warnings []workflow.Issue    `json:"warnings,omitempty"`
+		}{OK: true, Policies: policies, Warnings: warnings})
+	}
+	if !opts.quiet {
+		if len(policies) == 0 {
+			fmt.Fprintln(stdout, "no workflow policies")
+		}
+		for _, p := range policies {
+			fmt.Fprintf(stdout, "%s\t%s\t%s\tv%d\n", p.ID, p.Name, p.File, p.Version)
 		}
 	}
-	return res.Policy, notice, nil
+	for _, w := range warnings {
+		fmt.Fprintf(stdout, "warning: %s\n", w.String())
+	}
+	return nil
 }
 
-// mapWorkflowError renders domain instance refusals: the allowed candidates
-// become located problems (exit 4).
-func mapWorkflowError(err error, policyFile string) error {
-	if errors.Is(err, storage.ErrNotInitialized) || errors.Is(err, workitem.ErrNotFound) {
-		return errPrecondition("%v", err)
+// runWorkflowGet reads one work item's instance and candidates.
+func runWorkflowGet(stdout io.Writer, opts options, rest []string) error {
+	fs := flag.NewFlagSet("workflow get", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	id := fs.String("id", "", "work item id")
+	if err := fs.Parse(rest); err != nil || fs.NArg() != 0 || *id == "" {
+		return errUsage("workflow get --id <workitem-id>")
 	}
-	var se *workitem.WorkflowStepError
-	if errors.As(err, &se) {
-		problems := make([]config.Problem, 0, len(se.Allowed))
-		for _, c := range se.Allowed {
-			reason := fmt.Sprintf("when %q satisfied", c.When)
-			switch {
-			case c.When == "":
-				reason = "unconditional"
-			case !c.Satisfied:
-				reason = fmt.Sprintf("when %q not satisfied", c.When)
-			}
-			problems = append(problems, config.Problem{File: policyFile, Field: c.To, Reason: reason})
-		}
-		return &codedError{code: CodeInvalid, kind: "workflow", msg: se.Error(), problems: problems}
+	svc, err := requireProjectRoot()
+	if err != nil {
+		return err
 	}
-	return workitemError(err)
+	view, err := svc.WorkflowGet(context.Background(), *id)
+	if err != nil {
+		return err
+	}
+	return outputWorkflow(stdout, opts, view)
 }
 
-// outputWorkflow renders one work item's instance state and, for `next`, its
-// candidates.
-func outputWorkflow(stdout io.Writer, opts options, wi *domain.WorkItem, candidates []workflow.StepCandidate) error {
+// outputWorkflow renders one work item's instance state and, for read
+// operations, its candidates.
+func outputWorkflow(stdout io.Writer, opts options, view app.WorkflowView) error {
 	if opts.json {
 		out := struct {
 			OK         bool                     `json:"ok"`
 			WorkitemID string                   `json:"workitem_id"`
 			Workflow   *domain.WorkflowInstance `json:"workflow"`
 			Candidates []workflow.StepCandidate `json:"candidates,omitempty"`
-		}{OK: true, WorkitemID: wi.ID, Workflow: wi.Workflow, Candidates: candidates}
+			Notice     string                   `json:"notice,omitempty"`
+		}{OK: true, WorkitemID: view.WorkitemID, Workflow: view.Workflow, Candidates: view.Candidates, Notice: view.Notice}
 		return json.NewEncoder(stdout).Encode(out)
 	}
 	if !opts.quiet {
-		if wi.Workflow == nil {
-			fmt.Fprintf(stdout, "%s: no workflow instance\n", wi.ID)
+		if view.Notice != "" {
+			fmt.Fprintf(stdout, "warning: %s\n", view.Notice)
+		}
+		if view.Workflow == nil {
+			fmt.Fprintf(stdout, "%s: no workflow instance\n", view.WorkitemID)
 			return nil
 		}
-		inst := wi.Workflow
-		fmt.Fprintf(stdout, "%s: workflow %s step %s paused=%t\n", wi.ID, inst.ID, inst.Step, inst.Paused)
-		for _, c := range candidates {
+		inst := view.Workflow
+		fmt.Fprintf(stdout, "%s: workflow %s step %s paused=%t\n", view.WorkitemID, inst.ID, inst.Step, inst.Paused)
+		for _, c := range view.Candidates {
 			when := c.When
 			if when == "" {
 				when = "<unconditional>"
@@ -578,7 +1065,7 @@ func outputWorkflow(stdout io.Writer, opts options, wi *domain.WorkItem, candida
 			fmt.Fprintf(stdout, "  candidate: to=%s when=%q satisfied=%t\n", c.To, when, c.Satisfied)
 		}
 		if !inst.Paused {
-			for _, c := range candidates {
+			for _, c := range view.Candidates {
 				if c.Satisfied {
 					fmt.Fprintf(stdout, "next: %s\n", c.To)
 					break
@@ -602,25 +1089,15 @@ func runWorkflowStart(stdout io.Writer, opts options, rest []string) error {
 	if err := fs.Parse(rest); err != nil || fs.NArg() != 0 || *id == "" || *policyID == "" || *actor == "" || *reason == "" {
 		return errUsage("workflow start --id <workitem-id> --policy <id> --actor <a> --reason <r> [--owner <o> --token <t>] [--expect <hash>]")
 	}
-	root, items, ctx, err := workflowContext()
+	svc, err := requireProjectRoot()
 	if err != nil {
 		return err
 	}
-	wi, expected, err := expectedSnapshot(ctx, items, *id, *expect)
-	if err != nil {
-		return workitemError(err)
-	}
-	pol, _, err := workflowPolicy(ctx, root, wi, *policyID, true)
+	view, err := svc.WorkflowStart(context.Background(), *id, *policyID, *actor, *reason, *owner, *token, *expect)
 	if err != nil {
 		return err
 	}
-	updated, err := items.WorkflowStart(ctx, *id, workitem.WorkflowStartOptions{
-		Policy: pol, Actor: *actor, Reason: *reason, Owner: *owner, Token: *token, Expected: expected,
-	})
-	if err != nil {
-		return mapWorkflowError(err, pol.File)
-	}
-	return outputWorkflow(stdout, opts, updated, nil)
+	return outputWorkflow(stdout, opts, view)
 }
 
 func runWorkflowNext(stdout io.Writer, opts options, rest []string) error {
@@ -630,26 +1107,15 @@ func runWorkflowNext(stdout io.Writer, opts options, rest []string) error {
 	if err := fs.Parse(rest); err != nil || fs.NArg() != 0 || *id == "" {
 		return errUsage("workflow next --id <workitem-id>")
 	}
-	root, items, ctx, err := workflowContext()
+	svc, err := requireProjectRoot()
 	if err != nil {
 		return err
 	}
-	wi, _, err := items.ReadSnapshot(ctx, *id)
-	if err != nil {
-		return workitemError(err)
-	}
-	pol, notice, err := workflowPolicy(ctx, root, wi, "", false)
+	view, err := svc.WorkflowStepNext(context.Background(), *id)
 	if err != nil {
 		return err
 	}
-	if notice != "" && !opts.quiet {
-		fmt.Fprintf(stdout, "warning: %s\n", notice)
-	}
-	updated, candidates, err := items.WorkflowNext(ctx, *id, pol)
-	if err != nil {
-		return mapWorkflowError(err, pol.File)
-	}
-	return outputWorkflow(stdout, opts, updated, candidates)
+	return outputWorkflow(stdout, opts, view)
 }
 
 func runWorkflowStepComplete(stdout io.Writer, opts options, rest []string) error {
@@ -665,29 +1131,18 @@ func runWorkflowStepComplete(stdout io.Writer, opts options, rest []string) erro
 	if err := fs.Parse(rest); err != nil || fs.NArg() != 0 || *id == "" || *actor == "" || *reason == "" {
 		return errUsage("workflow step-complete --id <workitem-id> [--to <step>] --actor <a> --reason <r> [--owner <o> --token <t>] [--expect <hash>]")
 	}
-	root, items, ctx, err := workflowContext()
+	svc, err := requireProjectRoot()
 	if err != nil {
 		return err
 	}
-	wi, expected, err := expectedSnapshot(ctx, items, *id, *expect)
-	if err != nil {
-		return workitemError(err)
+	view, err := svc.WorkflowStepComplete(context.Background(), *id, *to, *actor, *reason, *owner, *token, *expect)
+	if view.Notice != "" && !opts.quiet {
+		fmt.Fprintf(stdout, "warning: %s\n", view.Notice)
 	}
-	pol, notice, err := workflowPolicy(ctx, root, wi, "", false)
 	if err != nil {
 		return err
 	}
-	if notice != "" && !opts.quiet {
-		fmt.Fprintf(stdout, "warning: %s\n", notice)
-	}
-	updated, err := items.WorkflowStepComplete(ctx, *id, workitem.WorkflowStepOptions{
-		Policy: pol, To: *to, Actor: *actor, Reason: *reason,
-		Owner: *owner, Token: *token, Expected: expected,
-	})
-	if err != nil {
-		return mapWorkflowError(err, pol.File)
-	}
-	return outputWorkflow(stdout, opts, updated, nil)
+	return outputWorkflow(stdout, opts, view)
 }
 
 func runWorkflowSignal(stdout io.Writer, opts options, action string, rest []string) error {
@@ -702,49 +1157,30 @@ func runWorkflowSignal(stdout io.Writer, opts options, action string, rest []str
 	if err := fs.Parse(rest); err != nil || fs.NArg() != 0 || *id == "" || *actor == "" || *reason == "" {
 		return errUsage("workflow %s --id <workitem-id> --actor <a> --reason <r> [--owner <o> --token <t>] [--expect <hash>]", action)
 	}
-	root, items, ctx, err := workflowContext()
+	svc, err := requireProjectRoot()
 	if err != nil {
 		return err
 	}
-	wi, expected, err := expectedSnapshot(ctx, items, *id, *expect)
+	view, err := svc.WorkflowSignal(context.Background(), action, *id, *actor, *reason, *owner, *token, *expect)
 	if err != nil {
-		return workitemError(err)
+		return err
 	}
-	// Signals need no policy semantics, but the policy file locates refusals
-	// when a candidate list is rendered.
-	policyFile := ""
-	if pol, _, perr := workflowPolicy(ctx, root, wi, "", false); perr == nil && pol != nil {
-		policyFile = pol.File
-	}
-	signal := workitem.WorkflowSignalOptions{
-		Actor: *actor, Reason: *reason, Owner: *owner, Token: *token, Expected: expected,
-	}
-	var updated *domain.WorkItem
-	switch action {
-	case "pause":
-		updated, err = items.WorkflowPause(ctx, *id, signal)
-	case "resume":
-		updated, err = items.WorkflowResume(ctx, *id, signal)
-	case "cancel":
-		updated, err = items.WorkflowCancel(ctx, *id, signal)
-	}
-	if err != nil {
-		return mapWorkflowError(err, policyFile)
-	}
-	return outputWorkflow(stdout, opts, updated, nil)
+	return outputWorkflow(stdout, opts, view)
 }
 
 // runApproval routes the approval lifecycle (方案 §4.9, 实施计划 M3.7):
 // request → approve | reject. Consumption itself happens inside the
-// gate-checked transition (via the work item's Guard), never as a standalone
-// command, so no caller can consume without advancing.
+// gate-checked transition, never as a standalone command, so no caller can
+// consume without advancing.
 func runApproval(stdout io.Writer, opts options, rest []string) error {
 	if len(rest) == 0 {
-		return errUsage("`devsys approval` needs a subcommand (list | request | approve | reject)")
+		return errUsage("`devsys approval` needs a subcommand (list | get | request | approve | reject)")
 	}
 	switch rest[0] {
 	case "list":
 		return runApprovalList(stdout, opts, rest[1:])
+	case "get":
+		return runApprovalGet(stdout, opts, rest[1:])
 	case "request":
 		return runApprovalRequest(stdout, opts, rest[1:])
 	case "approve":
@@ -754,13 +1190,6 @@ func runApproval(stdout io.Writer, opts options, rest []string) error {
 	default:
 		return errUsage("unknown `devsys approval` subcommand %q", rest[0])
 	}
-}
-
-func approvalError(err error) error {
-	if errors.Is(err, storage.ErrNotInitialized) || errors.Is(err, approval.ErrNotFound) {
-		return errPrecondition("%v", err)
-	}
-	return &codedError{code: CodeInvalid, kind: "approval", msg: err.Error()}
 }
 
 func outputApproval(stdout io.Writer, opts options, apr *domain.Approval) error {
@@ -786,20 +1215,20 @@ func runApprovalList(stdout io.Writer, opts options, rest []string) error {
 		return errUsage("approval list [--workitem <id>] [--status pending|approved|rejected]")
 	}
 	switch *status {
-	case "", approval.StatusPending, approval.StatusApproved, approval.StatusRejected:
+	case "", "pending", "approved", "rejected":
 	default:
 		return errUsage("approval list --status must be pending, approved or rejected (got %q)", *status)
 	}
-	root, ctx, err := rootContext()
+	svc, err := requireProjectRoot()
 	if err != nil {
 		return err
 	}
-	approvals, err := approval.New(root).List(ctx, approval.Filter{WorkItemID: *workitemID, Status: *status})
+	approvals, err := svc.ApprovalList(context.Background(), app.ApprovalFilter{WorkItemID: *workitemID, Status: *status})
 	if err != nil {
-		return approvalError(err)
+		return err
 	}
-	if approvals == nil {
-		approvals = []*domain.Approval{}
+	if opts.jsonl {
+		return writeJSONL(stdout, approvals)
 	}
 	if opts.json {
 		return json.NewEncoder(stdout).Encode(struct {
@@ -819,49 +1248,48 @@ func runApprovalList(stdout io.Writer, opts options, rest []string) error {
 	return nil
 }
 
+func runApprovalGet(stdout io.Writer, opts options, rest []string) error {
+	fs := flag.NewFlagSet("approval get", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	id := fs.String("id", "", "approval id")
+	if err := fs.Parse(rest); err != nil || fs.NArg() != 0 || *id == "" {
+		return errUsage("approval get --id <approval-id>")
+	}
+	svc, err := requireProjectRoot()
+	if err != nil {
+		return err
+	}
+	apr, err := svc.ApprovalGet(context.Background(), *id)
+	if err != nil {
+		return err
+	}
+	return outputApproval(stdout, opts, apr)
+}
+
 func runApprovalRequest(stdout io.Writer, opts options, rest []string) error {
 	fs := flag.NewFlagSet("approval request", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	workitemID := fs.String("id", "", "work item id")
 	stage := fs.String("stage", "", "gate stage the approval targets")
-	scope := fs.String("scope", approval.ScopeStageGate, "stage_gate or action")
+	scope := fs.String("scope", "stage_gate", "stage_gate or action")
 	runID := fs.String("run", "", "run that triggered the request")
 	actor := fs.String("actor", "", "requester")
 	reason := fs.String("reason", "", "why the approval is needed")
 	if err := fs.Parse(rest); err != nil || fs.NArg() != 0 || *workitemID == "" || *actor == "" || *reason == "" {
 		return errUsage("approval request --id <workitem-id> --stage <stage> [--scope stage_gate|action] [--run <run-id>] --actor <a> --reason <r>")
 	}
-	root, ctx, err := rootContext()
+	svc, err := requireProjectRoot()
 	if err != nil {
 		return err
 	}
-	wi, _, err := workitem.New(root).ReadSnapshot(ctx, *workitemID)
-	if err != nil {
-		return workitemError(err)
-	}
-	requestedStatus := ""
-	if *scope == approval.ScopeStageGate {
-		requestedStatus = wi.Status
-	}
-	apr, err := approval.New(root).Request(ctx, approval.RequestOptions{
-		Scope: *scope, WorkItemID: wi.ID, RunID: *runID, Stage: *stage,
-		RequestedStatus: requestedStatus, ProjectID: wi.ProjectID,
-		RequestedBy: *actor, Reason: *reason,
+	apr, warning, err := svc.ApprovalRequest(context.Background(), app.RequestApprovalRequest{
+		WorkItemID: *workitemID, Stage: *stage, Scope: *scope, RunID: *runID, Actor: *actor, Reason: *reason,
 	})
 	if err != nil {
-		return approvalError(err)
+		return err
 	}
-	// Surface a request no gate will ever consume, instead of letting it
-	// linger silently.
-	if *scope == approval.ScopeStageGate {
-		if res, perr := policyForWorkItem(ctx, root, wi); perr == nil && res.Policy != nil {
-			gate, declared := res.Policy.Gates.Stages[*stage]
-			if !declared || !gate.RequireApproval {
-				if !opts.quiet {
-					fmt.Fprintf(stdout, "warning: policy %q declares no require_approval gate for stage %q; nothing will consume this approval\n", res.Policy.ID, *stage)
-				}
-			}
-		}
+	if warning != "" && !opts.quiet {
+		fmt.Fprintf(stdout, "warning: %s\n", warning)
 	}
 	return outputApproval(stdout, opts, apr)
 }
@@ -882,42 +1310,24 @@ func runApprovalDecide(stdout io.Writer, opts options, rest []string, approve bo
 	if err := fs.Parse(rest); err != nil || fs.NArg() != 0 || *id == "" || *by == "" || (!approve && *reason == "") {
 		return errUsage("%s", usage)
 	}
-	root, ctx, err := rootContext()
+	svc, err := requireProjectRoot()
 	if err != nil {
 		return err
 	}
+	ctx := context.Background()
 	if approve {
-		apr, err := approval.New(root).Decide(ctx, *id, approval.DecideOptions{
-			Approve: true, DecidedBy: *by, Comment: *comment,
-		})
-		if err != nil {
-			return approvalError(err)
-		}
-		return outputApproval(stdout, opts, apr)
-	}
-
-	// Rejection of a stage gate commits the decision and the work item
-	// disposition in ONE transaction (the decision rides the transition's
-	// Guard), so a failed disposition leaves the approval pending instead of
-	// half-applying (方案 §4.9).
-	apr, err := approval.New(root).Get(ctx, *id)
-	if err != nil {
-		return approvalError(err)
-	}
-	disposition := ""
-	if apr.Scope == approval.ScopeStageGate {
-		disposition, err = rejectStageGate(ctx, root, apr, *by, *reason)
+		apr, err := svc.ApprovalApprove(ctx, app.DecideApprovalRequest{ID: *id, By: *by, Comment: *comment})
 		if err != nil {
 			return err
 		}
-	} else if _, err := approval.New(root).Decide(ctx, *id, approval.DecideOptions{
-		Approve: false, DecidedBy: *by, Comment: *reason,
-	}); err != nil {
-		return approvalError(err)
+		return outputApproval(stdout, opts, apr)
 	}
-	apr, err = approval.New(root).Get(ctx, *id)
+	// Rejection of a stage gate commits the decision and the work item
+	// disposition in ONE transaction, so a failed disposition leaves the
+	// approval pending instead of half-applying (方案 §4.9).
+	apr, disposition, err := svc.ApprovalReject(ctx, app.DecideApprovalRequest{ID: *id, By: *by, Reason: *reason})
 	if err != nil {
-		return approvalError(err)
+		return err
 	}
 	if opts.json {
 		return json.NewEncoder(stdout).Encode(struct {
@@ -935,386 +1345,6 @@ func runApprovalDecide(stdout io.Writer, opts options, rest []string, approve bo
 	return nil
 }
 
-// rejectStageGate records the rejection and moves the work item (default
-// blocked, or the policy's on_reject regress target) in a single transition
-// transaction. On any refusal nothing is committed — the approval stays
-// pending and the error explains what blocked the disposition.
-func rejectStageGate(ctx context.Context, root string, apr *domain.Approval, decider, reason string) (string, error) {
-	items := workitem.New(root)
-	wi, raw, err := items.ReadSnapshot(ctx, apr.WorkItemID)
-	if err != nil {
-		return "", workitemError(err)
-	}
-	target := domain.StatusBlocked
-	if pol, perr := policyForWorkItem(ctx, root, wi); perr == nil && pol.Policy != nil && strings.HasPrefix(pol.Policy.OnReject, "regress:") {
-		target = strings.TrimPrefix(pol.Policy.OnReject, "regress:")
-	}
-	now := time.Now().UTC()
-	guard := func(tx *storage.Tx) ([]*domain.Event, error) {
-		_, ev, derr := approval.DecideTx(tx, apr.ID, approval.DecideOptions{
-			Approve: false, DecidedBy: decider, Comment: reason, Now: now,
-		})
-		if derr != nil {
-			return nil, derr
-		}
-		return []*domain.Event{ev}, nil
-	}
-	if _, err := items.Transition(ctx, wi.ID, workitem.TransitionRequest{
-		TargetStatus: target,
-		Actor:        decider,
-		Reason:       fmt.Sprintf("approval %s rejected: %s", apr.ID, reason),
-		Now:          now,
-		Guard:        guard,
-	}, raw); err != nil {
-		return "", &codedError{
-			code: CodeInvalid,
-			kind: "approval",
-			msg:  fmt.Sprintf("rejection not recorded: work item %s could not move to %s (%v); nothing was changed", apr.WorkItemID, target, err),
-		}
-	}
-	return target, nil
-}
-
-// runWorkitem exposes the domain store without bypassing its write contracts.
-func runWorkitem(stdout io.Writer, opts options, rest []string) error {
-	if len(rest) == 0 {
-		return errUsage("workitem requires create or get")
-	}
-	root, err := os.Getwd()
-	if err != nil {
-		return errInternal("working directory: %v", err)
-	}
-	items := workitem.New(root)
-	ctx := context.Background()
-	switch rest[0] {
-	case "get":
-		if len(rest) != 2 {
-			return errUsage("workitem get <id>")
-		}
-		wi, raw, err := items.ReadSnapshot(ctx, rest[1])
-		if err != nil {
-			return workitemError(err)
-		}
-		if opts.json {
-			return json.NewEncoder(stdout).Encode(struct {
-				OK      bool             `json:"ok"`
-				Item    *domain.WorkItem `json:"item"`
-				Version string           `json:"version"`
-			}{true, wi, fmt.Sprintf("%x", storage.HashBytes(raw))})
-		}
-		if !opts.quiet {
-			fmt.Fprintf(stdout, "%s\t%s\t%s\nversion: %s\n", wi.ID, wi.Status, wi.Title, fmt.Sprintf("%x", storage.HashBytes(raw)))
-		}
-		return nil
-	case "create":
-		fs := flag.NewFlagSet("workitem create", flag.ContinueOnError)
-		fs.SetOutput(io.Discard)
-		title := fs.String("title", "", "work item title")
-		prefix := fs.String("prefix", "WLM", "ID prefix")
-		actor := fs.String("actor", "", "operator")
-		reason := fs.String("reason", "", "creation reason")
-		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *title == "" || *actor == "" || *reason == "" {
-			return errUsage("workitem create --title <title> --actor <actor> --reason <reason> [--prefix WLM]")
-		}
-		meta, problems := config.Load(root)
-		if len(problems) > 0 {
-			return errInvalid(problems)
-		}
-		if meta.Project == nil {
-			return errPrecondition("project not initialized; run devsys init")
-		}
-		now := time.Now().UTC()
-		wi := &domain.WorkItem{ProjectID: meta.Project.ID, Title: *title, Type: "task", Status: "draft", ProposedBy: *actor, Reason: *reason, CreatedAt: now, UpdatedAt: now}
-		id, err := items.Create(ctx, wi, *prefix)
-		if err != nil {
-			return workitemError(err)
-		}
-		return runWorkitem(stdout, opts, []string{"get", id})
-	case "transition":
-		fs := flag.NewFlagSet("workitem transition", flag.ContinueOnError)
-		fs.SetOutput(io.Discard)
-		id := fs.String("id", "", "work item id")
-		to := fs.String("to", "", "target status")
-		actor := fs.String("actor", "", "operator")
-		reason := fs.String("reason", "", "transition reason")
-		expect := fs.String("expect", "", "version hash from workitem get")
-		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 {
-			return errUsage("workitem transition --id <id> --to <status> --actor <a> --reason <r> --expect <hash>")
-		}
-		wi, expected, err := expectedSnapshot(ctx, items, *id, *expect)
-		if err != nil {
-			return workitemError(err)
-		}
-		notice, approvalID, err := checkTransitionGate(ctx, root, wi, *to)
-		if notice != "" && !opts.quiet {
-			fmt.Fprintf(stdout, "warning: %s\n", notice)
-		}
-		if err != nil {
-			return err
-		}
-		req := workitem.TransitionRequest{
-			TargetStatus: *to, Actor: *actor, Reason: *reason,
-			Now: time.Now().UTC(),
-		}
-		if approvalID != "" {
-			// The approval is consumed inside the transition transaction:
-			// it only becomes consumed when the advance it authorized
-			// commits (实施计划 M3.7), and its event joins the same batch
-			// with the very same timestamp.
-			consumeID, stage, fromStatus, at := approvalID, *to, wi.Status, req.Now
-			req.Guard = func(tx *storage.Tx) ([]*domain.Event, error) {
-				ev, err := approval.ConsumeTx(tx, consumeID, wi.ID, stage, fromStatus, at, *actor, *reason)
-				if err != nil {
-					return nil, err
-				}
-				return []*domain.Event{ev}, nil
-			}
-		}
-		wi, err = items.Transition(ctx, *id, req, expected)
-		if err != nil {
-			return workitemError(err)
-		}
-		if !opts.quiet {
-			fmt.Fprintf(stdout, "%s: %s\n", wi.ID, wi.Status)
-		}
-		return nil
-	case "claim":
-		fs := flag.NewFlagSet("workitem claim", flag.ContinueOnError)
-		fs.SetOutput(io.Discard)
-		id := fs.String("id", "", "work item id")
-		owner := fs.String("owner", "", "claimer identity")
-		reason := fs.String("reason", "", "claim reason")
-		expect := fs.String("expect", "", "version hash from workitem get")
-		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 {
-			return errUsage("workitem claim --id <id> --owner <owner> --reason <reason> [--expect <hash>]")
-		}
-		wi, expected, err := expectedSnapshot(ctx, items, *id, *expect)
-		if err != nil {
-			return workitemError(err)
-		}
-		if err := checkClaimQuality(ctx, root, wi); err != nil {
-			return err
-		}
-		res, err := items.Claim(ctx, *id, workitem.ClaimOptions{
-			Owner: *owner, Actor: *owner, Reason: *reason, Expected: expected,
-		})
-		if err != nil {
-			return workitemError(err)
-		}
-		if opts.json {
-			return json.NewEncoder(stdout).Encode(struct {
-				OK     bool   `json:"ok"`
-				RunID  string `json:"run_id"`
-				Token  string `json:"token"`
-				Status string `json:"status"`
-			}{true, res.RunID, res.Token, res.Status})
-		}
-		if !opts.quiet {
-			fmt.Fprintf(stdout, "claimed %s: run=%s token=%s\n", *id, res.RunID, res.Token)
-		}
-		return nil
-	default:
-		return errUsage("unknown workitem operation %q", rest[0])
-	}
-}
-
-func workitemError(err error) error {
-	if errors.Is(err, storage.ErrNotInitialized) || errors.Is(err, workitem.ErrNotFound) {
-		return errPrecondition("%v", err)
-	}
-	return &codedError{code: CodeInvalid, kind: "workitem", msg: err.Error()}
-}
-
-// expectedSnapshot reads the work item together with its raw bytes and turns
-// the --expect version hash into the guard the mutations require: it accepts
-// only when the snapshot hash matches the caller's view (fail-closed — a
-// stale or unknown hash means no authority to mutate).
-func expectedSnapshot(ctx context.Context, items *workitem.Store, id, expect string) (*domain.WorkItem, []byte, error) {
-	wi, raw, err := items.ReadSnapshot(ctx, id)
-	if err != nil {
-		return nil, nil, err
-	}
-	if expect = strings.TrimSpace(expect); expect != "" {
-		want, derr := hex.DecodeString(expect)
-		sum := storage.HashBytes(raw)
-		if derr != nil || len(want) != sha256.Size || !bytes.Equal(want, sum[:]) {
-			return nil, nil, fmt.Errorf("version mismatch: work item changed since your read; rerun workitem get")
-		}
-	}
-	return wi, raw, nil
-}
-
-// errWorkflowPolicy reports a workflow policy that a work item declared but
-// that cannot be used (missing or invalid). Callers refuse rather than
-// silently skipping gates (fail closed; M3.5 adds last-known-good).
-func errWorkflowPolicy(err error) *codedError {
-	return &codedError{code: CodeInvalid, kind: "workflow", msg: err.Error()}
-}
-
-// errGate renders a stage gate rejection with one problem per unmet
-// requirement, located at the policy that declared the gate.
-func errGate(policyFile, stage string, missing []string) *codedError {
-	problems := make([]config.Problem, 0, len(missing))
-	for _, m := range missing {
-		problems = append(problems, config.Problem{File: policyFile, Field: "gates.stages." + stage, Reason: m})
-	}
-	word := "item"
-	if len(missing) != 1 {
-		word = "items"
-	}
-	return &codedError{
-		code:     CodeInvalid,
-		kind:     "gate",
-		msg:      fmt.Sprintf("stage gate for %q is not satisfied (%d missing %s)", stage, len(missing), word),
-		problems: problems,
-	}
-}
-
-// errQuality renders a claim-time quality rejection with one problem per
-// improvement item, located at the policy's threshold.
-func errQuality(policyFile string, score, minScore int, improvements []string) *codedError {
-	problems := make([]config.Problem, 0, len(improvements))
-	for _, m := range improvements {
-		problems = append(problems, config.Problem{File: policyFile, Field: "quality_gate.min_score", Reason: m})
-	}
-	return &codedError{
-		code:     CodeInvalid,
-		kind:     "quality",
-		msg:      fmt.Sprintf("quality gate not satisfied: score %d is below min_score %d", score, minScore),
-		problems: problems,
-	}
-}
-
-// policyForWorkItem resolves the workflow policy a work item declares, or an
-// empty resolution when it declares none. The current file is re-validated on
-// every call; a failing file falls back to the last-known-good snapshot with
-// the current failure reported in Resolution.Issue (实施计划 M3.5).
-func policyForWorkItem(ctx context.Context, root string, wi *domain.WorkItem) (workflow.Resolution, error) {
-	if wi.Workflow == nil {
-		return workflow.Resolution{}, nil
-	}
-	id := wi.Workflow.ID
-	if id == "" {
-		return workflow.Resolution{}, fmt.Errorf("work item %s has a workflow instance without an id", wi.ID)
-	}
-	return workflow.Resolve(ctx, root, id)
-}
-
-// gateEvidence collects the evidence a stage gate consumes: artifact names,
-// comment events and, for require_approval gates, the approved unconsumed
-// approval matching the stage and the work item's current status (方案 §4.9).
-// The matching approval id is returned so the advancing transaction can
-// consume it atomically.
-func gateEvidence(root string, wi *domain.WorkItem, stage string) (workflow.GateEvidence, string, error) {
-	ctx := context.Background()
-	artifacts, err := record.New(root).ListArtifacts(ctx)
-	if err != nil {
-		return workflow.GateEvidence{}, "", evidenceError(err)
-	}
-	names := map[string]bool{}
-	for _, a := range artifacts {
-		for _, related := range a.RelatedWorkItems {
-			if related == wi.ID && a.Name != "" {
-				names[a.Name] = true
-			}
-		}
-	}
-	byName := make([]string, 0, len(names))
-	for n := range names {
-		byName = append(byName, n)
-	}
-	sort.Strings(byName)
-	comments, err := events.New(root).Read(ctx, events.Filter{
-		Subject: &domain.Reference{Type: "workitem", ID: wi.ID},
-		Type:    "comment",
-	})
-	if err != nil {
-		return workflow.GateEvidence{}, "", evidenceError(err)
-	}
-	approvalID := ""
-	matched, err := approval.MatchingGate(ctx, root, wi.ID, stage, wi.Status)
-	switch {
-	case err == nil:
-		approvalID = matched.ID
-	case errors.Is(err, approval.ErrNotFound):
-	default:
-		return workflow.GateEvidence{}, "", evidenceError(err)
-	}
-	return workflow.GateEvidence{
-		ArtifactNames: byName,
-		CommentCount:  len(comments),
-		ApprovalReady: approvalID != "",
-	}, approvalID, nil
-}
-
-func evidenceError(err error) error {
-	if errors.Is(err, storage.ErrNotInitialized) {
-		return errPrecondition("%v", err)
-	}
-	return errInternal("collect gate evidence: %v", err)
-}
-
-// checkTransitionGate refuses a transition whose target stage gate is not
-// satisfied, listing every missing item. When the current policy file failed
-// validation and the last-known-good snapshot took over, the returned notice
-// carries that fact for the caller to surface.
-//
-// Known window: evidence (artifacts, comments) is collected before the
-// transition transaction takes the project lock, so evidence removed in
-// between is not re-checked. Gates are an application-level precondition,
-// not a snapshot-isolated invariant; M4.2 lifts this wiring into the shared
-// application service.
-func checkTransitionGate(ctx context.Context, root string, wi *domain.WorkItem, target string) (string, string, error) {
-	res, err := policyForWorkItem(ctx, root, wi)
-	if err != nil {
-		return "", "", errWorkflowPolicy(err)
-	}
-	if res.Policy == nil {
-		return "", "", nil
-	}
-	notice := ""
-	if res.Issue != nil {
-		notice = fmt.Sprintf("workflow policy %q is invalid: %s; using %s", res.ID, res.Issue.String(), res.Source)
-	}
-	ev, approvalID, err := gateEvidence(root, wi, target)
-	if err != nil {
-		return "", "", err
-	}
-	gate := res.Policy.CheckGate(target, ev)
-	if gate.Allowed {
-		return notice, approvalID, nil
-	}
-	return notice, "", errGate(res.Policy.File, target, gate.Missing)
-}
-
-// checkClaimQuality refuses a claim whose work item scores below the policy's
-// quality threshold. While the current policy file is invalid, claims are
-// blocked outright — the last-known-good snapshot serves read paths only
-// (方案 §5.3: 配置错误只阻塞新任务派发).
-func checkClaimQuality(ctx context.Context, root string, wi *domain.WorkItem) error {
-	res, err := policyForWorkItem(ctx, root, wi)
-	if err != nil {
-		return errWorkflowPolicy(err)
-	}
-	if res.Policy == nil {
-		return nil
-	}
-	if res.Issue != nil {
-		return errWorkflowPolicy(fmt.Errorf(
-			"workflow policy %q is invalid: %s; claims stay blocked until the file is fixed (%s is retained for read paths)",
-			res.ID, res.Issue.String(), res.Source))
-	}
-	quality := workflow.ScoreQuality(workflow.QualityInput{
-		Title:              wi.Title,
-		Description:        wi.Description,
-		AcceptanceCriteria: wi.AcceptanceCriteria,
-	})
-	if !res.Policy.QualityGateBlocks(quality) {
-		return nil
-	}
-	return errQuality(res.Policy.File, quality.Score, res.Policy.QualityGate.MinScore, quality.Improvements)
-}
-
 // runNext implements `devsys next`: the read-only readiness verdict and the
 // single recommended next action (方案 §7.4, 实施计划 M3.4). Like doctor it
 // never writes, recovers or creates the local lock; while pending
@@ -1324,106 +1354,41 @@ func runNext(stdout io.Writer, opts options, rest []string) error {
 	if len(rest) != 0 {
 		return errUsage("`devsys next` takes no arguments")
 	}
-	root, err := os.Getwd()
+	svc, err := requireProjectRoot()
 	if err != nil {
-		return errInternal("resolve working directory: %v", err)
+		return err
 	}
-	devsys := filepath.Join(root, project.DevsysDirName)
-	if _, err := os.Stat(devsys); errors.Is(err, fs.ErrNotExist) {
-		return errPrecondition("no %s/ in %s: run `devsys init` first", project.DevsysDirName, root)
-	} else if err != nil {
-		return errInternal("inspect %s: %v", devsys, err)
-	}
-
-	ctx := context.Background()
-	doc, err := reconcile.Doctor(ctx, root, reconcile.Options{})
+	report, _, err := svc.Next(context.Background())
 	if err != nil {
-		return errInternal("next: inspect: %v", err)
+		return err
 	}
-	in := next.Input{
-		Now:              time.Now().UTC(),
-		PendingTxns:      doc.PendingTransactions,
-		ExpiredLeases:    doc.ExpiredLeases,
-		OrphanLeases:     doc.OrphanLeases,
-		UnreadableLeases: doc.UnreadableLeases,
-		InspectionOK:     doc.InspectionOK,
-		InspectionNote:   doc.Note,
-		RecoverCommand:   `devsys recover --actor operator --reason "recover interrupted state"`,
-	}
-	// Business facts are only rendered from a trustworthy inspection
-	// (pending transactions or no lock file both keep them out).
-	if doc.InspectionOK && len(doc.PendingTransactions) == 0 {
-		items, err := workitem.New(root).List(ctx)
-		if err != nil {
-			return errInternal("next: list work items: %v", err)
-		}
-		in.WorkItems = items
-		pending, err := approval.New(root).List(ctx, approval.Filter{Status: approval.StatusPending})
-		if err != nil {
-			return errInternal("next: list approvals: %v", err)
-		}
-		for _, a := range pending {
-			if a.InvalidatedAt != nil {
-				continue
-			}
-			in.PendingApprovals = append(in.PendingApprovals, next.PendingApproval{ID: a.ID, WorkitemID: a.WorkItemID})
-		}
-	}
-	md, problems := config.Diagnose(root)
-	for _, p := range problems {
-		in.MetadataProblems = append(in.MetadataProblems, p.String())
-	}
-	if md != nil && md.Project != nil {
-		in.Milestones = md.Project.Milestones
-	}
-	// Invalid or missing policy files are recorded risks; the last-known-good
-	// fallback keeps read paths usable while dispatch stays blocked.
-	policies := workflow.Load(root)
-	present := map[string]bool{}
-	for _, res := range policies {
-		name := res.File
-		if i := strings.LastIndex(name, "/"); i >= 0 {
-			name = name[i+1:]
-		}
-		present[strings.TrimSuffix(name, ".md")] = true
-		for _, is := range res.Issues {
-			if is.Severity == workflow.SeverityError {
-				in.PolicyProblems = append(in.PolicyProblems, is.String())
-			}
-		}
-	}
-	for _, wi := range in.WorkItems {
-		if wi.Workflow == nil || wi.Workflow.ID == "" || present[wi.Workflow.ID] {
-			continue
-		}
-		in.PolicyProblems = append(in.PolicyProblems,
-			fmt.Sprintf("work item %s references missing policy %q", wi.ID, wi.Workflow.ID))
-	}
-
-	rep := next.Evaluate(in)
 	if opts.json {
 		out := struct {
-			OK bool `json:"ok"`
-			next.Report
-		}{OK: true, Report: rep}
+			OK      bool     `json:"ok"`
+			Verdict string   `json:"verdict"`
+			Reasons []string `json:"reasons"`
+			Risks   any      `json:"risks"`
+			Fixes   any      `json:"fixes,omitempty"`
+			Next    any      `json:"next"`
+		}{OK: true, Verdict: report.Verdict, Reasons: report.Reasons, Risks: report.Risks, Fixes: report.Fixes, Next: report.Next}
 		return json.NewEncoder(stdout).Encode(out)
 	}
 	if !opts.quiet {
-		fmt.Fprintf(stdout, "readiness: %s\n", rep.Verdict)
-		for _, r := range rep.Reasons {
+		fmt.Fprintf(stdout, "readiness: %s\n", report.Verdict)
+		for _, r := range report.Reasons {
 			fmt.Fprintf(stdout, "  reason: %s\n", r)
 		}
-		for _, r := range rep.Risks {
+		for _, r := range report.Risks {
 			if r.WorkitemID != "" {
 				fmt.Fprintf(stdout, "  risk: %s %s: %s\n", r.Kind, r.WorkitemID, r.Detail)
 			} else {
 				fmt.Fprintf(stdout, "  risk: %s: %s\n", r.Kind, r.Detail)
 			}
 		}
-		for _, f := range rep.Fixes {
+		for _, f := range report.Fixes {
 			fmt.Fprintf(stdout, "  fix: %s -> %s\n", f.Reason, f.Command)
 		}
-		n := rep.Next
+		n := report.Next
 		switch {
 		case n.WorkitemID != "":
 			fmt.Fprintf(stdout, "next: %s %s: %s\n", n.Action, n.WorkitemID, n.Reason)
@@ -1434,187 +1399,4 @@ func runNext(stdout io.Writer, opts options, rest []string) error {
 		}
 	}
 	return nil
-}
-
-// runDoctor implements `devsys doctor`: the read-only inspection report
-// (M2.3). It never recovers or writes; pending transactions are reported
-// instead of business facts.
-func runDoctor(stdout io.Writer, opts options, rest []string) error {
-	if len(rest) != 0 {
-		return errUsage("`devsys doctor` takes no arguments")
-	}
-	root, err := os.Getwd()
-	if err != nil {
-		return errInternal("resolve working directory: %v", err)
-	}
-	rep, err := reconcile.Doctor(context.Background(), root, reconcile.Options{})
-	if err != nil {
-		return errInternal("doctor: %v", err)
-	}
-	if opts.json {
-		return json.NewEncoder(stdout).Encode(rep)
-	}
-	if !opts.quiet {
-		if !rep.InspectionOK {
-			fmt.Fprintf(stdout, "inspection limited: %s\n", rep.Note)
-		}
-		for _, p := range rep.PendingTransactions {
-			fmt.Fprintf(stdout, "PENDING  %s\n", p.ID)
-		}
-		if len(rep.PendingTransactions) > 0 {
-			fmt.Fprintln(stdout, "run `devsys recover` before trusting business state")
-		}
-		for _, l := range rep.ExpiredLeases {
-			fmt.Fprintf(stdout, "EXPIRED  %s  owner=%s  lease_until=%s\n", l.WorkitemID, l.Owner, l.LeaseUntil.Format(time.RFC3339))
-		}
-		for _, l := range rep.OrphanLeases {
-			fmt.Fprintf(stdout, "ORPHAN   %s  owner=%s  run=%s missing\n", l.WorkitemID, l.Owner, l.RunID)
-		}
-		for _, p := range rep.Orphans {
-			fmt.Fprintf(stdout, "PROPOSE  %-26s %s  %s\n", p.Kind, p.WorkitemID, p.Description)
-			for _, ev := range p.Evidence {
-				if ev.Kind == reconcile.EvidenceAbsent {
-					fmt.Fprintf(stdout, "         absent  %s\n", ev.Path)
-				} else {
-					fmt.Fprintf(stdout, "         file    %s  %s\n", ev.Path, shortHash(ev.SHA256))
-				}
-			}
-		}
-	}
-	return nil
-}
-
-// runRecover implements `devsys recover`: deterministic transaction
-// recovery followed by policy-driven orphan release (M2.3). Actor and
-// reason are mandatory so every release carries an audit trail.
-func runRecover(stdout io.Writer, opts options, rest []string) error {
-	fs := flag.NewFlagSet("recover", flag.ContinueOnError)
-	fs.SetOutput(io.Discard)
-	actor := fs.String("actor", "", "operator")
-	reason := fs.String("reason", "", "recovery reason")
-	if err := fs.Parse(rest); err != nil || fs.NArg() != 0 || *actor == "" || *reason == "" {
-		return errUsage("recover --actor <actor> --reason <reason>")
-	}
-	root, err := os.Getwd()
-	if err != nil {
-		return errInternal("resolve working directory: %v", err)
-	}
-	rep, err := reconcile.Recover(context.Background(), root, reconcile.Options{Actor: *actor, Reason: *reason})
-	if err != nil {
-		return errInternal("recover: %v", err)
-	}
-	if opts.json {
-		return json.NewEncoder(stdout).Encode(struct {
-			OK  bool                    `json:"ok"`
-			Rep reconcile.RecoverReport `json:"recover"`
-		}{true, rep})
-	}
-	if !opts.quiet {
-		fmt.Fprintf(stdout, "transactions recovered: %d applied, %d skipped, %d discarded\n",
-			rep.TransactionRecovery.Replayed, rep.TransactionRecovery.Skipped, rep.TransactionRecovery.Discarded)
-		for _, id := range rep.ReleasedExpired {
-			fmt.Fprintf(stdout, "released expired lease: %s\n", id)
-		}
-		for _, id := range rep.ReleasedOrphans {
-			fmt.Fprintf(stdout, "released orphan lease: %s\n", id)
-		}
-	}
-	return nil
-}
-
-// runRepair implements `devsys repair`: dry-run lists proposals with a
-// deterministic digest; --apply re-runs the dry-run and only applies when
-// the supplied --confirm digest still matches, so every apply revalidates
-// the evidence it consumes (方案 §15.4 推断→确认→重写).
-func runRepair(stdout io.Writer, opts options, rest []string) error {
-	fs := flag.NewFlagSet("repair", flag.ContinueOnError)
-	fs.SetOutput(io.Discard)
-	apply := fs.Bool("apply", false, "apply the repair plan")
-	confirm := fs.String("confirm", "", "digest from --dry-run")
-	dryRun := fs.Bool("dry-run", false, "list proposed repairs without writing")
-	actor := fs.String("actor", "", "operator")
-	reason := fs.String("reason", "", "repair reason")
-	if err := fs.Parse(rest); err != nil || fs.NArg() != 0 || *actor == "" || *reason == "" {
-		return errUsage("repair --dry-run --actor <a> --reason <r> | repair --apply --confirm <digest> --actor <a> --reason <r>")
-	}
-	root, err := os.Getwd()
-	if err != nil {
-		return errInternal("resolve working directory: %v", err)
-	}
-	ropts := reconcile.Options{Actor: *actor, Reason: *reason}
-	if *apply {
-		if *confirm == "" {
-			return errUsage("repair --apply requires --confirm <digest>")
-		}
-		plan, err := reconcile.RepairDryRun(context.Background(), root, ropts)
-		if err != nil {
-			return errInternal("repair plan: %v", err)
-		}
-		plan.Digest = *confirm
-		if len(plan.Proposals) == 0 {
-			if !opts.quiet {
-				fmt.Fprintln(stdout, "nothing to repair")
-			}
-			return nil
-		}
-		rep, err := reconcile.RepairApply(context.Background(), root, plan, ropts)
-		if err != nil {
-			if errors.Is(err, reconcile.ErrDigestMismatch) {
-				return errPrecondition("confirmation digest does not match current state; run `devsys repair --dry-run` again")
-			}
-			return errInternal("repair apply: %v", err)
-		}
-		if opts.json {
-			return json.NewEncoder(stdout).Encode(struct {
-				OK  bool                  `json:"ok"`
-				Rep reconcile.ApplyReport `json:"apply"`
-			}{true, rep})
-		}
-		if !opts.quiet {
-			for _, a := range rep.Applied {
-				fmt.Fprintf(stdout, "applied  %s\n", a)
-			}
-			for _, r := range rep.Rejected {
-				fmt.Fprintf(stdout, "rejected %s\n", r)
-			}
-		}
-		return nil
-	}
-	if !*dryRun {
-		return errUsage("repair requires --dry-run or --apply --confirm <digest>")
-	}
-	plan, err := reconcile.RepairDryRun(context.Background(), root, ropts)
-	if err != nil {
-		return errInternal("repair plan: %v", err)
-	}
-	if opts.json {
-		return json.NewEncoder(stdout).Encode(struct {
-			OK   bool           `json:"ok"`
-			Plan reconcile.Plan `json:"plan"`
-		}{true, plan})
-	}
-	if !opts.quiet {
-		if plan.Note != "" {
-			fmt.Fprintf(stdout, "note: %s\n", plan.Note)
-		}
-		for _, p := range plan.Proposals {
-			fmt.Fprintf(stdout, "%-26s %s  %s\n", p.Kind, p.WorkitemID, p.Description)
-			for _, ev := range p.Evidence {
-				if ev.Kind == reconcile.EvidenceAbsent {
-					fmt.Fprintf(stdout, "  absent  %s\n", ev.Path)
-				} else {
-					fmt.Fprintf(stdout, "  file    %s  %s\n", ev.Path, shortHash(ev.SHA256))
-				}
-			}
-		}
-		fmt.Fprintf(stdout, "digest: %s\n", plan.Digest)
-	}
-	return nil
-}
-
-func shortHash(h string) string {
-	if len(h) > 12 {
-		return h[:12]
-	}
-	return h
 }

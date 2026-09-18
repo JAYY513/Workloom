@@ -37,6 +37,14 @@
 | M3.5 策略热载入与 last-known-good | 已完成：`workflow.Resolve` 每次读取重新校验；成功刷新 `.devsys/.cache/workflows/<id>.md` 快照，失败回退 LKG 并把当前失败定位交给调用方；坏策略阻塞 `claim`（exit 4 + 原因），`transition` 门禁按 LKG 评估并打印 warning，`next` 增 `invalid_policy` 风险且仍可用 |
 | M3.6 工作流实例与步骤推进 | 已完成：实例存于工作项 `workflow` 字段（含 `paused`）、步骤历史走事件流；`when` 加载期解析+校验（7 字段白名单、`== != < > in exists`、类型规则；未知字段/操作符=策略错误）；`devsys workflow start\|next\|step-complete\|pause\|resume\|cancel`（start 拒绝坏策略；推进允许 LKG+warning；跳步/条件不满足 exit 4 + 允许候选）；推进不写状态与调度态 |
 | M3.7 审批服务 | 已完成：`internal/approval`（一审批一文件 `approval-<N>`、Request/Decide/ConsumeTx/List/Get，全部走事务+CAS）+ CLI `approval list\|request\|approve\|reject`；`require_approval` 门禁联动（批准后在推进事务内消费并写 `consumed_at`+`approval_consumed`）；`requested_status` 实现「离开阶段即作废」；拒绝默认 `block`（理由与引用进 `status_changed`）、`on_reject: regress:<status>` 可回退；`next` 增 `pending_approval` 风险与优先级 2 |
+| M4.1 MCP Server 骨架 | 已完成：`internal/mcp` stdio MCP 服务 + `devsys mcp serve [--profile ...]`；工具按 profile 分级暴露（默认 session+executor）；`health` 只读工具；真实 MCP 客户端 codex 0.144.1 连接并调用通过 |
+| M4.1a 采用官方 MCP Go SDK | 已完成（2026-09-18）：传输层替换为 `github.com/modelcontextprotocol/go-sdk`（已 vendored，离线构建保持）；自研 JSON-RPC/schema 校验层删除，协议协商、`tools/list`/`tools/call`、输入校验与错误包装由 SDK 负责；错误分类与 profile 过滤保留在本地；codex 实连复验通过 |
+| M4.2 工具集：项目/工作项/工作流/审批 | 已完成：新增共享应用服务 `internal/app`（CLI 业务逻辑迁入，CLI 变薄渲染层，MCP 工具调用同一实现——门禁/质量门/审批消费/版本守卫/事务恢复只有一份）；工具面 `project_*`/`workitem_*`/`workflow_*`/`approval_*`（写工具要求 expect）；CLI 补齐 `project` 与 `workitem list\|update\|release\|start\|block\|complete\|comment\|dep`、`workflow list\|get`、`approval get`；错误分类统一（usage/precondition/invalid/internal）双面同形 |
+| M4.3 工具集：运行/记录/产物/知识 | 已完成：`decision_*`/`finding_*`/`event_*`/`artifact_*`/`run_*`（读+证据累积+续租）/`context_*`/`knowledge_status`（共 58 个工具）；CLI 增 `decision`/`finding`/`event`/`artifact`/`run`/`context`/`knowledge status`；记录查询带版本哈希、CLI 与 MCP 读取一致（验收测试钉死）；artifact 版本链线性（同父二次追加被拒 `ErrSuperseded`，快照校验在写事务内）；上下文在检查不可信时不输出计数并给 notice；Run 生命周期推进（`run_verify/complete/fail/cancel`）归 M6，知识索引层查询（`knowledge_search/get_*`）归 M5（偏差已记录） |
+| M4.4 会话接口 agent_session_start | 已完成：MCP `agent_session_start` + CLI `session start [--compact]`——一次调用返回会话身份（回显不落盘）、项目事实、当前状态、在飞工作项、§7.4 推荐动作（含可执行命令）与上下文引用；检查不可信时不输出计数/工作项内容并给 notice |
+| M4.5 文件交换协议与退出码 | 已完成：退出码表固化（0/1/2/3/4 + 知识 10/11 预留）并由测试钉住；`--json` 信封与 `--jsonl`（列表一行一条记录，7 个命令）双格式，互斥；README 协议节 + `scripts/exchange-demo.sh` 可运行解析示例（文件读取 / jsonl / json / 退出码分支） |
+| M4.6 AGENTS.md 管理块（devsys wire） | 已完成：`devsys wire [--dry-run]` 幂等注入标记区间（块外内容与其他工具的管理块逐字节保留；重复/残缺标记 exit 4 拒绝；CRLF 一致、权限保留、原子写）；`--dry-run` 输出变化区域预览，`--json` 给结构化结果 |
+| M4 收尾：里程碑剧本与提交 | 已完成：`scripts/smoke-m4.{sh,ps1}` 双平台实跑通过（MCP 面 / CLI-MCP 读写一致 / 会话接口 / 退出码分支 / jsonl / wire 幂等 / 知识降级）；repowiki 增量刷新至 M4 基线；`feat(m4)` + `docs(repowiki)` 两个提交 |
 
 ## 构建与验收
 
@@ -187,6 +195,45 @@ bin/devsys.exe approval reject  --id <approval-id> --by <decider> --reason <r>
 
 `require_approval` 门禁要求存在「已批准、未消费、目标阶段与 `requested_status` 匹配」的审批；推进时审批在**同一事务内**被消费（写 `consumed_at` 并追加 `approval_consumed`），消费失败整个推进回滚。工作项离开请求时的状态会立即把该状态下未消费的审批标记为 `invalidated_at`（即使之后回到同一状态也需重新请求）；重复的未决请求会被拒绝。拒绝默认把工作项置为 `blocked`（`status_changed` 事件带审批引用与理由），策略 `on_reject: regress:<status>` 时回退到指定状态；`reject` 的决定与工作项处置在**同一事务**内提交，失败则整单回滚（审批保持 pending）。
 
+MCP 接入（M4.1/M4.2，方案 §8.1/§8.6；stdio 优先，HTTP 后置）：
+
+```sh
+bin/devsys.exe mcp serve                      # 默认 profile：session+executor
+bin/devsys.exe mcp serve --profile admin      # 显式启用 reviewer/admin 工具子集
+```
+
+传输层由官方 Go SDK（`github.com/modelcontextprotocol/go-sdk`，已 vendored）实现：stdout 只承载协议、诊断走 stderr；协议版本协商、`tools/list`/`tools/call`、输入 schema 校验（结构体推断，`additionalProperties:false`）与错误包装均由 SDK 负责。工具按 profile 分级**注册**（未暴露的工具不可按名调用）：`session`（查询与会话）、`executor`（创建/推进/领取/工作流/审批请求）、`reviewer`（审批决定）、`admin`（项目元数据与状态变更）；默认 `session,executor`，未知 profile 是用法错误。
+
+工具面（M4.2/M4.3）：`health`、`project_{list,get,status,blueprint_get,create,update,state_update}`、`workitem_{list,get,next,create,update,transition,claim,release,start,block,complete,comment,add_dependency,remove_dependency}`、`workflow_{list,get,start,step_next,step_complete,pause,resume,cancel}`、`approval_{list,get,request,decide}`、`decision_{list,get,create,approve}`、`finding_{list,get,create,resolve}`、`event_{list,record}`、`artifact_{list,get,register,update,history}`、`run_{list,get,log,create,update,heartbeat}`、`context_{get,for_workitem,refresh,compact}`、`knowledge_status`（共 58 个）。所有写工具都要求 `expect`（先读后写；过期哈希一律拒绝；`event_record`/`workitem_comment` 为 append-only 例外），并且与 CLI 共用同一应用服务（`internal/app`）——门禁、质量门、审批消费、事务恢复在两侧是同一份实现。工具失败返回 `isError` 结果 + `{code,message,problems?,notice?}`（code 对齐退出码分类 usage/precondition/invalid/internal，problems 与 CLI 打印同形）。MCP 客户端（如 codex）以命令 `devsys.exe mcp serve`、工作目录指向项目根接入。
+
+文件交换协议与退出码（M4.5，方案 §8.1/§12.5）：
+
+退出码（脚本可分支，不解析消息）：
+
+| 码 | 含义 |
+|---|---|
+| 0 | 成功 |
+| 1 | 内部错误 |
+| 2 | 用法错误 |
+| 3 | 前置条件错误（非 Git 仓库、未 init、权限、摘要不匹配、对象不存在） |
+| 4 | 受管状态不可信（解析/字段/schema_version 问题） |
+| 10 / 11 | 预留给知识层状态（10 过期 / 11 缺失，方案 §12.5）。`knowledge status` 已可用（当前为降级报告，恒 exit 0）；10/11 状态码随 M5.3 引入 |
+
+机器可读输出：`--json` 输出单个文档（成功 `{"ok":true,...}`；失败写 stderr 的 `{"ok":false,"error":{"code","kind","message","problems"}}`，`problems` 与人类输出同形 `文件:行号:字段:原因`）；`--jsonl` 输出**一行一条记录**（列表命令：`workitem|decision|finding|event|artifact|run|approval list`），记录字段与 `--json` 信封内的同名。两者互斥（同时给出是用法错误）。
+
+文件交换：`.devsys/**` 是事实来源（YAML/JSON，稳定键序、原子替换、乐观并发版本哈希），只读脚本可以直接读取；**运行时写入必须经过 CLI/MCP 应用服务**（版本守卫、门禁、事务恢复都在那里），不要直接编辑受管文件（测试夹具与人工修复除外——修复请用 `devsys repair`）；未来若提供导入命令，同样必须走该服务。示例：`scripts/exchange-demo.sh`（原始文件读取、`--jsonl`/`--json` 解析、退出码分支，全部为可运行断言）。
+
+M4 完整剧本（Go、Git 与 Python 必须在 PATH）：
+
+```sh
+# Windows PowerShell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/smoke-m4.ps1
+# Bash；Windows 请在 Git Bash 中执行（WSL 需自行安装 Go/Git）
+bash scripts/smoke-m4.sh
+```
+
+脚本构建 CLI 与 `scripts/m4helper`（用官方 SDK 作客户端，走真实 stdio 传输），在新临时 Git 项目中执行：MCP 面（profile 过滤、health、decision 创建/读取往返、`agent_session_start`、错误分类 `precondition` 与未知参数拒绝）、CLI/MCP 读写一致（MCP 创建的记录由 CLI 读出同一版本哈希）、退出码分支（0/2/3）、`--jsonl` 一行一条、`wire` 三次幂等且保留手写内容与 repowiki 块、`knowledge status` 降级报告。默认清理临时目录；PowerShell `-Keep` / Bash `--keep` 保留项目并打印 `KEPT_PROJECT`。
+
 测试与静态检查（`vendor/` 已提交，离线可跑）：
 
 ```sh
@@ -212,6 +259,7 @@ internal/domain/     Project/WorkItem/Run/Decision/Finding/Event/Artifact/Approv
 internal/project/    init 与项目内布局（后续：领域 / 访问 / 执行）
 internal/registry/   用户级项目路径注册表（方案 §14.4）
 internal/workflow/   策略文件解析与严格校验 .devsys/workflows/<id>.md（方案 §5.3；M3.1）
+internal/mcp/        MCP stdio 服务：JSON-RPC 生命周期、工具注册与 profile 分级（方案 §8.1/§8.6；M4.1）
 internal/version/    构建标识（可用 -ldflags 覆盖）
 vendor/              依赖副本（gopkg.in/yaml.v3），保证干净机器离线构建
 docs/原始文档/       方案与实施计划（源文档，不再拆分）
