@@ -15,6 +15,7 @@ import (
 	"workloom/internal/domain"
 	"workloom/internal/events"
 	"workloom/internal/record"
+	"workloom/internal/run"
 	"workloom/internal/storage"
 	"workloom/internal/workflow"
 	"workloom/internal/workitem"
@@ -401,7 +402,8 @@ func (s *Service) storeError(err error) error {
 		return nil
 	}
 	if errors.Is(err, storage.ErrNotInitialized) || errors.Is(err, workitem.ErrNotFound) ||
-		errors.Is(err, approval.ErrNotFound) || errors.Is(err, record.ErrNotFound) {
+		errors.Is(err, approval.ErrNotFound) || errors.Is(err, record.ErrNotFound) ||
+		errors.Is(err, run.ErrNotFound) {
 		return Preconditionf("%v", err)
 	}
 	return Invalidf(KindWorkitem, nil, "%v", err)

@@ -45,6 +45,7 @@
 | M4.5 文件交换协议与退出码 | 已完成：退出码表固化（0/1/2/3/4 + 知识 10/11 预留）并由测试钉住；`--json` 信封与 `--jsonl`（列表一行一条记录，7 个命令）双格式，互斥；README 协议节 + `scripts/exchange-demo.sh` 可运行解析示例（文件读取 / jsonl / json / 退出码分支） |
 | M4.6 AGENTS.md 管理块（devsys wire） | 已完成：`devsys wire [--dry-run]` 幂等注入标记区间（块外内容与其他工具的管理块逐字节保留；重复/残缺标记 exit 4 拒绝；CRLF 一致、权限保留、原子写）；`--dry-run` 输出变化区域预览，`--json` 给结构化结果 |
 | M4 收尾：里程碑剧本与提交 | 已完成：`scripts/smoke-m4.{sh,ps1}` 双平台实跑通过（MCP 面 / CLI-MCP 读写一致 / 会话接口 / 退出码分支 / jsonl / wire 幂等 / 知识降级）；repowiki 增量刷新至 M4 基线；`feat(m4)` + `docs(repowiki)` 两个提交 |
+| M6.1 Harness Adapter 接口与 Shell Adapter | 已完成：`internal/harness`（方案 §9.2 九方法映射 + 八项能力声明 + Session 句柄承载 stream/stop/collect）；Shell 适配器 argv 直通、逐行 stdout/stderr、超长行按 rune 边界 64 KiB 分块、超时与取消终止整棵进程树（POSIX 进程组 / Windows `taskkill /T /F`）；`devsys run exec` 把输出实时镜像并写入 `.devsys/runs/<run-id>.jsonl`（追加写、周期 fsync、断尾修复留痕），结束后更新 run 证据（commands/logs/result.errors）并记事件 |
 
 ## 构建与验收
 
@@ -222,6 +223,17 @@ bin/devsys.exe mcp serve --profile admin      # 显式启用 reviewer/admin 工�
 机器可读输出：`--json` 输出单个文档（成功 `{"ok":true,...}`；失败写 stderr 的 `{"ok":false,"error":{"code","kind","message","problems"}}`，`problems` 与人类输出同形 `文件:行号:字段:原因`）；`--jsonl` 输出**一行一条记录**（列表命令：`workitem|decision|finding|event|artifact|run|approval list`），记录字段与 `--json` 信封内的同名。两者互斥（同时给出是用法错误）。
 
 文件交换：`.devsys/**` 是事实来源（YAML/JSON，稳定键序、原子替换、乐观并发版本哈希），只读脚本可以直接读取；**运行时写入必须经过 CLI/MCP 应用服务**（版本守卫、门禁、事务恢复都在那里），不要直接编辑受管文件（测试夹具与人工修复除外——修复请用 `devsys repair`）；未来若提供导入命令，同样必须走该服务。示例：`scripts/exchange-demo.sh`（原始文件读取、`--jsonl`/`--json` 解析、退出码分支，全部为可运行断言）。
+
+运行一次尝试（M6.1，方案 §4.8/§9.2）：
+
+```sh
+bin/devsys.exe run exec --id <run-id> --actor <a> --reason <r> [--timeout 30s] -- <command...>
+bin/devsys.exe --json run exec --id <run-id> --actor <a> --reason <r> -- <command...>   # {run_id,exit_code,timed_out,canceled,duration_ms,lines,log}
+```
+
+`run exec` 通过 Harness Adapter 接口（`internal/harness`）启动命令：argv 直通、不做 shell 解释（要 shell 特性就自己传 `sh -c` / `cmd /c`），stdout/stderr 逐行实时镜像（`--json` 时命令输出走 stderr，stdout 只承载信封）；输出同时追加到 `.devsys/runs/<run-id>.jsonl`（`start` / `output` / `exit` 记录，控制记录与每 128 行刷盘，崩溃留下的断尾在下次运行时截断并写入 `repair` 记录）。命令结束后把 `commands`、`logs` 引用与非零退出的说明写回 run，并记 `run_exec_started`/`run_exec_finished` 事件。超时或 Ctrl-C 会终止整棵进程树（POSIX 进程组 / Windows `taskkill /T /F`），不会留下孙进程。
+
+**退出码语义**：`run exec` 的退出码描述 devsys 操作本身（0 已执行并落盘 / 2 用法 / 3 前置条件 / 4 受管状态不可信 / 1 内部）；被跑命令自己的退出码是**证据**，写在 JSONL 的 `exit` 记录与 run 的 `result.errors` 里，并由 `--json` 输出——两者不混用（否则命令退出 3 会被误读成 devsys 前置条件错误）。
 
 M4 完整剧本（Go、Git 与 Python 必须在 PATH）：
 

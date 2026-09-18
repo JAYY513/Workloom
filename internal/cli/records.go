@@ -6,10 +6,13 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"os"
+	"os/signal"
 	"time"
 
 	"workloom/internal/app"
 	"workloom/internal/domain"
+	"workloom/internal/harness"
 )
 
 // runDecision routes the decision family (方案 §8.2 decision_*).
@@ -407,7 +410,7 @@ func outputRecord(stdout io.Writer, opts options, view app.RecordView) error {
 // runRun routes the run family (方案 §8.2 run_*).
 func runRun(stdout io.Writer, opts options, rest []string) error {
 	if len(rest) == 0 {
-		return errUsage("`devsys run` needs a subcommand (list | get | log | create | update | heartbeat)")
+		return errUsage("`devsys run` needs a subcommand (list | get | log | create | update | heartbeat | exec)")
 	}
 	svc, err := requireProjectRoot()
 	if err != nil {
@@ -598,6 +601,55 @@ func runRun(stdout io.Writer, opts options, rest []string) error {
 		}
 		if !opts.quiet {
 			fmt.Fprintf(stdout, "%s\t%s\tlease_until=%s\n", view.WorkitemID, view.RunID, view.LeaseUntil.Format(time.RFC3339))
+		}
+		return nil
+	case "exec":
+		fs := flag.NewFlagSet("run exec", flag.ContinueOnError)
+		fs.SetOutput(io.Discard)
+		id := fs.String("id", "", "run id")
+		timeout := fs.Duration("timeout", 0, "terminate the process tree after this long (0 = no limit)")
+		actor := fs.String("actor", "", "who runs the command")
+		reason := fs.String("reason", "", "why this attempt runs")
+		if err := fs.Parse(rest[1:]); err != nil || *id == "" || *actor == "" || *reason == "" {
+			return errUsage("run exec --id <run-id> --actor <a> --reason <r> [--timeout 30s] -- <command...>")
+		}
+		argv := fs.Args()
+		if len(argv) == 0 {
+			return errUsage("run exec needs a command after -- (devsys run exec --id <run-id> -- <command...>)")
+		}
+		// Ctrl-C stops the attempt (and its process tree) instead of
+		// leaving an orphan behind.
+		runCtx, stop := signal.NotifyContext(ctx, os.Interrupt)
+		defer stop()
+		// The command's output is mirrored live: stdout to stdout and
+		// stderr to stderr, except under --json where everything goes to
+		// stderr so stdout carries only the envelope (M4.5).
+		sink := func(line harness.Line) {
+			out := stdout
+			if line.Stream == "stderr" || opts.json {
+				out = opts.stderr
+			}
+			if out == nil {
+				out = io.Discard
+			}
+			fmt.Fprintln(out, line.Text)
+		}
+		view, err := svc.RunExec(runCtx, app.RunExecRequest{
+			RunID: *id, Argv: argv, Timeout: *timeout,
+			Actor: *actor, Reason: *reason, Sink: sink,
+		})
+		if err != nil {
+			return err
+		}
+		if opts.json {
+			return json.NewEncoder(stdout).Encode(struct {
+				OK bool `json:"ok"`
+				app.RunExecView
+			}{OK: true, RunExecView: view})
+		}
+		if !opts.quiet {
+			fmt.Fprintf(stdout, "%s\t%s\texit=%d\tduration=%s\tlog=%s\n",
+				view.RunID, view.Adapter, view.ExitCode, time.Duration(view.DurationMS)*time.Millisecond, view.Log)
 		}
 		return nil
 	default:

@@ -67,7 +67,7 @@ commands:
   finding       list | get | create | resolve finding records
   event         list | record project events (append-only)
   artifact      list | get | register | update | history artifact records
-  run           list | get | log | create | update | heartbeat run records
+  run           list | get | log | create | update | heartbeat | exec run records
   context       get | workitem | refresh | compact working context (read-only)
   knowledge status  report the knowledge layer's availability
   session start  one-shot session orientation (project, work in flight, next action)
@@ -93,9 +93,10 @@ exit codes:
 `
 
 type options struct {
-	json  bool
-	jsonl bool
-	quiet bool
+	json   bool
+	jsonl  bool
+	quiet  bool
+	stderr io.Writer
 }
 
 // codedError carries the exit-code class through dispatch.
@@ -206,7 +207,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 // RunWithIO is Run with an explicit stdin, so `mcp serve` — and its tests —
 // can drive the stdio protocol over injected streams.
 func RunWithIO(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
-	var opts options
+	opts := options{stderr: stderr}
 	i := 0
 	for ; i < len(args); i++ {
 		a := args[i]

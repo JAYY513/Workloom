@@ -83,6 +83,58 @@ func ScanJSONL(path string, fn func(line []byte) error) error {
 	}
 }
 
+// RepairTornTail truncates a JSONL file back to its last complete line and
+// reports how many bytes were dropped (0 when the file is missing or already
+// ends on a line boundary). A torn tail is a record that was never completed,
+// so dropping it loses no record; callers are expected to note the repair in
+// the stream itself. Append-only evidence streams (方案 §14.2 运行事件流) use
+// this so a crash cannot leave a file that refuses every later append.
+func RepairTornTail(path string) (int64, error) {
+	tail, err := InspectJSONL(path)
+	if err != nil {
+		return 0, err
+	}
+	if tail.Complete {
+		return 0, nil
+	}
+	f, err := os.OpenFile(path, os.O_RDWR, 0)
+	if err != nil {
+		return 0, fmt.Errorf("repair %s: %w", path, err)
+	}
+	defer f.Close()
+	const chunk = 64 * 1024
+	buf := make([]byte, chunk)
+	for off := tail.Size; off > 0; {
+		start := off - chunk
+		if start < 0 {
+			start = 0
+		}
+		n := int(off - start)
+		if _, err := f.ReadAt(buf[:n], start); err != nil && !errors.Is(err, io.EOF) {
+			return 0, fmt.Errorf("repair %s: %w", path, err)
+		}
+		if i := bytes.LastIndexByte(buf[:n], '\n'); i >= 0 {
+			keep := start + int64(i) + 1
+			if err := f.Truncate(keep); err != nil {
+				return 0, fmt.Errorf("repair %s: %w", path, err)
+			}
+			if err := f.Sync(); err != nil {
+				return 0, fmt.Errorf("repair %s: %w", path, err)
+			}
+			return tail.Size - keep, nil
+		}
+		off = start
+	}
+	// No line terminator anywhere: the file is a single torn record.
+	if err := f.Truncate(0); err != nil {
+		return 0, fmt.Errorf("repair %s: %w", path, err)
+	}
+	if err := f.Sync(); err != nil {
+		return 0, fmt.Errorf("repair %s: %w", path, err)
+	}
+	return tail.Size, nil
+}
+
 // appendJSONL adds payload to path, requiring the file to be exactly expectSize
 // bytes long and to end on a line boundary, then fsyncs. Callers must already
 // hold the project lock. A size mismatch means a writer bypassed the lock and
