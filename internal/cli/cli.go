@@ -77,7 +77,7 @@ commands:
   run           list | get | log | create | update | heartbeat | exec | prompt | complete | fail | cancel
   worktree      prepare | remove | list execution workspaces (方案 §4.8)
   dispatch      one scheduling tick: recover, reconcile, dispatch (--watch loops)
-  context       get | workitem | refresh | compact working context (read-only)
+  context       get [--task ID] [--path a,b] | workitem | refresh | compact working context (read-only)
   knowledge         status | scan | validate [dir|page.md...] | refresh
   session start  one-shot session orientation (project, work in flight, next action)
   wire          inject the devsys discipline block into AGENTS.md (idempotent; --dry-run previews)

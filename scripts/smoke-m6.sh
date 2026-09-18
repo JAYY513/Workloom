@@ -30,7 +30,10 @@ cleanup() {
 trap cleanup EXIT
 mkdir -p -- "$project" "$stubs"
 export DEVSYS_CONFIG_DIR="$workspace/config"
-(cd "$repo_root" && go build -o "$workspace/devsys.exe" ./cmd/devsys)
+# The command binary is linked with -s -w: some endpoint protection flags the
+# unstripped build of this program as a false positive, and the smoke suite is
+# about behaviour, not debug symbols.
+(cd "$repo_root" && go build -ldflags "-s -w" -o "$workspace/devsys.exe" ./cmd/devsys)
 D="$workspace/devsys.exe"
 
 # A stub codex stands in for the real CLI: the smoke suite pins the adapter
