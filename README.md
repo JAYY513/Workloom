@@ -51,6 +51,7 @@
 | M6.5 重试、退避与停滞检测 | 已完成：`internal/retry`（确定性退避 `min(base·2^(n-1), ceiling)` + 可复现抖动，种子=工作项标识+尝试次数）；tick 在计划前扫尾：失败/超时/停滞的尝试按策略重排（`retry_queued` + `next_attempt_at`），尝试用尽则释放领取并记 `retry_exhausted`；停滞=运行中且流内无新证据超过 `stall_threshold_seconds`（缺省 30 分钟）→ 先记 `stalled` 终态再重排 |
 | M6.6 完成校验与人工复核 | 已完成：绑定工作区时记录 claim head（`Run.Claim.HeadSHA`）；`run complete` 先比对分支当前 SHA——未推进/git 报错/无 claim head 一律拒绝（`verification.advanced=false` + 工作项转 `review` + 事件 `completion_refused`，run 保持非终态）；复核者 `--force --by <人>` 显式放行（`verified_by` + `completion_overridden`）；`run verify`（CLI + MCP）只读报告两侧 SHA |
 | M6.7 Harness 适配：Codex / OpenCode / Claude Code | 已完成：`internal/harness` 三个真实适配器（codex/opencode/claude）+ `ByName`/`Names` 注册表；`Probe` 跑 `--version` 判可用性（未安装→明确拒绝，不静默换）；提示词投递按各 CLI 能力（codex/claude 走 stdin，opencode 位置参数）；`run exec --harness <name> [--model]` 由适配器 `build_command`；dispatch 按工作项 `assigned_harness` 选择（未声明回退 `dispatch_command`）；`DEVSYS_PROJECT_ROOT` 让工作区内的 agent 把汇报写回项目状态 |
+| M6.8 一致性自检 | 已完成：`docs/M6-一致性自检.md` 按 Symphony SPEC §17.1–§17.8 逐条结论（通过/替换/偏离/不适用）+ 证据（代码或测试）+ 偏离汇总（6 类：tracker 替换、CLI 适配器形态、退避基准 30s、槽位耗尽不写重排事件、运行中尝试不被状态变化强停、证据写失败中止尝试） |
 | M6.1 Harness Adapter 接口与 Shell Adapter | 已完成：`internal/harness`（方案 §9.2 九方法映射 + 八项能力声明 + Session 句柄承载 stream/stop/collect）；Shell 适配器 argv 直通、逐行 stdout/stderr、超长行按 rune 边界 64 KiB 分块、超时与取消终止整棵进程树（POSIX 进程组 / Windows `taskkill /T /F`）；`devsys run exec` 把输出实时镜像并写入 `.devsys/runs/<run-id>.jsonl`（追加写、周期 fsync、断尾修复留痕），结束后更新 run 证据（commands/logs/result.errors）并记事件 |
 
 ## 构建与验收
