@@ -53,6 +53,13 @@
 | M6.7 Harness 适配：Codex / OpenCode / Claude Code | 已完成：`internal/harness` 三个真实适配器（codex/opencode/claude）+ `ByName`/`Names` 注册表；`Probe` 跑 `--version` 判可用性（未安装→明确拒绝，不静默换）；提示词投递按各 CLI 能力（codex/claude 走 stdin，opencode 位置参数）；`run exec --harness <name> [--model]` 由适配器 `build_command`；dispatch 按工作项 `assigned_harness` 选择（未声明回退 `dispatch_command`）；`DEVSYS_PROJECT_ROOT` 让工作区内的 agent 把汇报写回项目状态 |
 | M6.8 一致性自检 | 已完成：`docs/M6-一致性自检.md` 按 Symphony SPEC §17.1–§17.8 逐条结论（通过/替换/偏离/不适用）+ 证据（代码或测试）+ 偏离汇总（6 类：tracker 替换、CLI 适配器形态、退避基准 30s、槽位耗尽不写重排事件、运行中尝试不被状态变化强停、证据写失败中止尝试） |
 | M6 收尾：剧本与提交 | 已完成：`scripts/smoke-m6.{sh,ps1}`（工作区不变量 / dispatch 上限与幂等 / 桩 codex 适配链路 / 完成校验拒绝与复核放行 / 重试扫尾 / 未装 harness 拒绝 / 只读不派发）双平台实跑；`workitem update --assigned-harness` 让适配器指派可写；repowiki 刷新至 M6 基线 |
+| M5.1 页面契约与校验 | 已完成：front matter 契约（`status/type/triggers/description/source_commit/sources` + 可选 `protected`/`content_hash` 等）、`knowledge validate`（`文件:行:字段:原因`、退出码 0/3/4）、MCP `knowledge_validate`、配置键 `knowledge_pages` |
+| M5.2 扫描与快照 | 已完成：`knowledge scan` 指纹（sha256/语言）+ 排除清单（默认目录、`.gitignore`、自定义忽略文件、密钥名模式、>1MB、符号链接），原子写 `.devsys/knowledge/snapshot.json` |
+| M5.3 新鲜度与增量 | 已完成：`state.json` 层基线与页面映射、`knowledge status`（保留退出码 0/10/11）、`knowledge refresh [--affected|--full]` 按生成器契约（scope 文件 + argv，不经 shell） |
+| M5.4 人工保护 | 已完成：整文件 sha256 `content_hash` 判定手工修改、`protected: true` 锁定、`--force` 覆盖并上报 |
+| M5.5 断点续跑与互斥 | 已完成：`run.json` 检查点 + OS 文件锁互斥（`storage.LockFile`），中断后续跑只带未写入页面 |
+| M5.6 上下文与生成器契约 | 已完成：`context get --task`（分层装配 + 确定性）、round 记录的上下文快照（含 `workspace_head` 差异标注）、生成器适配层与 repowiki 适配器、无生成器降级 |
+| M5 收尾 | 已完成：`scripts/smoke-m5.sh`/`.ps1`（八段：契约/索引/新鲜度/生成器契约/保护/续跑与互斥/装配/降级）、真实 repowiki 循环验证、repowiki 增量刷新、独立评审逐条处置 |
 | M6.1 Harness Adapter 接口与 Shell Adapter | 已完成：`internal/harness`（方案 §9.2 九方法映射 + 八项能力声明 + Session 句柄承载 stream/stop/collect）；Shell 适配器 argv 直通、逐行 stdout/stderr、超长行按 rune 边界 64 KiB 分块、超时与取消终止整棵进程树（POSIX 进程组 / Windows `taskkill /T /F`）；`devsys run exec` 把输出实时镜像并写入 `.devsys/runs/<run-id>.jsonl`（追加写、周期 fsync、断尾修复留痕），结束后更新 run 证据（commands/logs/result.errors）并记事件 |
 
 ## 构建与验收

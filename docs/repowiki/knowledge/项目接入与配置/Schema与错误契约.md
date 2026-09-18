@@ -26,9 +26,9 @@ triggers:
   - M6 退出码
   - run verify exit code
   - run complete exit code
-description: devsys 受管 YAML 文件的严格 schema：每文件白名单 + schema_version 闸门 + 行号定位 + Problems 错误结构 + 退出码 4 的语义边界 + M1 完整 Project 模型 + 嵌套字段校验；M2 新增退出码 3/4 在 workitem 与 repair 中的扩展语义、--expect 64-hex sha256 + fail-closed、--confirm 摘要格式、写命令 --actor/--reason 必填；M3 新增 workflow/approval/next 的 kind 与 code 语义、workitem.TransitionRequest.Guard 签名、policy issue 与 LKG 报错；M4 收口到 *app.Error.Class() 四类（映射 CLI 退出码 + MCP tool error code）、--jsonl 列表流、知识层 10/11 退出码预留；M6 增 workspace_root / dispatch_command 配置键、HookEnv 注入、run exec / run complete 在执行层的扩展退出码语义。
+description: devsys 受管 YAML 文件的严格 schema：每文件白名单 + schema_version 闸门 + 行号定位 + Problems 错误结构（含 SeverityWarning） + 退出码 4 的语义边界 + M1 完整 Project 模型 + 嵌套字段校验；M2 新增退出码 3/4 在 workitem 与 repair 中的扩展语义、--expect 64-hex sha256 + fail-closed、--confirm 摘要格式、写命令 --actor/--reason 必填；M3 新增 workflow/approval/next 的 kind 与 code 语义、workitem.TransitionRequest.Guard 签名、policy issue 与 LKG 报错；M4 收口到 *app.Error.Class() 四类（映射 CLI 退出码 + MCP tool error code）、--jsonl 列表流、知识层 10/11 退出码预留；M5 新增 KnowledgePages / KnowledgeGenerator 配置键、kindStrings（接受 null 与空列表）+ kindMilestones 双路径、warning severity、KindKnowledge 错误类、knowledge_pages / knowledge_generator 字段解析；M6 增 workspace_root / dispatch_command 配置键、HookEnv 注入、run exec / run complete 在执行层的扩展退出码语义。
 generated: true
-source_commit: 997c5f8
+source_commit: 7c3fcde
 generator: repowiki-gen
 ---
 
@@ -42,9 +42,9 @@ generator: repowiki-gen
 |---|---|---|
 | `config.SupportedSchemaVersion` | `1` | [internal/config/config.go:25](../../../internal/config/config.go#L25) |
 | `domain.SchemaVersion` | `1` | [internal/domain/models.go:6](../../../internal/domain/models.go#L6) |
-| 受管文件清单 | `project.yaml`、`config.yaml`、`state/current.yaml`、`state/milestones.yaml` | [internal/config/config.go:28-37](../../../internal/config/config.go#L28-L37) |
-| 解析器入口 | `config.Load(root)` / `config.Diagnose(root)` | [internal/config/config.go:99-104](../../../internal/config/config.go#L99-L104) |
-| 错误结构 | `Problem{File, Line, Field, Reason}` 与 `Problems` | [internal/config/config.go:46-79](../../../internal/config/config.go#L46-L79) |
+| 错误结构 | `Problem{File, Line, Field, Severity, Reason}`（M5 增 Severity）与 `Problems`；`SeverityWarning = "warning"` 常量（[internal/config/config.go:46-79](../../../internal/config/config.go#L46-L79)） | [internal/config/config.go:46-79](../../../internal/config/config.go#L46-L79) |
+| 知识层配置键（M5） | `config.yaml` 新增 `knowledge_pages []string` 与 `knowledge_generator string`；`validate.go` 拆 `kindStrings`（接受 null / 空列表 / 字符串标量列表）与 `kindMilestones` 双路径 | [internal/config/config.go:104-114](../../../internal/config/config.go#L104-L114)、[internal/config/validate.go:64-92](../../../internal/config/validate.go#L64-L92) |
+| 知识层错误类（M5） | `app.KindKnowledge = "knowledge"`；`Class()` 归一到 `KindInvalid`，CLI 退出码 4；MCP tool error code `invalid` | [internal/app/app.go:28-49](../../../internal/app/app.go#L28-L49)、[internal/app/knowledge.go](../../../internal/app/knowledge.go) |
 | 记录契约 | `domain.{Project,Scope,Milestone,CurrentState,CurrentStateFile,MilestonesFile,WorkItem,Run,…}` | [internal/domain/models.go:8-221](../../../internal/domain/models.go#L8-L221) |
 | Workflow 策略契约 | `internal/workflow.Policy` 与 `internal/workflow.Issue` | [internal/workflow/policy.go](../../../internal/workflow/policy.go)、[internal/workflow/parse.go](../../../internal/workflow/parse.go) |
 | Approval 契约 | `domain.Approval` 与 `approval.ErrXxx` | [internal/domain/models.go](../../../internal/domain/models.go)、[internal/approval/approval.go:49-58](../../../internal/approval/approval.go#L49-L58) |

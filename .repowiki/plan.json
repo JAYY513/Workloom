@@ -2,7 +2,7 @@
   "schema": 2,
   "budget": {
     "tier": "模块树",
-    "reason": "198 个扫描文件（go:161、yaml:11、markdown:9、other:6、shell:6、powershell:5），多层目录，沿用模块树档位；M6 在 internal/harness 落地适配器抽象（Capabilities/Availability/Workspace/Request/Command/Line/Result/Session/Adapter + Shell 适配器 + 三个 CLI 适配器 codex/opencode/claude + stdin 投递 + 进程树终止），internal/workspace 落地 Key/Path/Git/Hook/Workspace（Ensure/Remove/List/RunHook/HookEnv），internal/dispatch 落地 Plan/Report/Caps/ResolveCaps（优先级降序+最早创建+id 决胜，状态白名单 + 依赖 + 全局/状态并发），internal/retry 落地 Delay（base/max/jitter，stable seed 派生），internal/prompt 落地 Assemble（首轮全 brief + 后续轮 delta，sectioned）+ Context（refs only，body on demand），internal/app 新增 RunExec/Dispatch/Workspace/RunVerify/RunFinish/RunPrompt/HookEnv 接线，internal/cli 新增 worktree/dispatch/run exec|prompt|verify|complete|fail|cancel，internal/config 增 workspace_root/dispatch_command，internal/mcp 增 run_complete/fail/cancel/verify，scripts/smoke-m6.{sh,ps1} 端到端覆盖。go.mod 新增 golang.org/x/term（vendored）。新增第四个模块 `execution-layer`（internal/harness + internal/workspace + internal/dispatch + internal/retry + internal/prompt）；在 `项目接入与配置` 模块新增一张自定义卡（执行命令与 DEVSYS_PROJECT_ROOT），在 `可靠文本存储` 模块新增一张自定义卡（运行事件流），在 `共享应用与 MCP` 模块新增两张自定义卡（执行命令族 与 完成校验与人工复核）。三篇文章与既有模块卡片目录与文件路径保持不变。",
+    "reason": "218 个扫描文件（go:180、yaml:11、markdown:9、shell:7、other:6、powershell:5），多层目录，沿用模块树档位；M5 落地知识层 `internal/knowledge`（page 契约 + 校验、索引快照 + 匹配器、新鲜度 + 基线、人工保护、生成器契约与适配器、断点续跑与锁）与 `internal/app.knowledge.go` 完整接线（KnowledgeStatus/Scan/Validate/Refresh）、`internal/cli` knowledge status|scan|validate|refresh 四族、`internal/mcp` knowledge_validate/knowledge_refresh/context_for_workitem + paths 参数、`internal/config` knowledge_pages/knowledge_generator、`internal/storage.LockFile` OS 锁原语、`scripts/smoke-m5.sh`（Page 契约 + 索引扫描 + 新鲜度 0/10/11 + 生成器契约 + 人工保护 + 续跑 + 并发拒绝 + 上下文装配 + 降级）。新增第五个模块 `knowledge-layer`（internal/knowledge + .devsys/knowledge 状态）；在 `项目接入与配置` 模块新增一张自定义卡（Schema 与错误契约增 knowledge_pages/knowledge_generator 字段 + 0/10/11 退出码 + 新鲜度检查 + 0/10/11 + severity=warning），在 `可靠文本存储` 模块新增一张自定义卡（锁文件与 OS 锁 — internal/storage.LockFile 给 refresh 互斥复用，在 `共享应用与 MCP` 模块新增两张自定义卡（knowledge 服务接线 与 context get --task 与 knowledge_context 装配）。三篇文章的目录与文件路径保持不变；既有模块卡补 M5 接线；模块数 4→5，最大文章数 30（不变）。",
     "max_total_modules": 8,
     "max_depth": 2,
     "max_total_articles": 30,
@@ -33,6 +33,7 @@
         "scripts/smoke-m4.sh",
         "scripts/smoke-m4.ps1",
         "scripts/exchange-demo.sh",
+        "scripts/smoke-m5.sh",
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1"
       ]
@@ -79,6 +80,16 @@
         "internal/retry/**",
         "internal/prompt/**"
       ]
+    },
+    {
+      "slug": "knowledge-layer",
+      "title": "知识层",
+      "dir": "知识层",
+      "scope": [
+        "internal/knowledge/**",
+        ".devsys/knowledge/**",
+        ".repowikiignore"
+      ]
     }
   ],
   "articles": [
@@ -91,7 +102,8 @@
         "project-access",
         "durable-storage",
         "shared-app-mcp",
-        "execution-layer"
+        "execution-layer",
+        "knowledge-layer"
       ]
     },
     {
@@ -103,7 +115,8 @@
         "project-access",
         "durable-storage",
         "shared-app-mcp",
-        "execution-layer"
+        "execution-layer",
+        "knowledge-layer"
       ]
     },
     {
@@ -115,7 +128,8 @@
         "project-access",
         "durable-storage",
         "shared-app-mcp",
-        "execution-layer"
+        "execution-layer",
+        "knowledge-layer"
       ],
       "scope": [
         "docs/开发记录.md",
@@ -125,8 +139,8 @@
     }
   ],
   "coverage_check": {
-    "covered_files": 191,
-    "total_files": 198,
+    "covered_files": 211,
+    "total_files": 218,
     "uncovered": [
       ".gitattributes",
       ".gitignore",

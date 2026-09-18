@@ -3,9 +3,9 @@
   "partition": {
     "locale": "zh"
   },
-  "generated_at": "2026-09-18T13:52:38.746Z",
+  "generated_at": "2026-09-18T17:11:01.809Z",
   "git": {
-    "commit": "da99ec2330ebad958ee56aa67e7895b61a02faa8",
+    "commit": "7c3fcde362c4d50858b6762bf35a1207649aca4c",
     "branch": "master"
   },
   "pages": {
@@ -31,6 +31,7 @@
         "scripts/smoke-m4.sh",
         "scripts/smoke-m4.ps1",
         "scripts/exchange-demo.sh",
+        "scripts/smoke-m5.sh",
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1",
         "internal/storage/**",
@@ -54,9 +55,12 @@
         "internal/workspace/**",
         "internal/dispatch/**",
         "internal/retry/**",
-        "internal/prompt/**"
+        "internal/prompt/**",
+        "internal/knowledge/**",
+        ".devsys/knowledge/**",
+        ".repowikiignore"
       ],
-      "content_hash": "530fb58c6add8e28f676e0c7d68869b08067146e4239573c7dab36275d5135e7"
+      "content_hash": "876e1b806bdc6318a9fd33c800c2b74e778eb088c259f47a8bb4d5d842b274ec"
     },
     "content/快速开始.md": {
       "sources": [
@@ -77,6 +81,7 @@
         "scripts/smoke-m4.sh",
         "scripts/smoke-m4.ps1",
         "scripts/exchange-demo.sh",
+        "scripts/smoke-m5.sh",
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1",
         "internal/storage/**",
@@ -100,9 +105,12 @@
         "internal/workspace/**",
         "internal/dispatch/**",
         "internal/retry/**",
-        "internal/prompt/**"
+        "internal/prompt/**",
+        "internal/knowledge/**",
+        ".devsys/knowledge/**",
+        ".repowikiignore"
       ],
-      "content_hash": "8b0624536bc6d34be528da673082488c38acd845c16485679e959dd22273e3f9"
+      "content_hash": "21c990837904850496effa732c636ae113a3d993e25e1d4e18066ec4c6375023"
     },
     "content/项目总览.md": {
       "sources": [
@@ -123,6 +131,7 @@
         "scripts/smoke-m4.sh",
         "scripts/smoke-m4.ps1",
         "scripts/exchange-demo.sh",
+        "scripts/smoke-m5.sh",
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1",
         "internal/storage/**",
@@ -146,13 +155,16 @@
         "internal/workspace/**",
         "internal/dispatch/**",
         "internal/retry/**",
-        "internal/prompt/**"
+        "internal/prompt/**",
+        "internal/knowledge/**",
+        ".devsys/knowledge/**",
+        ".repowikiignore"
       ],
-      "content_hash": "fd80697ae1a4fb68c808873764632c3c252fd32213295cc593b084393c9e267c"
+      "content_hash": "baa211af621bec1c3c09af5dff1a1a49b00c70e00bac6c639c69275d25abd2cb"
     },
     "index.md": {
       "sources": [],
-      "content_hash": "88f106cd176f304e4a0c7f00251437db6ef29c2ac1fdbba048be761b4bc89e5f"
+      "content_hash": "557f2aa7459c1213bbf339130378ccbacc1ad91152f467c3a890b5d2c823ea2c"
     },
     "knowledge/共享应用与MCP/完成校验与人工复核.md": {
       "sources": [
@@ -187,14 +199,14 @@
         "internal/app/**",
         "internal/mcp/**"
       ],
-      "content_hash": "061d20e438632f01135d5a4699aec4f0a2437e7a7399e43a656fec7f2d7f6bf0"
+      "content_hash": "71ae3e0dc301d88cc938a6699ad40ee9e02bfe7280e17a0e419c531dcf8e8461"
     },
     "knowledge/共享应用与MCP/错误语义.md": {
       "sources": [
         "internal/app/**",
         "internal/mcp/**"
       ],
-      "content_hash": "c8874c50d11b82a8c46140ca8d41eae6d7a79917c9ae7a321742cbc49fb789d2"
+      "content_hash": "63d232b381ffe38c2889673fbf9b804c814ee4524a75aebc34e189ca24d8419d"
     },
     "knowledge/可靠文本存储/事务与恢复.md": {
       "sources": [
@@ -234,7 +246,7 @@
         "go.mod",
         "go.sum"
       ],
-      "content_hash": "d64861440ffdea15b1cacc593da3fc36f35b457dd9a0169b857af961bee083f4"
+      "content_hash": "02784acac1955b06de7ff475a4f0edbd26535db07bb063d8e9dabe1da2e5039d"
     },
     "knowledge/可靠文本存储/对账与修复.md": {
       "sources": [
@@ -274,7 +286,7 @@
         "go.mod",
         "go.sum"
       ],
-      "content_hash": "e81b618f34baa422c4acb14a7729ebe1f4ae6086ee9ccf33d9a414074144b544"
+      "content_hash": "0fab1eb641eae9d5256acb9fbd122bba83da89ed5ebeb97e784a3865bf030e12"
     },
     "knowledge/可靠文本存储/概述.md": {
       "sources": [
@@ -294,7 +306,7 @@
         "go.mod",
         "go.sum"
       ],
-      "content_hash": "f9e9dd9036b689342872d0ab93097dca0d0b6b1de8014937910c466530c4f2dc"
+      "content_hash": "dc189f9ee92493ff7a92a6bb7de2f7c8885520c618938e6727bd8d75a57f7d35"
     },
     "knowledge/可靠文本存储/特殊配置与命令.md": {
       "sources": [
@@ -476,6 +488,86 @@
       ],
       "content_hash": "82fbbf52a51fa9135edc290f12ccec9a5c981fb3c3791f85502bbbf32fbfac79"
     },
+    "knowledge/知识层/上下文装配.md": {
+      "sources": [
+        "internal/knowledge/**",
+        ".devsys/knowledge/**",
+        ".repowikiignore"
+      ],
+      "content_hash": "6c56a9d214c2b1a362ab330a81468f1aac943cba012779ac8a5a6c76c64a799c"
+    },
+    "knowledge/知识层/人工保护.md": {
+      "sources": [
+        "internal/knowledge/**",
+        ".devsys/knowledge/**",
+        ".repowikiignore"
+      ],
+      "content_hash": "1fb53444d41416d07994adaecf4cb258fd8be10eeb9c575505c5e3dc81eec1ff"
+    },
+    "knowledge/知识层/断点续跑与锁.md": {
+      "sources": [
+        "internal/knowledge/**",
+        ".devsys/knowledge/**",
+        ".repowikiignore"
+      ],
+      "content_hash": "c01139ec3d4344b5c284f81c03e01f2486d40978ef2d8a3ae1d87d01c3943948"
+    },
+    "knowledge/知识层/新鲜度与基线.md": {
+      "sources": [
+        "internal/knowledge/**",
+        ".devsys/knowledge/**",
+        ".repowikiignore"
+      ],
+      "content_hash": "e72de5923ec1071db6eeec7bc914351dcda9425a8659451473b213526cbfb7ac"
+    },
+    "knowledge/知识层/架构设计.md": {
+      "sources": [
+        "internal/knowledge/**",
+        ".devsys/knowledge/**",
+        ".repowikiignore"
+      ],
+      "content_hash": "00dc8684c27ef4a4f51e8ad500bc15890516f36f640289a179baf180c5fc5052"
+    },
+    "knowledge/知识层/概述.md": {
+      "sources": [
+        "internal/knowledge/**",
+        ".devsys/knowledge/**",
+        ".repowikiignore"
+      ],
+      "content_hash": "41c99a23447726c4f71730ddd6f0c7e8258c1d87707fd1ff6e8579137916d8ee"
+    },
+    "knowledge/知识层/生成器契约与适配器.md": {
+      "sources": [
+        "internal/knowledge/**",
+        ".devsys/knowledge/**",
+        ".repowikiignore"
+      ],
+      "content_hash": "5527629d71596225df945b2cf0cb60fec71563dfc7fa212e8eba245741bd3e1b"
+    },
+    "knowledge/知识层/知识服务接线.md": {
+      "sources": [
+        "internal/knowledge/**",
+        ".devsys/knowledge/**",
+        ".repowikiignore"
+      ],
+      "content_hash": "86c398bd4203a489ce03fdac1603e1f1c137f77025d689a54eec81e73859d5d5"
+    },
+    "knowledge/知识层/索引快照与匹配器.md": {
+      "sources": [
+        "internal/knowledge/**",
+        ".devsys/knowledge/**",
+        ".repowikiignore"
+      ],
+      "content_hash": "28c9d33a68541b9a09e10d2edd6d31e43bb36894cb495163ca62733468232b85"
+    },
+    "knowledge/知识层/页面契约与校验.md": {
+      "sources": [
+        "internal/knowledge/**",
+        ".devsys/knowledge/**",
+        ".repowikiignore"
+      ],
+      "content_hash": "56464c301f0237792ce05d4fe9851277723b638dfa90de07a1609f16736a9cb3"
+    },
     "knowledge/项目接入与配置/AGENTS.md写入.md": {
       "sources": [
         "cmd/**",
@@ -495,6 +587,7 @@
         "scripts/smoke-m4.sh",
         "scripts/smoke-m4.ps1",
         "scripts/exchange-demo.sh",
+        "scripts/smoke-m5.sh",
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1"
       ],
@@ -519,6 +612,7 @@
         "scripts/smoke-m4.sh",
         "scripts/smoke-m4.ps1",
         "scripts/exchange-demo.sh",
+        "scripts/smoke-m5.sh",
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1"
       ],
@@ -543,10 +637,11 @@
         "scripts/smoke-m4.sh",
         "scripts/smoke-m4.ps1",
         "scripts/exchange-demo.sh",
+        "scripts/smoke-m5.sh",
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1"
       ],
-      "content_hash": "efd7582eaddcdf6918657479a40d690b16ceefa5a14c0fa9d9bb37dce1d393c0"
+      "content_hash": "968fce7996b0549a83b1b8970c8d4570094d97fbad02e283b4e7530b2091d9ed"
     },
     "knowledge/项目接入与配置/执行命令与DEVSYS_PROJECT_ROOT.md": {
       "sources": [
@@ -567,6 +662,7 @@
         "scripts/smoke-m4.sh",
         "scripts/smoke-m4.ps1",
         "scripts/exchange-demo.sh",
+        "scripts/smoke-m5.sh",
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1"
       ],
@@ -591,6 +687,7 @@
         "scripts/smoke-m4.sh",
         "scripts/smoke-m4.ps1",
         "scripts/exchange-demo.sh",
+        "scripts/smoke-m5.sh",
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1"
       ],
@@ -615,6 +712,7 @@
         "scripts/smoke-m4.sh",
         "scripts/smoke-m4.ps1",
         "scripts/exchange-demo.sh",
+        "scripts/smoke-m5.sh",
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1"
       ],
@@ -639,10 +737,11 @@
         "scripts/smoke-m4.sh",
         "scripts/smoke-m4.ps1",
         "scripts/exchange-demo.sh",
+        "scripts/smoke-m5.sh",
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1"
       ],
-      "content_hash": "4bd7d649111968d5bbeaeb2f440e2aa5072bf211fcac6d1710c1620fa66829f7"
+      "content_hash": "b87424b4fb7ca99edda92e3d9280969c242899db1d7271ad2fa45f7cd73896cf"
     },
     "knowledge/项目接入与配置/特殊配置与命令.md": {
       "sources": [
@@ -663,6 +762,7 @@
         "scripts/smoke-m4.sh",
         "scripts/smoke-m4.ps1",
         "scripts/exchange-demo.sh",
+        "scripts/smoke-m5.sh",
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1"
       ],
@@ -687,6 +787,7 @@
         "scripts/smoke-m4.sh",
         "scripts/smoke-m4.ps1",
         "scripts/exchange-demo.sh",
+        "scripts/smoke-m5.sh",
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1"
       ],
@@ -697,13 +798,13 @@
       "content_hash": "ce31babfbb63c1fecf2eb35dcac86b8179ab700f44865150de3815a040fc1b55"
     }
   },
-  "snapshot_digest": "423c0e0a6af1ec247481bf9b84391967cf477fde30ca4d4898dcd899bc6e5692",
+  "snapshot_digest": "41814b78714986cf8f07488842aadad2cd8d43842ea61c874d9b01c5689af181",
   "snapshot_file": ".repowiki/snapshot.json",
   "last_run": {
     "status": "success",
     "phase": "finalize",
-    "started_at": "2026-09-18T13:52:38.746Z",
-    "finished_at": "2026-09-18T13:52:38.746Z",
+    "started_at": "2026-09-18T17:11:01.809Z",
+    "finished_at": "2026-09-18T17:11:01.809Z",
     "error": ""
   }
 }
