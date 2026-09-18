@@ -53,6 +53,9 @@ type WorkflowInstance struct {
 	ID            string    `json:"id" yaml:"id"`
 	Step          string    `json:"step" yaml:"step"`
 	StepEnteredAt time.Time `json:"step_entered_at" yaml:"step_entered_at"`
+	// Paused holds the instance while its step must not advance (实施计划
+	// M3.6); the work item status and scheduling state stay untouched.
+	Paused bool `json:"paused" yaml:"paused"`
 }
 type WorkItem struct {
 	SchemaVersion       int               `json:"schema_version" yaml:"schema_version"`
@@ -213,19 +216,30 @@ type Finding struct {
 	RecommendedActions []string `json:"recommended_actions" yaml:"recommended_actions"`
 }
 type Approval struct {
-	SchemaVersion int        `json:"schema_version" yaml:"schema_version"`
-	ID            string     `json:"id" yaml:"id"`
-	ProjectID     string     `json:"project_id" yaml:"project_id"`
-	Scope         string     `json:"scope" yaml:"scope"`
-	WorkItemID    string     `json:"workitem_id" yaml:"workitem_id"`
-	RunID         *string    `json:"run_id" yaml:"run_id"`
-	RequestedBy   string     `json:"requested_by" yaml:"requested_by"`
-	RequestedAt   time.Time  `json:"requested_at" yaml:"requested_at"`
-	Status        string     `json:"status" yaml:"status"`
-	DecidedBy     *string    `json:"decided_by" yaml:"decided_by"`
-	DecidedAt     *time.Time `json:"decided_at" yaml:"decided_at"`
-	Comment       *string    `json:"comment" yaml:"comment"`
-	ConsumedAt    *time.Time `json:"consumed_at" yaml:"consumed_at"`
+	SchemaVersion int    `json:"schema_version" yaml:"schema_version"`
+	ID            string `json:"id" yaml:"id"`
+	ProjectID     string `json:"project_id" yaml:"project_id"`
+	Scope         string `json:"scope" yaml:"scope"`
+	// Stage is the gate stage this approval targets (required for
+	// scope=stage_gate; 方案 §4.9 门禁阶段).
+	Stage string `json:"stage" yaml:"stage"`
+	// RequestedStatus is the work item status when the approval was
+	// requested. The approval is only valid while the work item is still in
+	// that status: leaving the stage invalidates it (方案 §4.9).
+	RequestedStatus string     `json:"requested_status" yaml:"requested_status"`
+	WorkItemID      string     `json:"workitem_id" yaml:"workitem_id"`
+	RunID           *string    `json:"run_id" yaml:"run_id"`
+	RequestedBy     string     `json:"requested_by" yaml:"requested_by"`
+	RequestedAt     time.Time  `json:"requested_at" yaml:"requested_at"`
+	Status          string     `json:"status" yaml:"status"`
+	DecidedBy       *string    `json:"decided_by" yaml:"decided_by"`
+	DecidedAt       *time.Time `json:"decided_at" yaml:"decided_at"`
+	Comment         *string    `json:"comment" yaml:"comment"`
+	ConsumedAt      *time.Time `json:"consumed_at" yaml:"consumed_at"`
+	// InvalidatedAt marks an unconsumed approval whose request stage was
+	// left; such an approval can never be decided into use or consumed, and a
+	// re-entered stage needs a fresh request (方案 §4.9).
+	InvalidatedAt *time.Time `json:"invalidated_at" yaml:"invalidated_at"`
 	CreatedAt     time.Time  `json:"created_at" yaml:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at" yaml:"updated_at"`
 }

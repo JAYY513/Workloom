@@ -240,6 +240,23 @@ func (s *Store) ListFindings(ctx context.Context) ([]*domain.Finding, error) {
 	return out, nil
 }
 
+// ListArtifacts returns every artifact version in ascending ID order.
+func (s *Store) ListArtifacts(ctx context.Context) ([]*domain.Artifact, error) {
+	ids, err := s.list(ctx, KindArtifact)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*domain.Artifact, 0, len(ids))
+	for _, id := range ids {
+		a := &domain.Artifact{}
+		if err := s.get(ctx, KindArtifact, id, a); err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, nil
+}
+
 func (s *Store) list(ctx context.Context, kind Kind) ([]string, error) {
 	st, err := s.store()
 	if err != nil {

@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -169,6 +170,34 @@ func (tx *Tx) AppendJSONL(rel string, record any) error {
 	return nil
 }
 
+// AppendJSONLRaw stages a raw JSONL payload — one or more complete lines,
+// each terminated by LF — as one append to rel. It exists for callers that
+// must keep the one-append-per-file rule while batching records that share a
+// shard (events.AppendBatchTx). Empty lines, CR bytes (records are LF-only,
+// compact JSON never contains them raw) and a missing final terminator are
+// rejected before staging.
+func (tx *Tx) AppendJSONLRaw(rel string, payload []byte) error {
+	if len(payload) == 0 || payload[len(payload)-1] != '\n' {
+		return fmt.Errorf("append %s: payload is not JSONL", rel)
+	}
+	if payload[0] == '\n' || bytes.Contains(payload, []byte("\n\n")) {
+		return fmt.Errorf("append %s: payload contains an empty line", rel)
+	}
+	if bytes.ContainsRune(payload, '\r') {
+		return fmt.Errorf("append %s: payload contains a carriage return", rel)
+	}
+	abs, err := tx.s.resolve(rel)
+	if err != nil {
+		return err
+	}
+	if err := tx.claim(rel, abs); err != nil {
+		return err
+	}
+	data := append([]byte(nil), payload...)
+	tx.ops = append(tx.ops, op{kind: opKindAppend, rel: rel, abs: abs, payload: data})
+	return nil
+}
+
 // Delete stages the removal of rel, guarded by expect. The delete participates
 // in the same recoverable transaction as Put/AppendJSONL: precondition,
 // journal and commit marker are recorded together, and a crash mid-commit is
@@ -203,6 +232,18 @@ func (tx *Tx) claim(rel, abs string) error {
 	}
 	tx.seen[abs] = true
 	return nil
+}
+
+// Staged reports whether rel has already been staged in this transaction.
+// In-transaction reads see the on-disk state, so a second writer (e.g. an
+// invalidation pass after a Guard already rewrote the same file) must use
+// this check to avoid staging the same path twice.
+func (tx *Tx) Staged(rel string) bool {
+	abs, err := tx.s.resolve(rel)
+	if err != nil {
+		return false
+	}
+	return tx.seen[abs]
 }
 
 // journal is the transaction intent written before the commit point.

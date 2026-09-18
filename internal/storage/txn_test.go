@@ -43,6 +43,55 @@ func TestTransactionAppliesEveryOpAndCleansUp(t *testing.T) {
 	}
 }
 
+// TestAppendJSONLRawStagesOneBatch appends several records sharing one shard
+// in a single staged append and extends the file in a later transaction.
+func TestAppendJSONLRawStagesOneBatch(t *testing.T) {
+	s, root := newTestStore(t)
+	payload := "{\"event\":\"a\"}\n{\"event\":\"b\"}\n"
+	if err := s.Write(context.Background(), func(tx *Tx) error {
+		return tx.AppendJSONLRaw(eventsRel, []byte(payload))
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if got := string(readDevsysFile(t, root, eventsRel)); got != payload {
+		t.Errorf("events = %q, want %q", got, payload)
+	}
+	if err := s.Write(context.Background(), func(tx *Tx) error {
+		return tx.AppendJSONLRaw(eventsRel, []byte("{\"event\":\"c\"}\n"))
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if got := string(readDevsysFile(t, root, eventsRel)); got != payload+"{\"event\":\"c\"}\n" {
+		t.Errorf("events after second append = %q", got)
+	}
+}
+
+// TestAppendJSONLRawRejectsMalformedPayload locks the payload contract:
+// complete LF-terminated JSON lines only.
+func TestAppendJSONLRawRejectsMalformedPayload(t *testing.T) {
+	s, root := newTestStore(t)
+	cases := []struct{ name, payload string }{
+		{"empty", ""},
+		{"missing terminator", `{"event":"a"}`},
+		{"empty line", "{\"event\":\"a\"}\n\n"},
+		{"leading blank line", "\n{\"event\":\"a\"}\n"},
+		{"carriage return", "{\"event\":\"a\"}\r\n"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := s.Write(context.Background(), func(tx *Tx) error {
+				return tx.AppendJSONLRaw(eventsRel, []byte(tc.payload))
+			})
+			if err == nil {
+				t.Fatalf("payload %q accepted", tc.payload)
+			}
+		})
+	}
+	if _, err := os.Stat(devsysAbs(root, eventsRel)); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("rejected payloads touched the file: %v", err)
+	}
+}
+
 // TestCrashRecoveryMatrix interrupts a two-op transaction at every durable
 // stage and checks that reopening the project recovers to one complete state
 // and that replaying again changes nothing.

@@ -30,6 +30,13 @@
 | M2.3 孤儿恢复与只读对账 | 已完成：`devsys doctor`（只读，不建锁、不恢复）与 `devsys recover`（先确定性事务恢复，再按策略释放过期/孤儿领取，幂等） |
 | M2.4 状态修复（推断→确认→重写） | 已完成：`devsys repair --dry-run` 提议表 + 摘要；`--apply --confirm <digest>` 在写事务内逐项复核证据后才重写，唯一允许降低完成度的路径 |
 | M2.5 里程碑剧本与快照 | 已完成：`scripts/smoke-m2.*` 领取 → 模拟崩溃 → doctor → recover → 确认修复；真实进程中断回归测试覆盖提交点两侧 |
+| M3.1 策略文件格式与解析 | 已完成：`internal/workflow` 解析 `.devsys/workflows/<id>.md`（front matter + 提示词正文），错误逐条定位 `文件:行号:字段:原因`；未知键记录为 warning 不崩；`devsys workflow check`（exit 0/3/4，`--json`）；示例策略三份 |
+| M3.2 模板渲染与变量引用 | 已完成：`{{name}}` 模板严格渲染（缺失变量=分类错误并列名，绝不静默空串）；`RenderError` 三类（unknown_variable/template_syntax/env_undefined）；`ExpandEnv` 解析 `$VAR`/`${VAR}`（未定义报错、`$$` 转义、加载期不入库）；`workflow check` 加载期校验模板语法并报 body 绝对行 |
+| M3.3 门禁、钩子与限额字段 | 已完成：进入阶段门禁（产物/数量/评论/审批/豁免；审批在 M3.7 前 fail-closed）、领取质量门（确定性评分，无模型调用，拦截返回改进项）、完成时同事务记录传播（decision/finding → 父任务与直接兄弟 `context_refs` + `record_propagated` 事件，不改状态、幂等）；`transition`/`claim` 拒绝 exit 4 并逐条渲染；`scripts/smoke-m3.sh` |
+| M3.4 就绪门与下一步优先级 | 已完成：`internal/next` 纯函数 `Evaluate`（PASS/CONCERNS/FAIL；风险：租约过期/孤儿领取/不可读调度文件/滞留审查/阻塞/元数据非法/检查受限）+ §7.4 六级 next（recover_claim→review→start→start_backlog→milestone_review→report_done）；`devsys next` 只读（pending 事务时 FAIL 且不输出业务事实），`--json`，不含时间估算 |
+| M3.5 策略热载入与 last-known-good | 已完成：`workflow.Resolve` 每次读取重新校验；成功刷新 `.devsys/.cache/workflows/<id>.md` 快照，失败回退 LKG 并把当前失败定位交给调用方；坏策略阻塞 `claim`（exit 4 + 原因），`transition` 门禁按 LKG 评估并打印 warning，`next` 增 `invalid_policy` 风险且仍可用 |
+| M3.6 工作流实例与步骤推进 | 已完成：实例存于工作项 `workflow` 字段（含 `paused`）、步骤历史走事件流；`when` 加载期解析+校验（7 字段白名单、`== != < > in exists`、类型规则；未知字段/操作符=策略错误）；`devsys workflow start\|next\|step-complete\|pause\|resume\|cancel`（start 拒绝坏策略；推进允许 LKG+warning；跳步/条件不满足 exit 4 + 允许候选）；推进不写状态与调度态 |
+| M3.7 审批服务 | 已完成：`internal/approval`（一审批一文件 `approval-<N>`、Request/Decide/ConsumeTx/List/Get，全部走事务+CAS）+ CLI `approval list\|request\|approve\|reject`；`require_approval` 门禁联动（批准后在推进事务内消费并写 `consumed_at`+`approval_consumed`）；`requested_status` 实现「离开阶段即作废」；拒绝默认 `block`（理由与引用进 `status_changed`）、`on_reject: regress:<status>` 可回退；`next` 增 `pending_approval` 风险与优先级 2 |
 
 ## 构建与验收
 
@@ -127,6 +134,59 @@ PowerShell `-Keep` / Bash `--keep` 保留项目并打印 `KEPT_PROJECT`。
 `internal/workitem/m2_crash_test.go` 用真实子进程中断覆盖提交点两侧：commit 前崩溃 → 事务丢弃、
 领取不可见、可重新领取；commit 后崩溃 → 决定已定、完整重放、其余领取者被 fencing 拒绝。
 
+工作流策略文件（M3.1，方案 §5.3；`.devsys/workflows/<id>.md` = YAML front matter + 提示词正文）：
+
+```sh
+bin/devsys.exe workflow check            # 只读校验全部策略；未知键为 warning（exit 0）
+bin/devsys.exe --json workflow check     # {ok,root,policies[],warnings[]}
+bin/devsys.exe workflow check; echo $?   # 0 通过（warning 不失败）；4 结构/类型/必填/引用错误；3 未初始化
+```
+
+非法 front matter 逐条报 `文件:行号:字段:原因`（如 `workflows/broken.md:2: id: required`）。
+`workflow check` 不加锁、不恢复、不写盘。示例策略：`docs/examples/workflows/{quick-fix,feature-development,architecture-change}.md`。
+
+正文模板（M3.2）：`{{name}}` 引用在加载期做语法校验（未闭合/非法名报 `body` 绝对行）；渲染时缺失变量按分类错误返回（`workflow.Render`），不静默变空。`$VAR`/`${VAR}` 环境引用只在运行时由 `ExpandEnv` 解析、不写入状态（方案 §5.3 密钥不落盘）。
+
+阶段门禁与领取质量门（M3.3）：任务声明 `workflow` 实例后，`workitem transition` 在进入目标阶段前检查 `gates.stages[<目标状态>]`（`exempt_stages` 豁免），`workitem claim` 在领取前检查 `quality_gate.min_score`；拒绝时 exit 4 并逐条列出缺失项/改进项（定位到策略文件）。完成（进入 `done`）时相关 decision/finding 以引用（`decision://…`、`finding://…`）传播到父任务与直接兄弟的 `context_refs`，写在同一个完成事务里：不改对方状态、已存在则跳过（幂等）、无父链接不广播。
+
+```sh
+# Git Bash（系统 bash.exe 指向 WSL 时其中无 Go）
+bash scripts/smoke-m3.sh          # 门禁拦截 → 补证据放行 → 传播 → 质量门拦截 → 改进后领取
+```
+
+就绪门与下一步（M3.4，方案 §7.4；只读，不建锁、不恢复）：
+
+```sh
+bin/devsys.exe next              # readiness: PASS|CONCERNS|FAIL + 风险信号 + next 建议
+bin/devsys.exe --json next       # {ok,verdict,reasons[],risks[],fixes[],next{}}
+```
+
+风险信号：租约过期、孤儿领取、调度文件不可读、滞留审查（review/verification ≥24h）、未解决阻塞（blocked）、受管元数据问题、只读检查受限。存在待恢复事务时判定 FAIL 并给出恢复命令，且不输出业务事实；next 建议按固定顺序（恢复领取 → 审查 → ready 派发 → backlog 启动 → 里程碑回顾 → 报告完成），不含时间估算。
+
+策略热载入与 last-known-good（M3.5，方案 §5.3）：每次消费都重新解析 `.devsys/workflows/<id>.md`；解析成功会把原文快照到 `.devsys/.cache/workflows/`（本地缓存、可删除、不提交）。当前文件非法或缺失时：`claim`（新任务派发）被阻塞（exit 4，提示首个定位问题）；`transition` 门禁回退到快照评估既有任务并打印 `warning: … using last-known-good`（gate 不满足时该提示仍然输出）；`next` 增加 `invalid_policy` 风险（含引用缺失策略的工作项）但仍可用；`workflow check` 始终展示当前文件的真实错误。
+
+工作流实例与步骤推进（M3.6，方案 §5.3）：
+
+```sh
+bin/devsys.exe workflow start --id <wi> --policy <id> --actor <a> --reason <r> [--expect <hash>]
+bin/devsys.exe workflow next --id <wi>                      # 只读：当前步候选与条件求值结果
+bin/devsys.exe workflow step-complete --id <wi> [--to <step>] --actor <a> --reason <r> [--expect <hash>]
+bin/devsys.exe workflow pause|resume|cancel --id <wi> --actor <a> --reason <r> [--expect <hash>]
+```
+
+`step-complete` 按声明序推进到首个满足条件的候选；`--to` 非声明目标（跳步）、指向当前步或条件不满足时 exit 4 并逐条列出允许的下一步。实例操作只写 `workflow` 字段与事件：不改工作项状态、不写调度态/租约；步骤声明 `status` 为进入要求（不匹配即拒绝）。条件白名单：`workitem.{id,status,type,priority,clarification_needed,approval_required,parent_id}`（`exists` 仅 `parent_id`）；字符串字面量可加成对单/双引号（`''` 表示空串），`in` 列表允许逗号后空格，引号不平衡按策略错误拒绝。`start` 属派发类，坏策略时拒绝，推进/`next` 允许 last-known-good + warning。工作项处于领取状态（lease 活跃）时，实例写操作必须携带当前 `--owner` 与 `--token`（与 `UpdateClaimed` 相同的 fencing 契约），否则拒绝。
+
+审批（M3.7，方案 §4.9/§5.8）：
+
+```sh
+bin/devsys.exe approval list [--workitem <id>] [--status pending|approved|rejected]
+bin/devsys.exe approval request --id <wi> --stage <target-status> [--scope stage_gate|action] --actor <a> --reason <r>
+bin/devsys.exe approval approve --id <approval-id> --by <decider> [--comment <c>]
+bin/devsys.exe approval reject  --id <approval-id> --by <decider> --reason <r>
+```
+
+`require_approval` 门禁要求存在「已批准、未消费、目标阶段与 `requested_status` 匹配」的审批；推进时审批在**同一事务内**被消费（写 `consumed_at` 并追加 `approval_consumed`），消费失败整个推进回滚。工作项离开请求时的状态会立即把该状态下未消费的审批标记为 `invalidated_at`（即使之后回到同一状态也需重新请求）；重复的未决请求会被拒绝。拒绝默认把工作项置为 `blocked`（`status_changed` 事件带审批引用与理由），策略 `on_reject: regress:<status>` 时回退到指定状态；`reject` 的决定与工作项处置在**同一事务**内提交，失败则整单回滚（审批保持 pending）。
+
 测试与静态检查（`vendor/` 已提交，离线可跑）：
 
 ```sh
@@ -151,6 +211,7 @@ internal/config/     严格配置解析、错误定位与 schema_version 校验�
 internal/domain/     Project/WorkItem/Run/Decision/Finding/Event/Artifact/Approval 与版本化序列化
 internal/project/    init 与项目内布局（后续：领域 / 访问 / 执行）
 internal/registry/   用户级项目路径注册表（方案 §14.4）
+internal/workflow/   策略文件解析与严格校验 .devsys/workflows/<id>.md（方案 §5.3；M3.1）
 internal/version/    构建标识（可用 -ldflags 覆盖）
 vendor/              依赖副本（gopkg.in/yaml.v3），保证干净机器离线构建
 docs/原始文档/       方案与实施计划（源文档，不再拆分）

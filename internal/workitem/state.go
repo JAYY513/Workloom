@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"workloom/internal/approval"
 	"workloom/internal/domain"
 	"workloom/internal/events"
 	"workloom/internal/storage"
@@ -15,6 +16,10 @@ import (
 
 // TransitionRequest carries mutation authority; repair additionally requires a
 // confirmed evidence digest and a guard revalidated inside the same transaction.
+// A normal transition may also carry a Guard (e.g. to consume the approval a
+// gate relied on) — it runs inside the transition transaction before commit,
+// and the events it returns are appended in the same batch as the status
+// event (one append per JSONL shard).
 type TransitionRequest struct {
 	TargetStatus   string
 	Actor          string
@@ -25,7 +30,7 @@ type TransitionRequest struct {
 	Confirmation   []byte
 	AllowRepair    bool
 	Now            time.Time
-	Guard          func(*storage.Tx) error
+	Guard          func(*storage.Tx) ([]*domain.Event, error)
 }
 
 func (r TransitionRequest) valid() error {
@@ -120,12 +125,20 @@ func (s *Store) changeStatus(ctx context.Context, id string, req TransitionReque
 		} else if req.Token != "" {
 			return ErrLeaseTokenMismatch
 		}
-		if repair {
-			if err := req.Guard(tx); err != nil {
+		var guardEvents []*domain.Event
+		if req.Guard != nil {
+			guardEvents, err = req.Guard(tx)
+			if err != nil {
 				return err
 			}
 		}
 		from := wi.Status
+		// Leaving a status invalidates every unconsumed approval requested
+		// from it — atomically with the transition that leaves (方案 §4.9).
+		invalidated, err := approval.InvalidateForStatusTx(tx, st.DevsysDir(), id, from, now, req.Reason)
+		if err != nil {
+			return err
+		}
 		wi.Status = req.TargetStatus
 		wi.UpdatedAt = now
 		if req.TargetStatus == domain.StatusBlocked {
@@ -153,7 +166,20 @@ func (s *Store) changeStatus(ctx context.Context, id string, req TransitionReque
 		if err := tx.PutYAML(workitemRel(id), &wi, storage.ExpectHash(storage.HashBytes(raw))); err != nil {
 			return err
 		}
-		return events.AppendTx(tx, ev)
+		batch := append([]*domain.Event{ev}, guardEvents...)
+		batch = append(batch, invalidated...)
+		// Completing a work item propagates its decision/finding records to
+		// the parent and direct siblings inside this same transaction
+		// (实施计划 M3.3, 方案 §4.7). Propagation events join the batch: one
+		// transaction stages each JSONL shard once.
+		if req.TargetStatus == domain.StatusDone && from != domain.StatusDone {
+			extra, err := propagateRecordsTx(tx, st.DevsysDir(), &wi, now, req.Actor)
+			if err != nil {
+				return err
+			}
+			batch = append(batch, extra...)
+		}
+		return events.AppendBatchTx(tx, batch)
 	})
 	if err != nil {
 		return nil, err

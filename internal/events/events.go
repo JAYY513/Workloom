@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -51,23 +52,8 @@ func ShardRel(t time.Time) string {
 // December file. The write is a JSONL append inside a storage transaction,
 // so interrupted runs are recovered before the append is retried.
 func (s *Store) Append(ctx context.Context, ev *domain.Event) error {
-	if ev.Time.IsZero() {
-		ev.Time = time.Now().UTC()
-	}
-	if ev.ID == "" {
-		ev.ID = newEventID(ev.Time)
-	}
-	if ev.SchemaVersion == 0 {
-		ev.SchemaVersion = domain.SchemaVersion
-	}
-	if ev.Type == "" {
-		return fmt.Errorf("%w: type is empty", ErrBadTime)
-	}
-	if ev.Subject.Type == "" || ev.Subject.ID == "" {
-		return fmt.Errorf("event subject must reference type and id")
-	}
-	if ev.ReplyTo != nil && ev.Type != "comment" {
-		return fmt.Errorf("reply_to is only valid on comment events")
+	if err := prepareEvent(ev); err != nil {
+		return err
 	}
 	st, err := s.store()
 	if err != nil {
@@ -81,13 +67,10 @@ func (s *Store) Append(ctx context.Context, ev *domain.Event) error {
 	})
 }
 
-// AppendTx stages one event into an existing storage transaction.
-// supplies its own tx (already holding the project lock). ev.ID is assigned
-// from ev.Time if empty; ev.Time is set to UTC now if zero. ev.SchemaVersion
-// is set to domain.SchemaVersion if zero. Use this instead of reaching into
-// tx.AppendJSONL directly: it centralises shard-path derivation and ID
-// generation so callers don't reinvent the rules.
-func AppendTx(tx *storage.Tx, ev *domain.Event) error {
+// prepareEvent fills the derived fields of an event and validates its shape:
+// time defaults to UTC now, the ID derives from the time, and the schema
+// version is stamped. reply_to stays restricted to comment events.
+func prepareEvent(ev *domain.Event) error {
 	if ev.Time.IsZero() {
 		ev.Time = time.Now().UTC()
 	}
@@ -106,14 +89,67 @@ func AppendTx(tx *storage.Tx, ev *domain.Event) error {
 	if ev.ReplyTo != nil && ev.Type != "comment" {
 		return fmt.Errorf("reply_to is only valid on comment events")
 	}
+	return nil
+}
+
+// AppendTx stages one event into an existing storage transaction.
+// supplies its own tx (already holding the project lock). ev.ID is assigned
+// from ev.Time if empty; ev.Time is set to UTC now if zero. ev.SchemaVersion
+// is set to domain.SchemaVersion if zero. Use this instead of reaching into
+// tx.AppendJSONL directly: it centralises shard-path derivation and ID
+// generation so callers don't reinvent the rules.
+func AppendTx(tx *storage.Tx, ev *domain.Event) error {
+	if err := prepareEvent(ev); err != nil {
+		return err
+	}
 	return tx.AppendJSONL(ShardRel(ev.Time), ev)
 }
 
+// AppendBatchTx stages several events into one transaction. The transaction
+// contract stages each JSONL file once, so events sharing a month shard are
+// concatenated into a single append; events of different shards keep their
+// own append. This keeps a completion (status change plus propagation
+// events) atomic.
+func AppendBatchTx(tx *storage.Tx, evs []*domain.Event) error {
+	if len(evs) == 0 {
+		return nil
+	}
+	byShard := map[string][]*domain.Event{}
+	var shards []string
+	for _, ev := range evs {
+		if err := prepareEvent(ev); err != nil {
+			return err
+		}
+		rel := ShardRel(ev.Time)
+		if _, ok := byShard[rel]; !ok {
+			shards = append(shards, rel)
+		}
+		byShard[rel] = append(byShard[rel], ev)
+	}
+	sort.Strings(shards)
+	for _, rel := range shards {
+		var payload []byte
+		for _, ev := range byShard[rel] {
+			line, err := storage.MarshalJSONL(ev)
+			if err != nil {
+				return err
+			}
+			payload = append(payload, line...)
+		}
+		if err := tx.AppendJSONLRaw(rel, payload); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // newEventID derives a collision-resistant ID from the event time plus four
-// random bytes; there is no global counter to keep in sync.
+// random bytes; there is no global counter to keep in sync. Several events of
+// one transaction share a microsecond, so the random suffix carries the
+// disambiguation.
 func newEventID(t time.Time) string {
 	t = t.UTC()
-	var rnd [2]byte
+	var rnd [4]byte
 	if _, err := rand.Read(rnd[:]); err != nil {
 		panic(err) // crypto/rand failure is a process-level fault
 	}

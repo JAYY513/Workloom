@@ -413,40 +413,40 @@ func RepairApply(ctx context.Context, root string, plan Plan, opts Options) (App
 			continue
 		}
 		// Build the Guard closure that runs INSIDE the core's Write.
-		guard := func(tx *storage.Tx) error {
+		guard := func(tx *storage.Tx) ([]*domain.Event, error) {
 			// First: the workitem bytes must still match snap (CAS).
 			cur, exists, err := tx.ReadForExpect(workitemRel(p.WorkitemID))
 			if err != nil {
-				return err
+				return nil, err
 			}
 			if !exists {
-				return fmt.Errorf("workitem %s vanished during apply", p.WorkitemID)
+				return nil, fmt.Errorf("workitem %s vanished during apply", p.WorkitemID)
 			}
 			if sha256Hex(cur) != sha256Hex(snap) {
-				return fmt.Errorf("evidence drift on %s", workitemRel(p.WorkitemID))
+				return nil, fmt.Errorf("evidence drift on %s", workitemRel(p.WorkitemID))
 			}
 			for _, ev := range p.Evidence {
 				data, ex, err := tx.ReadForExpect(ev.Path)
 				if err != nil {
-					return fmt.Errorf("read evidence %s: %w", ev.Path, err)
+					return nil, fmt.Errorf("read evidence %s: %w", ev.Path, err)
 				}
 				switch ev.Kind {
 				case EvidenceFile:
 					if !ex {
-						return fmt.Errorf("evidence drift on %s: file missing", ev.Path)
+						return nil, fmt.Errorf("evidence drift on %s: file missing", ev.Path)
 					}
 					if sha256Hex(data) != ev.SHA256 {
-						return fmt.Errorf("evidence drift on %s: hash mismatch", ev.Path)
+						return nil, fmt.Errorf("evidence drift on %s: hash mismatch", ev.Path)
 					}
 				case EvidenceAbsent:
 					if ex {
-						return fmt.Errorf("evidence drift on %s: file unexpectedly present", ev.Path)
+						return nil, fmt.Errorf("evidence drift on %s: file unexpectedly present", ev.Path)
 					}
 				default:
-					return fmt.Errorf("unknown evidence kind %q", ev.Kind)
+					return nil, fmt.Errorf("unknown evidence kind %q", ev.Kind)
 				}
 			}
-			return nil
+			return nil, nil
 		}
 		switch p.Kind {
 		case ProposalReleaseExpiredLease:
