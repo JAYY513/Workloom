@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path/filepath"
 )
 
 // TailStatus describes whether a JSONL file can be appended to.
@@ -87,6 +88,9 @@ func ScanJSONL(path string, fn func(line []byte) error) error {
 // hold the project lock. A size mismatch means a writer bypassed the lock and
 // is reported instead of being papered over.
 func appendJSONL(path string, payload []byte, expectSize int64) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return fmt.Errorf("create parent of %s: %w", path, err)
+	}
 	tail, err := InspectJSONL(path)
 	if err != nil {
 		return err

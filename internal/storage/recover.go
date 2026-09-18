@@ -173,27 +173,37 @@ func (s *Store) verifyUntouched(j *journal) error {
 			if tail.Size != o.PreSize {
 				return fmt.Errorf("op %d (%s): file is %d bytes, expected %d", i, o.Rel, tail.Size, o.PreSize)
 			}
+		case opKindDelete:
+			expect, err := parseExpect(o.Expect)
+			if err != nil {
+				return fmt.Errorf("op %d: %v", i, err)
+			}
+			cur, exists, err := readFileMaybe(abs)
+			if err != nil {
+				return fmt.Errorf("op %d (%s): %v", i, o.Rel, err)
+			}
+			if !expect.satisfiedBy(cur, exists) {
+				return fmt.Errorf("op %d (%s): target changed outside devsys while the transaction was interrupted (expected %s, found %s)",
+					i, o.Rel, expect, describeCurrent(cur, exists))
+			}
 		}
 	}
 	return nil
 }
 
-// replayTxn re-applies a committed transaction. Every step is idempotent:
-// content that already matches is skipped, appends are recognised by their
-// recorded offset and payload bytes, so replaying never duplicates events.
 func (s *Store) replayTxn(dir string, j *journal) (applied, skipped int, err error) {
 	for i := range j.Ops {
 		o := &j.Ops[i]
-		payload, err := readTxnPayload(dir, o)
-		if err != nil {
-			return applied, skipped, fmt.Errorf("op %d (%s): %v", i, o.Rel, err)
-		}
 		abs, err := s.resolve(o.Rel)
 		if err != nil {
 			return applied, skipped, fmt.Errorf("op %d: %v", i, err)
 		}
 		switch o.Kind {
 		case opKindPut:
+			payload, err := readTxnPayload(dir, o)
+			if err != nil {
+				return applied, skipped, fmt.Errorf("op %d (%s): %v", i, o.Rel, err)
+			}
 			expect, err := parseExpect(o.Expect)
 			if err != nil {
 				return applied, skipped, fmt.Errorf("op %d: %v", i, err)
@@ -216,6 +226,10 @@ func (s *Store) replayTxn(dir string, j *journal) (applied, skipped int, err err
 			}
 			applied++
 		case opKindAppend:
+			payload, err := readTxnPayload(dir, o)
+			if err != nil {
+				return applied, skipped, fmt.Errorf("op %d (%s): %v", i, o.Rel, err)
+			}
 			tail, err := InspectJSONL(abs)
 			if err != nil {
 				return applied, skipped, fmt.Errorf("op %d (%s): %v", i, o.Rel, err)
@@ -242,6 +256,28 @@ func (s *Store) replayTxn(dir string, j *journal) (applied, skipped int, err err
 				return applied, skipped, fmt.Errorf("op %d (%s): file is %d bytes, expected %d or at least %d",
 					i, o.Rel, tail.Size, o.PreSize, o.PreSize+o.PayloadSize)
 			}
+		case opKindDelete:
+			expect, err := parseExpect(o.Expect)
+			if err != nil {
+				return applied, skipped, fmt.Errorf("op %d: %v", i, err)
+			}
+			cur, exists, err := readFileMaybe(abs)
+			if err != nil {
+				return applied, skipped, fmt.Errorf("op %d (%s): %v", i, o.Rel, err)
+			}
+			if !exists {
+				skipped++
+				continue
+			}
+			if !expect.satisfiedBy(cur, exists) {
+				return applied, skipped, fmt.Errorf(
+					"op %d (%s): target is neither the expected old version (%s, found %s) nor absent; refusing to guess",
+					i, o.Rel, expect, describeCurrent(cur, exists))
+			}
+			if err := os.Remove(abs); err != nil && !errors.Is(err, fs.ErrNotExist) {
+				return applied, skipped, fmt.Errorf("op %d (%s): delete: %v", i, o.Rel, err)
+			}
+			applied++
 		}
 	}
 	return applied, skipped, nil
@@ -388,6 +424,9 @@ func (s *Store) diagnoseTxn(dir, id string) PendingTxn {
 		return unreadable("commit marker counts %d ops, journal has %d", m.OpCount, len(j.Ops))
 	}
 	for i := range j.Ops {
+		if j.Ops[i].Kind == opKindDelete {
+			continue
+		}
 		if _, err := readTxnPayload(dir, &j.Ops[i]); err != nil {
 			return unreadable("op %d (%s): %v", i, j.Ops[i].Rel, err)
 		}
@@ -451,6 +490,26 @@ func (s *Store) opStatuses(j *journal) []PendingOp {
 			default:
 				po.Status = "conflict"
 				po.Detail = fmt.Sprintf("file is %d bytes, expected %d or at least %d", tail.Size, o.PreSize, o.PreSize+o.PayloadSize)
+			}
+		case opKindDelete:
+			expect, err := parseExpect(o.Expect)
+			if err != nil {
+				po.Status, po.Detail = "unknown", err.Error()
+				break
+			}
+			cur, exists, err := readFileMaybe(abs)
+			if err != nil {
+				po.Status, po.Detail = "unknown", err.Error()
+				break
+			}
+			switch {
+			case !exists:
+				po.Status = "applied"
+			case expect.satisfiedBy(cur, exists):
+				po.Status = "pending"
+			default:
+				po.Status = "conflict"
+				po.Detail = fmt.Sprintf("found %s, expected %s or absent", describeCurrent(cur, exists), expect)
 			}
 		}
 		out = append(out, po)

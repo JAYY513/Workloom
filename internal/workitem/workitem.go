@@ -57,6 +57,16 @@ func (s *Store) Create(ctx context.Context, wi *domain.WorkItem, prefix string) 
 	if !regexp.MustCompile(`^[A-Z][A-Z0-9_]*$`).MatchString(prefix) {
 		return "", fmt.Errorf("%w: %q", ErrBadPrefix, prefix)
 	}
+	if wi.Status == "" {
+		// Default: a freshly-created task lives in draft until the user
+		// transitions it forward (§6.1). Defaulting here keeps the existing
+		// smoke scripts unchanged while still routing every other status
+		// through the validation below.
+		wi.Status = domain.StatusDraft
+	}
+	if !domain.UnclaimedInitial[wi.Status] {
+		return "", fmt.Errorf("%w: initial status %q not in {draft, backlog, ready, blocked}", ErrInvalidInput, wi.Status)
+	}
 	st, err := s.store()
 	if err != nil {
 		return "", err
@@ -153,7 +163,22 @@ func (s *Store) List(ctx context.Context) ([]*domain.WorkItem, error) {
 // the caller read; a concurrent edit surfaces as storage.ErrConflict instead
 // of being overwritten (乐观并发, 方案 §15.2). expected is the raw file
 // content the caller's read snapshot was decoded from.
+//
+// Update refuses to mutate the Status field: use Transition or ApplyRepair
+// for status changes (§6). Other fields are written as supplied.
 func (s *Store) Update(ctx context.Context, wi *domain.WorkItem, expected []byte) error {
+	if wi == nil || !ValidID(wi.ID) {
+		return fmt.Errorf("%w: %q", ErrBadPrefix, wi.ID)
+	}
+	if !statusOnlyUnchangedAgainstSnapshot(wi, expected) {
+		return fmt.Errorf("%w: status changes must go through Transition or ApplyRepair", ErrInvalidInput)
+	}
+	// When a lease is active, plain Update is forbidden: the claimer must
+	// present owner/token via UpdateClaimed. This prevents a stale
+	// claimant from bypassing lease fencing on metadata fields.
+	if hasActiveLeaseInSnapshot(expected) {
+		return fmt.Errorf("%w: workitem %s has an active lease; use UpdateClaimed", ErrInvalidInput, wi.ID)
+	}
 	st, err := s.store()
 	if err != nil {
 		return err
@@ -161,6 +186,37 @@ func (s *Store) Update(ctx context.Context, wi *domain.WorkItem, expected []byte
 	return st.Write(ctx, func(tx *storage.Tx) error {
 		return tx.PutYAML(dirRel+"/"+wi.ID+".yaml", wi, storage.ExpectHash(storage.HashBytes(expected)))
 	})
+}
+
+// statusOnlyUnchangedAgainstSnapshot returns true iff the Status field in
+// the proposed WorkItem matches what is currently on disk. We rely on the
+// CAS guard (ExpectHash(expected)) for fields other than Status: a caller
+// that also wants to track Description / AcceptanceCriteria / etc. through
+// Update continues to work, but Status changes must be expressed via
+// Transition (normal flow) or ApplyRepair (repair flow).
+func statusOnlyUnchangedAgainstSnapshot(wi *domain.WorkItem, expected []byte) bool {
+	if len(expected) == 0 {
+		return false
+	}
+	cur := &domain.WorkItem{}
+	if err := domain.DecodeYAML(expected, cur); err != nil {
+		return false
+	}
+	return cur.Status == wi.Status
+}
+
+// hasActiveLeaseInSnapshot inspects the expected bytes for any non-empty
+// LeaseOwner + LeaseToken. Empty strings mean "no active lease"; a lease
+// file alone (without the workitem fields) does not protect.
+func hasActiveLeaseInSnapshot(expected []byte) bool {
+	if len(expected) == 0 {
+		return false
+	}
+	cur := &domain.WorkItem{}
+	if err := domain.DecodeYAML(expected, cur); err != nil {
+		return false
+	}
+	return cur.LeaseOwner != "" || cur.LeaseToken != ""
 }
 
 // ReadSnapshot returns a work item together with the raw bytes it was

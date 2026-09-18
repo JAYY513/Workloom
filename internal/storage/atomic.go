@@ -80,22 +80,22 @@ func renameWithRetry(oldPath, newPath string) error {
 // It is the primitive for new files (journal, payload) that are not replacing
 // an existing version.
 func WriteFileSync(path string, data []byte, perm fs.FileMode) error {
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, perm)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return fmt.Errorf("create parent of %s: %w", path, err)
+	}
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, perm)
 	if err != nil {
-		return fmt.Errorf("create %s: %w", path, err)
+		return fmt.Errorf("open %s: %w", path, err)
 	}
 	if _, err := f.Write(data); err != nil {
-		f.Close()
+		_ = f.Close()
 		return fmt.Errorf("write %s: %w", path, err)
 	}
 	if err := f.Sync(); err != nil {
-		f.Close()
-		return fmt.Errorf("sync %s: %w", path, err)
+		_ = f.Close()
+		return fmt.Errorf("fsync %s: %w", path, err)
 	}
-	if err := f.Close(); err != nil {
-		return fmt.Errorf("close %s: %w", path, err)
-	}
-	return nil
+	return f.Close()
 }
 
 // readFileMaybe returns the content of path; a missing file yields exists=false

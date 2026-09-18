@@ -41,8 +41,8 @@ func New(root string) *Store { return &Store{root: root} }
 
 func (s *Store) store() (*storage.Store, error) { return storage.Open(s.root, storage.Options{}) }
 
-// shardRel maps a UTC time to its managed file, relative to .devsys.
-func shardRel(t time.Time) string {
+// ShardRel maps a UTC time to its managed file, relative to .devsys.
+func ShardRel(t time.Time) string {
 	return fmt.Sprintf("%s/%04d-%02d.jsonl", dirRel, t.UTC().Year(), int(t.UTC().Month()))
 }
 
@@ -77,8 +77,36 @@ func (s *Store) Append(ctx context.Context, ev *domain.Event) error {
 		return fmt.Errorf("create events directory: %w", err)
 	}
 	return st.Write(ctx, func(tx *storage.Tx) error {
-		return tx.AppendJSONL(shardRel(ev.Time), ev)
+		return tx.AppendJSONL(ShardRel(ev.Time), ev)
 	})
+}
+
+// AppendTx stages one event into an existing storage transaction.
+// supplies its own tx (already holding the project lock). ev.ID is assigned
+// from ev.Time if empty; ev.Time is set to UTC now if zero. ev.SchemaVersion
+// is set to domain.SchemaVersion if zero. Use this instead of reaching into
+// tx.AppendJSONL directly: it centralises shard-path derivation and ID
+// generation so callers don't reinvent the rules.
+func AppendTx(tx *storage.Tx, ev *domain.Event) error {
+	if ev.Time.IsZero() {
+		ev.Time = time.Now().UTC()
+	}
+	if ev.ID == "" {
+		ev.ID = newEventID(ev.Time)
+	}
+	if ev.SchemaVersion == 0 {
+		ev.SchemaVersion = domain.SchemaVersion
+	}
+	if ev.Type == "" {
+		return fmt.Errorf("%w: type is empty", ErrBadTime)
+	}
+	if ev.Subject.Type == "" || ev.Subject.ID == "" {
+		return fmt.Errorf("event subject must reference type and id")
+	}
+	if ev.ReplyTo != nil && ev.Type != "comment" {
+		return fmt.Errorf("reply_to is only valid on comment events")
+	}
+	return tx.AppendJSONL(ShardRel(ev.Time), ev)
 }
 
 // newEventID derives a collision-resistant ID from the event time plus four

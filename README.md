@@ -25,6 +25,11 @@
 | M1.5 记录（Decision/Finding/Artifact） | 已完成：internal/record，一记录一文件；Artifact 版本链不可变追加 |
 | M1.6 检索（文本扫描） | 已完成：internal/search + `devsys search`，无索引扫描，排除 `.cache/`、`local/` |
 | M1.7 里程碑剧本与快照 | 已完成：PowerShell / Bash 剧本、真实领域层回读验收、13 文件示例快照 |
+| M2.1 工作项状态机 | 已完成：`internal/domain/state.go` 九状态保守图；`workitem.Transition/ApplyRepair` 带原因/操作者/快照校验，状态与事件同事务 |
+| M2.2 调度态与文件级领取 | 已完成：`unclaimed/claimed/running/retry_queued/released` + `.devsys/scheduling/<id>.yaml` 租约；`workitem.Claim` 原子创建 Run 与事件（CLI `workitem claim`），token fencing，并发唯一 |
+| M2.3 孤儿恢复与只读对账 | 已完成：`devsys doctor`（只读，不建锁、不恢复）与 `devsys recover`（先确定性事务恢复，再按策略释放过期/孤儿领取，幂等） |
+| M2.4 状态修复（推断→确认→重写） | 已完成：`devsys repair --dry-run` 提议表 + 摘要；`--apply --confirm <digest>` 在写事务内逐项复核证据后才重写，唯一允许降低完成度的路径 |
+| M2.5 里程碑剧本与快照 | 已完成：`scripts/smoke-m2.*` 领取 → 模拟崩溃 → doctor → recover → 确认修复；真实进程中断回归测试覆盖提交点两侧 |
 
 ## 构建与验收
 
@@ -83,6 +88,44 @@ bash scripts/smoke-m1.sh
 `docs/examples/m1-devsys/` 是一次通过验收的 `.devsys/` 内容快照（13 个文本文件），不含本地锁、缓存和用户注册表。
 可复制其内容到新 Git 仓库的 `.devsys/`，然后在该仓库运行 `devsys init` 补齐目录并登记注册表。
 示例项目 ID 为 `demo-project`；用于真实项目时需一致替换各记录中的项目 ID 与示例内容。
+
+M2 状态机与调度面（工作项命令成对使用 `get` 打印的版本哈希，防止旧视图覆盖新状态）：
+
+```sh
+bin/devsys.exe workitem get WLM-1                     # 含 version: <64-hex>
+bin/devsys.exe workitem create --title <标题> --actor <操作者> --reason <原因>
+bin/devsys.exe workitem transition --id WLM-1 --to ready --actor <a> --reason <r> --expect <hash>
+bin/devsys.exe workitem claim --id WLM-1 --owner <身份> --reason <r> [--expect <hash>]
+bin/devsys.exe workitem transition --id WLM-1 --to backlog --actor <a> --reason <r> --expect <hash>
+# 非法转换：exit 4 并列出允许的下一步；旧快照：exit 4；缺 .devsys/：exit 3
+```
+
+对账与修复（`doctor` 只读，不建锁、不恢复；`recover` 先确定性恢复事务再释放过期/孤儿领取）：
+
+```sh
+bin/devsys.exe doctor                                  # 过期领取、孤儿领取、待恢复事务与提议
+bin/devsys.exe recover --actor <a> --reason <r>        # 幂等；每次释放写 lease_recovered 事件
+bin/devsys.exe repair --dry-run --actor <a> --reason <r>          # 打印提议表与 digest
+bin/devsys.exe repair --apply --confirm <digest> --actor <a> --reason <r>
+# digest 不符或证据漂移：exit 3，不写任何文件；apply 是唯一允许降低完成度的路径
+```
+
+M2 完整剧本（Go 与 Git 必须在 PATH）：
+
+```sh
+# Windows PowerShell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/smoke-m2.ps1
+# Bash；Windows 请在 Git Bash 中执行（系统 bash.exe 指向 WSL 时其中无 Go）
+bash scripts/smoke-m2.sh
+```
+
+M2 剧本执行：初始化 → 创建任务 → `ready` → 领取（原子创建 Run + 租约）→ 模拟崩溃（租约过期、
+Run 缺失）→ `doctor` 只读报告且不改锁文件 → `recover` 释放并留事件 → 构造 done 缺失产物 →
+`repair --dry-run` 摘要 → `--apply` 回到 `in_progress` 并留 `repair_applied` 事件。默认清理临时目录；
+PowerShell `-Keep` / Bash `--keep` 保留项目并打印 `KEPT_PROJECT`。
+
+`internal/workitem/m2_crash_test.go` 用真实子进程中断覆盖提交点两侧：commit 前崩溃 → 事务丢弃、
+领取不可见、可重新领取；commit 后崩溃 → 决定已定、完整重放、其余领取者被 fencing 拒绝。
 
 测试与静态检查（`vendor/` 已提交，离线可跑）：
 

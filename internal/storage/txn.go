@@ -4,7 +4,9 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -83,8 +85,11 @@ func parseExpect(s string) (Expect, error) {
 
 // Operation kinds and transaction stages recorded on disk and used by tests.
 const (
-	opKindPut           = "put"
-	opKindAppend        = "append_jsonl"
+	opKindPut    = "put"
+	opKindAppend = "append_jsonl"
+	opKindDelete = "delete"
+)
+const (
 	stageJournalDurable = "journal-durable"
 	stageCommitted      = "committed"
 	stageCleaned        = "cleaned"
@@ -164,6 +169,22 @@ func (tx *Tx) AppendJSONL(rel string, record any) error {
 	return nil
 }
 
+// Delete stages the removal of rel, guarded by expect. The delete participates
+// in the same recoverable transaction as Put/AppendJSONL: precondition,
+// journal and commit marker are recorded together, and a crash mid-commit is
+// recovered by replaying the journal idempotently.
+func (tx *Tx) Delete(rel string, expect Expect) error {
+	abs, err := tx.s.resolve(rel)
+	if err != nil {
+		return err
+	}
+	if err := tx.claim(rel, abs); err != nil {
+		return err
+	}
+	tx.ops = append(tx.ops, op{kind: opKindDelete, rel: rel, abs: abs, expect: expect})
+	return nil
+}
+
 // ReadForExpect returns the current bytes of rel inside an open transaction
 // so callers can decode the exact content their ExpectHash guard will
 // replace. It performs no locking: Store.Write already holds the exclusive
@@ -217,8 +238,17 @@ func (j *journal) validate() error {
 	}
 	for i := range j.Ops {
 		o := &j.Ops[i]
-		if o.Rel == "" || o.Payload == "" || o.PayloadSHA256 == "" || o.PayloadSize < 0 {
+		if o.Rel == "" || o.PayloadSize < 0 {
 			return fmt.Errorf("journal %s op %d is incomplete", j.TxnID, i)
+		}
+		if o.Kind == opKindDelete {
+			if _, err := parseExpect(o.Expect); err != nil {
+				return fmt.Errorf("journal %s op %d: %v", j.TxnID, i, err)
+			}
+			continue
+		}
+		if o.Payload == "" || o.PayloadSHA256 == "" {
+			return fmt.Errorf("journal %s op %d missing payload", j.TxnID, i)
 		}
 		if _, err := payloadRel(o.Payload); err != nil {
 			return fmt.Errorf("journal %s op %d: %v", j.TxnID, i, err)
@@ -276,6 +306,14 @@ func (s *Store) commitLocked(tx *Tx) error {
 				return fmt.Errorf("%w: %s: %d bytes without line terminator; repair the file before appending", ErrIncompleteTail, o.rel, tail.Size)
 			}
 			o.preSize = tail.Size
+		case opKindDelete:
+			cur, exists, err := readFileMaybe(o.abs)
+			if err != nil {
+				return fmt.Errorf("read %s: %w", o.rel, err)
+			}
+			if !o.expect.satisfiedBy(cur, exists) {
+				return fmt.Errorf("%w: %s: expected %s, found %s", ErrConflict, o.rel, o.expect, describeCurrent(cur, exists))
+			}
 		}
 	}
 
@@ -287,23 +325,25 @@ func (s *Store) commitLocked(tx *Tx) error {
 	if err := os.MkdirAll(filepath.Join(dir, filepath.FromSlash(payloadDirName)), 0o755); err != nil {
 		return fmt.Errorf("create transaction directory: %w", err)
 	}
-
 	j := journal{TxnID: id, CreatedAt: s.opts.Now().UTC().Format(time.RFC3339Nano), PID: os.Getpid()}
 	for i := range tx.ops {
 		o := &tx.ops[i]
-		rel := fmt.Sprintf("%s/%03d.bin", payloadDirName, i)
-		if err := WriteFileSync(filepath.Join(dir, filepath.FromSlash(rel)), o.payload, 0o644); err != nil {
-			return err
+		jop := journalOp{
+			Kind:        o.kind,
+			Rel:         o.rel,
+			Expect:      expectField(o),
+			PayloadSize: int64(len(o.payload)),
+			PreSize:     o.preSize,
 		}
-		j.Ops = append(j.Ops, journalOp{
-			Kind:          o.kind,
-			Rel:           o.rel,
-			Expect:        expectField(o),
-			Payload:       rel,
-			PayloadSHA256: sha256Hex(o.payload),
-			PayloadSize:   int64(len(o.payload)),
-			PreSize:       o.preSize,
-		})
+		if o.kind != opKindDelete {
+			rel := fmt.Sprintf("%s/%03d.bin", payloadDirName, i)
+			if err := WriteFileSync(filepath.Join(dir, filepath.FromSlash(rel)), o.payload, 0o644); err != nil {
+				return err
+			}
+			jop.Payload = rel
+			jop.PayloadSHA256 = sha256Hex(o.payload)
+		}
+		j.Ops = append(j.Ops, jop)
 	}
 	journalBytes, err := EncodeYAML(j)
 	if err != nil {
@@ -343,9 +383,10 @@ func (s *Store) commitLocked(tx *Tx) error {
 	return nil
 }
 
-// expectField records the guard for Put ops; appends carry none.
+// expectField records the guard for ops that have one (put and delete).
+// appends carry none.
 func expectField(o *op) string {
-	if o.kind == opKindPut {
+	if o.kind == opKindPut || o.kind == opKindDelete {
 		return o.expect.String()
 	}
 	return ""
@@ -358,6 +399,11 @@ func applyPayload(abs, kind string, payload []byte, preSize int64) error {
 		return AtomicWrite(abs, payload, 0o644)
 	case opKindAppend:
 		return appendJSONL(abs, payload, preSize)
+	case opKindDelete:
+		if err := os.Remove(abs); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("delete %s: %w", abs, err)
+		}
+		return nil
 	default:
 		return fmt.Errorf("unknown op kind %q", kind)
 	}
@@ -383,4 +429,12 @@ func describeCurrent(data []byte, exists bool) string {
 		return "absent"
 	}
 	return "sha256:" + sha256Hex(data)[:12]
+}
+
+// TxnStageHookForTest installs a test-only hook that fires after each
+// durable transaction stage. Production code must not call it; it exists so
+// other packages can simulate a real process interruption at an exact stage
+// (the internal hook itself is unexported).
+func TxnStageHookForTest(hook func(stage string)) {
+	txnStageHook = hook
 }

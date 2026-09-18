@@ -91,6 +91,39 @@ func (s *Store) Create(ctx context.Context, r *domain.Run) (string, error) {
 	return "", fmt.Errorf("create run: gave up after %d conflicts", maxAttempts)
 }
 
+// CreateTx stages a new run inside an existing storage transaction. The caller
+// holds the project lock (via storage.Write) so the date-sequence scan and
+// ExpectAbsent put both succeed or both fail with the caller's tx; concurrent
+// claims never see a half-written run record. r.ID must be empty so the
+// helper can derive it; the assigned ID is written back into r.
+func (s *Store) CreateTx(tx *storage.Tx, r *domain.Run) error {
+	if r.ID != "" {
+		return fmt.Errorf("%w: CreateTx requires an empty ID", ErrBadID)
+	}
+	st, err := s.store()
+	if err != nil {
+		return err
+	}
+	next, err := nextNumber(st, timeBase(r.StartedAt))
+	if err != nil {
+		return err
+	}
+	r.ID = fmt.Sprintf("run-%s-%d", timeBase(r.StartedAt), next)
+	if !ValidID(r.ID) {
+		return fmt.Errorf("%w: %q", ErrBadID, r.ID)
+	}
+	if r.SchemaVersion == 0 {
+		r.SchemaVersion = domain.SchemaVersion
+	}
+	if r.Attempt == 0 {
+		r.Attempt = 1
+	}
+	if r.Status == "" {
+		r.Status = "running"
+	}
+	return tx.PutYAML(dirRel+"/"+r.ID+".yaml", r, storage.ExpectAbsent())
+}
+
 func timeBase(t time.Time) string { return t.UTC().Format("20060102") }
 
 // Get decodes one run.

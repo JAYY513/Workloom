@@ -77,8 +77,30 @@ type WorkItem struct {
 	Workflow            *WorkflowInstance `json:"workflow" yaml:"workflow"`
 	AssignedAgent       *string           `json:"assigned_agent" yaml:"assigned_agent"`
 	AssignedHarness     *string           `json:"assigned_harness" yaml:"assigned_harness"`
+	SchedulingState     string            `json:"scheduling_state" yaml:"scheduling_state"`
+	LeaseOwner          string            `json:"lease_owner" yaml:"lease_owner"`
+	LeaseToken          string            `json:"lease_token" yaml:"lease_token"`
+	LeaseClaimedAt      *time.Time        `json:"lease_claimed_at" yaml:"lease_claimed_at"`
+	LeaseUntil          *time.Time        `json:"lease_until" yaml:"lease_until"`
+	HeartbeatAt         *time.Time        `json:"heartbeat_at" yaml:"heartbeat_at"`
+	PreviousStatus      string            `json:"previous_status" yaml:"previous_status"`
+	ActiveRunID         string            `json:"active_run_id" yaml:"active_run_id"`
+	NextAttemptAt       *time.Time        `json:"next_attempt_at" yaml:"next_attempt_at"`
 	CreatedAt           time.Time         `json:"created_at" yaml:"created_at"`
 	UpdatedAt           time.Time         `json:"updated_at" yaml:"updated_at"`
+}
+type SchedulingLease struct {
+	SchemaVersion int       `json:"schema_version" yaml:"schema_version"`
+	WorkItemID    string    `json:"workitem_id" yaml:"workitem_id"`
+	Owner         string    `json:"owner" yaml:"owner"`
+	Token         string    `json:"token" yaml:"token"`
+	ClaimedAt     time.Time `json:"claimed_at" yaml:"claimed_at"`
+	LeaseUntil    time.Time `json:"lease_until" yaml:"lease_until"`
+	HeartbeatAt   time.Time `json:"heartbeat_at" yaml:"heartbeat_at"`
+	HeadSHA       string    `json:"head_sha" yaml:"head_sha"`
+	RunID         string    `json:"run_id" yaml:"run_id"`
+	AgentID       string    `json:"agent_id" yaml:"agent_id"`
+	AgentHarness  string    `json:"agent_harness" yaml:"agent_harness"`
 }
 type RunAgent struct {
 	ID      string `json:"id" yaml:"id"`
