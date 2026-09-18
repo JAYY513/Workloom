@@ -127,7 +127,7 @@ func Plan(in Input) Report {
 			WorkitemID: wi.ID, Priority: wi.Priority, Status: wi.Status, CreatedAt: wi.CreatedAt,
 		}
 		switch {
-		case wi.Status != domain.StatusReady:
+		case !dispatchableStatus(wi.Status):
 			decision.Action, decision.Reason = "skip", ReasonNotDispatchable
 		case activeState(wi.SchedulingState):
 			decision.Action, decision.Reason = "skip", ReasonLeaseActive
@@ -152,6 +152,12 @@ func Plan(in Input) Report {
 		rep.Skip = append(rep.Skip, decision)
 	}
 	return rep
+}
+
+// dispatchableStatus is what a tick may start: a ready work item, or one that
+// is waiting for its next attempt (its due time is checked separately).
+func dispatchableStatus(status string) bool {
+	return status == domain.StatusReady || status == domain.StatusRetryQueued
 }
 
 // dependenciesSatisfied reports whether every dependency is resolved: done, or

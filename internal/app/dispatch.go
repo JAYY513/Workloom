@@ -10,11 +10,16 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"workloom/internal/dispatch"
 	"workloom/internal/domain"
 	"workloom/internal/events"
 	"workloom/internal/reconcile"
+	"workloom/internal/retry"
+	"workloom/internal/run"
+	"workloom/internal/workflow"
+	"workloom/internal/workitem"
 )
 
 // DispatchRequest is one scheduling tick (方案 §4.8): recover, reconcile, then
@@ -43,7 +48,9 @@ type DispatchReport struct {
 	Recover *reconcile.RecoverReport `json:"recover,omitempty"`
 	Plan    dispatch.Report          `json:"plan"`
 	Started []DispatchedAttempt      `json:"started"`
-	Notices []string                 `json:"notices,omitempty"`
+	// Swept lists the failed or stalled attempts the tick ended and requeued.
+	Swept   []SweptAttempt `json:"swept,omitempty"`
+	Notices []string       `json:"notices,omitempty"`
 }
 
 // DispatchedAttempt is one attempt a tick started.
@@ -91,6 +98,20 @@ func (s *Service) Dispatch(ctx context.Context, req DispatchRequest) (DispatchRe
 	}
 	caps, notices := s.dispatchCaps(ctx, items)
 	rep.Notices = append(rep.Notices, notices...)
+	if !req.DryRun {
+		// 到期重试与停滞评估（§4.8 的 tick 顺序）发生在计划之前：计划看到的
+		// 是它们产出的状态。
+		swept, sweepNotices, err := s.retrySweep(ctx, items, req)
+		if err != nil {
+			return rep, err
+		}
+		rep.Swept = swept
+		rep.Notices = append(rep.Notices, sweepNotices...)
+		items, err = s.items().List(ctx)
+		if err != nil {
+			return rep, s.storeError(err)
+		}
+	}
 	rep.Plan = dispatch.Plan(dispatch.Input{Now: s.now(), Items: items, Caps: caps, Max: req.Max})
 	if req.DryRun || len(rep.Plan.Start) == 0 {
 		return rep, nil
@@ -292,4 +313,181 @@ func shellArgv(command string) []string {
 		return []string{"cmd", "/c", command}
 	}
 	return []string{"sh", "-c", command}
+}
+
+// claimHeld reports whether a work item is currently held by a live claim: the
+// tick recovers expired leases first, so what remains is genuinely in flight.
+func claimHeld(state string) bool {
+	return state == domain.SchedulingClaimed || state == domain.SchedulingRunning
+}
+
+// SweptAttempt is one failed or stalled attempt the tick acted on.
+type SweptAttempt struct {
+	WorkitemID    string     `json:"workitem_id"`
+	RunID         string     `json:"run_id"`
+	Action        string     `json:"action"` // retry_queued | released
+	Reason        string     `json:"reason"`
+	Attempts      int        `json:"attempts"`
+	NextAttemptAt *time.Time `json:"next_attempt_at,omitempty"`
+}
+
+// retrySweep ends the attempts that failed, timed out or stopped making
+// progress and queues their next attempt with a reproducible backoff (§15.4).
+// It runs inside the tick before planning, so the plan sees the state the
+// sweep produced — and because the backoff is derived from the work item and
+// the attempt number, a restarted scheduler reaches the same instant.
+func (s *Service) retrySweep(ctx context.Context, items []*domain.WorkItem, req DispatchRequest) ([]SweptAttempt, []string, error) {
+	var swept []SweptAttempt
+	var notices []string
+	runs, err := run.New(s.Root).List(ctx)
+	if err != nil {
+		return nil, nil, s.storeError(err)
+	}
+	latest := map[string]*domain.Run{}
+	for _, r := range runs {
+		if current, ok := latest[r.WorkItemID]; !ok || r.StartedAt.After(current.StartedAt) {
+			latest[r.WorkItemID] = r
+		}
+	}
+	for _, wi := range items {
+		if !claimHeld(wi.SchedulingState) {
+			continue
+		}
+		r, ok := latest[wi.ID]
+		if !ok {
+			continue
+		}
+		res, err := s.policyForWorkItem(ctx, wi)
+		if err != nil {
+			notices = append(notices, fmt.Sprintf("%s: policy unreadable, retry sweep skipped (%v)", wi.ID, err))
+			continue
+		}
+		threshold := retry.DefaultStallThreshold
+		if res.Policy != nil && res.Policy.Limits.StallThresholdSeconds > 0 {
+			threshold = time.Duration(res.Policy.Limits.StallThresholdSeconds) * time.Second
+		}
+		reason, act := s.sweepTrigger(r, threshold, s.now())
+		if !act {
+			continue
+		}
+		if reason == "stalled" && r.Status == "running" {
+			// A stalled attempt is over: it is recorded as such before the
+			// next attempt is queued, so the evidence says what happened.
+			if _, err := s.RunFinish(ctx, RunFinishRequest{
+				RunID: r.ID, Outcome: RunStalled, Actor: req.Actor,
+				Reason: fmt.Sprintf("no progress for %s", threshold),
+			}); err != nil {
+				return swept, notices, err
+			}
+		}
+		lease, err := s.items().LeaseInspection(ctx, wi.ID)
+		if err != nil {
+			notices = append(notices, fmt.Sprintf("%s: lease unreadable, retry sweep skipped (%v)", wi.ID, err))
+			continue
+		}
+		attempts := len(runsFor(runs, wi.ID))
+		attempt, next, err := s.queueNextAttempt(ctx, wi, lease, attempts, res.Policy, reason, req)
+		if err != nil {
+			return swept, notices, err
+		}
+		entry := SweptAttempt{WorkitemID: wi.ID, RunID: r.ID, Attempts: attempts, Reason: reason}
+		if next != nil {
+			entry.Action, entry.NextAttemptAt = "retry_queued", next
+		} else {
+			entry.Action = "released"
+			_ = attempt
+		}
+		swept = append(swept, entry)
+	}
+	return swept, notices, nil
+}
+
+// sweepTrigger decides whether an attempt needs the tick's attention: a failed
+// or timed-out attempt is retried, a stalled one is ended first, and a
+// deliberate cancellation is only released. act is false when the attempt is
+// still making progress.
+func (s *Service) sweepTrigger(r *domain.Run, threshold time.Duration, now time.Time) (string, bool) {
+	switch r.Status {
+	case RunFailed:
+		return "failed", true
+	case RunTimedOut:
+		return "timed_out", true
+	case RunStalled:
+		return "stalled", true
+	case RunCanceled:
+		return "canceled", true
+	case "running":
+		if progress, err := s.lastProgress(r); err == nil && now.Sub(progress) > threshold {
+			return "stalled", true
+		}
+	}
+	return "", false
+}
+
+// lastProgress is the newest evidence an attempt produced: the last record of
+// its stream, or its start time when nothing was streamed yet.
+func (s *Service) lastProgress(r *domain.Run) (time.Time, error) {
+	lines, err := readRunStream(s.Root, r.ID)
+	if err != nil {
+		return time.Time{}, err
+	}
+	if len(lines) == 0 {
+		return r.StartedAt, nil
+	}
+	return lines[len(lines)-1].Time, nil
+}
+
+// queueNextAttempt gives the claim back and queues the next attempt, unless
+// the attempts the policy allows are used up: then the claim is released and
+// the exhaustion is recorded.
+func (s *Service) queueNextAttempt(ctx context.Context, wi *domain.WorkItem, lease domain.SchedulingLease, attempts int, policy *workflow.Policy, reason string, req DispatchRequest) (int, *time.Time, error) {
+	maxAttempts := 0
+	base, ceiling := retry.DefaultBase, retry.DefaultMax
+	if policy != nil {
+		maxAttempts = policy.Limits.MaxAttempts
+		if policy.Limits.BackoffMaxSeconds > 0 {
+			ceiling = time.Duration(policy.Limits.BackoffMaxSeconds) * time.Second
+		}
+	}
+	if maxAttempts > 0 && attempts >= maxAttempts {
+		if _, err := s.WorkitemRelease(ctx, wi.ID, lease.Owner, lease.Token, req.Actor,
+			fmt.Sprintf("%s: attempts exhausted (%d of %d)", reason, attempts, maxAttempts), ""); err != nil {
+			return 0, nil, err
+		}
+		if err := events.New(s.Root).Append(ctx, &domain.Event{
+			Type:      "retry_exhausted",
+			Subject:   domain.Reference{Type: "workitem", ID: wi.ID},
+			ProjectID: wi.ProjectID,
+			Actor:     req.Actor,
+			Content:   fmt.Sprintf("%s after %d attempt(s); the work item needs a human decision", reason, attempts),
+			Time:      s.now(),
+		}); err != nil {
+			return 0, nil, s.storeError(err)
+		}
+		return attempts, nil, nil
+	}
+	attempt := attempts + 1
+	delay := retry.Delay(base, ceiling, attempts, wi.ID)
+	result, err := s.items().QueueRetry(ctx, wi.ID, workitem.RetryOptions{
+		Owner: lease.Owner, Token: lease.Token, Attempt: attempt,
+		Delay: delay, Actor: req.Actor,
+		Reason: fmt.Sprintf("%s; retrying in %s (attempt %d)", reason, delay.Round(time.Second), attempt),
+		Now:    s.now(),
+	})
+	if err != nil {
+		return 0, nil, s.storeError(err)
+	}
+	next := result.NextAttemptAt
+	return attempt, &next, nil
+}
+
+// runsFor lists the attempts a work item has already had.
+func runsFor(runs []*domain.Run, workitemID string) []*domain.Run {
+	var out []*domain.Run
+	for _, r := range runs {
+		if r.WorkItemID == workitemID {
+			out = append(out, r)
+		}
+	}
+	return out
 }

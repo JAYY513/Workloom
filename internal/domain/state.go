@@ -15,9 +15,12 @@ import (
 // Work item status values (§6.1). All nine are valid; Create allows a
 // restricted subset (UnclaimedInitial), Transition enforces the graph below.
 const (
-	StatusDraft        = "draft"
-	StatusBacklog      = "backlog"
-	StatusReady        = "ready"
+	StatusDraft   = "draft"
+	StatusBacklog = "backlog"
+	StatusReady   = "ready"
+	// StatusRetryQueued is the state a failed or stalled attempt returns to
+	// while it waits for its next attempt (方案 §15.4).
+	StatusRetryQueued  = "retry_queued"
 	StatusInProgress   = "in_progress"
 	StatusBlocked      = "blocked"
 	StatusReview       = "review"

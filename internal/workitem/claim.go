@@ -147,10 +147,13 @@ type RetryOptions struct {
 	Token     string
 	Expected  []byte
 	BaseDelay time.Duration // default 1 min; deterministic scaling on attempt
-	Attempt   int           // next attempt number; must be > current lease attempt
-	Actor     string
-	Reason    string
-	Now       time.Time
+	// Delay overrides the built-in doubling when the caller computed the
+	// backoff itself (方案 §15.4: reproducible jitter, policy ceiling).
+	Delay   time.Duration
+	Attempt int // next attempt number; must be > current lease attempt
+	Actor   string
+	Reason  string
+	Now     time.Time
 }
 
 // RetryResult records the deterministic next_attempt_at used.
@@ -216,7 +219,7 @@ func (s *Store) Claim(ctx context.Context, id string, opts ClaimOptions) (ClaimR
 	}
 
 	switch cur.Status {
-	case domain.StatusReady, domain.StatusBacklog, "retry_queued", domain.StatusReview, domain.StatusVerification:
+	case domain.StatusReady, domain.StatusBacklog, domain.StatusRetryQueued, domain.StatusReview, domain.StatusVerification:
 		// ok
 	default:
 		if cur.SchedulingState == domain.SchedulingClaimed ||
@@ -225,7 +228,7 @@ func (s *Store) Claim(ctx context.Context, id string, opts ClaimOptions) (ClaimR
 		}
 	}
 	if !domain.IsTransitionLegal(cur.Status, domain.StatusInProgress) &&
-		cur.Status != "retry_queued" {
+		cur.Status != domain.StatusRetryQueued {
 		return ClaimResult{}, &domain.TransitionError{
 			From: cur.Status, To: domain.StatusInProgress,
 			Allowed: domain.AllowedFrom(cur.Status),
@@ -562,7 +565,7 @@ func (s *Store) Start(ctx context.Context, id string, opts StartOptions) (StartR
 		return StartResult{}, fmt.Errorf("%w: workitem %s changed concurrently", storage.ErrConflict, id)
 	}
 	switch cur.Status {
-	case domain.StatusBlocked, "retry_queued":
+	case domain.StatusBlocked, domain.StatusRetryQueued:
 		// ok
 	default:
 		return StartResult{}, &domain.TransitionError{
@@ -706,16 +709,19 @@ func (s *Store) QueueRetry(ctx context.Context, id string, opts RetryOptions) (R
 	if attempt <= 0 {
 		attempt = 1
 	}
-	delay := base
-	for i := 1; i < attempt; i++ {
-		delay *= 2
-		if delay > time.Hour {
-			delay = time.Hour
-			break
+	delay := opts.Delay
+	if delay <= 0 {
+		delay = base
+		for i := 1; i < attempt; i++ {
+			delay *= 2
+			if delay > time.Hour {
+				delay = time.Hour
+				break
+			}
 		}
 	}
 	next := now.Add(delay)
-	cur.Status = "retry_queued"
+	cur.Status = domain.StatusRetryQueued
 	cur.SchedulingState = domain.SchedulingRetryQueued
 	cur.LeaseOwner = ""
 	cur.LeaseToken = ""

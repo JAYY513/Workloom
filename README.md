@@ -48,6 +48,7 @@
 | M6.2 工作区管理与不变量 | 已完成：`internal/workspace`（目录名净化 + 哈希后缀、工作区根 `workspace_root`、路径不变量含符号链接逃逸拒绝、git worktree 创建/复用/回收、四个生命周期钩子）；`devsys worktree prepare\|remove\|list`；`run exec` 启动前校验工作区不变量并执行 `before_run`（致命）/`after_run`（仅记录） |
 | M6.3 Run 生命周期与多轮续跑 | 已完成：`internal/prompt` 装配（首轮全量含策略正文渲染，续跑只发「上一轮以来变化 + 未完成项」，确定性 Hash 可重放）；轮次簿记在 run 事件流（`round` 记录），下一轮号从流推导；轮数上限 `limits.max_attempts` 超限即拒；§4.8 阶段推进（`building_prompt→launching_agent→streaming_turns→finishing`）与终态（succeeded/failed/timed_out/stalled/canceled）；`devsys run prompt\|complete\|fail\|cancel` + MCP `run_complete/run_fail/run_cancel` |
 | M6.4 调度 tick、派发与阻塞 | 已完成：`devsys dispatch [--once\|--watch]`——恢复事务与租约 → 计划（priority 降序 → created_at → 标识符；全局/按状态并发上限，未声明缺省 1；`blocked_by` 未满足即跳过且不领取）→ 领取 → 工作区准备并绑定 → 子进程启动尝试 → `run_dispatched` 事件；`--dry-run` 只计划；只读命令不派发 |
+| M6.5 重试、退避与停滞检测 | 已完成：`internal/retry`（确定性退避 `min(base·2^(n-1), ceiling)` + 可复现抖动，种子=工作项标识+尝试次数）；tick 在计划前扫尾：失败/超时/停滞的尝试按策略重排（`retry_queued` + `next_attempt_at`），尝试用尽则释放领取并记 `retry_exhausted`；停滞=运行中且流内无新证据超过 `stall_threshold_seconds`（缺省 30 分钟）→ 先记 `stalled` 终态再重排 |
 | M6.1 Harness Adapter 接口与 Shell Adapter | 已完成：`internal/harness`（方案 §9.2 九方法映射 + 八项能力声明 + Session 句柄承载 stream/stop/collect）；Shell 适配器 argv 直通、逐行 stdout/stderr、超长行按 rune 边界 64 KiB 分块、超时与取消终止整棵进程树（POSIX 进程组 / Windows `taskkill /T /F`）；`devsys run exec` 把输出实时镜像并写入 `.devsys/runs/<run-id>.jsonl`（追加写、周期 fsync、断尾修复留痕），结束后更新 run 证据（commands/logs/result.errors）并记事件 |
 
 ## 构建与验收
@@ -237,6 +238,12 @@ bin/devsys.exe --json run exec --id <run-id> --actor <a> --reason <r> -- <comman
 `run exec` 通过 Harness Adapter 接口（`internal/harness`）启动命令：argv 直通、不做 shell 解释（要 shell 特性就自己传 `sh -c` / `cmd /c`），stdout/stderr 逐行实时镜像（`--json` 时命令输出走 stderr，stdout 只承载信封）；输出同时追加到 `.devsys/runs/<run-id>.jsonl`（`start` / `output` / `exit` 记录，控制记录与每 128 行刷盘，崩溃留下的断尾在下次运行时截断并写入 `repair` 记录）。命令结束后把 `commands`、`logs` 引用与非零退出的说明写回 run，并记 `run_exec_started`/`run_exec_finished` 事件。超时或 Ctrl-C 会终止整棵进程树（POSIX 进程组 / Windows `taskkill /T /F`），不会留下孙进程。
 
 **退出码语义**：`run exec` 的退出码描述 devsys 操作本身（0 已执行并落盘 / 2 用法 / 3 前置条件 / 4 受管状态不可信 / 1 内部）；被跑命令自己的退出码是**证据**，写在 JSONL 的 `exit` 记录与 run 的 `result.errors` 里，并由 `--json` 输出——两者不混用（否则命令退出 3 会被误读成 devsys 前置条件错误）。
+
+重试、退避与停滞（M6.5，方案 §15.4）：
+
+退避是**确定性**的：`delay = min(base × 2^(attempt-1), backoff_max_seconds)` 再加一段由「工作项标识 + 尝试次数」派生的抖动（延迟的 0–19%，且被上限夹住）——同一失败在重启后的调度器上会算出同一个时刻，这是「到期判定在 tick 时求值」可被检验的前提。`base` 缺省 30s（策略没有 base 键，只有 `limits.backoff_max_seconds` 作为硬上限；上限可以小于 base，那就是「尽快重试」）。尝试用尽（`limits.max_attempts`，缺省按 1 次）时不再重排：释放领取并记 `retry_exhausted`，把决定权交回人。
+
+tick 在**计划之前**扫尾：运行中的尝试若其事件流最后一条记录已超过 `limits.stall_threshold_seconds`（缺省 30 分钟）没有更新，就判定停滞——先把 run 记成 `stalled` 终态（证据说清发生了什么），再按同一退避重排；失败/超时的尝试直接重排，取消的尝试只释放（取消是人的决定，不自动重试）。`--dry-run` 不扫尾（扫尾会写状态）。重排后的项在 `next_attempt_at` 到期前报 `retry_not_due`，到期即回到候选。
 
 调度 tick（M6.4，方案 §4.8/§7.4）：
 

@@ -82,6 +82,14 @@ func renderDispatch(stdout io.Writer, opts options, report app.DispatchReport) e
 			len(report.Recover.ReleasedExpired), len(report.Recover.ReleasedOrphans))
 	}
 	fmt.Fprintf(stdout, "in flight: %d (global cap %d)\n", report.Plan.InFlight, report.Plan.Caps.Global)
+	for _, swept := range report.Swept {
+		due := ""
+		if swept.NextAttemptAt != nil {
+			due = " due=" + swept.NextAttemptAt.UTC().Format(time.RFC3339)
+		}
+		fmt.Fprintf(stdout, "swept %s\t%s\tattempts=%d\t%s%s\n",
+			swept.WorkitemID, swept.Action, swept.Attempts, swept.Reason, due)
+	}
 	for _, attempt := range report.Started {
 		pid := ""
 		if attempt.PID > 0 {
@@ -91,6 +99,14 @@ func renderDispatch(stdout io.Writer, opts options, report app.DispatchReport) e
 	}
 	for _, decision := range report.Plan.Start {
 		started := false
+		for _, swept := range report.Swept {
+			due := ""
+			if swept.NextAttemptAt != nil {
+				due = " due=" + swept.NextAttemptAt.UTC().Format(time.RFC3339)
+			}
+			fmt.Fprintf(stdout, "swept %s\t%s\tattempts=%d\t%s%s\n",
+				swept.WorkitemID, swept.Action, swept.Attempts, swept.Reason, due)
+		}
 		for _, attempt := range report.Started {
 			if attempt.WorkitemID == decision.WorkitemID {
 				started = true
