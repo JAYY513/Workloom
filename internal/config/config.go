@@ -40,19 +40,29 @@ func managedFiles() []string {
 // ManagedFiles returns the managed metadata files in report order.
 func ManagedFiles() []string { return managedFiles() }
 
+// SeverityWarning marks a problem as advisory: it is recorded and rendered,
+// but it is not a reason to refuse the file. An empty Severity is an error.
+const SeverityWarning = "warning"
+
 // Problem is one located defect in a managed file. Line is 1-based and zero
 // when the file as a whole is at fault; Field is empty when the defect does
-// not belong to a single field.
+// not belong to a single field. Severity is SeverityWarning for advisories and
+// empty for errors.
 type Problem struct {
-	File   string `json:"file"`
-	Line   int    `json:"line,omitempty"`
-	Field  string `json:"field,omitempty"`
-	Reason string `json:"reason"`
+	File     string `json:"file"`
+	Line     int    `json:"line,omitempty"`
+	Field    string `json:"field,omitempty"`
+	Severity string `json:"severity,omitempty"`
+	Reason   string `json:"reason"`
 }
 
-// String renders the location as `file[:line][: field]: reason`.
+// String renders the location as `[warning: ]file[:line][: field]: reason`.
 func (p Problem) String() string {
 	var b strings.Builder
+	if p.Severity != "" {
+		b.WriteString(p.Severity)
+		b.WriteString(": ")
+	}
 	b.WriteString(p.File)
 	if p.Line > 0 {
 		fmt.Fprintf(&b, ":%d", p.Line)
@@ -90,6 +100,10 @@ type Config struct {
 	// DispatchCommand is the command a scheduling tick runs for each attempt
 	// it dispatches (M6.4). Empty means the tick refuses to start attempts.
 	DispatchCommand string `json:"dispatch_command,omitempty"`
+	// KnowledgePages are the page-layer roots (project-relative directories)
+	// the knowledge commands read and validate (M5.1, 方案 §12.6). Empty means
+	// the built-in candidates of knowledge.DefaultRoots.
+	KnowledgePages []string `json:"knowledge_pages,omitempty"`
 }
 
 // Metadata is what Load or Diagnose could read. A field is nil when its file
@@ -175,6 +189,11 @@ func parseConfig(rel string, data []byte) (*Config, Problems) {
 	if node, ok := values["dispatch_command"]; ok {
 		if err := node.Decode(&c.DispatchCommand); err != nil {
 			return nil, Problems{{File: rel, Field: "dispatch_command", Reason: fmt.Sprintf("decode: %v", err)}}
+		}
+	}
+	if node, ok := values["knowledge_pages"]; ok && node.Tag != "!!null" {
+		if err := node.Decode(&c.KnowledgePages); err != nil {
+			return nil, Problems{{File: rel, Field: "knowledge_pages", Reason: fmt.Sprintf("decode: %v", err)}}
 		}
 	}
 	return c, nil

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"workloom/internal/app"
+	"workloom/internal/config"
 	"workloom/internal/domain"
 	"workloom/internal/harness"
 )
@@ -881,14 +882,116 @@ func runContext(stdout io.Writer, opts options, rest []string) error {
 }
 
 // runKnowledge routes the knowledge family: `status` reports the layer's
-// availability (the index layer arrives with M5, 方案 §12.6).
+// availability, `scan` builds the index-layer snapshot of the working tree
+// (M5.2), and `validate` checks the page layer's front matter contract
+// (M5.1, 方案 §12.5).
 func runKnowledge(stdout io.Writer, opts options, rest []string) error {
-	if len(rest) == 0 || rest[0] != "status" {
-		return errUsage("`devsys knowledge` needs a subcommand (status)")
+	if len(rest) == 0 {
+		return errUsage("`devsys knowledge` needs a subcommand (status, scan, validate)")
 	}
-	if len(rest) != 1 {
-		return errUsage("`devsys knowledge status` takes no arguments")
+	switch rest[0] {
+	case "status":
+		if len(rest) != 1 {
+			return errUsage("`devsys knowledge status` takes no arguments")
+		}
+		return runKnowledgeStatus(stdout, opts)
+	case "validate":
+		return runKnowledgeValidate(stdout, opts, rest[1:])
+	case "scan":
+		if len(rest) != 1 {
+			return errUsage("`devsys knowledge scan` takes no arguments")
+		}
+		return runKnowledgeScan(stdout, opts)
+	default:
+		return errUsage("unknown `devsys knowledge` subcommand %q", rest[0])
 	}
+}
+
+// runKnowledgeScan implements `devsys knowledge scan`: build the index layer's
+// snapshot of the working tree (M5.2).
+func runKnowledgeScan(stdout io.Writer, opts options) error {
+	svc, err := requireProjectRoot()
+	if err != nil {
+		return err
+	}
+	view, err := svc.KnowledgeScan(context.Background())
+	if err != nil {
+		return err
+	}
+	if opts.json {
+		return json.NewEncoder(stdout).Encode(struct {
+			OK bool `json:"ok"`
+			app.KnowledgeScanView
+		}{OK: true, KnowledgeScanView: view})
+	}
+	if !opts.quiet {
+		fmt.Fprintf(stdout, "knowledge scan: %d files, %s, %d languages -> %s\n",
+			view.Files, humanBytes(view.TotalSize), len(view.Languages), view.File)
+	}
+	// Exclusions are the audit trail for "the index is smaller than the tree",
+	// so they stay visible under --quiet.
+	for _, exclusion := range view.Excluded {
+		fmt.Fprintf(stdout, "  excluded: %s  (%s)\n", exclusion.Path, exclusion.Reason)
+	}
+	return nil
+}
+
+// humanBytes renders a byte count the way the scan summary reads.
+func humanBytes(n int64) string {
+	switch {
+	case n >= 1<<20:
+		return fmt.Sprintf("%.1f MiB", float64(n)/(1<<20))
+	case n >= 1<<10:
+		return fmt.Sprintf("%.1f KiB", float64(n)/(1<<10))
+	default:
+		return fmt.Sprintf("%d B", n)
+	}
+}
+
+// runKnowledgeValidate implements `devsys knowledge validate`: the page
+// layer's format gate, meant to run in CI. Problems are printed with their
+// location and field, and any error-level problem exits 4.
+func runKnowledgeValidate(stdout io.Writer, opts options, rest []string) error {
+	fs := flag.NewFlagSet("knowledge validate", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	if err := fs.Parse(rest); err != nil {
+		return errUsage("knowledge validate [<dir|page.md>...]")
+	}
+	svc, err := requireProjectRoot()
+	if err != nil {
+		return err
+	}
+	view, err := svc.KnowledgeValidate(context.Background(), fs.Args())
+	if err != nil {
+		return err
+	}
+	if opts.json {
+		return json.NewEncoder(stdout).Encode(struct {
+			OK bool `json:"ok"`
+			app.KnowledgeValidateView
+		}{OK: true, KnowledgeValidateView: view})
+	}
+	if !opts.quiet {
+		switch {
+		case view.Missing:
+			fmt.Fprintln(stdout, "knowledge pages: none (page layer not generated; 方案 §12.6 degradation)")
+		default:
+			fmt.Fprintf(stdout, "knowledge ok: %d pages, %d errors, %d warnings\n",
+				len(view.Pages), view.Errors, view.Warnings)
+		}
+	}
+	// Warnings are diagnostics, not success banners: they stay visible under
+	// --quiet so a page that loads with advisories says so.
+	for _, issue := range view.Issues {
+		if issue.Severity == config.SeverityWarning {
+			fmt.Fprintf(stdout, "%s\n", issue.String())
+		}
+	}
+	return nil
+}
+
+// runKnowledgeStatus implements `devsys knowledge status`.
+func runKnowledgeStatus(stdout io.Writer, opts options) error {
 	svc, err := requireProjectRoot()
 	if err != nil {
 		return err

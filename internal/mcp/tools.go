@@ -103,6 +103,7 @@ func allTools() []toolSpec {
 		{"context_compact", []string{ProfileSession}, registerContextCompact},
 		{"agent_session_start", []string{ProfileSession}, registerAgentSessionStart},
 		{"knowledge_status", []string{ProfileSession}, registerKnowledgeStatus},
+		{"knowledge_validate", []string{ProfileSession}, registerKnowledgeValidate},
 	}
 }
 

@@ -3,10 +3,14 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"workloom/internal/config"
 )
 
 // newWorkitem creates a work item through the CLI and returns its id.
@@ -292,5 +296,252 @@ func TestKnowledgeStatusDegrades(t *testing.T) {
 	}
 	if !strings.Contains(out, "unavailable") || !strings.Contains(out, "M5") {
 		t.Fatalf("knowledge status = %s", out)
+	}
+}
+
+// writePage writes a knowledge page under the project.
+func writePage(t *testing.T, root, rel, content string) {
+	t.Helper()
+	path := filepath.Join(root, filepath.FromSlash(rel))
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+const cliGoodPage = `---
+status: stable
+type: module
+triggers:
+  - 存储层
+description: 可靠文本存储的定位
+source_commit: 997c5f8
+sources:
+  - internal/storage/**
+---
+
+# 存储层
+`
+
+// TestKnowledgeValidateNoPageLayer pins the degradation: a project without a
+// generator answers `missing` and exits 0 — the page layer's absence belongs to
+// `knowledge status`, not to the format gate (方案 §12.6).
+func TestKnowledgeValidateNoPageLayer(t *testing.T) {
+	gatedProject(t)
+	code, out, errOut := run(t, "knowledge", "validate")
+	if code != CodeOK {
+		t.Fatalf("validate: code=%d stderr=%q", code, errOut)
+	}
+	if !strings.Contains(out, "page layer not generated") {
+		t.Fatalf("stdout = %q", out)
+	}
+	code, out, _ = run(t, "--json", "knowledge", "validate")
+	if code != CodeOK {
+		t.Fatalf("json validate: code=%d", code)
+	}
+	var view struct {
+		OK      bool `json:"ok"`
+		Missing bool `json:"missing"`
+		Errors  int  `json:"errors"`
+	}
+	if err := json.Unmarshal([]byte(out), &view); err != nil {
+		t.Fatal(err)
+	}
+	if !view.OK || !view.Missing || view.Errors != 0 {
+		t.Fatalf("view = %s", out)
+	}
+}
+
+// TestKnowledgeValidateRejectsPageWithoutTriggers is the M5.1 acceptance: a
+// page missing `triggers` is refused, located, and exits non-zero for CI.
+func TestKnowledgeValidateRejectsPageWithoutTriggers(t *testing.T) {
+	root, _ := gatedProject(t)
+	writePage(t, root, "docs/repowiki/knowledge/坏页.md", `---
+status: stable
+type: module
+description: 没有触发词的页面
+source_commit: 997c5f8
+---
+
+# 坏页
+`)
+	code, _, errOut := run(t, "knowledge", "validate")
+	if code != CodeInvalid {
+		t.Fatalf("code = %d, want %d (stderr=%q)", code, CodeInvalid, errOut)
+	}
+	if !strings.Contains(errOut, "坏页.md:1: triggers: 缺少必填字段") {
+		t.Fatalf("stderr = %q", errOut)
+	}
+	code, _, errOut = run(t, "--json", "knowledge", "validate")
+	if code != CodeInvalid {
+		t.Fatalf("json code = %d", code)
+	}
+	var payload struct {
+		OK    bool `json:"ok"`
+		Error struct {
+			Code     int              `json:"code"`
+			Kind     string           `json:"kind"`
+			Problems []config.Problem `json:"problems"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(errOut), &payload); err != nil {
+		t.Fatalf("json error payload: %v (%s)", err, errOut)
+	}
+	if payload.OK || payload.Error.Code != CodeInvalid || payload.Error.Kind != "knowledge" {
+		t.Fatalf("payload = %s", errOut)
+	}
+	// The payload carries every located problem, warnings included, so CI sees
+	// the whole picture; the error-severity one is the gate.
+	if len(payload.Error.Problems) != 2 || payload.Error.Problems[0].Field != "triggers" || payload.Error.Problems[0].Severity != "" {
+		t.Fatalf("problems = %+v", payload.Error.Problems)
+	}
+	if payload.Error.Problems[1].Severity != config.SeverityWarning {
+		t.Fatalf("warning not marked: %+v", payload.Error.Problems[1])
+	}
+
+	// Fixing the page clears the gate: the same command exits 0.
+	writePage(t, root, "docs/repowiki/knowledge/坏页.md", cliGoodPage)
+	code, out, errOut := run(t, "knowledge", "validate")
+	if code != CodeOK {
+		t.Fatalf("after fix: code=%d stderr=%q", code, errOut)
+	}
+	if !strings.Contains(out, "1 pages, 0 errors, 0 warnings") {
+		t.Fatalf("stdout = %q", out)
+	}
+}
+
+// Advisories do not fail the gate, and they stay visible under --quiet.
+func TestKnowledgeValidateWarnings(t *testing.T) {
+	root, _ := gatedProject(t)
+	writePage(t, root, "docs/repowiki/knowledge/无来源.md", strings.Replace(cliGoodPage, "sources:\n  - internal/storage/**\n", "", 1))
+	code, out, errOut := run(t, "--quiet", "knowledge", "validate")
+	if code != CodeOK {
+		t.Fatalf("code=%d stderr=%q", code, errOut)
+	}
+	if !strings.Contains(out, "warning:") || !strings.Contains(out, "sources") {
+		t.Fatalf("stdout = %q", out)
+	}
+}
+
+// An explicit root must exist and stay inside the project: a report about a
+// directory the layer cannot attribute to the project would be a lie.
+func TestKnowledgeValidateExplicitRoots(t *testing.T) {
+	root, _ := gatedProject(t)
+	for _, tc := range []struct {
+		path string
+		want int
+	}{
+		{"docs/missing", CodePrecondition},
+		{"../outside", CodePrecondition},
+		{"docs/repowiki/page.txt", CodePrecondition},
+	} {
+		if code, _, errOut := run(t, "knowledge", "validate", tc.path); code != tc.want {
+			t.Errorf("validate %s: code=%d want=%d (stderr=%q)", tc.path, code, tc.want, errOut)
+		}
+	}
+
+	writePage(t, root, "docs/kb/页.md", cliGoodPage)
+	code, out, errOut := run(t, "--json", "knowledge", "validate", "docs/kb")
+	if code != CodeOK {
+		t.Fatalf("validate docs/kb: code=%d stderr=%q", code, errOut)
+	}
+	if !strings.Contains(out, `"roots":["docs/kb"]`) || !strings.Contains(out, "docs/kb/页.md") {
+		t.Fatalf("stdout = %s", out)
+	}
+}
+
+// knowledge_pages in config.yaml replaces the built-in roots, so a project
+// that keeps its pages elsewhere is validated there.
+func TestKnowledgeValidateConfigRoots(t *testing.T) {
+	root, _ := gatedProject(t)
+	writePage(t, root, "docs/kb/旧页.md", strings.Replace(cliGoodPage, "triggers:\n  - 存储层\n", "", 1))
+	configPath := filepath.Join(root, ".devsys", "config.yaml")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated := strings.Replace(string(data), "schema_version: 1", "schema_version: 1\nknowledge_pages:\n  - docs/kb\n", 1)
+	if err := os.WriteFile(configPath, []byte(updated), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	code, _, errOut := run(t, "knowledge", "validate")
+	if code != CodeInvalid {
+		t.Fatalf("code=%d stderr=%q", code, errOut)
+	}
+	if !strings.Contains(errOut, "docs/kb/旧页.md:1: triggers:") {
+		t.Fatalf("stderr = %q", errOut)
+	}
+}
+
+// TestKnowledgeScanExcludesSecretsAndLargeFiles is the M5.2 acceptance: the
+// scan's file count matches the tree, and secrets and oversized files show up
+// in the exclusion list with their reason.
+func TestKnowledgeScanExcludesSecretsAndLargeFiles(t *testing.T) {
+	root, _ := gatedProject(t)
+	writePage(t, root, "a.go", "package a\n")
+	writePage(t, root, ".env", "TOKEN=1\n")
+	writePage(t, root, "big.bin", strings.Repeat("x", (1<<20)+1))
+
+	code, out, errOut := run(t, "--json", "knowledge", "scan")
+	if code != CodeOK {
+		t.Fatalf("scan: code=%d stderr=%q", code, errOut)
+	}
+	var view struct {
+		OK       bool   `json:"ok"`
+		File     string `json:"file"`
+		Files    int    `json:"files"`
+		Excluded []struct {
+			Path   string `json:"path"`
+			Reason string `json:"reason"`
+		} `json:"excluded"`
+	}
+	if err := json.Unmarshal([]byte(out), &view); err != nil {
+		t.Fatal(err)
+	}
+	if !view.OK || view.File != ".devsys/knowledge/snapshot.json" || view.Files != 1 {
+		t.Fatalf("view = %s", out)
+	}
+	reasons := map[string]string{}
+	for _, exclusion := range view.Excluded {
+		reasons[exclusion.Path] = exclusion.Reason
+	}
+	if !strings.Contains(reasons[".env"], "密钥名模式") {
+		t.Errorf(".env reason = %q", reasons[".env"])
+	}
+	if !strings.Contains(reasons["big.bin"], "字节上限") {
+		t.Errorf("big.bin reason = %q", reasons["big.bin"])
+	}
+	if _, err := os.Stat(filepath.Join(root, ".devsys", "knowledge", "snapshot.json")); err != nil {
+		t.Fatalf("snapshot not written: %v", err)
+	}
+
+	// The snapshot is derived state and can be rebuilt identically.
+	first, err := os.ReadFile(filepath.Join(root, ".devsys", "knowledge", "snapshot.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code, _, errOut := run(t, "knowledge", "scan"); code != CodeOK {
+		t.Fatalf("rescan: code=%d stderr=%q", code, errOut)
+	}
+	second, err := os.ReadFile(filepath.Join(root, ".devsys", "knowledge", "snapshot.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	stripTime := func(data []byte) string {
+		var payload map[string]any
+		if err := json.Unmarshal(data, &payload); err != nil {
+			t.Fatal(err)
+		}
+		delete(payload, "generated_at")
+		normalized, err := json.Marshal(payload)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(normalized)
+	}
+	if stripTime(first) != stripTime(second) {
+		t.Fatal("rescan produced a different snapshot")
 	}
 }

@@ -30,6 +30,7 @@ const (
 	KindQuality      = "quality"
 	KindWorkitem     = "workitem"
 	KindApproval     = "approval"
+	KindKnowledge    = "knowledge"
 )
 
 // Error is a classified application failure.

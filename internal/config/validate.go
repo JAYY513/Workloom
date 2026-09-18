@@ -64,6 +64,9 @@ var configSpec = fileSpec{fields: []fieldSpec{
 	// dispatch_command is the shell command a scheduling tick runs for each
 	// dispatched attempt (M6.4); the per-harness adapters of M6.7 replace it.
 	{name: "dispatch_command", kind: kindString},
+	// knowledge_pages lists the page-layer roots the knowledge commands read
+	// (M5.1, 方案 §12.6); empty selects the built-in candidates.
+	{name: "knowledge_pages", kind: kindStrings},
 }}
 
 var currentFields = []fieldSpec{
@@ -162,7 +165,21 @@ func validate(rel string, data []byte, spec fileSpec) (map[string]*yaml.Node, Pr
 
 func checkField(rel string, field fieldSpec, val *yaml.Node) *Problem {
 	switch field.kind {
-	case kindStrings, kindMilestones:
+	case kindStrings:
+		// null keeps the "not recorded yet" state distinct from an empty list.
+		if val.Tag == "!!null" {
+			return nil
+		}
+		if val.Kind != yaml.SequenceNode {
+			return &Problem{File: rel, Line: val.Line, Field: field.name, Reason: "expected sequence or null"}
+		}
+		for i, item := range val.Content {
+			if item.Kind != yaml.ScalarNode || item.Tag != "!!str" {
+				return &Problem{File: rel, Line: item.Line, Field: field.name,
+					Reason: fmt.Sprintf("item %d: expected string, got %s", i+1, nodeKind(item))}
+			}
+		}
+	case kindMilestones:
 		// null keeps the "not recorded yet" state distinct from an empty list.
 		if val.Tag != "!!null" && val.Kind != yaml.SequenceNode {
 			return &Problem{File: rel, Line: val.Line, Field: field.name, Reason: "expected sequence or null"}

@@ -35,8 +35,10 @@ import (
 //	3  precondition error
 //	4  invalid managed state
 //
-// The knowledge layer reserves its own 0/10/11 convention (0 fresh, 10 stale,
-// 11 missing — 方案 §12.5) for `knowledge status`, arriving with M5.
+// `knowledge status` reserves its own 0/10/11 convention (0 fresh, 10 stale,
+// 11 missing — 方案 §12.5); until the freshness baseline lands (M5.3) it
+// answers 0 with an explicit degradation report, and no other command uses
+// those codes.
 const (
 	CodeOK           = 0
 	CodeInternal     = 1
@@ -71,7 +73,7 @@ commands:
   worktree      prepare | remove | list execution workspaces (方案 §4.8)
   dispatch      one scheduling tick: recover, reconcile, dispatch (--watch loops)
   context       get | workitem | refresh | compact working context (read-only)
-  knowledge status  report the knowledge layer's availability
+  knowledge         status | scan | validate [dir|page.md...]
   session start  one-shot session orientation (project, work in flight, next action)
   wire          inject the devsys discipline block into AGENTS.md (idempotent; --dry-run previews)
   doctor        report transactions and orphaned claims (read-only)

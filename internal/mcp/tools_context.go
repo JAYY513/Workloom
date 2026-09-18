@@ -97,3 +97,21 @@ func registerKnowledgeStatus(s *mcpsdk.Server, cfg Config) {
 		return nil, view, nil
 	})
 }
+
+type knowledgeValidateInput struct {
+	Paths []string `json:"paths,omitempty" jsonschema:"page roots: project-relative directories or .md files (default: the configured page roots)"`
+}
+
+func registerKnowledgeValidate(s *mcpsdk.Server, cfg Config) {
+	mcpsdk.AddTool(s, &mcpsdk.Tool{
+		Name:        "knowledge_validate",
+		Description: "Validate the knowledge page layer's front matter contract (status/type/triggers/description/source_commit). Errors are located and make the call fail; warnings are advisory. Read-only.",
+		Annotations: readOnly(),
+	}, func(ctx context.Context, req *mcpsdk.CallToolRequest, in knowledgeValidateInput) (*mcpsdk.CallToolResult, app.KnowledgeValidateView, error) {
+		view, err := cfg.service().KnowledgeValidate(ctx, in.Paths)
+		if err != nil {
+			return fail[app.KnowledgeValidateView](err)
+		}
+		return nil, view, nil
+	})
+}
