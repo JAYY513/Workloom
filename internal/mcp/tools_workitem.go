@@ -126,6 +126,8 @@ type workitemUpdateInput struct {
 	Title              *string  `json:"title,omitempty" jsonschema:"new title"`
 	Description        *string  `json:"description,omitempty" jsonschema:"new description"`
 	Priority           *int     `json:"priority,omitempty" jsonschema:"new priority"`
+	AssignedAgent      *string  `json:"assigned_agent,omitempty" jsonschema:"agent identity to assign (empty clears)"`
+	AssignedHarness    *string  `json:"assigned_harness,omitempty" jsonschema:"harness adapter dispatch should drive (empty clears)"`
 	AcceptanceCriteria []string `json:"acceptance_criteria,omitempty" jsonschema:"replaces the acceptance criteria list"`
 	Dependencies       []string `json:"dependencies,omitempty" jsonschema:"replaces the dependency list"`
 	Constraints        []string `json:"constraints,omitempty" jsonschema:"replaces the constraints list"`
@@ -140,6 +142,7 @@ func registerWorkitemUpdate(s *mcpsdk.Server, cfg Config) {
 			Title: in.Title, Description: in.Description, Priority: in.Priority,
 			AcceptanceCriteria: in.AcceptanceCriteria, Dependencies: in.Dependencies,
 			Constraints: in.Constraints, Expect: in.Expect,
+			AssignedAgent: in.AssignedAgent, AssignedHarness: in.AssignedHarness,
 		})
 		if err != nil {
 			return fail[app.WorkItemView](err)

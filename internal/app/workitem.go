@@ -141,7 +141,11 @@ type UpdateWorkitemRequest struct {
 	AcceptanceCriteria []string
 	Dependencies       []string
 	Constraints        []string
-	Expect             string
+	// AssignedAgent and AssignedHarness say who should work the item; the
+	// harness is what dispatch resolves an adapter from (方案 §9.3).
+	AssignedAgent   *string
+	AssignedHarness *string
+	Expect          string
 }
 
 // WorkitemUpdate applies a patch under the version guard.
@@ -150,7 +154,8 @@ func (s *Service) WorkitemUpdate(ctx context.Context, id string, req UpdateWorki
 		return WorkItemView{}, Usagef("title must not be empty")
 	}
 	if req.Title == nil && req.Description == nil && req.Priority == nil &&
-		req.AcceptanceCriteria == nil && req.Dependencies == nil && req.Constraints == nil {
+		req.AcceptanceCriteria == nil && req.Dependencies == nil && req.Constraints == nil &&
+		req.AssignedAgent == nil && req.AssignedHarness == nil {
 		return WorkItemView{}, Usagef("workitem update requires at least one field to change")
 	}
 	wi, expected, err := s.readSnapshot(ctx, id, req.Expect)
@@ -171,6 +176,12 @@ func (s *Service) WorkitemUpdate(ctx context.Context, id string, req UpdateWorki
 	}
 	if req.Dependencies != nil {
 		wi.Dependencies = req.Dependencies
+	}
+	if req.AssignedAgent != nil {
+		wi.AssignedAgent = trimmedOrNil(req.AssignedAgent)
+	}
+	if req.AssignedHarness != nil {
+		wi.AssignedHarness = trimmedOrNil(req.AssignedHarness)
 	}
 	if req.Constraints != nil {
 		wi.Constraints = req.Constraints
@@ -397,6 +408,16 @@ func (s *Service) readSnapshot(ctx context.Context, id, expect string) (*domain.
 // storeError classifies domain/storage failures the way the CLI always did:
 // uninitialized projects and missing records are preconditions, everything
 // else is untrusted state.
+// trimmedOrNil keeps an empty assignment empty (nil) instead of a pointer to
+// an empty string, so "no harness" has one representation.
+func trimmedOrNil(value *string) *string {
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
+}
+
 func (s *Service) storeError(err error) error {
 	if err == nil {
 		return nil

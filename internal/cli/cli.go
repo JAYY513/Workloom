@@ -728,9 +728,11 @@ func runWorkitem(stdout io.Writer, opts options, rest []string) error {
 		description := fs.String("description", "", "new description")
 		priority := fs.Int("priority", 0, "new priority")
 		acceptance := fs.String("acceptance", "", "comma-separated acceptance criteria (replaces the list)")
+		assignedAgent := fs.String("assigned-agent", "", "agent identity to assign (empty clears)")
+		assignedHarness := fs.String("assigned-harness", "", "harness adapter dispatch should drive (empty clears)")
 		expect := fs.String("expect", "", "version hash from workitem get")
 		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *id == "" {
-			return errUsage("workitem update --id <id> [--title T] [--description D] [--priority N] [--acceptance a,b] [--expect <hash>]")
+			return errUsage("workitem update --id <id> [--title T] [--description D] [--priority N] [--acceptance a,b] [--assigned-agent A] [--assigned-harness H] [--expect <hash>]")
 		}
 		req := app.UpdateWorkitemRequest{Expect: *expect}
 		fs.Visit(func(f *flag.Flag) {
@@ -743,6 +745,10 @@ func runWorkitem(stdout io.Writer, opts options, rest []string) error {
 				req.Priority = priority
 			case "acceptance":
 				req.AcceptanceCriteria = splitList(*acceptance)
+			case "assigned-agent":
+				req.AssignedAgent = assignedAgent
+			case "assigned-harness":
+				req.AssignedHarness = assignedHarness
 			}
 		})
 		view, err := svc.WorkitemUpdate(ctx, *id, req)
