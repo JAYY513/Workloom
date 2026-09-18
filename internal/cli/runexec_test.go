@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"workloom/internal/app"
 )
 
 // execProject initializes a project with one work item and one run and returns
@@ -145,23 +147,56 @@ func TestRunExecStreamsAndRecords(t *testing.T) {
 		t.Fatalf("stdout = %q, want the command output mirrored", out)
 	}
 	records := readStream(t, repo, runID)
-	if len(records) < 3 {
-		t.Fatalf("stream has %d records, want start/output/exit", len(records))
+	byType := func(kind string) []map[string]any {
+		var out []map[string]any
+		for _, rec := range records {
+			if rec["type"] == kind {
+				out = append(out, rec)
+			}
+		}
+		return out
 	}
-	if records[0]["type"] != "start" || records[0]["command"] != "git --version" {
-		t.Fatalf("first record = %v, want the start record with the command", records[0])
+	// The stream is the ordered evidence of the round: the phase it started
+	// in, the round bookkeeping, then the attempt itself.
+	if first := records[0]; first["type"] != "phase" || first["phase"] != "building_prompt" {
+		t.Fatalf("first record = %v, want the building_prompt phase", first)
 	}
-	argv, _ := records[0]["argv"].([]any)
+	rounds := byType("round")
+	if len(rounds) != 1 || rounds[0]["n"] != float64(1) || rounds[0]["mode"] != "full" {
+		t.Fatalf("round records = %v, want one full first round", rounds)
+	}
+	if hash, _ := rounds[0]["prompt_hash"].(string); len(hash) != 64 {
+		t.Fatalf("round prompt hash = %v, want a sha256 digest", rounds[0]["prompt_hash"])
+	}
+	starts := byType("start")
+	if len(starts) != 1 || starts[0]["command"] != "git --version" {
+		t.Fatalf("start records = %v, want the command", starts)
+	}
+	argv, _ := starts[0]["argv"].([]any)
 	if len(argv) != 2 || argv[0] != "git" || argv[1] != "--version" {
-		t.Fatalf("start record argv = %v, want the command as an array too", records[0]["argv"])
+		t.Fatalf("start record argv = %v, want the command as an array too", starts[0]["argv"])
 	}
-	if records[1]["type"] != "output" || records[1]["stream"] != "stdout" ||
-		!strings.Contains(fmt.Sprint(records[1]["line"]), "git version") {
-		t.Fatalf("second record = %v, want the mirrored stdout line", records[1])
+	outputs := byType("output")
+	if len(outputs) != 1 || outputs[0]["stream"] != "stdout" ||
+		!strings.Contains(fmt.Sprint(outputs[0]["line"]), "git version") {
+		t.Fatalf("output records = %v, want the mirrored stdout line", outputs)
 	}
 	last := records[len(records)-1]
-	if last["type"] != "exit" || last["code"] != float64(0) {
-		t.Fatalf("last record = %v, want an exit record with code 0", last)
+	if last["type"] != "exit" || last["code"] != float64(0) || last["status"] != app.RunSucceeded {
+		t.Fatalf("last record = %v, want an exit record with code 0 and the terminal status", last)
+	}
+	phases := make([]string, 0, len(records))
+	for _, rec := range records {
+		if rec["type"] == "phase" {
+			phases = append(phases, fmt.Sprint(rec["phase"]))
+		}
+	}
+	want := []string{"building_prompt", "launching_agent", "streaming_turns", "finishing"}
+	if strings.Join(phases, ",") != strings.Join(want, ",") {
+		t.Fatalf("phases = %v, want %v", phases, want)
+	}
+	if due, _ := last["continuation_due_at"].(string); due == "" {
+		t.Fatalf("exit record = %v, want a continuation due time after a clean exit", last)
 	}
 
 	view := runView(t, runID)

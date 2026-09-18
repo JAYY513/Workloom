@@ -45,6 +45,8 @@
 | M4.5 文件交换协议与退出码 | 已完成：退出码表固化（0/1/2/3/4 + 知识 10/11 预留）并由测试钉住；`--json` 信封与 `--jsonl`（列表一行一条记录，7 个命令）双格式，互斥；README 协议节 + `scripts/exchange-demo.sh` 可运行解析示例（文件读取 / jsonl / json / 退出码分支） |
 | M4.6 AGENTS.md 管理块（devsys wire） | 已完成：`devsys wire [--dry-run]` 幂等注入标记区间（块外内容与其他工具的管理块逐字节保留；重复/残缺标记 exit 4 拒绝；CRLF 一致、权限保留、原子写）；`--dry-run` 输出变化区域预览，`--json` 给结构化结果 |
 | M4 收尾：里程碑剧本与提交 | 已完成：`scripts/smoke-m4.{sh,ps1}` 双平台实跑通过（MCP 面 / CLI-MCP 读写一致 / 会话接口 / 退出码分支 / jsonl / wire 幂等 / 知识降级）；repowiki 增量刷新至 M4 基线；`feat(m4)` + `docs(repowiki)` 两个提交 |
+| M6.2 工作区管理与不变量 | 已完成：`internal/workspace`（目录名净化 + 哈希后缀、工作区根 `workspace_root`、路径不变量含符号链接逃逸拒绝、git worktree 创建/复用/回收、四个生命周期钩子）；`devsys worktree prepare\|remove\|list`；`run exec` 启动前校验工作区不变量并执行 `before_run`（致命）/`after_run`（仅记录） |
+| M6.3 Run 生命周期与多轮续跑 | 已完成：`internal/prompt` 装配（首轮全量含策略正文渲染，续跑只发「上一轮以来变化 + 未完成项」，确定性 Hash 可重放）；轮次簿记在 run 事件流（`round` 记录），下一轮号从流推导；轮数上限 `limits.max_attempts` 超限即拒；§4.8 阶段推进（`building_prompt→launching_agent→streaming_turns→finishing`）与终态（succeeded/failed/timed_out/stalled/canceled）；`devsys run prompt\|complete\|fail\|cancel` + MCP `run_complete/run_fail/run_cancel` |
 | M6.1 Harness Adapter 接口与 Shell Adapter | 已完成：`internal/harness`（方案 §9.2 九方法映射 + 八项能力声明 + Session 句柄承载 stream/stop/collect）；Shell 适配器 argv 直通、逐行 stdout/stderr、超长行按 rune 边界 64 KiB 分块、超时与取消终止整棵进程树（POSIX 进程组 / Windows `taskkill /T /F`）；`devsys run exec` 把输出实时镜像并写入 `.devsys/runs/<run-id>.jsonl`（追加写、周期 fsync、断尾修复留痕），结束后更新 run 证据（commands/logs/result.errors）并记事件 |
 
 ## 构建与验收
@@ -234,6 +236,28 @@ bin/devsys.exe --json run exec --id <run-id> --actor <a> --reason <r> -- <comman
 `run exec` 通过 Harness Adapter 接口（`internal/harness`）启动命令：argv 直通、不做 shell 解释（要 shell 特性就自己传 `sh -c` / `cmd /c`），stdout/stderr 逐行实时镜像（`--json` 时命令输出走 stderr，stdout 只承载信封）；输出同时追加到 `.devsys/runs/<run-id>.jsonl`（`start` / `output` / `exit` 记录，控制记录与每 128 行刷盘，崩溃留下的断尾在下次运行时截断并写入 `repair` 记录）。命令结束后把 `commands`、`logs` 引用与非零退出的说明写回 run，并记 `run_exec_started`/`run_exec_finished` 事件。超时或 Ctrl-C 会终止整棵进程树（POSIX 进程组 / Windows `taskkill /T /F`），不会留下孙进程。
 
 **退出码语义**：`run exec` 的退出码描述 devsys 操作本身（0 已执行并落盘 / 2 用法 / 3 前置条件 / 4 受管状态不可信 / 1 内部）；被跑命令自己的退出码是**证据**，写在 JSONL 的 `exit` 记录与 run 的 `result.errors` 里，并由 `--json` 输出——两者不混用（否则命令退出 3 会被误读成 devsys 前置条件错误）。
+
+工作区与生命周期钩子（M6.2，方案 §4.8）：
+
+```sh
+bin/devsys.exe worktree prepare --workitem <id> --actor <a> --reason <r> [--run <run-id>] [--branch <b>]
+bin/devsys.exe worktree remove  --workitem <id> | --path <p> --actor <a> --reason <r> [--force]
+bin/devsys.exe worktree list    [--workitem <id>]
+```
+
+工作区默认落在 `<项目根>/.devsys/workspaces/<key>`（`.devsys/config.yaml` 的可选键 `workspace_root` 可改到绝对或相对路径；`.devsys/.gitignore` 与仓库 `.gitignore` 已排除该目录）。`key` 由工作项标识净化而来（只允许 `[A-Za-z0-9._-]`），一旦净化改变了标识就追加原始标识的 sha256 前 16 位，避免 `a/b` 与 `a_b` 撞名；`..`、全点、空标识强制带哈希后缀。工作区是 git worktree（分支默认 `devsys/<key>`），**存在即复用且不再跑 `after_create`**，删除只由显式 `worktree remove` 触发（分支保留——它可能装着这次运行的提交）。路径不变量在创建、删除与 `run exec` 启动前都校验：必须位于工作区根内、拒绝 `..` 逃逸与符号链接逃逸，越界即 exit 3 且不启动任何进程。四个钩子按方案 §4.8 的语义：`after_create` 致命（失败即回收 worktree/目录/本次创建的分支，不留半成品）、`before_run` 致命（中止本次尝试，不 spawn）、`after_run` 与 `before_remove` 仅记录。
+
+多轮会话与运行生命周期（M6.3，方案 §4.8）：
+
+```sh
+bin/devsys.exe run exec --id <run-id> --actor <a> --reason <r> [--round N] [--timeout 30s] -- <command...>
+bin/devsys.exe run prompt --id <run-id> [--round N] [--write]     # 只读重放某一轮的提示词（--write 落盘）
+bin/devsys.exe run complete|fail|cancel --id <run-id> [--expect <hash>] --actor <a> --reason <r> [--note <text>]
+```
+
+一次 Run = 一次尝试，可以包含多轮（同一会话继续推进）。**首轮**给完整任务简报：任务身份与描述、任务规格（`.devsys/specs/<id>.md` 若存在）、策略正文（`{{workitem.title}}`、`{{project.name}}`、`{{step}}` 等变量严格渲染，缺失即报错）、就绪判定、上下文引用（决策/发现/产物/评论的指针，正文按需再读）与汇报协议；**续跑轮**只给「上一轮以来的变化 + 未完成项 + 继续指令」，不再重发简报。装配是纯函数：同一输入必得同一文本与 sha256，`run prompt --round N` 可离线重放并与事件流里记录的 `prompt_hash` 对照。轮次上限取策略 `limits.max_attempts`（方案 §5.3 的「轮数上限」，M3.1 落在该键）；超限 exit 3 且不写 start 记录。提示词正文写到 `.devsys/local/runs/<run-id>/round-N.md`（不提交、可重建），子进程环境得到 `DEVSYS_RUN_ID`、`DEVSYS_ROUND`、`DEVSYS_PROMPT_FILE`、`DEVSYS_WORKITEM`、`DEVSYS_WORKSPACE`、`DEVSYS_BRANCH`、`DEVSYS_PROJECT_ROOT`。
+
+阶段按 §4.8 推进并逐段落盘（run 记录的 `phase` + 事件流的 `phase` 记录）：`building_prompt → launching_agent → streaming_turns → finishing`。**干净的轮次不结束尝试**：退出码 0 只在流里记 `status: succeeded` 与 `continuation_due_at`（缺省 30s，供 M6.4 的 tick 判定是否需要再跑一轮），run 保持 `running`；非零退出、超时、取消分别把 run 推到 `failed`/`timed_out`/`canceled`，`run complete|fail|cancel` 由人或调度显式收尾（写终态 + `run_finished` 事件，重复收尾被拒）。
 
 M4 完整剧本（Go、Git 与 Python 必须在 PATH）：
 

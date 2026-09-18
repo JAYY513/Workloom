@@ -67,7 +67,8 @@ commands:
   finding       list | get | create | resolve finding records
   event         list | record project events (append-only)
   artifact      list | get | register | update | history artifact records
-  run           list | get | log | create | update | heartbeat | exec run records
+  run           list | get | log | create | update | heartbeat | exec | prompt | complete | fail | cancel
+  worktree      prepare | remove | list execution workspaces (方案 §4.8)
   context       get | workitem | refresh | compact working context (read-only)
   knowledge status  report the knowledge layer's availability
   session start  one-shot session orientation (project, work in flight, next action)
@@ -275,6 +276,8 @@ func RunWithIO(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return render(stderr, opts, runArtifact(stdout, opts, rest))
 	case "run":
 		return render(stderr, opts, runRun(stdout, opts, rest))
+	case "worktree":
+		return render(stderr, opts, runWorktree(stdout, opts, rest))
 	case "context":
 		return render(stderr, opts, runContext(stdout, opts, rest))
 	case "knowledge":

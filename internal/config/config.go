@@ -83,6 +83,10 @@ func (ps Problems) Error() string {
 // both the whitelist and this struct.
 type Config struct {
 	SchemaVersion int `json:"schema_version"`
+	// WorkspaceRoot is where execution workspaces are created (方案 §4.8):
+	// absolute, or relative to the project root. Empty selects the default
+	// below .devsys/.
+	WorkspaceRoot string `json:"workspace_root,omitempty"`
 }
 
 // Metadata is what Load or Diagnose could read. A field is nil when its file
@@ -159,6 +163,11 @@ func parseConfig(rel string, data []byte) (*Config, Problems) {
 	c := &Config{}
 	if err := values["schema_version"].Decode(&c.SchemaVersion); err != nil {
 		return nil, Problems{{File: rel, Field: "schema_version", Reason: fmt.Sprintf("decode: %v", err)}}
+	}
+	if node, ok := values["workspace_root"]; ok {
+		if err := node.Decode(&c.WorkspaceRoot); err != nil {
+			return nil, Problems{{File: rel, Field: "workspace_root", Reason: fmt.Sprintf("decode: %v", err)}}
+		}
 	}
 	return c, nil
 }

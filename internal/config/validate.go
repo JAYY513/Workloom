@@ -58,6 +58,9 @@ var projectSpec = fileSpec{fields: []fieldSpec{
 
 var configSpec = fileSpec{fields: []fieldSpec{
 	{name: "schema_version", kind: kindInt, required: true},
+	// workspace_root relocates the execution workspaces of 方案 §4.8; it is
+	// optional and defaults to <project>/.devsys/workspaces.
+	{name: "workspace_root", kind: kindString},
 }}
 
 var currentFields = []fieldSpec{

@@ -13,6 +13,8 @@ import (
 	"workloom/internal/harness"
 	"workloom/internal/run"
 	"workloom/internal/storage"
+	"workloom/internal/workflow"
+	"workloom/internal/workspace"
 )
 
 // syncEvery bounds how much of the output stream can be lost in a crash: the
@@ -24,16 +26,25 @@ const syncEvery = 128
 // collected, so an abandoned attempt cannot hold a caller open.
 const stopGrace = 10 * time.Second
 
+// continuationDelay is how long after a clean exit the dispatch tick should
+// check whether the session still needs to make progress (§4.8); M6.4 owns the
+// scheduling, this only states the intent.
+const continuationDelay = 30 * time.Second
+
 // RunExecRequest is one attempt driven through a harness adapter (实施计划
-// M6.1). Sink receives every streamed line as it is persisted; nil means
+// M6.1/M6.3). Sink receives every streamed line as it is persisted; nil means
 // nobody is watching (dispatch, background execution).
 type RunExecRequest struct {
 	RunID   string
 	Argv    []string
 	Timeout time.Duration
-	Actor   string
-	Reason  string
-	Sink    func(harness.Line)
+	// Round selects the session round; 0 continues the session (round 1 when
+	// nothing ran yet). The first round carries the full prompt, later rounds
+	// the delta only (方案 §4.8).
+	Round  int
+	Actor  string
+	Reason string
+	Sink   func(harness.Line)
 }
 
 // RunExecView is the outcome of one attempt. ExitCode is the command's own
@@ -45,19 +56,32 @@ type RunExecView struct {
 	Adapter    string `json:"adapter"`
 	Command    string `json:"command"`
 	Dir        string `json:"dir"`
-	ExitCode   int    `json:"exit_code"`
-	TimedOut   bool   `json:"timed_out"`
-	Canceled   bool   `json:"canceled"`
-	DurationMS int64  `json:"duration_ms"`
-	Lines      int    `json:"lines"`
-	Log        string `json:"log"`
+	Round      int    `json:"round"`
+	Mode       string `json:"prompt_mode"`
+	PromptHash string `json:"prompt_hash"`
+	PromptFile string `json:"prompt_file,omitempty"`
+	Phase      string `json:"phase"`
+	// Status is how this round ended; RunStatus is where the run stands after
+	// it. A clean round leaves the run running — the session may continue
+	// (§4.8 schedules a continuation check), and only completion, failure,
+	// timeout, stall or cancellation ends the attempt.
+	Status     string   `json:"status"`
+	RunStatus  string   `json:"run_status"`
+	ExitCode   int      `json:"exit_code"`
+	TimedOut   bool     `json:"timed_out"`
+	Canceled   bool     `json:"canceled"`
+	DurationMS int64    `json:"duration_ms"`
+	Lines      int      `json:"lines"`
+	Log        string   `json:"log"`
+	Warnings   []string `json:"warnings,omitempty"`
 }
 
-// RunExec runs one command for a run: it resolves the adapter, streams both
-// output streams into the run's event stream (.devsys/runs/<id>.jsonl, 方案
-// §14.2) while forwarding them to the sink, then records the evidence on the
-// run and in the event log. Lifecycle transitions (status/phase, retries) stay
-// with the executor paths (M6.3/M6.4); this records what happened.
+// RunExec runs one attempt round for a run: it enforces the workspace
+// invariants and the before_run hook (§4.8), assembles the round's prompt,
+// streams both output streams into the run's event stream
+// (.devsys/runs/<id>.jsonl, §14.2) while forwarding them to the sink, then
+// records the evidence on the run and in the event log — including the §4.8
+// phase progression and the terminal status.
 func (s *Service) RunExec(ctx context.Context, req RunExecRequest) (RunExecView, error) {
 	if req.RunID == "" {
 		return RunExecView{}, Usagef("run exec requires a run id")
@@ -68,37 +92,128 @@ func (s *Service) RunExec(ctx context.Context, req RunExecRequest) (RunExecView,
 	if req.Actor == "" || req.Reason == "" {
 		return RunExecView{}, Usagef("run exec requires actor and reason")
 	}
-	if _, err := s.project(); err != nil {
+	md, err := s.project()
+	if err != nil {
 		return RunExecView{}, err
 	}
 	r, err := run.New(s.Root).Get(ctx, req.RunID)
 	if err != nil {
 		return RunExecView{}, s.storeError(err)
 	}
+	if isTerminalRun(r.Status) {
+		return RunExecView{}, Preconditionf("run %s already ended as %s", r.ID, r.Status)
+	}
+	wi, err := s.WorkitemGet(ctx, r.WorkItemID)
+	if err != nil {
+		return RunExecView{}, err
+	}
 
-	adapter := harness.NewShell()
+	// Workspace invariants (§4.8): an attempt runs in the run's workspace and
+	// nowhere else. A run without one falls back to the project root — that is
+	// an operator's ad-hoc execution, not a dispatched attempt.
 	dir := r.Workspace.Path
 	if dir == "" {
 		dir = s.Root
+	} else {
+		configured := ""
+		if md.Config != nil {
+			configured = md.Config.WorkspaceRoot
+		}
+		root, err := workspace.Root(s.Root, configured)
+		if err != nil {
+			return RunExecView{}, Preconditionf("%v", err)
+		}
+		if err := workspace.Validate(root, dir); err != nil {
+			return RunExecView{}, Preconditionf("run workspace: %v", err)
+		}
 	}
+
+	res, err := s.policyForWorkItem(ctx, wi.Item)
+	if err != nil {
+		return RunExecView{}, s.errWorkflowPolicy(err)
+	}
+	if res.Policy != nil && res.Issue != nil {
+		return RunExecView{}, s.errWorkflowPolicy(fmt.Errorf(
+			"workflow policy %q is invalid: %s; attempts stay blocked until the file is fixed",
+			res.ID, res.Issue.String()))
+	}
+	hooks := workspaceHooks(res.Policy)
+
+	// Round bookkeeping and the round cap (§4.8): the session's rounds are
+	// counted from its own stream, so a fresh process continues where the last
+	// one stopped.
+	lines, err := readRunStream(s.Root, r.ID)
+	if err != nil {
+		return RunExecView{}, Internalf("read run stream: %v", err)
+	}
+	round := req.Round
+	if round <= 0 {
+		round = nextRound(lines)
+	}
+	if cap := roundCap(res.Policy); cap > 0 && round > cap {
+		return RunExecView{}, Preconditionf(
+			"run %s has used %d of %d rounds (limits.max_attempts); start a new attempt instead",
+			r.ID, round-1, cap)
+	}
+
+	adapter := harness.NewShell()
 	if err := adapter.Prepare(ctx, harness.Workspace{Path: dir, Branch: r.Workspace.Branch, Worktree: r.Workspace.Worktree}); err != nil {
 		return RunExecView{}, Preconditionf("%v", err)
 	}
-	cmd, err := adapter.Command(harness.Request{Command: req.Argv, Dir: dir, Timeout: req.Timeout})
+	promptView, err := s.RunPrompt(ctx, RunPromptRequest{RunID: r.ID, Round: round, Write: true})
+	if err != nil {
+		return RunExecView{}, err
+	}
+	env := append(workspace.HookEnv(s.Root, dir, r.Workspace.Branch, wi.Item.ID, ""),
+		"DEVSYS_RUN_ID="+r.ID,
+		"DEVSYS_ROUND="+fmt.Sprint(round),
+		"DEVSYS_PROMPT_FILE="+filepath.Join(s.Root, filepath.FromSlash(promptView.Path)),
+	)
+	cmd, err := adapter.Command(harness.Request{Command: req.Argv, Dir: dir, Env: env, Timeout: req.Timeout})
 	if err != nil {
 		return RunExecView{}, Preconditionf("%v", err)
 	}
 	commandLine := strings.Join(cmd.Argv, " ")
-	logRel := logRelFor(r.ID)
 
 	stream, err := openRunStream(s.Root, r.ID)
 	if err != nil {
 		return RunExecView{}, Internalf("open run stream: %v", err)
 	}
 	defer stream.Close()
+
+	if err := s.advancePhase(ctx, stream, r.ID, "building_prompt"); err != nil {
+		return RunExecView{}, err
+	}
+	if err := stream.write(streamRecord{
+		Type: "round", Round: round, Mode: promptView.Mode,
+		PromptHash: promptView.Hash, PromptFile: promptView.Path, Refs: promptView.Refs,
+	}, true); err != nil {
+		return RunExecView{}, Internalf("write run stream: %v", err)
+	}
+	if err := s.appendInputRefs(ctx, r.ID, promptView.Refs); err != nil {
+		return RunExecView{}, err
+	}
+
+	// before_run is fatal: a hook that fails aborts the attempt before any
+	// agent process starts (§4.8).
+	if hook, ok := hooks[workspace.HookBeforeRun]; ok && strings.TrimSpace(hook.Command) != "" {
+		_, herr := workspace.RunHook(ctx, workspace.RunHookOptions{
+			Name: workspace.HookBeforeRun, Hook: hook, Dir: dir,
+			Env: append(env, "DEVSYS_HOOK="+workspace.HookBeforeRun),
+		})
+		if herr != nil {
+			return s.abortAttempt(ctx, stream, r, req, dir, round, commandLine, promptView, herr)
+		}
+	}
+	if err := s.advancePhase(ctx, stream, r.ID, "launching_agent"); err != nil {
+		return RunExecView{}, err
+	}
+	if err := s.markRunning(ctx, r.ID); err != nil {
+		return RunExecView{}, err
+	}
 	if err := stream.write(streamRecord{
 		Type: "start", Adapter: adapter.Name(), Command: commandLine, Argv: cmd.Argv,
-		Cwd: cmd.Dir, TimeoutMS: cmd.Timeout.Milliseconds(),
+		Cwd: cmd.Dir, TimeoutMS: cmd.Timeout.Milliseconds(), Round: round,
 	}, true); err != nil {
 		return RunExecView{}, Internalf("write run stream: %v", err)
 	}
@@ -108,7 +223,7 @@ func (s *Service) RunExec(ctx context.Context, req RunExecRequest) (RunExecView,
 		ProjectID: r.ProjectID,
 		Actor:     req.Actor,
 		Related:   []domain.Reference{{Type: "workitem", ID: r.WorkItemID}},
-		Content:   fmt.Sprintf("%s (%s in %s)", commandLine, adapter.Name(), cmd.Dir),
+		Content:   fmt.Sprintf("round %d (%s): %s", round, promptView.Mode, commandLine),
 		Time:      s.now(),
 	}); err != nil {
 		return RunExecView{}, s.storeError(err)
@@ -134,10 +249,13 @@ func (s *Service) RunExec(ctx context.Context, req RunExecRequest) (RunExecView,
 		defer cancel()
 		_ = sess.Stop(stopCtx)
 	}()
+	if err := s.advancePhase(ctx, stream, r.ID, "streaming_turns"); err != nil {
+		return RunExecView{}, err
+	}
 
-	lines := 0
+	lineCount := 0
 	for line := range sess.Lines() {
-		lines++
+		lineCount++
 		if err := stream.write(streamRecord{Type: "output", Stream: line.Stream, Line: line.Text, Time: line.Time}, false); err != nil {
 			return RunExecView{}, Internalf("write run stream: %v", err)
 		}
@@ -147,26 +265,217 @@ func (s *Service) RunExec(ctx context.Context, req RunExecRequest) (RunExecView,
 	}
 	// Collection is not abortable: the stream has closed, so the attempt is
 	// over, and its outcome is the evidence this path exists to record.
-	res, err := sess.Wait(context.Background())
+	result, err := sess.Wait(context.Background())
 	if err != nil {
 		return RunExecView{}, Internalf("collect result: %v", err)
 	}
-	code := res.ExitCode
-	if err := stream.write(streamRecord{
-		Type: "exit", Code: &code, TimedOut: res.TimedOut, Canceled: res.Canceled,
-		DurationMS: res.Duration().Milliseconds(), Text: res.Err,
-	}, true); err != nil {
-		return RunExecView{}, Internalf("write run stream: %v", err)
-	}
-	if err := s.recordExecOutcome(ctx, r, req.Actor, commandLine, execNote(res, commandLine), execSummary(res, commandLine)); err != nil {
+	if err := s.advancePhase(ctx, stream, r.ID, "finishing"); err != nil {
 		return RunExecView{}, err
 	}
 
-	return RunExecView{
+	// after_run never changes the outcome: it runs after the attempt and its
+	// failure is recorded (§4.8).
+	var warnings []string
+	if hook, ok := hooks[workspace.HookAfterRun]; ok && strings.TrimSpace(hook.Command) != "" {
+		rep, herr := workspace.RunHook(ctx, workspace.RunHookOptions{
+			Name: workspace.HookAfterRun, Hook: hook, Dir: dir,
+			Env: append(env, "DEVSYS_HOOK="+workspace.HookAfterRun),
+		})
+		if herr != nil {
+			warnings = append(warnings, herr.Error())
+			if err := events.New(s.Root).Append(ctx, &domain.Event{
+				Type:      "workspace_hook_failed",
+				Subject:   domain.Reference{Type: "run", ID: r.ID},
+				ProjectID: r.ProjectID,
+				Actor:     req.Actor,
+				Content:   herr.Error(),
+				Time:      s.now(),
+			}); err != nil {
+				return RunExecView{}, s.storeError(err)
+			}
+		} else if rep.Ran {
+			warnings = append(warnings, fmt.Sprintf("%s hook ran in %dms", workspace.HookAfterRun, rep.DurationMS))
+		}
+	}
+
+	roundStatus := terminalStatus(result)
+	code := result.ExitCode
+	exit := streamRecord{
+		Type: "exit", Code: &code, TimedOut: result.TimedOut, Canceled: result.Canceled,
+		DurationMS: result.Duration().Milliseconds(), Text: result.Err, Round: round, Status: roundStatus,
+	}
+	if roundStatus == RunSucceeded {
+		// A clean exit is not the end of the attempt: the session may still
+		// have work to do, so the tick gets a continuation check (§4.8).
+		due := s.now().Add(continuationDelay)
+		exit.DueAt = &due
+	}
+	if err := stream.write(exit, true); err != nil {
+		return RunExecView{}, Internalf("write run stream: %v", err)
+	}
+	note := execNote(result, commandLine)
+	if err := s.recordExecOutcome(ctx, r, req.Actor, commandLine, note, execSummary(result, commandLine)); err != nil {
+		return RunExecView{}, err
+	}
+	if roundStatus != RunSucceeded {
+		if err := s.finishAttempt(ctx, r.ID, roundStatus, req.Actor, execSummary(result, commandLine), note, stream); err != nil {
+			return RunExecView{}, err
+		}
+	}
+
+	view := RunExecView{
 		RunID: r.ID, Adapter: adapter.Name(), Command: commandLine, Dir: cmd.Dir,
-		ExitCode: res.ExitCode, TimedOut: res.TimedOut, Canceled: res.Canceled,
-		DurationMS: res.Duration().Milliseconds(), Lines: lines, Log: logRel,
-	}, nil
+		Round: round, Mode: promptView.Mode, PromptHash: promptView.Hash, PromptFile: promptView.Path,
+		Phase: "finishing", Status: roundStatus,
+		ExitCode: result.ExitCode, TimedOut: result.TimedOut, Canceled: result.Canceled,
+		DurationMS: result.Duration().Milliseconds(), Lines: lineCount, Log: logRelFor(r.ID),
+		Warnings: warnings,
+	}
+	if fresh, err := s.RunGet(ctx, r.ID); err == nil {
+		view.RunStatus = fresh.Run.Status
+	}
+	return view, nil
+}
+
+// abortAttempt records an attempt that a fatal before_run hook stopped before
+// it started, keeping the evidence symmetric with attempts that ran.
+func (s *Service) abortAttempt(ctx context.Context, stream *runStream, r *domain.Run, req RunExecRequest, dir string, round int, commandLine string, pv RunPromptView, cause error) (RunExecView, error) {
+	code := -1
+	note := cause.Error()
+	if err := stream.write(streamRecord{Type: "exit", Code: &code, Text: note, Round: round, Status: RunFailed}, true); err != nil {
+		return RunExecView{}, Internalf("write run stream: %v", err)
+	}
+	if err := events.New(s.Root).Append(ctx, &domain.Event{
+		Type:      "workspace_hook_failed",
+		Subject:   domain.Reference{Type: "run", ID: r.ID},
+		ProjectID: r.ProjectID,
+		Actor:     req.Actor,
+		Related:   []domain.Reference{{Type: "workitem", ID: r.WorkItemID}},
+		Content:   note,
+		Time:      s.now(),
+	}); err != nil {
+		return RunExecView{}, s.storeError(err)
+	}
+	if err := s.recordExecOutcome(ctx, r, req.Actor, commandLine, note, note); err != nil {
+		return RunExecView{}, err
+	}
+	if err := s.finishAttempt(ctx, r.ID, RunFailed, req.Actor, note, note, stream); err != nil {
+		return RunExecView{}, err
+	}
+	return RunExecView{
+		RunID: r.ID, Adapter: "shell", Command: commandLine, Dir: dir,
+		Round: round, Mode: pv.Mode, PromptHash: pv.Hash, PromptFile: pv.Path,
+		Phase: "building_prompt", Status: RunFailed, ExitCode: -1, Log: logRelFor(r.ID),
+	}, Preconditionf("%v", cause)
+}
+
+// advancePhase records one §4.8 phase on the run and in its stream: the run
+// record is what a supervisor polls, the stream is the ordered evidence.
+func (s *Service) advancePhase(ctx context.Context, stream *runStream, runID, phase string) error {
+	r, raw, err := readRun(ctx, s, runID)
+	if err != nil {
+		return err
+	}
+	r.Phase = phase
+	if err := run.New(s.Root).Update(ctx, r, raw); err != nil {
+		return s.storeError(err)
+	}
+	if err := stream.write(streamRecord{Type: "phase", Phase: phase}, false); err != nil {
+		return Internalf("write run stream: %v", err)
+	}
+	return nil
+}
+
+// markRunning records that the attempt is executing. A run somebody else
+// already ended stays ended.
+func (s *Service) markRunning(ctx context.Context, runID string) error {
+	r, raw, err := readRun(ctx, s, runID)
+	if err != nil {
+		return err
+	}
+	if isTerminalRun(r.Status) || r.Status == "running" {
+		return nil
+	}
+	r.Status = "running"
+	if err := run.New(s.Root).Update(ctx, r, raw); err != nil {
+		return s.storeError(err)
+	}
+	return nil
+}
+
+// finishAttempt moves the run to its terminal status. A run somebody else
+// already ended keeps that decision: the outcome is still recorded in the
+// stream, and the caller is told.
+func (s *Service) finishAttempt(ctx context.Context, runID, status, actor, summary, note string, stream *runStream) error {
+	view, err := s.RunGet(ctx, runID)
+	if err != nil {
+		return err
+	}
+	if isTerminalRun(view.Run.Status) {
+		if view.Run.Status != status {
+			return stream.write(streamRecord{
+				Type: "note",
+				Text: fmt.Sprintf("run already ended as %s; this attempt's outcome (%s) is recorded in the stream only", view.Run.Status, status),
+			}, true)
+		}
+		return nil
+	}
+	if _, err := s.RunFinish(ctx, RunFinishRequest{
+		RunID: runID, Expect: view.Version, Outcome: status,
+		Actor: actor, Reason: summary, Note: note,
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
+// appendInputRefs records what the round pointed the agent at (方案 §11.3)
+// without duplicating pointers the run already carries.
+func (s *Service) appendInputRefs(ctx context.Context, runID string, refs []string) error {
+	if len(refs) == 0 {
+		return nil
+	}
+	r, raw, err := readRun(ctx, s, runID)
+	if err != nil {
+		return err
+	}
+	changed := false
+	for _, ref := range refs {
+		if ref != "" && !contains(r.InputContextRefs, ref) {
+			r.InputContextRefs = append(r.InputContextRefs, ref)
+			changed = true
+		}
+	}
+	if !changed {
+		return nil
+	}
+	if err := run.New(s.Root).Update(ctx, r, raw); err != nil {
+		return s.storeError(err)
+	}
+	return nil
+}
+
+// roundCap is the session round bound (方案 §5.3 轮数上限, stored as
+// limits.max_attempts by M3.1); 0 means the policy declares none.
+func roundCap(policy *workflow.Policy) int {
+	if policy == nil {
+		return 0
+	}
+	return policy.Limits.MaxAttempts
+}
+
+// terminalStatus maps how an attempt ended onto the §4.8 vocabulary.
+func terminalStatus(res harness.Result) string {
+	switch {
+	case res.TimedOut:
+		return RunTimedOut
+	case res.Canceled:
+		return RunCanceled
+	case res.Err != "", res.ExitCode != 0:
+		return RunFailed
+	default:
+		return RunSucceeded
+	}
 }
 
 // recordExecOutcome writes the attempt's evidence where the rest of the system
@@ -240,27 +549,6 @@ func contains(list []string, want string) bool {
 		}
 	}
 	return false
-}
-
-// streamRecord is one line of a run's event stream. One struct covers every
-// record type so the on-disk shape is documented in one place; omitempty keeps
-// each record small. code is -1 when the command has no exit status.
-type streamRecord struct {
-	Time       time.Time `json:"t"`
-	Type       string    `json:"type"`
-	Stream     string    `json:"stream,omitempty"`
-	Line       string    `json:"line,omitempty"`
-	Adapter    string    `json:"adapter,omitempty"`
-	Command    string    `json:"command,omitempty"`
-	Argv       []string  `json:"argv,omitempty"`
-	Cwd        string    `json:"cwd,omitempty"`
-	TimeoutMS  int64     `json:"timeout_ms,omitempty"`
-	Code       *int      `json:"code,omitempty"`
-	TimedOut   bool      `json:"timed_out,omitempty"`
-	Canceled   bool      `json:"canceled,omitempty"`
-	DurationMS int64     `json:"duration_ms,omitempty"`
-	Text       string    `json:"text,omitempty"`
-	Removed    int64     `json:"removed_bytes,omitempty"`
 }
 
 // runStream appends a run's event stream (.devsys/runs/<run-id>.jsonl).

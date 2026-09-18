@@ -31,7 +31,7 @@ var layoutDirs = []string{
 // ignoreEntries keep local-only state out of git (方案 §14.2). 方案 §14.3 does
 // not list the .gitignore file itself; the deviation is recorded in the M0.2
 // spec and in the task artifacts.
-var ignoreEntries = []string{"local/", ".cache/"}
+var ignoreEntries = []string{"local/", ".cache/", "workspaces/"}
 
 // placeholder describes one minimal file devsys init writes when missing.
 type placeholder struct {

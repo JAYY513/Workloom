@@ -159,3 +159,37 @@ func registerRunHeartbeat(s *mcpsdk.Server, cfg Config) {
 		return nil, view, nil
 	})
 }
+
+// --- run_complete / run_fail / run_cancel --------------------------------
+
+type runFinishInput struct {
+	ID     string `json:"id" jsonschema:"run id"`
+	Expect string `json:"expect" jsonschema:"version hash from run_get (required: read before you write)"`
+	Actor  string `json:"actor" jsonschema:"who decided the outcome"`
+	Reason string `json:"reason" jsonschema:"why the attempt ended this way"`
+	Note   string `json:"note,omitempty" jsonschema:"optional detail kept with the run's evidence"`
+}
+
+// registerRunFinish wires the three terminal transitions of §4.8. They only
+// record an outcome — nothing here starts or stops a process — and each one
+// refuses a run that already ended, so two actors cannot both claim it.
+func registerRunFinish(s *mcpsdk.Server, cfg Config) {
+	register := func(name, description, outcome string) {
+		mcpsdk.AddTool(s, &mcpsdk.Tool{
+			Name:        name,
+			Description: description,
+		}, func(ctx context.Context, req *mcpsdk.CallToolRequest, in runFinishInput) (*mcpsdk.CallToolResult, app.RunView, error) {
+			view, err := cfg.service().RunFinish(ctx, app.RunFinishRequest{
+				RunID: in.ID, Expect: in.Expect, Outcome: outcome,
+				Actor: in.Actor, Reason: in.Reason, Note: in.Note,
+			})
+			if err != nil {
+				return fail[app.RunView](err)
+			}
+			return nil, view, nil
+		})
+	}
+	register("run_complete", "Mark an attempt as succeeded (§4.8). The completion check (claim head SHA) arrives with M6.6.", app.RunSucceeded)
+	register("run_fail", "Mark an attempt as failed, with the reason recorded on the run.", app.RunFailed)
+	register("run_cancel", "Mark an attempt as canceled (stopped before it decided its own outcome).", app.RunCanceled)
+}

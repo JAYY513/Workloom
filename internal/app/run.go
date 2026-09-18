@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"workloom/internal/domain"
@@ -242,4 +243,82 @@ func (s *Service) RunHeartbeat(ctx context.Context, runID, owner, token, actor, 
 		return HeartbeatView{}, s.storeError(err)
 	}
 	return HeartbeatView{WorkitemID: wi.ID, RunID: runID, LeaseUntil: lease.LeaseUntil, HeartbeatAt: lease.HeartbeatAt}, nil
+}
+
+// Terminal run statuses are the §4.8 vocabulary: an attempt either succeeded,
+// failed, ran out of time, stalled or was canceled. The lifecycle commands
+// speak exactly these words; the generic RunUpdate stays free-form for
+// evidence accumulation.
+const (
+	RunSucceeded = "succeeded"
+	RunFailed    = "failed"
+	RunTimedOut  = "timed_out"
+	RunStalled   = "stalled"
+	RunCanceled  = "canceled"
+)
+
+// isTerminalRun reports whether a run has already ended.
+func isTerminalRun(status string) bool {
+	switch status {
+	case RunSucceeded, RunFailed, RunTimedOut, RunStalled, RunCanceled:
+		return true
+	default:
+		return false
+	}
+}
+
+// RunFinishRequest records how an attempt ended when the outcome is decided by
+// a caller rather than by a command's exit status: an operator, the dispatch
+// tick (M6.4) or a harness reporting through the tool surface.
+type RunFinishRequest struct {
+	RunID   string
+	Expect  string
+	Outcome string
+	Actor   string
+	Reason  string
+	// Note is optional detail kept with the run's result evidence.
+	Note string
+}
+
+// RunFinish writes the terminal status, the finish time and a run_finished
+// event under the version guard. Ending a run that already ended is refused
+// rather than silently repeated, so two actors cannot both claim the outcome.
+func (s *Service) RunFinish(ctx context.Context, req RunFinishRequest) (RunView, error) {
+	if req.RunID == "" || req.Actor == "" || req.Reason == "" {
+		return RunView{}, Usagef("run finish requires id, actor and reason")
+	}
+	if !isTerminalRun(req.Outcome) {
+		return RunView{}, Usagef("unknown run outcome %q (succeeded | failed | timed_out | stalled | canceled)", req.Outcome)
+	}
+	r, raw, err := readRun(ctx, s, req.RunID)
+	if err != nil {
+		return RunView{}, err
+	}
+	if err := checkExpect(req.Expect, raw, "run"); err != nil {
+		return RunView{}, err
+	}
+	if isTerminalRun(r.Status) {
+		return RunView{}, Preconditionf("run %s already ended as %s", r.ID, r.Status)
+	}
+	now := s.now()
+	r.Status = req.Outcome
+	r.FinishedAt = &now
+	if req.Note != "" {
+		r.Result.Errors = append(r.Result.Errors, req.Note)
+	}
+	if err := run.New(s.Root).Update(ctx, r, raw); err != nil {
+		return RunView{}, s.storeError(err)
+	}
+	if err := events.New(s.Root).Append(ctx, &domain.Event{
+		Type:      "run_finished",
+		Subject:   domain.Reference{Type: "run", ID: r.ID},
+		ProjectID: r.ProjectID,
+		Actor:     req.Actor,
+		Related:   []domain.Reference{{Type: "workitem", ID: r.WorkItemID}},
+		Content:   fmt.Sprintf("%s: %s", req.Outcome, req.Reason),
+		Time:      now,
+	}); err != nil {
+		return RunView{}, s.storeError(err)
+	}
+	return s.RunGet(ctx, r.ID)
 }

@@ -4,6 +4,7 @@ bin/
 # Local-only state inside a managed project (design §14.3)
 .devsys/local/
 .devsys/.cache/
+.devsys/workspaces/
 
 # Go test binaries
 *.test

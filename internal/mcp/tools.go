@@ -91,6 +91,9 @@ func allTools() []toolSpec {
 		{"run_create", []string{ProfileExecutor}, registerRunCreate},
 		{"run_update", []string{ProfileExecutor}, registerRunUpdate},
 		{"run_heartbeat", []string{ProfileExecutor}, registerRunHeartbeat},
+		{"run_complete", []string{ProfileExecutor}, registerRunFinish},
+		{"run_fail", []string{ProfileExecutor}, registerRunFinish},
+		{"run_cancel", []string{ProfileExecutor}, registerRunFinish},
 
 		// context and knowledge (方案 §8.2 context_*/knowledge_*)
 		{"context_get", []string{ProfileSession}, registerContextGet},

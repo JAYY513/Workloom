@@ -410,7 +410,7 @@ func outputRecord(stdout io.Writer, opts options, view app.RecordView) error {
 // runRun routes the run family (方案 §8.2 run_*).
 func runRun(stdout io.Writer, opts options, rest []string) error {
 	if len(rest) == 0 {
-		return errUsage("`devsys run` needs a subcommand (list | get | log | create | update | heartbeat | exec)")
+		return errUsage("`devsys run` needs a subcommand (list | get | log | create | update | heartbeat | exec | prompt | complete | fail | cancel)")
 	}
 	svc, err := requireProjectRoot()
 	if err != nil {
@@ -608,10 +608,11 @@ func runRun(stdout io.Writer, opts options, rest []string) error {
 		fs.SetOutput(io.Discard)
 		id := fs.String("id", "", "run id")
 		timeout := fs.Duration("timeout", 0, "terminate the process tree after this long (0 = no limit)")
+		round := fs.Int("round", 0, "session round (default: continue the session)")
 		actor := fs.String("actor", "", "who runs the command")
 		reason := fs.String("reason", "", "why this attempt runs")
 		if err := fs.Parse(rest[1:]); err != nil || *id == "" || *actor == "" || *reason == "" {
-			return errUsage("run exec --id <run-id> --actor <a> --reason <r> [--timeout 30s] -- <command...>")
+			return errUsage("run exec --id <run-id> --actor <a> --reason <r> [--timeout 30s] [--round N] -- <command...>")
 		}
 		argv := fs.Args()
 		if len(argv) == 0 {
@@ -635,7 +636,7 @@ func runRun(stdout io.Writer, opts options, rest []string) error {
 			fmt.Fprintln(out, line.Text)
 		}
 		view, err := svc.RunExec(runCtx, app.RunExecRequest{
-			RunID: *id, Argv: argv, Timeout: *timeout,
+			RunID: *id, Argv: argv, Timeout: *timeout, Round: *round,
 			Actor: *actor, Reason: *reason, Sink: sink,
 		})
 		if err != nil {
@@ -648,8 +649,76 @@ func runRun(stdout io.Writer, opts options, rest []string) error {
 			}{OK: true, RunExecView: view})
 		}
 		if !opts.quiet {
-			fmt.Fprintf(stdout, "%s\t%s\texit=%d\tduration=%s\tlog=%s\n",
-				view.RunID, view.Adapter, view.ExitCode, time.Duration(view.DurationMS)*time.Millisecond, view.Log)
+			fmt.Fprintf(stdout, "%s\t%s\tround=%d(%s)\tstatus=%s\texit=%d\tduration=%s\tlog=%s\n",
+				view.RunID, view.Adapter, view.Round, view.Mode, view.Status,
+				view.ExitCode, time.Duration(view.DurationMS)*time.Millisecond, view.Log)
+			for _, warning := range view.Warnings {
+				fmt.Fprintf(stdout, "warning: %s\n", warning)
+			}
+		}
+		return nil
+	case "prompt":
+		fs := flag.NewFlagSet("run prompt", flag.ContinueOnError)
+		fs.SetOutput(io.Discard)
+		id := fs.String("id", "", "run id")
+		round := fs.Int("round", 0, "round to assemble (default: the next one)")
+		write := fs.Bool("write", false, "materialize the text under .devsys/local/runs/<id>/")
+		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *id == "" {
+			return errUsage("run prompt --id <run-id> [--round N] [--write]")
+		}
+		view, err := svc.RunPrompt(ctx, app.RunPromptRequest{RunID: *id, Round: *round, Write: *write})
+		if err != nil {
+			return err
+		}
+		if opts.json {
+			return json.NewEncoder(stdout).Encode(struct {
+				OK bool `json:"ok"`
+				app.RunPromptView
+			}{OK: true, RunPromptView: view})
+		}
+		if !opts.quiet {
+			fmt.Fprintf(stdout, "# round %d (%s) hash=%s\n", view.Round, view.Mode, view.Hash)
+			if view.Path != "" {
+				fmt.Fprintf(stdout, "# written to %s\n", view.Path)
+			}
+			for _, notice := range view.Notices {
+				fmt.Fprintf(stdout, "# notice: %s\n", notice)
+			}
+			fmt.Fprint(stdout, view.Text)
+		}
+		return nil
+	case "complete", "fail", "cancel":
+		outcome := map[string]string{
+			"complete": app.RunSucceeded,
+			"fail":     app.RunFailed,
+			"cancel":   app.RunCanceled,
+		}[rest[0]]
+		fs := flag.NewFlagSet("run "+rest[0], flag.ContinueOnError)
+		fs.SetOutput(io.Discard)
+		id := fs.String("id", "", "run id")
+		expect := fs.String("expect", "", "version hash from run get")
+		actor := fs.String("actor", "", "who decided the outcome")
+		reason := fs.String("reason", "", "why the attempt ended this way")
+		note := fs.String("note", "", "detail kept with the run's evidence")
+		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *id == "" || *actor == "" || *reason == "" {
+			return errUsage("%s", "run "+rest[0]+" --id <run-id> [--expect <hash>] --actor <a> --reason <r> [--note <text>]")
+		}
+		view, err := svc.RunFinish(ctx, app.RunFinishRequest{
+			RunID: *id, Expect: *expect, Outcome: outcome,
+			Actor: *actor, Reason: *reason, Note: *note,
+		})
+		if err != nil {
+			return err
+		}
+		if opts.json {
+			return json.NewEncoder(stdout).Encode(struct {
+				OK      bool        `json:"ok"`
+				Run     *domain.Run `json:"run"`
+				Version string      `json:"version"`
+			}{OK: true, Run: view.Run, Version: view.Version})
+		}
+		if !opts.quiet {
+			fmt.Fprintf(stdout, "%s\t%s\n", view.Run.ID, view.Run.Status)
 		}
 		return nil
 	default:
