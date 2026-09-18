@@ -175,7 +175,19 @@ func writeJSONL[T any](w io.Writer, items []T) error {
 }
 
 // appService binds the shared application service to the working directory.
+// appService binds the service to the project the command works on: the
+// working directory, unless DEVSYS_PROJECT_ROOT names one. An agent working
+// inside its workspace (a git worktree) gets that variable from the attempt's
+// environment (方案 §4.8), so its reports land in the project's own state
+// instead of the copy of .devsys/ the worktree carries.
 func appService() (*app.Service, error) {
+	if override := strings.TrimSpace(os.Getenv("DEVSYS_PROJECT_ROOT")); override != "" {
+		abs, err := filepath.Abs(override)
+		if err != nil {
+			return nil, errInternal("resolve DEVSYS_PROJECT_ROOT %q: %v", override, err)
+		}
+		return app.New(abs), nil
+	}
 	root, err := os.Getwd()
 	if err != nil {
 		return nil, errInternal("resolve working directory: %v", err)

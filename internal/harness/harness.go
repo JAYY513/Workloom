@@ -44,10 +44,14 @@ type Workspace struct {
 // SessionID are the harness-level knobs of §9.2; the shell adapter ignores
 // them and the real adapters (M6.7) render them into their own command line.
 type Request struct {
-	Command   []string
-	Dir       string
-	Env       []string
-	Timeout   time.Duration
+	Command []string
+	Dir     string
+	Env     []string
+	Timeout time.Duration
+	// Stdin is fed to the process and then closed. Harness CLIs that read the
+	// prompt from stdin use it (方案 §9.3): a prompt is too large to trust to a
+	// command line's length limit.
+	Stdin     []byte
 	Prompt    string
 	Model     string
 	SessionID string
@@ -60,6 +64,7 @@ type Command struct {
 	Dir     string
 	Env     []string
 	Timeout time.Duration
+	Stdin   []byte
 }
 
 // Line is one streamed output line (stream_output, §9.2). Text carries no

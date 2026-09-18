@@ -41,10 +41,15 @@ type RunExecRequest struct {
 	// Round selects the session round; 0 continues the session (round 1 when
 	// nothing ran yet). The first round carries the full prompt, later rounds
 	// the delta only (方案 §4.8).
-	Round  int
-	Actor  string
-	Reason string
-	Sink   func(harness.Line)
+	Round int
+	// Harness names the harness adapter to drive (方案 §9.3). When set, the
+	// adapter builds the command from the assembled prompt and Argv must be
+	// empty; when empty, Argv is run as given (the shell path).
+	Harness string
+	Model   string
+	Actor   string
+	Reason  string
+	Sink    func(harness.Line)
 }
 
 // RunExecView is the outcome of one attempt. ExitCode is the command's own
@@ -86,8 +91,11 @@ func (s *Service) RunExec(ctx context.Context, req RunExecRequest) (RunExecView,
 	if req.RunID == "" {
 		return RunExecView{}, Usagef("run exec requires a run id")
 	}
-	if len(req.Argv) == 0 {
-		return RunExecView{}, Usagef("run exec requires a command (devsys run exec --id <run-id> -- <command...>)")
+	if req.Harness == "" && len(req.Argv) == 0 {
+		return RunExecView{}, Usagef("run exec requires a command (devsys run exec --id <run-id> -- <command...>) or --harness <name>")
+	}
+	if req.Harness != "" && len(req.Argv) > 0 {
+		return RunExecView{}, Usagef("run exec takes either --harness or a command, not both")
 	}
 	if req.Actor == "" || req.Reason == "" {
 		return RunExecView{}, Usagef("run exec requires actor and reason")
@@ -160,7 +168,26 @@ func (s *Service) RunExec(ctx context.Context, req RunExecRequest) (RunExecView,
 			r.ID, round-1, cap)
 	}
 
-	adapter := harness.NewShell()
+	// The harness is chosen before anything runs: an unavailable one is a
+	// refusal, never a silent fallback to another harness (方案 §9.3).
+	adapter := harness.Adapter(harness.NewShell())
+	if req.Harness != "" {
+		if strings.EqualFold(strings.TrimSpace(req.Harness), "shell") {
+			return RunExecView{}, Usagef("the shell adapter runs an explicit command: pass one after --, or set dispatch_command for dispatched attempts")
+		}
+		chosen, ok := harness.ByName(req.Harness)
+		if !ok {
+			return RunExecView{}, Usagef("unknown harness %q (known: %s)", req.Harness, strings.Join(harness.Names(), ", "))
+		}
+		avail, err := chosen.Probe(ctx)
+		if err != nil {
+			return RunExecView{}, Internalf("probe harness %q: %v", req.Harness, err)
+		}
+		if !avail.Installed {
+			return RunExecView{}, Preconditionf("harness %q is not available: %s", req.Harness, avail.Detail)
+		}
+		adapter = chosen
+	}
 	if err := adapter.Prepare(ctx, harness.Workspace{Path: dir, Branch: r.Workspace.Branch, Worktree: r.Workspace.Worktree}); err != nil {
 		return RunExecView{}, Preconditionf("%v", err)
 	}
@@ -173,7 +200,16 @@ func (s *Service) RunExec(ctx context.Context, req RunExecRequest) (RunExecView,
 		"DEVSYS_ROUND="+fmt.Sprint(round),
 		"DEVSYS_PROMPT_FILE="+filepath.Join(s.Root, filepath.FromSlash(promptView.Path)),
 	)
-	cmd, err := adapter.Command(harness.Request{Command: req.Argv, Dir: dir, Env: env, Timeout: req.Timeout})
+	var cmd harness.Command
+	if req.Harness != "" {
+		// The adapter builds the command from the round's prompt (方案 §9.2
+		// build_command): the prompt is the attempt's whole input.
+		cmd, err = adapter.Command(harness.Request{
+			Prompt: promptView.Text, Dir: dir, Env: env, Timeout: req.Timeout, Model: req.Model,
+		})
+	} else {
+		cmd, err = adapter.Command(harness.Request{Command: req.Argv, Dir: dir, Env: env, Timeout: req.Timeout})
+	}
 	if err != nil {
 		return RunExecView{}, Preconditionf("%v", err)
 	}
@@ -207,6 +243,13 @@ func (s *Service) RunExec(ctx context.Context, req RunExecRequest) (RunExecView,
 		})
 		if herr != nil {
 			return s.abortAttempt(ctx, stream, r, req, dir, round, commandLine, promptView, herr)
+		}
+	}
+	// The attempt's own record says which harness drove it (方案 §5.4): the
+	// acceptance compares runs across harnesses by exactly this field.
+	if req.Harness != "" {
+		if err := s.recordAgent(ctx, r.ID, req.Harness, req.Model); err != nil {
+			return RunExecView{}, err
 		}
 	}
 	if err := s.advancePhase(ctx, stream, r.ID, "launching_agent"); err != nil {
@@ -397,6 +440,25 @@ func (s *Service) advancePhase(ctx context.Context, stream *runStream, runID, ph
 	}
 	if err := stream.write(streamRecord{Type: "phase", Phase: phase}, false); err != nil {
 		return Internalf("write run stream: %v", err)
+	}
+	return nil
+}
+
+// recordAgent stamps the harness (and model) that drives the attempt.
+func (s *Service) recordAgent(ctx context.Context, runID, harnessName, model string) error {
+	r, raw, err := readRun(ctx, s, runID)
+	if err != nil {
+		return err
+	}
+	if r.Agent.Harness == harnessName && r.Agent.Model == model {
+		return nil
+	}
+	r.Agent.Harness = harnessName
+	if model != "" {
+		r.Agent.Model = model
+	}
+	if err := run.New(s.Root).Update(ctx, r, raw); err != nil {
+		return s.storeError(err)
 	}
 	return nil
 }

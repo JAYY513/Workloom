@@ -617,14 +617,19 @@ func runRun(stdout io.Writer, opts options, rest []string) error {
 		id := fs.String("id", "", "run id")
 		timeout := fs.Duration("timeout", 0, "terminate the process tree after this long (0 = no limit)")
 		round := fs.Int("round", 0, "session round (default: continue the session)")
+		harnessName := fs.String("harness", "", "drive this harness adapter (shell | codex | opencode | claude)")
+		model := fs.String("model", "", "model the harness should use")
 		actor := fs.String("actor", "", "who runs the command")
 		reason := fs.String("reason", "", "why this attempt runs")
 		if err := fs.Parse(rest[1:]); err != nil || *id == "" || *actor == "" || *reason == "" {
-			return errUsage("run exec --id <run-id> --actor <a> --reason <r> [--timeout 30s] [--round N] -- <command...>")
+			return errUsage("run exec --id <run-id> --actor <a> --reason <r> [--timeout 30s] [--round N] [--harness <name> [--model <m>]] [-- <command...>]")
 		}
 		argv := fs.Args()
-		if len(argv) == 0 {
-			return errUsage("run exec needs a command after -- (devsys run exec --id <run-id> -- <command...>)")
+		if *harnessName == "" && len(argv) == 0 {
+			return errUsage("run exec needs a command after -- or a --harness (devsys run exec --id <run-id> -- <command...>)")
+		}
+		if *harnessName != "" && len(argv) > 0 {
+			return errUsage("run exec takes either --harness or a command, not both")
 		}
 		// Ctrl-C stops the attempt (and its process tree) instead of
 		// leaving an orphan behind.
@@ -645,6 +650,7 @@ func runRun(stdout io.Writer, opts options, rest []string) error {
 		}
 		view, err := svc.RunExec(runCtx, app.RunExecRequest{
 			RunID: *id, Argv: argv, Timeout: *timeout, Round: *round,
+			Harness: *harnessName, Model: *model,
 			Actor: *actor, Reason: *reason, Sink: sink,
 		})
 		if err != nil {

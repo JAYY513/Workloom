@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"runtime"
@@ -100,7 +101,9 @@ func (s *Shell) Command(req Request) (Command, error) {
 	copy(argv, req.Command)
 	env := make([]string, len(req.Env))
 	copy(env, req.Env)
-	return Command{Argv: argv, Dir: dir, Env: env, Timeout: req.Timeout}, nil
+	stdin := make([]byte, len(req.Stdin))
+	copy(stdin, req.Stdin)
+	return Command{Argv: argv, Dir: dir, Env: env, Timeout: req.Timeout, Stdin: stdin}, nil
 }
 
 // Start implements Adapter: spawn the command, stream both output streams
@@ -133,6 +136,13 @@ func (s *Shell) Start(ctx context.Context, cmd Command) (Session, error) {
 	proc.Stderr = &lineWriter{sess: sess, stream: "stderr"}
 	proc.WaitDelay = waitDelay
 
+	if len(cmd.Stdin) > 0 {
+		pipe, err := proc.StdinPipe()
+		if err != nil {
+			return nil, fmt.Errorf("stdin pipe: %w", err)
+		}
+		go feedStdin(pipe, cmd.Stdin, sess)
+	}
 	if err := proc.Start(); err != nil {
 		return nil, fmt.Errorf("start %s: %w", cmd.Argv[0], err)
 	}
@@ -155,6 +165,16 @@ func (s *Shell) Start(ctx context.Context, cmd Command) (Session, error) {
 		}
 	}()
 	return sess, nil
+}
+
+// feedStdin writes the prompt and closes the pipe. A write failure is part of
+// the record, not a spawn failure: the process may have exited early, and its
+// exit status is what the attempt is judged by.
+func feedStdin(pipe io.WriteCloser, payload []byte, sess *shellSession) {
+	if _, err := pipe.Write(payload); err != nil {
+		sess.emit(Line{Stream: "stderr", Text: "devsys: stdin write failed: " + err.Error(), Time: time.Now().UTC()})
+	}
+	_ = pipe.Close()
 }
 
 type shellSession struct {

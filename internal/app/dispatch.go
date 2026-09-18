@@ -125,9 +125,9 @@ func (s *Service) Dispatch(ctx context.Context, req DispatchRequest) (DispatchRe
 	if md.Config != nil {
 		command = strings.TrimSpace(md.Config.DispatchCommand)
 	}
-	if command == "" {
+	if command == "" && !anyHarnessAssigned(items) {
 		return rep, Preconditionf(
-			"dispatch found %d candidate(s) but .devsys/config.yaml has no dispatch_command; the per-harness adapters of M6.7 replace it",
+			"dispatch found %d candidate(s) but neither the work items nor .devsys/config.yaml name a harness: set assigned_harness on the item or dispatch_command in the config",
 			len(rep.Plan.Start))
 	}
 	spawn := req.Spawn
@@ -217,6 +217,17 @@ func (s *Service) dispatchCaps(ctx context.Context, items []*domain.WorkItem) (d
 }
 
 // dispatchOne starts one attempt: claim, workspace, spawn, running.
+// anyHarnessAssigned reports whether a dispatchable item names a harness: then
+// the adapter builds the command and dispatch_command is not needed.
+func anyHarnessAssigned(items []*domain.WorkItem) bool {
+	for _, wi := range items {
+		if wi.AssignedHarness != nil && strings.TrimSpace(*wi.AssignedHarness) != "" {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *Service) dispatchOne(ctx context.Context, workitemID, command string, projectIDValue string, req DispatchRequest, spawn AttemptSpawner) (DispatchedAttempt, error) {
 	claim, err := s.WorkitemClaim(ctx, workitemID, dispatchOwner, req.Reason, "")
 	if err != nil {
@@ -232,8 +243,19 @@ func (s *Service) dispatchOne(ctx context.Context, workitemID, command string, p
 		return DispatchedAttempt{}, err
 	}
 	logRel := filepath.ToSlash(filepath.Join(".devsys", "local", "runs", claim.RunID+".exec.log"))
-	argv := []string{"run", "exec", "--id", claim.RunID, "--actor", req.Actor, "--reason", req.Reason, "--"}
-	argv = append(argv, shellArgv(command)...)
+	argv := []string{"run", "exec", "--id", claim.RunID, "--actor", req.Actor, "--reason", req.Reason}
+	harnessName := ""
+	if wi, err := s.items().Get(ctx, workitemID); err == nil && wi.AssignedHarness != nil {
+		harnessName = strings.TrimSpace(*wi.AssignedHarness)
+	}
+	if harnessName != "" {
+		// The item names its harness (方案 §9.3): the adapter builds the
+		// command inside the attempt, from the round's assembled prompt.
+		argv = append(argv, "--harness", harnessName)
+	} else {
+		argv = append(argv, "--")
+		argv = append(argv, shellArgv(command)...)
+	}
 	pid, err := spawn(s.Root, claim.RunID, argv, filepath.Join(s.Root, filepath.FromSlash(logRel)))
 	if err != nil {
 		s.releaseFailedClaim(ctx, workitemID, claim.Token, req, err)
@@ -252,7 +274,7 @@ func (s *Service) dispatchOne(ctx context.Context, workitemID, command string, p
 	}
 	return DispatchedAttempt{
 		WorkitemID: workitemID, RunID: claim.RunID, Workspace: ws.Path,
-		Command: command, PID: pid, Log: logRel,
+		Command: dispatchCommandLine(harnessName, command), PID: pid, Log: logRel,
 	}, nil
 }
 
@@ -308,6 +330,15 @@ func defaultSpawner() AttemptSpawner {
 		_ = cmd.Process.Release()
 		return pid, nil
 	}
+}
+
+// dispatchCommandLine renders what an attempt will run, for the report and the
+// event: the harness name, or the configured shell command.
+func dispatchCommandLine(harnessName, command string) string {
+	if harnessName != "" {
+		return "harness:" + harnessName
+	}
+	return command
 }
 
 // shellArgv wraps a configured command in the host shell (the same rule the

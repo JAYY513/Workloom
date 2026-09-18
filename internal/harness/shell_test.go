@@ -3,6 +3,7 @@ package harness
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -60,6 +61,10 @@ func helperProcess(role string) {
 		// trip the runtime's deadlock detector (exit 2) and orphan the
 		// grandchild before the adapter ever gets to kill it.
 		time.Sleep(time.Hour)
+		os.Exit(0)
+	case "echo-stdin":
+		payload, _ := io.ReadAll(os.Stdin)
+		os.Stdout.WriteString("stdin: " + string(payload))
 		os.Exit(0)
 	case "burst":
 		count, _ := strconv.Atoi(os.Getenv(countEnv))
