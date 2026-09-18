@@ -111,6 +111,10 @@ func (s *Service) Dispatch(ctx context.Context, req DispatchRequest) (DispatchRe
 		if err != nil {
 			return rep, s.storeError(err)
 		}
+		// The sweep changed what is dispatchable, so the bounds are resolved
+		// again from the state the plan will actually see.
+		caps, notices = s.dispatchCaps(ctx, items)
+		rep.Notices = append(rep.Notices, notices...)
 	}
 	rep.Plan = dispatch.Plan(dispatch.Input{Now: s.now(), Items: items, Caps: caps, Max: req.Max})
 	if req.DryRun || len(rep.Plan.Start) == 0 {
@@ -370,7 +374,7 @@ func (s *Service) retrySweep(ctx context.Context, items []*domain.WorkItem, req 
 		if !act {
 			continue
 		}
-		if reason == "stalled" && r.Status == "running" {
+		if reason == "stalled" && r.Status == RunRunning {
 			// A stalled attempt is over: it is recorded as such before the
 			// next attempt is queued, so the evidence says what happened.
 			if _, err := s.RunFinish(ctx, RunFinishRequest{
@@ -385,17 +389,33 @@ func (s *Service) retrySweep(ctx context.Context, items []*domain.WorkItem, req 
 			notices = append(notices, fmt.Sprintf("%s: lease unreadable, retry sweep skipped (%v)", wi.ID, err))
 			continue
 		}
+		// The lease must belong to the attempt that was inspected: releasing
+		// somebody else's claim would let two agents work the same item.
+		if lease.RunID != "" && lease.RunID != r.ID {
+			notices = append(notices, fmt.Sprintf("%s: claim belongs to run %s, not the ended %s; sweep skipped", wi.ID, lease.RunID, r.ID))
+			continue
+		}
 		attempts := len(runsFor(runs, wi.ID))
-		attempt, next, err := s.queueNextAttempt(ctx, wi, lease, attempts, res.Policy, reason, req)
+		entry := SweptAttempt{WorkitemID: wi.ID, RunID: r.ID, Attempts: attempts, Reason: reason}
+		if reason == "canceled" {
+			// A cancellation is a decision, not a failure: give the claim
+			// back and let a human decide what happens next.
+			if _, err := s.WorkitemRelease(ctx, wi.ID, lease.Owner, lease.Token, req.Actor,
+				"attempt canceled; claim released", ""); err != nil {
+				return swept, notices, err
+			}
+			entry.Action = "released"
+			swept = append(swept, entry)
+			continue
+		}
+		next, err := s.queueNextAttempt(ctx, wi, lease, attempts, res.Policy, reason, req)
 		if err != nil {
 			return swept, notices, err
 		}
-		entry := SweptAttempt{WorkitemID: wi.ID, RunID: r.ID, Attempts: attempts, Reason: reason}
 		if next != nil {
 			entry.Action, entry.NextAttemptAt = "retry_queued", next
 		} else {
 			entry.Action = "released"
-			_ = attempt
 		}
 		swept = append(swept, entry)
 	}
@@ -416,8 +436,14 @@ func (s *Service) sweepTrigger(r *domain.Run, threshold time.Duration, now time.
 		return "stalled", true
 	case RunCanceled:
 		return "canceled", true
-	case "running":
-		if progress, err := s.lastProgress(r); err == nil && now.Sub(progress) > threshold {
+	case RunRunning:
+		progress, err := s.lastProgress(r)
+		if err != nil {
+			// Unreadable evidence is not progress: report it and let the
+			// operator look, instead of silently never detecting a stall.
+			return "unreadable", true
+		}
+		if now.Sub(progress) > threshold {
 			return "stalled", true
 		}
 	}
@@ -440,7 +466,7 @@ func (s *Service) lastProgress(r *domain.Run) (time.Time, error) {
 // queueNextAttempt gives the claim back and queues the next attempt, unless
 // the attempts the policy allows are used up: then the claim is released and
 // the exhaustion is recorded.
-func (s *Service) queueNextAttempt(ctx context.Context, wi *domain.WorkItem, lease domain.SchedulingLease, attempts int, policy *workflow.Policy, reason string, req DispatchRequest) (int, *time.Time, error) {
+func (s *Service) queueNextAttempt(ctx context.Context, wi *domain.WorkItem, lease domain.SchedulingLease, attempts int, policy *workflow.Policy, reason string, req DispatchRequest) (*time.Time, error) {
 	maxAttempts := 0
 	base, ceiling := retry.DefaultBase, retry.DefaultMax
 	if policy != nil {
@@ -452,7 +478,7 @@ func (s *Service) queueNextAttempt(ctx context.Context, wi *domain.WorkItem, lea
 	if maxAttempts > 0 && attempts >= maxAttempts {
 		if _, err := s.WorkitemRelease(ctx, wi.ID, lease.Owner, lease.Token, req.Actor,
 			fmt.Sprintf("%s: attempts exhausted (%d of %d)", reason, attempts, maxAttempts), ""); err != nil {
-			return 0, nil, err
+			return nil, err
 		}
 		if err := events.New(s.Root).Append(ctx, &domain.Event{
 			Type:      "retry_exhausted",
@@ -462,9 +488,9 @@ func (s *Service) queueNextAttempt(ctx context.Context, wi *domain.WorkItem, lea
 			Content:   fmt.Sprintf("%s after %d attempt(s); the work item needs a human decision", reason, attempts),
 			Time:      s.now(),
 		}); err != nil {
-			return 0, nil, s.storeError(err)
+			return nil, s.storeError(err)
 		}
-		return attempts, nil, nil
+		return nil, nil
 	}
 	attempt := attempts + 1
 	delay := retry.Delay(base, ceiling, attempts, wi.ID)
@@ -475,10 +501,10 @@ func (s *Service) queueNextAttempt(ctx context.Context, wi *domain.WorkItem, lea
 		Now:    s.now(),
 	})
 	if err != nil {
-		return 0, nil, s.storeError(err)
+		return nil, s.storeError(err)
 	}
 	next := result.NextAttemptAt
-	return attempt, &next, nil
+	return &next, nil
 }
 
 // runsFor lists the attempts a work item has already had.

@@ -202,3 +202,87 @@ func finishRun(t *testing.T, svc *Service, runID, outcome, reason string) {
 		t.Fatalf("run finish: %v", err)
 	}
 }
+
+// A cancellation is a decision, not a failure: the claim is released and no
+// attempt is queued.
+func TestRetrySweepReleasesCanceledAttempt(t *testing.T) {
+	root, svc := dispatchFixture(t, "", &domain.WorkItem{Title: "one", Priority: 5})
+	runID := claimedItem(t, svc, "WLM-1")
+	finishRun(t, svc, runID, RunCanceled, "the operator stopped it")
+
+	report, err := svc.Dispatch(context.Background(), DispatchRequest{Actor: "ops", Reason: "tick", Spawn: (&recorder{}).spawn})
+	if err != nil {
+		t.Fatalf("dispatch: %v", err)
+	}
+	if len(report.Swept) != 1 || report.Swept[0].Action != "released" || report.Swept[0].NextAttemptAt != nil {
+		t.Fatalf("swept = %+v, want the canceled attempt released without a retry", report.Swept)
+	}
+	wi := itemState(t, root, "WLM-1")
+	if wi.SchedulingState == domain.SchedulingRetryQueued || wi.NextAttemptAt != nil {
+		t.Fatalf("canceled attempt was queued for retry: %+v", wi)
+	}
+	if wi.SchedulingState != domain.SchedulingUnclaimed {
+		t.Fatalf("scheduling state = %q, want the claim released", wi.SchedulingState)
+	}
+	events, err := svc.EventList(context.Background(), EventListRequest{Type: "retry_exhausted"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 0 {
+		t.Fatalf("cancellation recorded as exhausted retries: %+v", events)
+	}
+}
+
+// A lease that belongs to a different run than the ended attempt is left
+// alone: releasing it would let two agents work the same item. (The foreign run
+// exists, so the reconcile step does not treat the lease as an orphan.)
+func TestRetrySweepSkipsForeignLease(t *testing.T) {
+	root, svc := dispatchFixture(t, "concurrency:\n  global: 2\n",
+		&domain.WorkItem{Title: "one", Priority: 9},
+		&domain.WorkItem{Title: "two", Priority: 5},
+	)
+	// One tick with room for both: the two attempts exist side by side.
+	report, err := svc.Dispatch(context.Background(), DispatchRequest{Actor: "ops", Reason: "tick", Spawn: (&recorder{}).spawn})
+	if err != nil {
+		t.Fatalf("dispatch: %v", err)
+	}
+	byItem := map[string]string{}
+	for _, attempt := range report.Started {
+		byItem[attempt.WorkitemID] = attempt.RunID
+	}
+	first, second := byItem["WLM-1"], byItem["WLM-2"]
+	if first == "" || second == "" {
+		t.Fatalf("both items must be claimed for the mismatch to be testable: %+v", report.Started)
+	}
+	// Rewrite WLM-1's lease so it names the other attempt.
+	leasePath := filepath.Join(root, ".devsys", "scheduling", "WLM-1.yaml")
+	lease, err := os.ReadFile(leasePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rewritten := strings.Replace(string(lease), "run_id: "+first, "run_id: "+second, 1)
+	if rewritten == string(lease) {
+		t.Fatalf("lease does not name the run:\n%s", lease)
+	}
+	if err := os.WriteFile(leasePath, []byte(rewritten), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	finishRun(t, svc, first, RunFailed, "the command failed")
+	report, err = svc.Dispatch(context.Background(), DispatchRequest{Actor: "ops", Reason: "tick", Spawn: (&recorder{}).spawn})
+	if err != nil {
+		t.Fatalf("dispatch: %v", err)
+	}
+	if len(report.Swept) != 0 {
+		t.Fatalf("swept = %+v, want a foreign lease left alone", report.Swept)
+	}
+	if wi := itemState(t, root, "WLM-1"); wi.SchedulingState != domain.SchedulingClaimed {
+		t.Fatalf("scheduling state = %q, want the claim untouched", wi.SchedulingState)
+	}
+	if view, err := svc.RunGet(context.Background(), first); err != nil || view.Run.Status != RunFailed {
+		t.Fatalf("run status = %q (err %v), want the ended attempt untouched", view.Run.Status, err)
+	}
+	joined := strings.Join(report.Notices, "\n")
+	if !strings.Contains(joined, "belongs to run") {
+		t.Fatalf("notices = %v, want the mismatch reported", report.Notices)
+	}
+}

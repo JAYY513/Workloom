@@ -250,6 +250,8 @@ func (s *Service) RunHeartbeat(ctx context.Context, runID, owner, token, actor, 
 // speak exactly these words; the generic RunUpdate stays free-form for
 // evidence accumulation.
 const (
+	// RunRunning is the status of an attempt that is executing.
+	RunRunning   = "running"
 	RunSucceeded = "succeeded"
 	RunFailed    = "failed"
 	RunTimedOut  = "timed_out"
