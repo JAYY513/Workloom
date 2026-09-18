@@ -146,11 +146,12 @@ func (s *Service) RunUpdate(ctx context.Context, req UpdateRunRequest) (RunView,
 		return RunView{}, err
 	}
 	if req.Status != nil {
-		r.Status = *req.Status
-		if *req.Status == "completed" || *req.Status == "failed" || *req.Status == "cancelled" {
-			finished := s.now()
-			r.FinishedAt = &finished
+		if isTerminalRun(*req.Status) {
+			// Lifecycle is what the completion check guards; a status patch
+			// must not be able to reach around it (方案 §4.8).
+			return RunView{}, Usagef("run update cannot set the terminal status %q; use run complete|fail|cancel", *req.Status)
 		}
+		r.Status = *req.Status
 	}
 	if req.Phase != nil {
 		r.Phase = *req.Phase
@@ -315,16 +316,16 @@ func (s *Service) RunFinish(ctx context.Context, req RunFinishRequest) (RunView,
 	if req.Outcome == RunSucceeded {
 		check := s.verifyCompletion(ctx, r)
 		switch {
-		case check.Advanced:
-			advanced := true
+		case check.Advanced, req.Force:
+			advanced := check.Advanced
 			r.Verification.Advanced = &advanced
 			r.Verification.HeadSHAAtComplete = check.CurrentHead
-		case req.Force:
-			advanced := false
-			r.Verification.Advanced = &advanced
-			r.Verification.HeadSHAAtComplete = check.CurrentHead
-			reviewer := req.By
-			r.Verification.VerifiedBy = &reviewer
+			if req.Force {
+				// An override is always attributed, even when the branch did
+				// advance: the event says who accepted it, so the record must.
+				reviewer := req.By
+				r.Verification.VerifiedBy = &reviewer
+			}
 		default:
 			reason := check.Reason
 			if reason == "" {

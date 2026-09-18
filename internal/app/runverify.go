@@ -42,20 +42,20 @@ func (s *Service) verifyCompletion(ctx context.Context, r *domain.Run) Completio
 		RunID: r.ID, Workspace: r.Workspace.Path, Branch: r.Workspace.Branch,
 		ClaimHead: r.Claim.HeadSHA,
 	}
-	dir := r.Workspace.Path
-	if dir == "" {
-		dir = s.Root
-		check.Workspace = s.Root
+	// Without a workspace there is nothing to compare against: falling back to
+	// the project root would "verify" an attempt against a branch it never
+	// worked on.
+	if r.Workspace.Path == "" {
+		check.Reason = "the attempt has no workspace, so there is no evidence it advanced anything"
+		return check
 	}
-	var current string
-	var err error
-	if r.Workspace.Branch != "" && r.Workspace.Path != "" {
-		current, err = workspace.BranchSHA(r.Workspace.Path, r.Workspace.Branch)
-	} else {
-		current, err = workspace.HeadSHA(dir)
+	if r.Workspace.Branch == "" {
+		check.Reason = "the attempt has no workspace branch"
+		return check
 	}
+	current, err := workspace.BranchSHA(r.Workspace.Path, r.Workspace.Branch)
 	if err != nil {
-		check.Reason = fmt.Sprintf("cannot read the current head: %v", err)
+		check.Reason = fmt.Sprintf("cannot read the branch head of %s: %v", r.Workspace.Branch, err)
 		return check
 	}
 	check.CurrentHead = current
@@ -108,19 +108,13 @@ func (s *Service) routeToReview(ctx context.Context, r *domain.Run, actor, reaso
 	if err != nil {
 		return err
 	}
-	if wi.Status == domain.StatusReview {
-		return nil
-	}
-	if !domain.IsTransitionLegal(wi.Status, domain.StatusReview) {
-		// A work item that cannot enter review (already closed, say) keeps its
-		// state: the refusal is still recorded on the run and in the event log.
-		return nil
-	}
-	// The attempt asked to complete, so it is over: give the claim back before
-	// routing the item — a claimed item refuses transitions from anyone but
-	// its lease holder, and the reviewer must not need the agent's token.
+	// The attempt asked to complete, so it is over: give the claim back first,
+	// whatever the item's status is — a claimed item refuses transitions from
+	// anyone but its lease holder, and the reviewer must not need the agent's
+	// token.
 	lease, err := s.items().LeaseInspection(ctx, wi.ID)
-	if err == nil && lease.Owner != "" {
+	switch {
+	case err == nil && lease.Owner != "":
 		if _, err := s.WorkitemRelease(ctx, wi.ID, lease.Owner, lease.Token, actor,
 			"completion refused; claim released for review", ""); err != nil {
 			return err
@@ -128,8 +122,16 @@ func (s *Service) routeToReview(ctx context.Context, r *domain.Run, actor, reaso
 		if wi, raw, err = s.readSnapshot(ctx, r.WorkItemID, ""); err != nil {
 			return err
 		}
-	} else if err != nil && !errors.Is(err, workitem.ErrNotClaimed) {
+	case err != nil && !errors.Is(err, workitem.ErrNotClaimed):
 		return s.storeError(err)
+	}
+	if wi.Status == domain.StatusReview {
+		return nil
+	}
+	if !domain.IsTransitionLegal(wi.Status, domain.StatusReview) {
+		// A work item that cannot enter review (already closed, say) keeps its
+		// state: the refusal is still recorded on the run and in the event log.
+		return nil
 	}
 	if _, err := s.items().Transition(ctx, wi.ID, workitem.TransitionRequest{
 		TargetStatus: domain.StatusReview,
@@ -146,4 +148,22 @@ func orNone(sha string) string {
 		return "(none)"
 	}
 	return sha
+}
+
+// runUpdateRaw writes a run as the fixtures need it: the completion check must
+// cope with state that was edited by hand or left half-bound.
+func (s *Service) runUpdateRaw(r *domain.Run, expect string) error {
+	_, raw, err := readRun(context.Background(), s, r.ID)
+	if err != nil {
+		return err
+	}
+	if expect != "" {
+		if err := checkExpect(expect, raw, "run"); err != nil {
+			return err
+		}
+	}
+	if err := run.New(s.Root).Update(context.Background(), r, raw); err != nil {
+		return s.storeError(err)
+	}
+	return nil
 }

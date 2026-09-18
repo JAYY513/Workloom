@@ -247,3 +247,87 @@ func TestRunVerifyDoesNotWrite(t *testing.T) {
 		}
 	}
 }
+
+// A claim head without a workspace is still no evidence: the check must not
+// fall back to the project root's head and call that an advance.
+func TestCompletionRefusedWithoutWorkspace(t *testing.T) {
+	_, svc, _, runID := verifyFixture(t)
+	// Strip the workspace but keep the claim head, as a hand-edited or
+	// partially bound run would have it.
+	view, err := svc.RunGet(context.Background(), runID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if view.Run.Claim.HeadSHA == "" {
+		t.Fatal("the fixture has no claim head to keep")
+	}
+	stripped := view.Run
+	stripped.Workspace = domain.Workspace{}
+	if err := svc.runUpdateRaw(stripped, view.Version); err != nil {
+		t.Fatalf("strip workspace: %v", err)
+	}
+	check, err := svc.RunVerify(context.Background(), runID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if check.Advanced || !strings.Contains(check.Reason, "no workspace") {
+		t.Fatalf("check = %+v, want a refusal because there is no workspace", check)
+	}
+	after, err := svc.RunGet(context.Background(), runID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.RunFinish(context.Background(), RunFinishRequest{
+		RunID: runID, Expect: after.Version, Outcome: RunSucceeded, Actor: "agent", Reason: "done",
+	}); err == nil {
+		t.Fatal("a run without a workspace was marked succeeded")
+	}
+}
+
+// Lifecycle statuses belong to run complete|fail|cancel: a status patch must
+// not be able to reach around the completion check.
+func TestRunUpdateCannotSetTerminalStatus(t *testing.T) {
+	_, svc, _, runID := verifyFixture(t)
+	view, err := svc.RunGet(context.Background(), runID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	terminal := RunSucceeded
+	if _, err := svc.RunUpdate(context.Background(), UpdateRunRequest{
+		ID: runID, Expect: view.Version, Status: &terminal,
+	}); err == nil {
+		t.Fatal("run update set a terminal status")
+	} else if !strings.Contains(err.Error(), "run complete") {
+		t.Fatalf("error = %v, want it to point at the lifecycle commands", err)
+	}
+	after, err := svc.RunGet(context.Background(), runID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if isTerminalRun(after.Run.Status) {
+		t.Fatalf("run status = %q, want it untouched", after.Run.Status)
+	}
+}
+
+// A forced completion is attributed even when the branch did advance.
+func TestForcedCompletionOnAdvancedBranchIsAttributed(t *testing.T) {
+	_, svc, _, runID := verifyFixture(t)
+	commitInWorkspace(t, runID, svc, "work.txt")
+	view, err := svc.RunGet(context.Background(), runID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	done, err := svc.RunFinish(context.Background(), RunFinishRequest{
+		RunID: runID, Expect: view.Version, Outcome: RunSucceeded,
+		Actor: "alice", Reason: "reviewed anyway", Force: true, By: "alice",
+	})
+	if err != nil {
+		t.Fatalf("forced completion: %v", err)
+	}
+	if done.Run.Verification.Advanced == nil || !*done.Run.Verification.Advanced {
+		t.Fatalf("verification = %+v, want advanced=true (the branch did advance)", done.Run.Verification)
+	}
+	if done.Run.Verification.VerifiedBy == nil || *done.Run.Verification.VerifiedBy != "alice" {
+		t.Fatalf("verification = %+v, want the reviewer recorded", done.Run.Verification)
+	}
+}
