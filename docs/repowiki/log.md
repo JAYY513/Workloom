@@ -1,4 +1,14 @@
-# Repowiki 生成日志
+## 2026-09-18 · cf7b256 M3 增量刷新
+
+- 源码基线：`cf7b256`（M3：策略/工作流/审批/next；相对上次基线 1 提交、19 文件受影响；任务 #163）；增量模式运行。
+- 计划：`.repowiki/plan.json` schema 2，沿用模块树档位（116 个扫描文件、多层目录），scope 增补 `internal/{workflow,approval,next}/**`、`scripts/**`、`docs/examples/workflows/**`；两模块与三篇文章的目录与文件路径保持不变；coverage 109/116 = 94.0%（未覆盖 6 个文件同前 + `docs/examples/workflows/.gitignore` 为空占位）。
+- 增量范围：durable-storage 模块全部 9 张知识卡刷新覆盖 M3 内容（概述、架构设计、领域记录与事件、事务与恢复、存储错误语义、状态机与调度、对账与修复、编码规范、特殊配置与命令）；project-access 模块全部 5 张知识卡刷新（概述、架构设计、Schema 与错误契约、技术栈、编码规范、特殊配置与命令）。M3 未引入新文章、未引入新模块——把 workflow/approval/next 折入既有模块（避免破坏路径稳定性）。
+- 核心内容新增：策略 schema 与 located 校验（`internal/workflow/parse.go`）、条件白名单 7 字段与运算符规则（`condition.go`）、门禁与质量门确定性评分（`gate.go` + `quality.go`）、last-known-good 缓存与 fail-closed 解析（`cache.go`）、模板与环境变量展开（`template.go`）；审批请求/决定/消费/失效完整生命周期（`approval.go`），`scope=stage_gate` 拒绝走 `rejectStageGate` 在转换事务的 Guard 内原子完成决定与状态变更；就绪判定与 §7.4 推荐动作（`next/evaluate.go`）；`workitem.changeStatus` 在转换事务内承担 Guard（`func(*storage.Tx) ([]*domain.Event, error)`）/ 审批失效（`InvalidateForStatusTx` + `Tx.Staged(rel)`）/ 记录传播（`propagateRecordsTx`，决策/发现 `RelatedWorkItems` 命中 → `decision://<id>` / `finding://<id>` 追加到父与直接兄弟 `context_refs`）；`workflow_instance.go` 五类实例操作只动 `workflow` 字段（不动状态/调度/租约）；`events.AppendBatchTx` 按 shard 分组一次 `AppendJSONLRaw`，`Tx.AppendJSONLRaw` 多行 payload 拒绝空行/CR/缺终止符；`record.ListArtifacts` 给门禁证据收集使用。
+- 既有项目接入卡：概述增 M3 命令族（`workflow`/`approval`/`next`）、架构设计增三条分发链与依赖边、Schema 与错误契约增 workflow 策略契约与 M3 退出码/JSON 错误扩展、编码规范增 Guard 签名与 next 编码规则、特殊配置与命令增三族命令使用与 `m3helper`。
+- 文档校验：`repowiki validate` 报告 20 files、0 errors、0 warnings（路径稳定 + 卡片导航 + 内部链接一致）。
+- 保护：起始逐页 hash 比对 20 页全部一致（增量刷新基线 85b0de7 → cf7b256 中无人工修改），无需跳过页；新增 run.json 已写清单记录所有受影响页。
+- 收尾：`repowiki state --update` 刷新页面 hash 与 scope；`repowiki status` 报告 Wiki is up to date。
+
 
 ## 2026-09-18 · 85b0de7 M2 增量刷新
 

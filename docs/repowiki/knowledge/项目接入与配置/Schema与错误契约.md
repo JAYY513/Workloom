@@ -15,9 +15,13 @@ triggers:
   - --confirm 摘要格式
   - 写命令必填参数
   - 退出码 3 何时返回
-description: devsys 受管 YAML 文件的严格 schema：每文件白名单 + schema_version 闸门 + 行号定位 + Problems 错误结构 + 退出码 4 的语义边界 + M1 完整 Project 模型 + 嵌套字段校验；M2 新增退出码 3/4 在 workitem 与 repair 中的扩展语义、--expect 64-hex sha256 + fail-closed、--confirm 摘要格式、写命令 --actor/--reason 必填。
+  - workflow check 退出码
+  - approval kind
+  - workflow kind
+  - next verdict
+description: devsys 受管 YAML 文件的严格 schema：每文件白名单 + schema_version 闸门 + 行号定位 + Problems 错误结构 + 退出码 4 的语义边界 + M1 完整 Project 模型 + 嵌套字段校验；M2 新增退出码 3/4 在 workitem 与 repair 中的扩展语义、--expect 64-hex sha256 + fail-closed、--confirm 摘要格式、写命令 --actor/--reason 必填；M3 新增 workflow/approval/next 的 kind 与 code 语义、workitem.TransitionRequest.Guard 签名、policy issue 与 LKG 报错。
 generated: true
-source_commit: 85b0de7
+source_commit: cf7b256
 generator: repowiki-gen
 ---
 
@@ -35,10 +39,15 @@ generator: repowiki-gen
 | 解析器入口 | `config.Load(root)` / `config.Diagnose(root)` | [internal/config/config.go:99-104](../../../internal/config/config.go#L99-L104) |
 | 错误结构 | `Problem{File, Line, Field, Reason}` 与 `Problems` | [internal/config/config.go:46-79](../../../internal/config/config.go#L46-L79) |
 | 记录契约 | `domain.{Project,Scope,Milestone,CurrentState,CurrentStateFile,MilestonesFile,WorkItem,Run,…}` | [internal/domain/models.go:8-221](../../../internal/domain/models.go#L8-L221) |
+| Workflow 策略契约 | `internal/workflow.Policy` 与 `internal/workflow.Issue` | [internal/workflow/policy.go](../../../internal/workflow/policy.go)、[internal/workflow/parse.go](../../../internal/workflow/parse.go) |
+| Approval 契约 | `domain.Approval` 与 `approval.ErrXxx` | [internal/domain/models.go](../../../internal/domain/models.go)、[internal/approval/approval.go:49-58](../../../internal/approval/approval.go#L49-L58) |
+| Next 判定契约 | `next.Report` 与 `Verdict` | [internal/next/evaluate.go](../../../internal/next/evaluate.go) |
 
 `config.SupportedSchemaVersion` 与 `domain.SchemaVersion` 必须**始终相等**：`domain.EncodeYAML` / `DecodeYAML` 在序列化末尾调用 `storage.CheckSchemaVersion(b, SchemaVersion)`（[internal/domain/serialize.go:26-28](../../../internal/domain/serialize.go#L26-L28)）作为最后一道闸门。
 
-**当前没有任何其它文件受本契约约束**。其它受写命令操作的 `.devsys/` 子目录（`workitems/`、`specs/`、`runs/`、…）由后续里程碑定义各自的领域契约；但它们的字段形状最终都汇聚到 `internal/domain` 的对应 struct。
+**Workflow 策略文件不设 `schema_version`**：策略自身只有 `version`（必填 ≥1）字段，是策略文件语义版本；详见下文「Workflow 策略文件契约」小节。
+
+**当前没有任何其它文件受本契约约束**。其它受写命令操作的 `.devsys/` 子目录（`workitems/`、`specs/`、`runs/`、`approvals/`、…）由后续里程碑定义各自的领域契约；但它们的字段形状最终都汇聚到 `internal/domain` 的对应 struct。
 
 ## 白名单：每文件允许的字段
 
@@ -125,15 +134,86 @@ unsupported version N (this build supports M); refusing to write, migration must
 - 类型错误：值节点的 `Line`。
 - 空文件 / 多文档 / 解析错误：整文件（`Line=0`）。
 - 嵌套失败（如 `milestones[0].status` 缺失）：元素 / 子键节点的 `Line`，`Field` 形如 `milestones[0].status`（[internal/config/nested.go:13-22](../../../internal/config/nested.go#L13-L22)）。
+- Workflow 策略文件：[internal/workflow/parse.go](../../../internal/workflow/parse.go) 用 `yaml.Node.Line` 同样填入；body 模板错误行号 = `bodyLine + rerr.Line - 1`（`splitFrontMatter` 输出 1-based 起始行）。
 
-`Problem.String()` 渲染为 `file[:line][: field]: reason`（[internal/config/config.go:54-67](../../../internal/config/config.go#L54-L67)），与 [internal/cli/cli_test.go:218-226](../../../internal/cli/cli_test.go#L218-L226) 断言的输出严格一致：
+`Problem.String()` 渲染为 `file[:line][: field]: reason`（[internal/config/config.go:54-67](../../../internal/config/config.go#L54-L67)）：
 
 ```text
 project.yaml:3: id: expected string, got !!int
 project.yaml:4: updated_at: unknown key
 project.yaml:2: name: required
 project.yaml:5: milestones[0].status: required
+workflows/quick-fix.md:9: body: unclosed {{
+workflows/feature-development.md:17: steps[3].status: unknown status "inprog" (valid: draft, backlog, ready, in_progress, review, verification, done, blocked, cancelled)
 ```
+
+`workflow.Issue.String()` 复用同一渲染（[internal/workflow/policy.go:37-50](../../../internal/workflow/policy.go#L37-L50)）。
+
+## Workflow 策略文件契约（M3）
+
+`internal/workflow.Parse(rel, data)` 解析 `.devsys/workflows/<id>.md`，前导 YAML front matter + 提示词正文。
+
+### 顶层键白名单（[internal/workflow/parse.go:25-31](../../../internal/workflow/parse.go#L25-L31)）
+
+`id` / `name` / `version` / `input` / `steps` / `transitions` / `approval_points` / `completion_rules` / `gates` / `hooks` / `concurrency` / `limits` / `quality_gate` / `on_reject`。
+
+未知键 → warning（仍加载）；结构/类型/必填/交叉引用错误 → error（`Policy = nil`，CLI exit 4）。
+
+### 关键字段
+
+| 字段 | 类型 | 必填？ | 备注 |
+|---|---|---|---|
+| `id` | `string` | 是 | 必须匹配文件名（`^[a-z][a-z0-9-]*$`） |
+| `name` | `string` | 是 | 显示名 |
+| `version` | `int ≥ 1` | 是 | 策略自身版本号（**不是** schema_version） |
+| `input.required` / `input.optional` | `string[]` | 否 | token 列表（小写） |
+| `steps[].id` | `string` | 是 | `^[a-z][a-z0-9_-]*$`；不可重复 |
+| `steps[].type` | `string` | 是 | 同上形状；词表开放（仅校验形状，避免发明规范未定义的枚举） |
+| `steps[].required` | `bool` | 否 | 默认 `true` |
+| `steps[].status` | `string` | 否 | 必须等于 `domain.AllStatuses()` 之一；进入该步时工作项状态需匹配（不隐式改状态） |
+| `transitions[].from` / `to` | `string` | 是 | `from` 必须是声明的 step id；`to` 是 step id 或 `"done"` |
+| `transitions[].when` | `string` | 否 | 声明式条件；白名单 7 字段 |
+| `approval_points` | `string[]` | 否 | 审批触发点 token 列表 |
+| `completion_rules` | `string[]` | 否 | 完成规则 token 列表 |
+| `gates.exempt_stages` | `string[]` | 否 | 不做门禁的工作项状态；值 = 工作项九状态 |
+| `gates.stages[<status>]` | mapping | 否 | `require_artifacts[]` + `require_min_artifacts:int` + `require_comment:bool` + `require_approval:bool` |
+| `hooks.<name>` | mapping | 否 | `<name> ∈ {after_create, before_run, after_run, before_remove}`；含 `command: string`（必填）+ `timeout_seconds: int ≥ 1` |
+| `concurrency.global` | `int ≥ 1` | 否 | 全局并发上限 |
+| `concurrency.per_status.<status>` | `int ≥ 1` | 否 | 每状态并发上限；status 必须在九状态内 |
+| `limits.max_attempts` | `int ≥ 1` | 否 | 重试上限 |
+| `limits.run_timeout_seconds` / `stall_threshold_seconds` / `backoff_max_seconds` | `int ≥ 1` | 否 | 各类超时 |
+| `quality_gate.min_score` | `0 ≤ int ≤ 100` | 否 | 领取质量门阈值；未声明则永不拦截 |
+| `on_reject` | `"block"` 或 `"regress:<status>"` | 否 | 默认 `"block"`；`regress:<status>` 必须以九状态结尾 |
+
+### 条件白名单（[internal/workflow/condition.go:57-65](../../../internal/workflow/condition.go#L57-L65)）
+
+```text
+workitem.id                   string
+workitem.status               string
+workitem.type                 string
+workitem.priority             int
+workitem.clarification_needed bool
+workitem.approval_required    bool
+workitem.parent_id            string (optional)
+```
+
+操作符 `==` / `!=` / `<` / `>` / `in` / `exists`；类型规则：`<` `>` 仅 int；`in` 仅 string；`exists` 仅 `workitem.parent_id`。复合表达式（`&&` / `||` / `()`）在加载期拒绝。
+
+### 模板与正文
+
+`body` 是 front matter 下方整段文本（CRLF 闭合行后的空行**保留**为正文内容，verbatim 语义）。模板语法 `{{name}}`（点分标识符、括号内允许空白）；孤立 `}}` / 未闭合 `{{` / 空名 / 非法名在加载期报 `body: <reason>`（[internal/workflow/template.go](../../../internal/workflow/template.go)）。
+
+`$VAR` / `${VAR}` **不在**加载期解析；`ExpandEnv` 在使用时由调用方（M6 hook 执行）解析——「密钥不落盘」的可实现边界（[docs/开发记录.md:113-115](../../../docs/开发记录.md#L113-L115)）。
+
+### LKG 报错（[internal/workflow/cache.go](../../../internal/workflow/cache.go)）
+
+`workflow.Resolve(ctx, root, id)` 失败时：
+
+- 当前文件解析失败 + 无 LKG → `workflow policy %q is invalid: %s (no last-known-good retained)`
+- 当前文件缺失 + 无 LKG → `workflow policy %q not found under .devsys/workflows/`
+- 文件读取错 → `workflow policy %q: read: %w`
+
+`workflow check` 走 `workflow.Load`，逐文件列 issues；error-severity → `config.Problem` → `errInvalid(problems)` → exit 4。
 
 ## 退出码契约
 
@@ -149,9 +229,15 @@ project.yaml:5: milestones[0].status: required
 
 ### `CodeInvalid = 4`：受管状态存在但不可信
 
-它**只**由 `errInvalid(config.Problems)` 触发（[internal/cli/cli.go:103-114](../../../internal/cli/cli.go#L103-L114)）。写命令在拿到 `Problems` 时返回 `CodeInvalid` 并**不**修改磁盘（被 `TestInitRefusesUnknownSchemaVersion` 守护，见 [internal/cli/cli_test.go:282-331](../../../internal/cli/cli_test.go#L282-L331)）。
+它**只**由 `errInvalid(config.Problems)` 触发（[internal/cli/cli.go:103-114](../../../internal/cli/cli.go#L103-L114)）。写命令在拿到 `Problems` 时返回 `CodeInvalid` 并**不**修改磁盘。
 
-M2 起 `CodeInvalid = 4` 还覆盖 workitem / reconcile 写路径下的领域错误，由 `workitemError` 把非 `storage.ErrNotInitialized` / `workitem.ErrNotFound` 的领域错误升为带 `kind="workitem"` 的 `codedError{Code: CodeInvalid}`（[internal/cli/cli.go:477-482](../../../internal/cli/cli.go#L477-L482)）。`code=4` 在 `--json` 载荷里与配置错误走同一字段，调用脚本可统一按 `code` 分支。
+M2 起 `CodeInvalid = 4` 还覆盖 workitem / reconcile 写路径下的领域错误，由 `workitemError` 把非 `storage.ErrNotInitialized` / `workitem.ErrNotFound` 的领域错误升为带 `kind="workitem"` 的 `codedError{Code: CodeInvalid}`（[internal/cli/cli.go:477-482](../../../internal/cli/cli.go#L477-L482)）。
+
+M3 起又扩展：
+
+- `kind="approval"`：`approval.ErrInvalidInput` 走 `errUsage`；`storage.ErrNotInitialized` 走 `errPrecondition`；其余 `ErrNotFound` / `ErrNotPending` / `ErrNotApproved` / `ErrAlreadyConsumed` / `ErrInvalidated` / `ErrMismatch` 走 `codedError{kind: "approval", code: CodeInvalid}`（[internal/cli/cli.go:1218-1232](../../../internal/cli/cli.go#L1218-L1232)）。
+- `kind="workflow"`：workflow 实例操作的拒绝（含 `WorkflowStepError` + `Resolve` 失败 + `Render` 错误）走 `codedError{kind: "workflow", code: CodeInvalid}`（[internal/cli/cli.go:522-543](../../../internal/cli/cli.go#L522-L543)）。
+- `workflow check` 把策略文件的结构/类型/必填/交叉引用错误升为 `CodeInvalid`（同 `config check` 路径）。
 
 ### `CodePrecondition = 3`：前提不满足
 
@@ -163,20 +249,28 @@ M2 起 `CodeInvalid = 4` 还覆盖 workitem / reconcile 写路径下的领域错
 | `.devsys/` 不存在（`search` / `workitem get` / `workitem create` 等） | `storage.ErrNotInitialized` / `workitem.ErrNotFound` → `workitemError` → `errPrecondition` | `project not initialized; run devsys init` 等 |
 | workitem `--expect` 哈希与现状不符 | `expectedSnapshot` 返回 `version mismatch` → `workitemError` → `errPrecondition` | `version mismatch: work item changed since your read; rerun workitem get` |
 | `repair --apply` 收到的 `--confirm` 与重跑摘要不符 | `reconcile.ErrDigestMismatch` → `errPrecondition` | `confirmation digest does not match current state; run `devsys repair --dry-run` again` |
+| workflow / approval 实例操作 `--expect` 不匹配 | `expectedSnapshot` 同上 | 同上 |
+| approval 操作时 `.devsys/` 不存在 | `storage.ErrNotInitialized` → `approvalError` | `project not initialized; run devsys init` 等 |
 
-第 3、4 行即方案 §15.4 "推断→确认→重写" 闭环在退出码层面的体现：调用方必须重新读证据 / 重新干跑，才能继续动盘。脚本可以**只信 `code == 3` 重新发起一次 `get` / `dry-run`**。
+第 3–5 行即方案 §15.4 "推断→确认→重写" / "快照必填" 闭环在退出码层面的体现：调用方必须重新读证据 / 重新干跑，才能继续动盘。脚本可以**只信 `code == 3` 重新发起一次 `get` / `dry-run`**。
 
-`devsys search <keyword>` 路径**不**涉及 `config.Load` / `Diagnose`，因此**不**返回 `CodeInvalid`；它的失败模式是 `CodeInternal`（搜索失败）或 `CodePrecondition`（缺 `.devsys/`）。
+### `CodeUsage = 2`：参数错误
+
+M3 新增触发：
+
+- `approval list --status` 取值不在 `{pending, approved, rejected}` → exit 2。
+- `workflow` 子命令缺失或不在 `{check, start, next, step-complete, pause, resume, cancel}` → exit 2。
+- `approval` 子命令缺失或不在 `{list, request, approve, reject}` → exit 2。
 
 ## `--expect`：64-hex sha256 + fail-closed
 
-`workitem transition` 与 `workitem claim` 的 `--expect` 是调用方持有的"工作项快照版本哈希"，由 `workitem get` 在 `--json` 模式下的 `version` 字段给出（[internal/cli/cli.go:381-389](../../../internal/cli/cli.go#L381-L389)）。
+`workitem transition` / `claim` / `workflow start` / `step-complete` / `pause` / `resume` / `cancel` 的 `--expect` 是调用方持有的"工作项快照版本哈希"，由 `workitem get` 在 `--json` 模式下的 `version` 字段给出（[internal/cli/cli.go:493-506](../../../internal/cli/cli.go#L493-L506)）。
 
-格式与解析（[internal/cli/cli.go:493-506](../../../internal/cli/cli.go#L493-506)）：
+格式与解析：
 
 - 编码：小写 64 字符十六进制串，等价于 `fmt.Sprintf("%x", storage.HashBytes(raw))`，即 sha256 的字节级表示。
 - 解析：`strings.TrimSpace` 后用 `hex.DecodeString` 解码；解码结果长度必须等于 `crypto/sha256.Size`（32 字节）；解码失败、长度错误、哈希不匹配**全部**视为哈希不匹配，统一返回 `version mismatch` 错误。
-- fail-closed：`expectedSnapshot` 在哈希不匹配时**不**返回 `raw` 字节；底层 `Transition` / `Claim` 拿不到 `Expected` 入参，写路径被彻底拦截。
+- fail-closed：`expectedSnapshot` 在哈希不匹配时**不**返回 `raw` 字节；底层 `Transition` / `Claim` / `WorkflowStart` / `WorkflowStepComplete` / `WorkflowSignal` 拿不到 `Expected` 入参，写路径被彻底拦截。
 - 退出码：不匹配 → `CodePrecondition = 3`，错误提示 `version mismatch: work item changed since your read; rerun workitem get`。
 
 调用契约：
@@ -184,14 +278,14 @@ M2 起 `CodeInvalid = 4` 还覆盖 workitem / reconcile 写路径下的领域错
 ```sh
 VERSION=$(bin/devsys.exe --json workitem get WLM-0001 | jq -r .version)
 bin/devsys.exe workitem transition --id WLM-0001 --to in_progress \
-    --actor alice --reason "M2 kickoff" --expect "$VERSION"
+    --actor alice --reason "M3 kickoff" --expect "$VERSION"
 ```
 
 ## `--confirm`：确定性 digest + 摘要回放
 
 `devsys repair --apply --confirm <digest>` 的 `--confirm` 是 `repair --dry-run` 在 `--json` 模式下的 `plan.digest` 字段（[internal/cli/cli.go:659-664](../../../internal/cli/cli.go#L659-L664)）。
 
-格式与判定（[internal/cli/cli.go:614-635](../../../internal/cli/cli.go#L614-L635) + [internal/reconcile/reconcile.go:319-335](../../../internal/reconcile/reconcile.go#L319-335)）：
+格式与判定（[internal/cli/cli.go:614-635](../../../internal/cli/cli.go#L614-L635) + [internal/reconcile/reconcile.go:319-335](../../../internal/reconcile/reconcile.go#L319-L335)）：
 
 - 编码：`reconcile.ComputeDigest(plan.Proposals)` 输出小写十六进制摘要；墙钟时间**不**参与计算，相同证据输入产生相同摘要。
 - 判定：`--apply` 内部**先**重跑 `reconcile.RepairDryRun` 取得当前 `Digest`，**再**用调用方的 `--confirm` 覆盖 `plan.Digest`，**再**调 `reconcile.RepairApply`；摘要不一致由 `reconcile.ErrDigestMismatch` 上浮为 `CodePrecondition = 3`，并提示 `run `devsys repair --dry-run` again`。
@@ -200,8 +294,8 @@ bin/devsys.exe workitem transition --id WLM-0001 --to in_progress \
 调用契约：
 
 ```sh
-DIGEST=$(bin/devsys.exe --json repair --dry-run --actor alice --reason "M2 audit" | jq -r .plan.digest)
-bin/devsys.exe repair --apply --confirm "$DIGEST" --actor alice --reason "M2 audit"
+DIGEST=$(bin/devsys.exe --json repair --dry-run --actor alice --reason "M3 audit" | jq -r .plan.digest)
+bin/devsys.exe repair --apply --confirm "$DIGEST" --actor alice --reason "M3 audit"
 ```
 
 ## 写命令必填 `--actor` 与 `--reason`
@@ -216,6 +310,23 @@ bin/devsys.exe repair --apply --confirm "$DIGEST" --actor alice --reason "M2 aud
 | `recover` | `--actor` `--reason` | [internal/cli/cli.go:559-566](../../../internal/cli/cli.go#L559-L566) |
 | `repair --dry-run` | `--actor` `--reason` | [internal/cli/cli.go:598-608](../../../internal/cli/cli.go#L598-L608) |
 | `repair --apply --confirm <digest>` | `--actor` `--reason` `--confirm` | [internal/cli/cli.go:598-617](../../../internal/cli/cli.go#L598-L617) |
+| `workflow start` | `--id` `--policy` `--actor` `--reason` `--expect`（租约活跃时 `--owner` `--token`） | [internal/cli/cli.go:592-624](../../../internal/cli/cli.go#L592-L624) |
+| `workflow step-complete` | `--id` `--actor` `--reason` `--expect`（`--to` 可选；租约活跃时 `--owner` `--token`） | [internal/cli/cli.go:655-691](../../../internal/cli/cli.go#L655-L691) |
+| `workflow pause` / `resume` / `cancel` | `--id` `--actor` `--reason` `--expect`（租约活跃时 `--owner` `--token`） | [internal/cli/cli.go:693-735](../../../internal/cli/cli.go#L693-L735) |
+| `approval request` | `--id` `--stage`（`scope=stage_gate`） `--actor` `--reason`（`--scope`、`--run` 可选） | [internal/cli/cli.go:822-867](../../../internal/cli/cli.go#L822-L867) |
+| `approval approve` | `--id` `--by`（`--comment` 可选） | [internal/cli/cli.go:869-897](../../../internal/cli/cli.go#L869-L897) |
+| `approval reject` | `--id` `--by` `--reason`（`scope=stage_gate` 时随状态变更走 `rejectStageGate`） | [internal/cli/cli.go:869-936](../../../internal/cli/cli.go#L869-L936) |
+
+## `devsys next` 判定输出
+
+[internal/next/evaluate.go](../../../internal/next/evaluate.go) 输出 `Report{Verdict, Reasons, Risks, Fixes, Next}`：
+
+- `Verdict ∈ {"PASS", "CONCERNS", "FAIL"}`
+- `Risks[].Kind ∈ {"expired_lease", "orphan_claim", "unreadable_lease", "stale_review", "blocked", "invalid_metadata", "invalid_policy", "pending_approval", "inspection_limited"}`
+- `Next.Action ∈ {"recover_claim", "review", "start", "start_backlog", "milestone_review", "report_done"}`
+- `Next.WorkitemID` / `Next.MilestoneID` 单值；`report_done` 时为空
+
+`--json` 模式：`{ok: true, readiness, reasons[], risks[], fixes[], next}`。exit 恒 0；脚本按 `readiness` 分支。
 
 ## JSON 错误结构（`--json`）
 
@@ -235,7 +346,7 @@ bin/devsys.exe repair --apply --confirm "$DIGEST" --actor alice --reason "M2 aud
 }
 ```
 
-`kind` 取值与 `codedError.kind` 一致：`"usage"` / `"precondition"` / `"invalid"` / `"internal"`。M2 起 workitem 领域错误的 `kind="workitem"`，code 与 `CodeInvalid = 4` 一致。**调用脚本应当只信 `code` 字段做分支**，不要解析 `message`。
+`kind` 取值与 `codedError.kind` 一致：`"usage"` / `"precondition"` / `"invalid"` / `"internal"`。M2 起 workitem 领域错误的 `kind="workitem"`，M3 起又扩 `"approval"` / `"workflow"`。**调用脚本应当只信 `code` 字段做分支**，不要解析 `message`。
 
 `devsys --json search <keyword>` 的成功载荷则是（[internal/cli/cli.go:270-282](../../../internal/cli/cli.go#L270-L282)）：
 
@@ -249,16 +360,18 @@ bin/devsys.exe repair --apply --confirm "$DIGEST" --actor alice --reason "M2 aud
 }
 ```
 
-`devsys --json doctor` 与 `devsys --json repair --dry-run` 分别输出 `InspectionReport` 与 `Plan`（[internal/cli/cli.go:523-525](../../../internal/cli/cli.go#L523-L525)、[internal/cli/cli.go:659-664](../../../internal/cli/cli.go#L659-L664)）。
+`devsys --json doctor` / `repair --dry-run` / `workflow check` / `approval list` / `next` 分别输出 `InspectionReport` / `Plan` / `{ok, policies[], warnings[]}` / `{ok, approvals[]}` / `{ok, readiness, …}`。
 
 ## 与存储层的边界
 
 本契约**只**诊断"受管元数据文件"（`project.yaml`、`config.yaml`、`state/*.yaml`）。它**不**诊断：
 
 - 项目级写锁或事务日志（属于 `internal/storage`）。
-- 工作项 / 知识 / 事件等领域文件（M1+ 在各自 package 内自行校验，落盘前必须通过对应 `domain.DecodeYAML`，未通过时由 `storage.CheckSchemaVersion` 拒绝）。
+- 工作项 / 知识 / 事件 / 审批等领域文件（M1+ 在各自 package 内自行校验，落盘前必须通过对应 `domain.DecodeYAML`，未通过时由 `storage.CheckSchemaVersion` 拒绝）。
 - 用户级注册表 `registry.yaml`（它有自己的解析器，见 [internal/registry/registry.go:84-106](../../../internal/registry/registry.go#L84-L106)，不在 schema_version 闸门管辖内）。
-- 租约文件（`.devsys/scheduling/<id>.yaml`，M2 新增；其 schema 由 `internal/workitem` 自管理，**不**走 `config.Load`；doctor / recover / repair 走 `internal/reconcile` 通过 `storage.Inspect` 检查）。
+- 租约文件（`.devsys/scheduling/<id>.yaml`）：其 schema 由 `internal/workitem` 自管理，**不**走 `config.Load`；doctor / recover / repair 走 `internal/reconcile` 通过 `storage.Inspect` 检查。
+- 工作流策略文件（`.devsys/workflows/<id>.md`）：由 `internal/workflow.Parse` 校验，**不**走 `config.Load`；`workflow check` 把 issue 转 `config.Problem` 后走 `errInvalid`。
+- 审批文件（`.devsys/approvals/approval-<N>.yaml`）：由 `internal/approval` 通过 `domain.DecodeYAML` + `storage.CheckSchemaVersion` 校验。
 
 "配置诊断"与"存储恢复"刻意分开：前者是 M0.4 的只读工具，后者是 M0.3 的写路径守护者。**不要**用 `config check` 去尝试恢复锁状态或回放事务日志——这两层互不调用。
 
@@ -271,3 +384,11 @@ bin/devsys.exe repair --apply --confirm "$DIGEST" --actor alice --reason "M2 aud
 3. `internal/project/tree.go` 的对应占位 struct + builder（让 `init` 写出的字节仍然合法；M1 起优先用 `domain.EncodeYAML` 序列化）。
 
 写命令前置校验 `config.Load` 会把第三处漏改的字段立刻暴露为"未知键"，从而保证占位文件与白名单**必须**同步。`domain.DecodeYAML` 在解码时若发现 `schema_version` 不等于 `domain.SchemaVersion` 会立即拒绝（[internal/domain/serialize.go:73-78](../../../internal/domain/serialize.go#L73-L78)），保证 struct 与白名单永远在同一个版本号上。
+
+Workflow 策略文件新增字段时同步三处：
+
+1. `internal/workflow/parse.go` 的 `knownTopLevel` 或嵌套 `mapping(known)`（新增字段 + 类型 + 必填 + 形状校验）。
+2. `internal/workflow/policy.go` 的对应 struct。
+3. 示例 `docs/examples/workflows/*.md`（端到端 `smoke-m3` 覆盖）。
+
+写命令前置校验通过 `workflow.Load` 把 issue 转 `config.Problem`，问题定位保持 `file[:line][: field]: reason` 一致风格。

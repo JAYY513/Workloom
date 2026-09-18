@@ -2,7 +2,7 @@
   "schema": 2,
   "budget": {
     "tier": "模块树",
-    "reason": "85 个扫描文件、多层目录，沿用模块树档位；M2 提交后 durable-storage scope 增补 internal/reconcile/**，仍保持两个功能模块与三篇文章，新增知识卡但不扩张文章树。",
+    "reason": "116 个扫描文件、多层目录，沿用模块树档位；M3 在 internal/workflow、internal/approval、internal/next 新增三个包与 storage.AppendJSONLRaw/Staged、events.AppendBatchTx、workitem 的 propagate/workflow_instance/Guard、record.ListArtifacts、CLI 新命令族与 m3helper/smoke-m3.* 与 docs/examples/workflows/*.md；沿用模块树档位，scope 同步扩增，新增加一张自定义卡（策略、门禁与质量门）与一张 next 风险卡，但保留两模块与三篇文章的目录与文件路径不变（路径稳定性优先）。",
     "max_total_modules": 8,
     "max_depth": 2,
     "max_total_articles": 30,
@@ -38,8 +38,12 @@
         "internal/record/**",
         "internal/search/**",
         "internal/reconcile/**",
+        "internal/workflow/**",
+        "internal/approval/**",
+        "internal/next/**",
         "scripts/**",
         "docs/examples/m1-devsys/**",
+        "docs/examples/workflows/**",
         "go.mod",
         "go.sum"
       ]
@@ -82,15 +86,16 @@
     }
   ],
   "coverage_check": {
-    "covered_files": 79,
-    "total_files": 85,
+    "covered_files": 109,
+    "total_files": 116,
     "uncovered": [
       ".gitattributes",
       ".gitignore",
       "AGENTS.md",
       "docs/开发记录.md",
       "docs/原始文档/独立于Harness的Agent开发基础设施方案.md",
-      "docs/原始文档/实施计划.md"
+      "docs/原始文档/实施计划.md",
+      "docs/examples/workflows/.gitignore"
     ]
   }
 }
