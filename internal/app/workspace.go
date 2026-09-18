@@ -159,6 +159,7 @@ func (s *Service) WorkspaceRemove(ctx context.Context, req WorkspaceRemoveReques
 		return workspace.RemoveReport{}, err
 	}
 	hooks := map[string]workspace.Hook{}
+	policyWarning := ""
 	workItemID := req.WorkItemID
 	if workItemID != "" {
 		wi, err := s.WorkitemGet(ctx, workItemID)
@@ -172,10 +173,11 @@ func (s *Service) WorkspaceRemove(ctx context.Context, req WorkspaceRemoveReques
 		if res.Policy != nil {
 			// Removal is a cleanup path: a broken policy must not trap a
 			// workspace, so the last-known-good hooks are used and the
-			// failure is reported as a warning below.
+			// failure is reported as a warning.
 			hooks = workspaceHooks(res.Policy)
 			if res.Issue != nil {
-				hooks = nil
+				policyWarning = fmt.Sprintf("workflow policy %q is invalid: %s; removal uses %s",
+					res.ID, res.Issue.String(), res.Source)
 			}
 		}
 	}
@@ -187,6 +189,9 @@ func (s *Service) WorkspaceRemove(ctx context.Context, req WorkspaceRemoveReques
 		ProjectRoot: s.Root, Root: configured,
 		Path: req.Path, Identifier: req.WorkItemID, Force: req.Force, Hooks: hooks,
 	})
+	if policyWarning != "" {
+		rep.Warnings = append(rep.Warnings, policyWarning)
+	}
 	if err != nil {
 		// A dirty worktree without --force, an escaping path or a git
 		// failure are all preconditions the caller can fix.

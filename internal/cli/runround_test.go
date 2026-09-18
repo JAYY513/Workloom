@@ -265,3 +265,23 @@ func TestRunFinishCommands(t *testing.T) {
 		t.Fatalf("stderr = %q, want it to say the run already ended", errOut)
 	}
 }
+
+// An explicit --round is only accepted when it is the round the stream says is
+// next: replaying a round would refire a full prompt and slip past the bound.
+func TestRunExecRejectsAReplayedRound(t *testing.T) {
+	_, runID, _ := roundProject(t, roundPolicy)
+	if code, _, errOut := run(t, "run", "exec", "--id", runID, "--actor", "t", "--reason", "r", "--", "git", "--version"); code != CodeOK {
+		t.Fatalf("round 1: %q", errOut)
+	}
+	code, _, errOut := run(t, "run", "exec", "--id", runID, "--round", "1", "--actor", "t", "--reason", "r", "--", "git", "--version")
+	if code != CodePrecondition {
+		t.Fatalf("replaying round 1: code=%d stderr=%q, want %d", code, errOut, CodePrecondition)
+	}
+	if !strings.Contains(errOut, "round 2") {
+		t.Fatalf("stderr = %q, want it to name the round the session is at", errOut)
+	}
+	// The round the stream asks for is accepted.
+	if code, out, errOut := run(t, "run", "exec", "--id", runID, "--round", "2", "--actor", "t", "--reason", "r", "--", "git", "--version"); code != CodeOK {
+		t.Fatalf("round 2: code=%d stderr=%q out=%q", code, errOut, out)
+	}
+}

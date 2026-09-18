@@ -157,7 +157,15 @@ func discard(projectRoot, path, branch string, createdBranch bool, base string) 
 		}
 	}
 	if createdBranch {
-		if sha, err := branchSHA(projectRoot, branch); err == nil && sha == base {
+		// The branch is deleted only while it still points at the base this
+		// call branched from: a hook that committed during after_create left
+		// work behind, and discarding it would destroy evidence nobody asked
+		// to destroy.
+		sha, err := branchSHA(projectRoot, branch)
+		switch {
+		case err != nil:
+			problems = append(problems, fmt.Sprintf("inspect branch %s: %v", branch, err))
+		case sha == base:
 			if err := deleteBranch(projectRoot, branch); err != nil {
 				problems = append(problems, err.Error())
 			}

@@ -230,10 +230,14 @@ func TestRunExecStartFailureIsRecorded(t *testing.T) {
 	if code != CodePrecondition {
 		t.Fatalf("code=%d stderr=%q, want %d", code, errOut, CodePrecondition)
 	}
-	records := readStream(t, repo, runID)
-	last := records[len(records)-1]
-	if last["type"] != "exit" || last["code"] != float64(-1) || !strings.Contains(fmt.Sprint(last["text"]), "failed to start") {
-		t.Fatalf("exit record = %v, want code -1 with the start failure", last)
+	var exit map[string]any
+	for _, rec := range readStream(t, repo, runID) {
+		if rec["type"] == "exit" {
+			exit = rec
+		}
+	}
+	if exit == nil || exit["code"] != float64(-1) || !strings.Contains(fmt.Sprint(exit["text"]), "failed to start") {
+		t.Fatalf("exit record = %v, want code -1 with the start failure", exit)
 	}
 	item, _ := runView(t, runID)["run"].(map[string]any)
 	result, _ := item["result"].(map[string]any)
@@ -243,6 +247,11 @@ func TestRunExecStartFailureIsRecorded(t *testing.T) {
 	}
 	if events := readEventTypes(t, repo); events["run_exec_finished"] != runID {
 		t.Fatalf("events = %v, want a run_exec_finished for %s", events, runID)
+	}
+	// The attempt is over: a run that could not start must not stay running.
+	item, _ = runView(t, runID)["run"].(map[string]any)
+	if item["status"] != app.RunFailed {
+		t.Fatalf("run status = %v, want %s after a failed start", item["status"], app.RunFailed)
 	}
 }
 

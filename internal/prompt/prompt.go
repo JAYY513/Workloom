@@ -115,7 +115,7 @@ type Input struct {
 // harness's own transcript (方案 §8/§9.2).
 const protocol = `- 通过 CLI 或 MCP 汇报（两者同一实现）：` + "`devsys ...`" + ` 与同名 MCP 工具等价。
 - 进度：` + "`devsys run update --id $DEVSYS_RUN_ID --log <一行说明>`" + `（可多次）。
-- 产物：` + "`devsys artifact register --name <名称> --path <路径> --run $DEVSYS_RUN_ID --related $DEVSYS_WORKITEM_ID`" + `。
+- 产物：` + "`devsys artifact register --name <名称> --path <路径> --run $DEVSYS_RUN_ID --related $DEVSYS_WORKITEM`" + `。
 - 决策：` + "`devsys decision create --title <标题> --decision <结论>`" + `；发现：` + "`devsys finding create --title <标题> --description <说明>`" + `。
 - 完成：` + "`devsys run complete --id $DEVSYS_RUN_ID --actor <身份> --reason <原因>`" + `；失败：` + "`devsys run fail ...`" + `。
 - 退出码 0 表示本轮成功，非零表示失败（失败原因写 stderr）。`

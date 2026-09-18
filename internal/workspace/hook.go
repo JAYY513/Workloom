@@ -72,6 +72,8 @@ func (e *HookError) Error() string {
 		return fmt.Sprintf("%s hook timed out after %s%s", e.Name, e.Timeout, tail)
 	case e.Canceled:
 		return fmt.Sprintf("%s hook was canceled%s", e.Name, tail)
+	case e.ExitCode < 0:
+		return fmt.Sprintf("%s hook could not run%s", e.Name, tail)
 	default:
 		return fmt.Sprintf("%s hook failed (exit %d)%s", e.Name, e.ExitCode, tail)
 	}
@@ -115,11 +117,11 @@ func RunHook(ctx context.Context, opts RunHookOptions) (HookReport, error) {
 		Timeout: timeout,
 	})
 	if err != nil {
-		return rep, &HookError{Name: opts.Name, Output: err.Error()}
+		return rep, &HookError{Name: opts.Name, ExitCode: -1, Output: err.Error()}
 	}
 	sess, err := adapter.Start(ctx, cmd)
 	if err != nil {
-		return rep, &HookError{Name: opts.Name, Output: err.Error()}
+		return rep, &HookError{Name: opts.Name, ExitCode: -1, Output: err.Error()}
 	}
 	var out tailBuffer
 	for line := range sess.Lines() {
@@ -128,7 +130,10 @@ func RunHook(ctx context.Context, opts RunHookOptions) (HookReport, error) {
 	}
 	res, err := sess.Wait(ctx)
 	if err != nil {
-		return rep, &HookError{Name: opts.Name, Output: err.Error()}
+		// A collection failure is not an exit status: -1 keeps it distinct
+		// from a hook that ran and exited zero, and a canceled context is
+		// reported as such.
+		return rep, &HookError{Name: opts.Name, ExitCode: -1, Canceled: ctx.Err() != nil, Output: err.Error()}
 	}
 
 	rep.Ran = true

@@ -146,9 +146,13 @@ func (s *Service) RunExec(ctx context.Context, req RunExecRequest) (RunExecView,
 	if err != nil {
 		return RunExecView{}, Internalf("read run stream: %v", err)
 	}
-	round := req.Round
-	if round <= 0 {
-		round = nextRound(lines)
+	// The next round is derived from the stream, never invented by a caller:
+	// an explicit round is only accepted when it is that next one, so a
+	// session cannot replay a round or slip past the bound.
+	round := nextRound(lines)
+	if req.Round > 0 && req.Round != round {
+		return RunExecView{}, Preconditionf(
+			"run %s is at round %d; --round %d would not continue the session", r.ID, round, req.Round)
 	}
 	if cap := roundCap(res.Policy); cap > 0 && round > cap {
 		return RunExecView{}, Preconditionf(
@@ -173,7 +177,7 @@ func (s *Service) RunExec(ctx context.Context, req RunExecRequest) (RunExecView,
 	if err != nil {
 		return RunExecView{}, Preconditionf("%v", err)
 	}
-	commandLine := strings.Join(cmd.Argv, " ")
+	commandLine := quoteArgv(cmd.Argv)
 
 	stream, err := openRunStream(s.Root, r.ID)
 	if err != nil {
@@ -239,6 +243,12 @@ func (s *Service) RunExec(ctx context.Context, req RunExecRequest) (RunExecView,
 		if werr := s.recordExecOutcome(ctx, r, req.Actor, commandLine, note, note); werr != nil {
 			return RunExecView{}, werr
 		}
+		if werr := s.advancePhase(ctx, stream, r.ID, "finishing"); werr != nil {
+			return RunExecView{}, werr
+		}
+		if werr := s.finishAttempt(ctx, r.ID, RunFailed, req.Actor, note, note, stream); werr != nil {
+			return RunExecView{}, werr
+		}
 		return RunExecView{}, Preconditionf("%v", err)
 	}
 	// However this function leaves — a failed stream write, a caller that
@@ -282,6 +292,8 @@ func (s *Service) RunExec(ctx context.Context, req RunExecRequest) (RunExecView,
 			Env: append(env, "DEVSYS_HOOK="+workspace.HookAfterRun),
 		})
 		if herr != nil {
+			// after_run never changes the outcome: even failing to record
+			// it must not stop the attempt from being closed out.
 			warnings = append(warnings, herr.Error())
 			if err := events.New(s.Root).Append(ctx, &domain.Event{
 				Type:      "workspace_hook_failed",
@@ -291,7 +303,7 @@ func (s *Service) RunExec(ctx context.Context, req RunExecRequest) (RunExecView,
 				Content:   herr.Error(),
 				Time:      s.now(),
 			}); err != nil {
-				return RunExecView{}, s.storeError(err)
+				warnings = append(warnings, "recording the hook failure failed: "+err.Error())
 			}
 		} else if rep.Ran {
 			warnings = append(warnings, fmt.Sprintf("%s hook ran in %dms", workspace.HookAfterRun, rep.DurationMS))
@@ -376,6 +388,9 @@ func (s *Service) advancePhase(ctx context.Context, stream *runStream, runID, ph
 	if err != nil {
 		return err
 	}
+	if isTerminalRun(r.Status) {
+		return Preconditionf("run %s already ended as %s", r.ID, r.Status)
+	}
 	r.Phase = phase
 	if err := run.New(s.Root).Update(ctx, r, raw); err != nil {
 		return s.storeError(err)
@@ -393,7 +408,10 @@ func (s *Service) markRunning(ctx context.Context, runID string) error {
 	if err != nil {
 		return err
 	}
-	if isTerminalRun(r.Status) || r.Status == "running" {
+	if isTerminalRun(r.Status) {
+		return Preconditionf("run %s ended as %s before the attempt started", r.ID, r.Status)
+	}
+	if r.Status == "running" {
 		return nil
 	}
 	r.Status = "running"
@@ -540,6 +558,21 @@ func execSummary(res harness.Result, command string) string {
 		return fmt.Sprintf("%s in %s", note, res.Duration().Round(time.Millisecond))
 	}
 	return fmt.Sprintf("command exited 0: %s in %s", command, res.Duration().Round(time.Millisecond))
+}
+
+// quoteArgv renders a command for evidence: the structured argv is recorded
+// alongside it, this is the readable form, and an argument with spaces keeps
+// its quotes so the line can be read back.
+func quoteArgv(argv []string) string {
+	quoted := make([]string, 0, len(argv))
+	for _, arg := range argv {
+		if arg == "" || strings.ContainsAny(arg, " \t\"") {
+			quoted = append(quoted, "\""+strings.ReplaceAll(arg, "\"", "\\\"")+"\"")
+			continue
+		}
+		quoted = append(quoted, arg)
+	}
+	return strings.Join(quoted, " ")
 }
 
 func contains(list []string, want string) bool {
