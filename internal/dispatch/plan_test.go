@@ -204,3 +204,40 @@ func TestResolveCapsTakesTheStrictest(t *testing.T) {
 		t.Fatalf("default global = %d, want %d", got.Global, DefaultGlobalCap)
 	}
 }
+
+// A policy that declares nothing counts as the default, so it pins the queue
+// to one at a time instead of letting a looser neighbour widen the bound.
+func TestResolveCapsTreatsSilenceAsTheDefault(t *testing.T) {
+	caps := ResolveCaps([]Caps{
+		{Global: 10, PerStatus: map[string]int{domain.StatusReady: 5}},
+		{},
+	})
+	if caps.Global != DefaultGlobalCap {
+		t.Fatalf("global = %d, want %d: a silent policy is the strictest", caps.Global, DefaultGlobalCap)
+	}
+	if caps.PerStatus[domain.StatusReady] != 5 {
+		t.Fatalf("per-status = %v, want the declared bound", caps.PerStatus)
+	}
+}
+
+// The report's in-flight figures describe what the tick found, not what it
+// decided: a consumer aggregating them must not double-count the plan.
+func TestReportInFlightIsPrePlan(t *testing.T) {
+	now := time.Now().UTC()
+	running := item("WLM-9", domain.StatusInProgress, 0, now)
+	running.SchedulingState = domain.SchedulingRunning
+	rep := Plan(Input{
+		Now:   now,
+		Items: []*domain.WorkItem{running, item("WLM-1", domain.StatusReady, 5, now)},
+		Caps:  Caps{Global: 5},
+	})
+	if rep.InFlight != 1 || rep.InFlightByStatus[domain.StatusInProgress] != 1 {
+		t.Fatalf("in flight = %d %v, want just the running item", rep.InFlight, rep.InFlightByStatus)
+	}
+	if _, ok := rep.InFlightByStatus[domain.StatusReady]; ok {
+		t.Fatalf("in-flight by status counts a planned start: %v", rep.InFlightByStatus)
+	}
+	if len(rep.Start) != 1 {
+		t.Fatalf("start = %v, want the ready item", rep.Start)
+	}
+}

@@ -44,10 +44,12 @@ func runDispatch(stdout io.Writer, opts options, rest []string) error {
 		report, err := svc.Dispatch(ctx, app.DispatchRequest{
 			Actor: *actor, Reason: *reason, Max: *max, DryRun: *dryRun,
 		})
-		if err != nil {
-			return err
+		// The report is rendered even when the tick refused every candidate:
+		// the operator needs the notices to know what to fix.
+		if renderErr := renderDispatch(stdout, opts, report); renderErr != nil {
+			return renderErr
 		}
-		if err := renderDispatch(stdout, opts, report); err != nil {
+		if err != nil {
 			return err
 		}
 		if !*watch {

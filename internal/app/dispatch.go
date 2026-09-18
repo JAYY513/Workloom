@@ -89,10 +89,7 @@ func (s *Service) Dispatch(ctx context.Context, req DispatchRequest) (DispatchRe
 	if err != nil {
 		return DispatchReport{}, s.storeError(err)
 	}
-	caps, notices, err := s.dispatchCaps(ctx, items)
-	if err != nil {
-		return DispatchReport{}, err
-	}
+	caps, notices := s.dispatchCaps(ctx, items)
 	rep.Notices = append(rep.Notices, notices...)
 	rep.Plan = dispatch.Plan(dispatch.Input{Now: s.now(), Items: items, Caps: caps, Max: req.Max})
 	if req.DryRun || len(rep.Plan.Start) == 0 {
@@ -113,22 +110,32 @@ func (s *Service) Dispatch(ctx context.Context, req DispatchRequest) (DispatchRe
 		spawn = defaultSpawner()
 	}
 
-	// The plan says how many attempts the caps allow; the queue is everyone it
-	// would have started had there been room, in the same order. A candidate
-	// that turns out to be unstartable frees its slot for the next one — the
-	// cap bounds attempts in flight, not refusals.
-	queue := append([]dispatch.Decision{}, rep.Plan.Start...)
-	for _, decision := range rep.Plan.Skip {
-		switch decision.Reason {
-		case dispatch.ReasonCapGlobal, dispatch.ReasonCapStatus, dispatch.ReasonMaxReached:
-			queue = append(queue, decision)
+	// Every attempt re-plans against the state it just changed: the caps are
+	// then enforced structurally (against what is genuinely in flight) instead
+	// of being reasoned about, and a refused candidate frees its slot for the
+	// next one — the cap bounds attempts in flight, not refusals.
+	refused := map[string]string{}
+	for {
+		current, err := s.items().List(ctx)
+		if err != nil {
+			return rep, s.storeError(err)
 		}
-	}
-	slots := len(rep.Plan.Start)
-	for _, decision := range queue {
-		if len(rep.Started) >= slots {
+		remaining := make([]*domain.WorkItem, 0, len(current))
+		for _, wi := range current {
+			if _, skip := refused[wi.ID]; skip {
+				continue
+			}
+			remaining = append(remaining, wi)
+		}
+		budget := 0
+		if req.Max > 0 {
+			budget = req.Max - len(rep.Started)
+		}
+		next := dispatch.Plan(dispatch.Input{Now: s.now(), Items: remaining, Caps: caps, Max: budget})
+		if len(next.Start) == 0 {
 			break
 		}
+		decision := next.Start[0]
 		attempt, err := s.dispatchOne(ctx, decision.WorkitemID, command, projectID(md), req, spawn)
 		if err != nil {
 			// A refused candidate (blocked policy, unmet gate, workspace
@@ -137,11 +144,17 @@ func (s *Service) Dispatch(ctx context.Context, req DispatchRequest) (DispatchRe
 			var appErr *Error
 			if errors.As(err, &appErr) && (appErr.Class() == KindPrecondition || appErr.Class() == KindInvalid) {
 				rep.Notices = append(rep.Notices, fmt.Sprintf("%s did not start: %v", decision.WorkitemID, err))
+				refused[decision.WorkitemID] = err.Error()
 				continue
 			}
 			return rep, err
 		}
 		rep.Started = append(rep.Started, attempt)
+	}
+	if len(rep.Started) == 0 && len(refused) > 0 {
+		// Nothing started and every attempt was refused: the tick did not
+		// achieve what it was asked to do, so it must not report success.
+		return rep, Preconditionf("dispatch started nothing: %d candidate(s) refused (see the report's notices)", len(refused))
 	}
 	return rep, nil
 }
@@ -149,7 +162,7 @@ func (s *Service) Dispatch(ctx context.Context, req DispatchRequest) (DispatchRe
 // dispatchCaps folds the concurrency declarations of the policies the
 // dispatchable items declare (§5.3). A policy that cannot be parsed
 // contributes no bound and a notice: the claim path refuses that item anyway.
-func (s *Service) dispatchCaps(ctx context.Context, items []*domain.WorkItem) (dispatch.Caps, []string, error) {
+func (s *Service) dispatchCaps(ctx context.Context, items []*domain.WorkItem) (dispatch.Caps, []string) {
 	var declared []dispatch.Caps
 	var notices []string
 	for _, wi := range items {
@@ -175,7 +188,7 @@ func (s *Service) dispatchCaps(ctx context.Context, items []*domain.WorkItem) (d
 			PerStatus: res.Policy.Concurrency.PerStatus,
 		})
 	}
-	return dispatch.ResolveCaps(declared), notices, nil
+	return dispatch.ResolveCaps(declared), notices
 }
 
 // dispatchOne starts one attempt: claim, workspace, spawn, running.
@@ -264,10 +277,10 @@ func defaultSpawner() AttemptSpawner {
 		}
 		pid := cmd.Process.Pid
 		// The tick is not the attempt's owner: releasing the handle lets the
-		// process outlive this invocation without becoming a zombie.
-		if err := cmd.Process.Release(); err != nil {
-			return pid, fmt.Errorf("release attempt process: %w", err)
-		}
+		// process outlive this invocation without becoming a zombie. A release
+		// failure is not a start failure — the process is running, and
+		// reporting an error here would hand the claim back to a live attempt.
+		_ = cmd.Process.Release()
 		return pid, nil
 	}
 }

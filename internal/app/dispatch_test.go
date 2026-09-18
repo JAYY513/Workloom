@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -328,5 +329,59 @@ func TestDispatchReportsBrokenCandidateAndContinues(t *testing.T) {
 	joined := strings.Join(report.Notices, "\n")
 	if !strings.Contains(joined, "WLM-1") {
 		t.Fatalf("notices = %v, want the broken candidate reported", report.Notices)
+	}
+}
+
+// A candidate refused for a precondition frees its slot for the next one, and
+// when every candidate is refused the tick reports failure instead of success.
+func TestDispatchRefusedCandidateFreesItsSlot(t *testing.T) {
+	broken := &domain.WorkItem{Title: "坏策略", Priority: 9}
+	healthy := &domain.WorkItem{Title: "好策略", Priority: 5}
+	root, svc := dispatchFixture(t, "concurrency:\n  global: 1\n", broken, healthy)
+	items := workitem.New(root)
+	wi, raw, err := items.ReadSnapshot(context.Background(), "WLM-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	wi.Workflow = &domain.WorkflowInstance{ID: "missing", Step: "implement", StepEnteredAt: time.Now().UTC()}
+	if err := items.Update(context.Background(), wi, raw); err != nil {
+		t.Fatal(err)
+	}
+	rec := &recorder{}
+	report, err := svc.Dispatch(context.Background(), DispatchRequest{Actor: "ops", Reason: "tick", Spawn: rec.spawn})
+	if err != nil {
+		t.Fatalf("dispatch: %v", err)
+	}
+	if len(report.Started) != 1 || report.Started[0].WorkitemID != "WLM-2" {
+		t.Fatalf("started %+v, want the healthy item to take the refused slot", report.Started)
+	}
+	if len(report.Notices) == 0 {
+		t.Fatalf("report = %+v, want the refusal reported", report)
+	}
+}
+
+// When nothing can start, the tick says so rather than reporting success.
+func TestDispatchAllRefusedIsAFailure(t *testing.T) {
+	broken := &domain.WorkItem{Title: "坏策略", Priority: 9}
+	root, svc := dispatchFixture(t, "", broken)
+	items := workitem.New(root)
+	wi, raw, err := items.ReadSnapshot(context.Background(), "WLM-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	wi.Workflow = &domain.WorkflowInstance{ID: "missing", Step: "implement", StepEnteredAt: time.Now().UTC()}
+	if err := items.Update(context.Background(), wi, raw); err != nil {
+		t.Fatal(err)
+	}
+	report, err := svc.Dispatch(context.Background(), DispatchRequest{Actor: "ops", Reason: "tick", Spawn: (&recorder{}).spawn})
+	if err == nil {
+		t.Fatalf("dispatch reported success after refusing every candidate: %+v", report)
+	}
+	var appErr *Error
+	if !errors.As(err, &appErr) || appErr.Class() != KindPrecondition {
+		t.Fatalf("error = %v, want a precondition failure", err)
+	}
+	if len(report.Notices) == 0 {
+		t.Fatalf("report = %+v, want the refusal in the notices", report)
 	}
 }

@@ -47,11 +47,13 @@ type Decision struct {
 
 // Report is one tick's plan.
 type Report struct {
-	Start     []Decision     `json:"start"`
-	Skip      []Decision     `json:"skip"`
-	Caps      Caps           `json:"caps"`
-	InFlight  int            `json:"in_flight"`
-	StatusUse map[string]int `json:"status_in_flight"`
+	Start []Decision `json:"start"`
+	Skip  []Decision `json:"skip"`
+	Caps  Caps       `json:"caps"`
+	// InFlight and InFlightByStatus describe what the tick found already
+	// running; they are not updated by the plan's own decisions.
+	InFlight         int            `json:"in_flight"`
+	InFlightByStatus map[string]int `json:"in_flight_by_status"`
 }
 
 // Input is everything the plan depends on.
@@ -80,10 +82,10 @@ func activeState(state string) bool {
 // reason an operator can act on.
 func Plan(in Input) Report {
 	rep := Report{
-		Caps:      in.Caps,
-		Start:     []Decision{},
-		Skip:      []Decision{},
-		StatusUse: map[string]int{},
+		Caps:             in.Caps,
+		Start:            []Decision{},
+		Skip:             []Decision{},
+		InFlightByStatus: map[string]int{},
 	}
 	status := make(map[string]string, len(in.Items))
 	for _, wi := range in.Items {
@@ -98,9 +100,13 @@ func Plan(in Input) Report {
 			continue
 		}
 		globalUse++
-		rep.StatusUse[wi.Status]++
+		rep.InFlightByStatus[wi.Status]++
 	}
 	rep.InFlight = globalUse
+	statusUse := make(map[string]int, len(rep.InFlightByStatus))
+	for status, count := range rep.InFlightByStatus {
+		statusUse[status] = count
+	}
 
 	ordered := make([]*domain.WorkItem, len(in.Items))
 	copy(ordered, in.Items)
@@ -133,13 +139,13 @@ func Plan(in Input) Report {
 			decision.Action, decision.Reason = "skip", ReasonMaxReached
 		case rep.Caps.Global > 0 && globalUse >= rep.Caps.Global:
 			decision.Action, decision.Reason = "skip", ReasonCapGlobal
-		case rep.Caps.PerStatus[wi.Status] > 0 && rep.StatusUse[wi.Status] >= rep.Caps.PerStatus[wi.Status]:
+		case rep.Caps.PerStatus[wi.Status] > 0 && statusUse[wi.Status] >= rep.Caps.PerStatus[wi.Status]:
 			decision.Action, decision.Reason = "skip", ReasonCapStatus
 		default:
 			decision.Action = "start"
 			started++
 			globalUse++
-			rep.StatusUse[wi.Status]++
+			statusUse[wi.Status]++
 			rep.Start = append(rep.Start, decision)
 			continue
 		}
@@ -168,16 +174,20 @@ func dependenciesSatisfied(wi *domain.WorkItem, status map[string]string) bool {
 const DefaultGlobalCap = 1
 
 // ResolveCaps folds the declared concurrency of the given policies into the
-// bounds one tick enforces: the global bound is the strictest declared (or the
-// default), and each status keeps the strictest bound declared for it. Taking
-// the minimum is what makes a global bound global — two policies cannot widen
-// it by declaring looser numbers.
+// bounds one tick enforces: the strictest declaration wins, and a policy that
+// declares nothing counts as the default — so a silent policy pins the queue to
+// one at a time rather than letting a looser neighbour widen it. Each status
+// keeps the strictest bound declared for it.
 func ResolveCaps(policies []Caps) Caps {
 	out := Caps{Global: DefaultGlobalCap, PerStatus: map[string]int{}}
 	declared := false
 	for _, caps := range policies {
-		if caps.Global > 0 && (!declared || caps.Global < out.Global) {
-			out.Global = caps.Global
+		global := caps.Global
+		if global <= 0 {
+			global = DefaultGlobalCap
+		}
+		if !declared || global < out.Global {
+			out.Global = global
 			declared = true
 		}
 		for status, limit := range caps.PerStatus {
