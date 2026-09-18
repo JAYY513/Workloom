@@ -3,9 +3,9 @@
   "partition": {
     "locale": "zh"
   },
-  "generated_at": "2026-09-18T17:11:01.809Z",
+  "generated_at": "2026-09-18T17:42:48.134Z",
   "git": {
-    "commit": "7c3fcde362c4d50858b6762bf35a1207649aca4c",
+    "commit": "75998a8dbe9dfe3715476e1f004f3f0b3a30938f",
     "branch": "master"
   },
   "pages": {
@@ -199,7 +199,7 @@
         "internal/app/**",
         "internal/mcp/**"
       ],
-      "content_hash": "71ae3e0dc301d88cc938a6699ad40ee9e02bfe7280e17a0e419c531dcf8e8461"
+      "content_hash": "d9437d55c9d2dc01e1afaaacfbec6f346288692d1364d6056ee35fcf36cc30b1"
     },
     "knowledge/共享应用与MCP/错误语义.md": {
       "sources": [
@@ -488,13 +488,21 @@
       ],
       "content_hash": "82fbbf52a51fa9135edc290f12ccec9a5c981fb3c3791f85502bbbf32fbfac79"
     },
+    "knowledge/知识层/上下文快照.md": {
+      "sources": [
+        "internal/knowledge/**",
+        ".devsys/knowledge/**",
+        ".repowikiignore"
+      ],
+      "content_hash": "0d5e62c81fc2e8ff1377993d0b8b889cd2c59435106068d1bf6ca9012a81f4b8"
+    },
     "knowledge/知识层/上下文装配.md": {
       "sources": [
         "internal/knowledge/**",
         ".devsys/knowledge/**",
         ".repowikiignore"
       ],
-      "content_hash": "6c56a9d214c2b1a362ab330a81468f1aac943cba012779ac8a5a6c76c64a799c"
+      "content_hash": "bc9b4bc20b4b360f53a019010b2714ab7d1d7cd39cb90452bc37c9dbc727f102"
     },
     "knowledge/知识层/人工保护.md": {
       "sources": [
@@ -502,7 +510,7 @@
         ".devsys/knowledge/**",
         ".repowikiignore"
       ],
-      "content_hash": "1fb53444d41416d07994adaecf4cb258fd8be10eeb9c575505c5e3dc81eec1ff"
+      "content_hash": "a44cda3e7603e5ab0469b7bc897ecdb92638e6d8935d45bb114409cfd2d4b67c"
     },
     "knowledge/知识层/断点续跑与锁.md": {
       "sources": [
@@ -542,7 +550,7 @@
         ".devsys/knowledge/**",
         ".repowikiignore"
       ],
-      "content_hash": "5527629d71596225df945b2cf0cb60fec71563dfc7fa212e8eba245741bd3e1b"
+      "content_hash": "892e728b7c948854955ffd64cc715583b3fa0d99b45329c321b9f4ef7362b093"
     },
     "knowledge/知识层/知识服务接线.md": {
       "sources": [
@@ -550,7 +558,7 @@
         ".devsys/knowledge/**",
         ".repowikiignore"
       ],
-      "content_hash": "86c398bd4203a489ce03fdac1603e1f1c137f77025d689a54eec81e73859d5d5"
+      "content_hash": "aaacf09b705fe9fa19054b42f21d4fdef82194c54e58c93885342b9304b953b8"
     },
     "knowledge/知识层/索引快照与匹配器.md": {
       "sources": [
@@ -558,7 +566,7 @@
         ".devsys/knowledge/**",
         ".repowikiignore"
       ],
-      "content_hash": "28c9d33a68541b9a09e10d2edd6d31e43bb36894cb495163ca62733468232b85"
+      "content_hash": "a53c32d559e79185ce138ec233a5c951d838ed16b9d047701ca8c5e109fed4d1"
     },
     "knowledge/知识层/页面契约与校验.md": {
       "sources": [
@@ -566,7 +574,7 @@
         ".devsys/knowledge/**",
         ".repowikiignore"
       ],
-      "content_hash": "56464c301f0237792ce05d4fe9851277723b638dfa90de07a1609f16736a9cb3"
+      "content_hash": "2a44f3eea9307eee400f615f8eade5ae473a580f2574f318830cdbce8fba4f6e"
     },
     "knowledge/项目接入与配置/AGENTS.md写入.md": {
       "sources": [
@@ -795,16 +803,16 @@
     },
     "log.md": {
       "sources": [],
-      "content_hash": "ce31babfbb63c1fecf2eb35dcac86b8179ab700f44865150de3815a040fc1b55"
+      "content_hash": "d11e1c26df63607311459412507d266f7a9986c0e5a6ed669e74ae6dc9a2cf0d"
     }
   },
-  "snapshot_digest": "41814b78714986cf8f07488842aadad2cd8d43842ea61c874d9b01c5689af181",
+  "snapshot_digest": "a42397a05b85812689cad6169d87e5a8a9bdd261e316735d00237772971ef699",
   "snapshot_file": ".repowiki/snapshot.json",
   "last_run": {
     "status": "success",
     "phase": "finalize",
-    "started_at": "2026-09-18T17:11:01.809Z",
-    "finished_at": "2026-09-18T17:11:01.809Z",
+    "started_at": "2026-09-18T17:42:48.134Z",
+    "finished_at": "2026-09-18T17:42:48.134Z",
     "error": ""
   }
 }
