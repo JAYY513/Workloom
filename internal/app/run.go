@@ -280,6 +280,11 @@ type RunFinishRequest struct {
 	Reason  string
 	// Note is optional detail kept with the run's result evidence.
 	Note string
+	// Force lets a reviewer record an outcome the completion check refused.
+	// It requires By: an exception to "no evidence, no verified" has to be
+	// traceable to a person (方案 §4.8).
+	Force bool
+	By    string
 }
 
 // RunFinish writes the terminal status, the finish time and a run_finished
@@ -292,6 +297,9 @@ func (s *Service) RunFinish(ctx context.Context, req RunFinishRequest) (RunView,
 	if !isTerminalRun(req.Outcome) {
 		return RunView{}, Usagef("unknown run outcome %q (succeeded | failed | timed_out | stalled | canceled)", req.Outcome)
 	}
+	if req.Force && req.By == "" {
+		return RunView{}, Usagef("forcing an outcome requires --by <reviewer>: an exception has to be traceable")
+	}
 	r, raw, err := readRun(ctx, s, req.RunID)
 	if err != nil {
 		return RunView{}, err
@@ -302,6 +310,34 @@ func (s *Service) RunFinish(ctx context.Context, req RunFinishRequest) (RunView,
 	if isTerminalRun(r.Status) {
 		return RunView{}, Preconditionf("run %s already ended as %s", r.ID, r.Status)
 	}
+	// Completing an attempt is the one transition that claims success, so it
+	// is the one the completion check guards (方案 §4.8).
+	if req.Outcome == RunSucceeded {
+		check := s.verifyCompletion(ctx, r)
+		switch {
+		case check.Advanced:
+			advanced := true
+			r.Verification.Advanced = &advanced
+			r.Verification.HeadSHAAtComplete = check.CurrentHead
+		case req.Force:
+			advanced := false
+			r.Verification.Advanced = &advanced
+			r.Verification.HeadSHAAtComplete = check.CurrentHead
+			reviewer := req.By
+			r.Verification.VerifiedBy = &reviewer
+		default:
+			reason := check.Reason
+			if reason == "" {
+				reason = "the completion check found no advance"
+			}
+			if err := s.refuseCompletion(ctx, r, req.Actor, reason, check); err != nil {
+				return RunView{}, err
+			}
+			return RunView{}, Preconditionf(
+				"run %s cannot be marked succeeded: %s (claim head %s, current head %s); the work item is in review — review it and pass --force --by <reviewer> to accept, or fix the branch and retry",
+				r.ID, reason, orNone(check.ClaimHead), orNone(check.CurrentHead))
+		}
+	}
 	now := s.now()
 	r.Status = req.Outcome
 	r.FinishedAt = &now
@@ -311,13 +347,31 @@ func (s *Service) RunFinish(ctx context.Context, req RunFinishRequest) (RunView,
 	if err := run.New(s.Root).Update(ctx, r, raw); err != nil {
 		return RunView{}, s.storeError(err)
 	}
+	eventType := "run_finished"
+	switch {
+	case req.Outcome == RunSucceeded && req.Force:
+		eventType = "completion_overridden"
+	case req.Outcome == RunSucceeded:
+		eventType = "completion_verified"
+	}
+	content := fmt.Sprintf("%s: %s", req.Outcome, req.Reason)
+	if req.Outcome == RunSucceeded {
+		verdict := "advanced"
+		if r.Verification.Advanced != nil && !*r.Verification.Advanced {
+			verdict = "not advanced"
+		}
+		content = fmt.Sprintf("%s (%s, head %s)", content, verdict, orNone(r.Verification.HeadSHAAtComplete))
+		if req.Force {
+			content += fmt.Sprintf("; accepted by %s", req.By)
+		}
+	}
 	if err := events.New(s.Root).Append(ctx, &domain.Event{
-		Type:      "run_finished",
+		Type:      eventType,
 		Subject:   domain.Reference{Type: "run", ID: r.ID},
 		ProjectID: r.ProjectID,
 		Actor:     req.Actor,
 		Related:   []domain.Reference{{Type: "workitem", ID: r.WorkItemID}},
-		Content:   fmt.Sprintf("%s: %s", req.Outcome, req.Reason),
+		Content:   content,
 		Time:      now,
 	}); err != nil {
 		return RunView{}, s.storeError(err)

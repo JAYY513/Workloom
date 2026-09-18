@@ -408,9 +408,17 @@ func outputRecord(stdout io.Writer, opts options, view app.RecordView) error {
 }
 
 // runRun routes the run family (方案 §8.2 run_*).
+// orNoneText renders an absent hash the way the service does.
+func orNoneText(sha string) string {
+	if sha == "" {
+		return "(none)"
+	}
+	return sha
+}
+
 func runRun(stdout io.Writer, opts options, rest []string) error {
 	if len(rest) == 0 {
-		return errUsage("`devsys run` needs a subcommand (list | get | log | create | update | heartbeat | exec | prompt | complete | fail | cancel)")
+		return errUsage("`devsys run` needs a subcommand (list | get | log | create | update | heartbeat | exec | prompt | verify | complete | fail | cancel)")
 	}
 	svc, err := requireProjectRoot()
 	if err != nil {
@@ -657,6 +665,35 @@ func runRun(stdout io.Writer, opts options, rest []string) error {
 			}
 		}
 		return nil
+	case "verify":
+		fs := flag.NewFlagSet("run verify", flag.ContinueOnError)
+		fs.SetOutput(io.Discard)
+		id := fs.String("id", "", "run id")
+		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *id == "" {
+			return errUsage("run verify --id <run-id>")
+		}
+		check, err := svc.RunVerify(ctx, *id)
+		if err != nil {
+			return err
+		}
+		if opts.json {
+			return json.NewEncoder(stdout).Encode(struct {
+				OK bool `json:"ok"`
+				app.CompletionCheck
+			}{OK: true, CompletionCheck: check})
+		}
+		if !opts.quiet {
+			verdict := "advanced"
+			if !check.Advanced {
+				verdict = "not advanced"
+			}
+			fmt.Fprintf(stdout, "%s\t%s\tclaim=%s\tcurrent=%s\n",
+				check.RunID, verdict, orNoneText(check.ClaimHead), orNoneText(check.CurrentHead))
+			if check.Reason != "" {
+				fmt.Fprintf(stdout, "reason: %s\n", check.Reason)
+			}
+		}
+		return nil
 	case "prompt":
 		fs := flag.NewFlagSet("run prompt", flag.ContinueOnError)
 		fs.SetOutput(io.Discard)
@@ -700,12 +737,15 @@ func runRun(stdout io.Writer, opts options, rest []string) error {
 		actor := fs.String("actor", "", "who decided the outcome")
 		reason := fs.String("reason", "", "why the attempt ended this way")
 		note := fs.String("note", "", "detail kept with the run's evidence")
+		force := fs.Bool("force", false, "accept a completion the check refused (requires --by)")
+		by := fs.String("by", "", "reviewer accepting a forced completion")
 		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *id == "" || *actor == "" || *reason == "" {
-			return errUsage("%s", "run "+rest[0]+" --id <run-id> [--expect <hash>] --actor <a> --reason <r> [--note <text>]")
+			return errUsage("%s", "run "+rest[0]+" --id <run-id> [--expect <hash>] --actor <a> --reason <r> [--note <text>] [--force --by <reviewer>]")
 		}
 		view, err := svc.RunFinish(ctx, app.RunFinishRequest{
 			RunID: *id, Expect: *expect, Outcome: outcome,
 			Actor: *actor, Reason: *reason, Note: *note,
+			Force: *force, By: *by,
 		})
 		if err != nil {
 			return err

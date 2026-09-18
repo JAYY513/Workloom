@@ -109,13 +109,21 @@ func (s *Service) WorkspacePrepare(ctx context.Context, req WorkspacePrepareRequ
 }
 
 // bindWorkspaceToRun records the workspace on the run under the version guard,
-// so the attempt's own record says where it ran.
+// so the attempt's own record says where it ran, and records the head it starts
+// from — the claim head the completion check compares against (§4.8). A head
+// that cannot be read is an error: without it the attempt could never be
+// verified, and silently binding a run nobody can verify is worse.
 func (s *Service) bindWorkspaceToRun(ctx context.Context, runID string, ws workspace.Workspace) error {
+	head, err := workspace.HeadSHA(ws.Path)
+	if err != nil {
+		return Preconditionf("read the workspace head of %s: %v", ws.Path, err)
+	}
 	r, raw, err := readRun(ctx, s, runID)
 	if err != nil {
 		return err
 	}
 	r.Workspace = domain.Workspace{Path: ws.Path, Branch: ws.Branch, Worktree: ws.Key}
+	r.Claim.HeadSHA = head
 	if err := run.New(s.Root).Update(ctx, r, raw); err != nil {
 		return s.storeError(err)
 	}

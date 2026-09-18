@@ -168,6 +168,8 @@ type runFinishInput struct {
 	Actor  string `json:"actor" jsonschema:"who decided the outcome"`
 	Reason string `json:"reason" jsonschema:"why the attempt ended this way"`
 	Note   string `json:"note,omitempty" jsonschema:"optional detail kept with the run's evidence"`
+	Force  bool   `json:"force,omitempty" jsonschema:"accept a completion the check refused (requires by)"`
+	By     string `json:"by,omitempty" jsonschema:"reviewer accepting a forced completion"`
 }
 
 // registerRunFinish wires the three terminal transitions of §4.8. They only
@@ -182,6 +184,7 @@ func registerRunFinish(s *mcpsdk.Server, cfg Config) {
 			view, err := cfg.service().RunFinish(ctx, app.RunFinishRequest{
 				RunID: in.ID, Expect: in.Expect, Outcome: outcome,
 				Actor: in.Actor, Reason: in.Reason, Note: in.Note,
+				Force: in.Force, By: in.By,
 			})
 			if err != nil {
 				return fail[app.RunView](err)
@@ -189,7 +192,27 @@ func registerRunFinish(s *mcpsdk.Server, cfg Config) {
 			return nil, view, nil
 		})
 	}
-	register("run_complete", "Mark an attempt as succeeded (§4.8). The completion check (claim head SHA) arrives with M6.6.", app.RunSucceeded)
+	register("run_complete", "Mark an attempt as succeeded. The completion check compares the claim head with the branch (§4.8): without an advance it is refused and the work item goes to review — pass force with by to accept it as a reviewer.", app.RunSucceeded)
 	register("run_fail", "Mark an attempt as failed, with the reason recorded on the run.", app.RunFailed)
 	register("run_cancel", "Mark an attempt as canceled (stopped before it decided its own outcome).", app.RunCanceled)
+}
+
+type runVerifyInput struct {
+	ID string `json:"id" jsonschema:"run id"`
+}
+
+// registerRunVerify exposes the completion check read-only: it reports the
+// claim head, the current head and whether the attempt advanced its branch.
+func registerRunVerify(s *mcpsdk.Server, cfg Config) {
+	mcpsdk.AddTool(s, &mcpsdk.Tool{
+		Name:        "run_verify",
+		Description: "Report whether an attempt advanced its branch (claim head vs current head). Read-only.",
+		Annotations: readOnly(),
+	}, func(ctx context.Context, req *mcpsdk.CallToolRequest, in runVerifyInput) (*mcpsdk.CallToolResult, app.CompletionCheck, error) {
+		check, err := cfg.service().RunVerify(ctx, in.ID)
+		if err != nil {
+			return fail[app.CompletionCheck](err)
+		}
+		return nil, check, nil
+	})
 }

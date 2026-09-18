@@ -113,6 +113,9 @@ func TestRunCompleteRequiresExpectAndEndsOnce(t *testing.T) {
 		Arguments: map[string]any{
 			"id": runID, "expect": view.Version,
 			"actor": "tester", "reason": "acceptance met",
+			// The fixture run has no workspace, so the completion check has no
+			// evidence: a reviewer accepts it explicitly.
+			"force": true, "by": "tester",
 		},
 	})
 	if err != nil {
@@ -131,6 +134,7 @@ func TestRunCompleteRequiresExpectAndEndsOnce(t *testing.T) {
 		Arguments: map[string]any{
 			"id": runID, "expect": got.Version,
 			"actor": "tester", "reason": "again",
+			"force": true, "by": "tester",
 		},
 	})
 	if err != nil {
@@ -171,5 +175,69 @@ func TestRunFailAndCancelRecordOutcomes(t *testing.T) {
 	}
 	if len(got.Run.Result.Errors) == 0 || got.Run.Result.Errors[0] != "command exited 9" {
 		t.Fatalf("result errors = %v, want the note", got.Run.Result.Errors)
+	}
+}
+
+// The completion check is readable from the tool surface, and completing
+// without an advance is refused with the check's reason.
+func TestRunVerifyAndRefusedCompletion(t *testing.T) {
+	root, runID := runFixture(t)
+	cs := session(t, Config{Root: root, ServerVersion: "test"})
+	if names := toolNames(t, cs); !contains(names, "run_verify") {
+		t.Fatalf("run_verify is not exposed: %v", names)
+	}
+	res, err := cs.CallTool(context.Background(), &mcpsdk.CallToolParams{
+		Name: "run_verify", Arguments: map[string]any{"id": runID},
+	})
+	if err != nil {
+		t.Fatalf("tools/call: %v", err)
+	}
+	if res.IsError {
+		t.Fatalf("run_verify failed: %+v", res)
+	}
+	check := payload[app.CompletionCheck](t, res)
+	if check.Advanced || check.Reason == "" {
+		t.Fatalf("check = %+v, want a refusal with a reason (the fixture has no workspace)", check)
+	}
+	view, err := app.New(root).RunGet(context.Background(), runID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	refused, err := cs.CallTool(context.Background(), &mcpsdk.CallToolParams{
+		Name: "run_complete",
+		Arguments: map[string]any{
+			"id": runID, "expect": view.Version, "actor": "agent", "reason": "done",
+		},
+	})
+	if err != nil {
+		t.Fatalf("tools/call: %v", err)
+	}
+	if !refused.IsError {
+		t.Fatalf("a completion without evidence was accepted: %+v", refused)
+	}
+	if msg := payload[toolError](t, refused); !strings.Contains(msg.Message, "cannot be marked succeeded") {
+		t.Fatalf("error = %+v, want the completion refusal", msg)
+	}
+	// A reviewer may accept it, and the tool records who did.
+	after, err := app.New(root).RunGet(context.Background(), runID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	forced, err := cs.CallTool(context.Background(), &mcpsdk.CallToolParams{
+		Name: "run_complete",
+		Arguments: map[string]any{
+			"id": runID, "expect": after.Version, "actor": "alice", "reason": "reviewed",
+			"force": true, "by": "alice",
+		},
+	})
+	if err != nil {
+		t.Fatalf("tools/call: %v", err)
+	}
+	if forced.IsError {
+		t.Fatalf("forced completion failed: %+v", forced)
+	}
+	done := payload[app.RunView](t, forced)
+	if done.Run.Verification.VerifiedBy == nil || *done.Run.Verification.VerifiedBy != "alice" {
+		t.Fatalf("verification = %+v, want verified_by=alice", done.Run.Verification)
 	}
 }

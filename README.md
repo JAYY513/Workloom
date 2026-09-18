@@ -49,6 +49,7 @@
 | M6.3 Run 生命周期与多轮续跑 | 已完成：`internal/prompt` 装配（首轮全量含策略正文渲染，续跑只发「上一轮以来变化 + 未完成项」，确定性 Hash 可重放）；轮次簿记在 run 事件流（`round` 记录），下一轮号从流推导；轮数上限 `limits.max_attempts` 超限即拒；§4.8 阶段推进（`building_prompt→launching_agent→streaming_turns→finishing`）与终态（succeeded/failed/timed_out/stalled/canceled）；`devsys run prompt\|complete\|fail\|cancel` + MCP `run_complete/run_fail/run_cancel` |
 | M6.4 调度 tick、派发与阻塞 | 已完成：`devsys dispatch [--once\|--watch]`——恢复事务与租约 → 计划（priority 降序 → created_at → 标识符；全局/按状态并发上限，未声明缺省 1；`blocked_by` 未满足即跳过且不领取）→ 领取 → 工作区准备并绑定 → 子进程启动尝试 → `run_dispatched` 事件；`--dry-run` 只计划；只读命令不派发 |
 | M6.5 重试、退避与停滞检测 | 已完成：`internal/retry`（确定性退避 `min(base·2^(n-1), ceiling)` + 可复现抖动，种子=工作项标识+尝试次数）；tick 在计划前扫尾：失败/超时/停滞的尝试按策略重排（`retry_queued` + `next_attempt_at`），尝试用尽则释放领取并记 `retry_exhausted`；停滞=运行中且流内无新证据超过 `stall_threshold_seconds`（缺省 30 分钟）→ 先记 `stalled` 终态再重排 |
+| M6.6 完成校验与人工复核 | 已完成：绑定工作区时记录 claim head（`Run.Claim.HeadSHA`）；`run complete` 先比对分支当前 SHA——未推进/git 报错/无 claim head 一律拒绝（`verification.advanced=false` + 工作项转 `review` + 事件 `completion_refused`，run 保持非终态）；复核者 `--force --by <人>` 显式放行（`verified_by` + `completion_overridden`）；`run verify`（CLI + MCP）只读报告两侧 SHA |
 | M6.1 Harness Adapter 接口与 Shell Adapter | 已完成：`internal/harness`（方案 §9.2 九方法映射 + 八项能力声明 + Session 句柄承载 stream/stop/collect）；Shell 适配器 argv 直通、逐行 stdout/stderr、超长行按 rune 边界 64 KiB 分块、超时与取消终止整棵进程树（POSIX 进程组 / Windows `taskkill /T /F`）；`devsys run exec` 把输出实时镜像并写入 `.devsys/runs/<run-id>.jsonl`（追加写、周期 fsync、断尾修复留痕），结束后更新 run 证据（commands/logs/result.errors）并记事件 |
 
 ## 构建与验收
@@ -238,6 +239,16 @@ bin/devsys.exe --json run exec --id <run-id> --actor <a> --reason <r> -- <comman
 `run exec` 通过 Harness Adapter 接口（`internal/harness`）启动命令：argv 直通、不做 shell 解释（要 shell 特性就自己传 `sh -c` / `cmd /c`），stdout/stderr 逐行实时镜像（`--json` 时命令输出走 stderr，stdout 只承载信封）；输出同时追加到 `.devsys/runs/<run-id>.jsonl`（`start` / `output` / `exit` 记录，控制记录与每 128 行刷盘，崩溃留下的断尾在下次运行时截断并写入 `repair` 记录）。命令结束后把 `commands`、`logs` 引用与非零退出的说明写回 run，并记 `run_exec_started`/`run_exec_finished` 事件。超时或 Ctrl-C 会终止整棵进程树（POSIX 进程组 / Windows `taskkill /T /F`），不会留下孙进程。
 
 **退出码语义**：`run exec` 的退出码描述 devsys 操作本身（0 已执行并落盘 / 2 用法 / 3 前置条件 / 4 受管状态不可信 / 1 内部）；被跑命令自己的退出码是**证据**，写在 JSONL 的 `exit` 记录与 run 的 `result.errors` 里，并由 `--json` 输出——两者不混用（否则命令退出 3 会被误读成 devsys 前置条件错误）。
+
+完成校验与人工复核（M6.6，方案 §4.8）：
+
+```sh
+bin/devsys.exe run verify --id <run-id>                                  # 只读：claim head vs 当前 head
+bin/devsys.exe run complete --id <run-id> --actor <a> --reason <r>       # 校验不过即 exit 3，工作项转 review
+bin/devsys.exe run complete --id <run-id> --actor <a> --reason <r> --force --by <reviewer>
+```
+
+工作区绑定到 run 的那一刻，工作区当前 HEAD 记进 `Run.Claim.HeadSHA`（没有工作区的 ad-hoc run 就没有这条证据）。`run complete` 在写终态之前比对：`git rev-parse <branch>` 与 claim head **不同**才算「推进了」；相同 → 拒绝完成（exit 3，理由含两侧 SHA），run 保持非终态并留下 `verification.advanced=false` 与 `head_sha_at_complete`，工作项转 `review`（复核队列就是 review 状态，`next` 已把滞留 review 当风险信号），事件 `completion_refused`；git 报错或缺 claim head 同样拒绝——**没有证据就不允许标记为已验证**。复核者放行必须留名：`--force --by <reviewer>` 记录 `verified_by` 与事件 `completion_overridden`（缺 `--by` 是用法错误）。`run verify` 与 MCP `run_verify` 只读复现同一判断。
 
 重试、退避与停滞（M6.5，方案 §15.4）：
 

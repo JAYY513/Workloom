@@ -225,7 +225,9 @@ func TestRunExecRefusesBeyondRoundCap(t *testing.T) {
 		t.Fatalf("stream has %d start records, want only the first round's", starts)
 	}
 	// The attempt is still open, so completion is what ends it.
-	if code, _, errOut := run(t, "run", "complete", "--id", runID, "--actor", "t", "--reason", "done"); code != CodeOK {
+	// The fixture's run has no workspace, so the completion check has no
+	// evidence: a reviewer accepts it explicitly.
+	if code, _, errOut := run(t, "run", "complete", "--id", runID, "--actor", "t", "--reason", "done", "--force", "--by", "t"); code != CodeOK {
 		t.Fatalf("run complete: code=%d stderr=%q", code, errOut)
 	}
 	if code, _, errOut := run(t, "run", "exec", "--id", runID, "--actor", "t", "--reason", "r", "--", "git", "--version"); code != CodePrecondition {
@@ -250,7 +252,7 @@ func TestRunFinishCommands(t *testing.T) {
 	if code == CodeOK {
 		t.Fatalf("a stale expect was accepted (stderr=%q)", errOut)
 	}
-	code, out, errOut = run(t, "run", "complete", "--id", runID, "--expect", version, "--actor", "t", "--reason", "acceptance met")
+	code, out, errOut = run(t, "run", "complete", "--id", runID, "--expect", version, "--actor", "t", "--reason", "acceptance met", "--force", "--by", "t")
 	if code != CodeOK {
 		t.Fatalf("run complete: code=%d stderr=%q", code, errOut)
 	}

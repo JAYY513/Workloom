@@ -91,6 +91,7 @@ func allTools() []toolSpec {
 		{"run_create", []string{ProfileExecutor}, registerRunCreate},
 		{"run_update", []string{ProfileExecutor}, registerRunUpdate},
 		{"run_heartbeat", []string{ProfileExecutor}, registerRunHeartbeat},
+		{"run_verify", []string{ProfileSession}, registerRunVerify},
 		{"run_complete", []string{ProfileExecutor}, registerRunFinish},
 		{"run_fail", []string{ProfileExecutor}, registerRunFinish},
 		{"run_cancel", []string{ProfileExecutor}, registerRunFinish},

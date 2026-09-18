@@ -102,6 +102,13 @@ func branchExists(root, branch string) (bool, error) {
 
 func headSHA(dir string) (string, error) { return gitOutput(dir, "rev-parse", "HEAD") }
 
+// HeadSHA is the commit a checkout currently points at (the completion check
+// compares the claim head with it, 方案 §4.8).
+func HeadSHA(dir string) (string, error) { return headSHA(dir) }
+
+// BranchSHA is the commit a branch points at in the project repository.
+func BranchSHA(root, branch string) (string, error) { return branchSHA(root, branch) }
+
 func branchSHA(root, branch string) (string, error) {
 	return gitOutput(root, "rev-parse", "refs/heads/"+branch)
 }
