@@ -1,5 +1,16 @@
 # Repowiki 生成日志
 
+## 2026-09-18 · 85b0de7 M2 增量刷新
+
+- 源码基线：`85b0de7`（M2：状态机、领取租约、对账/修复；相对上次基线 2 提交、33 文件、16 页受影响）；任务 #162。
+- 增量范围：两个模块的全部受影响卡刷新；新增 2 张自定义卡（`状态机与调度.md` dimension `task_lifecycle`、`对账与修复.md` dimension `reconciliation`）；3 篇文章与 index 更新。产物共 20 个 Markdown 文件。
+- 模块 scope：durable-storage 增补 `internal/reconcile/**`；覆盖 79/85（92.9%），未覆盖 6 个文件同前（规则、Git 配置与辅助文档，见 plan.coverage_check）。
+- 保护：起始逐页 hash 比对 18 页全部一致，无人工修改页、无需跳过。
+- 文档校验：`repowiki validate` 报告 20 files、0 errors、0 warnings（含新增卡的可达性与 plan 一致性）。
+- 修正：全库清理过时名称 `workitem.ReleaseLease` → `workitem.Release`（实际导出名；含 reconcile.go 注释与 5 个页面）；`go build ./...` 通过。
+- 验证边界：本轮为文档刷新，未重跑全量 Go 测试（M2 提交前已全量通过；报告中的性能与恢复结论均标注来源）。
+- 收尾：`repowiki state --update` 刷新页面 hash 与 scope；`repowiki status` 确认基线对齐。
+
 ## 2026-09-17 · 4ad8f9e 增量刷新
 
 - 源码基线：`4ad8f9e`（提交后仅 search 测试与 benchmark 变化；未跑 Go 测试）；任务 #136。

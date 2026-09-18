@@ -3,9 +3,9 @@
   "partition": {
     "locale": "zh"
   },
-  "generated_at": "2026-09-17T14:49:22.829Z",
+  "generated_at": "2026-09-18T01:03:44.612Z",
   "git": {
-    "commit": "4ad8f9eca6bb97a97543c3e2f1a51697a9bd33ea",
+    "commit": "85b0de7c01803c50d2dd9a4131a03f881dcb457a",
     "branch": "master"
   },
   "pages": {
@@ -27,12 +27,13 @@
         "internal/run/**",
         "internal/record/**",
         "internal/search/**",
+        "internal/reconcile/**",
         "scripts/**",
         "docs/examples/m1-devsys/**",
         "go.mod",
         "go.sum"
       ],
-      "content_hash": "6bd6621bb303f542dbe94cea6774c8af62f394eb071598dc879d1c9fc6a2a31a"
+      "content_hash": "c2b17d47d992c65750ad4dc2ad268b67603c094992164cec1a232ead000b5160"
     },
     "content/快速开始.md": {
       "sources": [
@@ -50,12 +51,13 @@
         "internal/run/**",
         "internal/record/**",
         "internal/search/**",
+        "internal/reconcile/**",
         "scripts/**",
         "docs/examples/m1-devsys/**",
         "go.mod",
         "go.sum"
       ],
-      "content_hash": "d4bad31f81024fd49631f77d6de9dd67e6b8cd5806bb65e55799ab30f78533a7"
+      "content_hash": "be4bb6b273fcd103093921e9469ce97a1f5dc3ff88bda77e05d63ecee47d6b68"
     },
     "content/项目总览.md": {
       "sources": [
@@ -73,16 +75,17 @@
         "internal/run/**",
         "internal/record/**",
         "internal/search/**",
+        "internal/reconcile/**",
         "scripts/**",
         "docs/examples/m1-devsys/**",
         "go.mod",
         "go.sum"
       ],
-      "content_hash": "066f7291c949bd240d5f41efe4aa633c4015747bf6397f71175a6eaf25c43b68"
+      "content_hash": "4e2113150c137ee962f9e167715b02ecd763d5154ce887c09e910227223adee2"
     },
     "index.md": {
       "sources": [],
-      "content_hash": "ab24dd865ac551cea3a2ed1914a79989ff1153a1f51110a06d08f11c34d0bb46"
+      "content_hash": "f7e231d7d165f49231a22139aea0d5f4dc506d289a6012ea80e18309eb0e9f0a"
     },
     "knowledge/可靠文本存储/事务与恢复.md": {
       "sources": [
@@ -92,12 +95,13 @@
         "internal/run/**",
         "internal/record/**",
         "internal/search/**",
+        "internal/reconcile/**",
         "scripts/**",
         "docs/examples/m1-devsys/**",
         "go.mod",
         "go.sum"
       ],
-      "content_hash": "6ebfcfd8b30402e5ec32b43fb9b25841aaf2225621c8c46e9d4623bb88b0df27"
+      "content_hash": "314f05bc22ee855970c4f7ac74388680a0a9bfc3dafa65487b898adc88636ce7"
     },
     "knowledge/可靠文本存储/存储错误语义.md": {
       "sources": [
@@ -107,12 +111,29 @@
         "internal/run/**",
         "internal/record/**",
         "internal/search/**",
+        "internal/reconcile/**",
         "scripts/**",
         "docs/examples/m1-devsys/**",
         "go.mod",
         "go.sum"
       ],
-      "content_hash": "3096a0d02abf57a688d70f109ed7d1742d6b14b72d94583a2061fc04ac6135c7"
+      "content_hash": "1b13cfde2b72cd253cf5080572b36828347e08844f488504d8a4029399e94519"
+    },
+    "knowledge/可靠文本存储/对账与修复.md": {
+      "sources": [
+        "internal/storage/**",
+        "internal/workitem/**",
+        "internal/events/**",
+        "internal/run/**",
+        "internal/record/**",
+        "internal/search/**",
+        "internal/reconcile/**",
+        "scripts/**",
+        "docs/examples/m1-devsys/**",
+        "go.mod",
+        "go.sum"
+      ],
+      "content_hash": "109f47988d4268ee58fc67b07c2351f5f811130afc2e0c7482757bdb68d187be"
     },
     "knowledge/可靠文本存储/架构设计.md": {
       "sources": [
@@ -122,12 +143,13 @@
         "internal/run/**",
         "internal/record/**",
         "internal/search/**",
+        "internal/reconcile/**",
         "scripts/**",
         "docs/examples/m1-devsys/**",
         "go.mod",
         "go.sum"
       ],
-      "content_hash": "47db9a117e5f88c1435d98e7140b72645ae112d26bb1d37ee167701a9e7a2756"
+      "content_hash": "9a01f32b804bbb2137e2d1a82f696fbb4e3447c4222d2b68ddcefc4a00558b96"
     },
     "knowledge/可靠文本存储/概述.md": {
       "sources": [
@@ -137,12 +159,13 @@
         "internal/run/**",
         "internal/record/**",
         "internal/search/**",
+        "internal/reconcile/**",
         "scripts/**",
         "docs/examples/m1-devsys/**",
         "go.mod",
         "go.sum"
       ],
-      "content_hash": "a58a3039c139bd0d4c36fe2c3cb9f10512f55750b68f4cf2a78ec834b8aea18c"
+      "content_hash": "e91699113e662f38c7462000f74001db14a7bb0d3f4ea9a6c375b23612443bfa"
     },
     "knowledge/可靠文本存储/特殊配置与命令.md": {
       "sources": [
@@ -152,12 +175,29 @@
         "internal/run/**",
         "internal/record/**",
         "internal/search/**",
+        "internal/reconcile/**",
         "scripts/**",
         "docs/examples/m1-devsys/**",
         "go.mod",
         "go.sum"
       ],
-      "content_hash": "edb37e399b3912286f7280ccde7d0908634a9f546b85b9471d3f06827517d409"
+      "content_hash": "3b9066779b08433f5d74440210ff9dd71963caf463c3a5f1c1fc3003eaf40951"
+    },
+    "knowledge/可靠文本存储/状态机与调度.md": {
+      "sources": [
+        "internal/storage/**",
+        "internal/workitem/**",
+        "internal/events/**",
+        "internal/run/**",
+        "internal/record/**",
+        "internal/search/**",
+        "internal/reconcile/**",
+        "scripts/**",
+        "docs/examples/m1-devsys/**",
+        "go.mod",
+        "go.sum"
+      ],
+      "content_hash": "3d15d69e436b0d45ccbe0abfe3d80aea4e3c4bc04cf59d6c4e259fe7dac3ee0a"
     },
     "knowledge/可靠文本存储/编码规范.md": {
       "sources": [
@@ -167,12 +207,13 @@
         "internal/run/**",
         "internal/record/**",
         "internal/search/**",
+        "internal/reconcile/**",
         "scripts/**",
         "docs/examples/m1-devsys/**",
         "go.mod",
         "go.sum"
       ],
-      "content_hash": "2922de4a214cab6fb92e6cf6d2cc39942475f9dedaeed4f7a5e0af126ecbae6b"
+      "content_hash": "993185bd6a6e2e86d51bd3ac062b1cc1f45ecaa3a59a08fea7a41a8e49a6b9f5"
     },
     "knowledge/可靠文本存储/领域记录与事件.md": {
       "sources": [
@@ -182,12 +223,13 @@
         "internal/run/**",
         "internal/record/**",
         "internal/search/**",
+        "internal/reconcile/**",
         "scripts/**",
         "docs/examples/m1-devsys/**",
         "go.mod",
         "go.sum"
       ],
-      "content_hash": "52b5ab2d4d3f7b50e801eea2aa783800064846c2a5b42eb4d09033c992a97b8d"
+      "content_hash": "e5f5322510082af027cc8ee6f31a8bbbcc7e95a6b9978974c735bf7a827be984"
     },
     "knowledge/项目接入与配置/Schema与错误契约.md": {
       "sources": [
@@ -200,7 +242,7 @@
         "internal/domain/**",
         "README.md"
       ],
-      "content_hash": "97141c193d57ccbef1b2f618ae8580c7eaca78165563dd53985a27b6b0155eea"
+      "content_hash": "fc58cbe7060cf56c2010fe43e2b48bc8b2bad92dbcc12744266da9bb68ac3ad3"
     },
     "knowledge/项目接入与配置/技术栈.md": {
       "sources": [
@@ -213,7 +255,7 @@
         "internal/domain/**",
         "README.md"
       ],
-      "content_hash": "ec7a1c7c9afdf9b0a37ce9736329a60aef910a03220d7876ea63aa6779befaa2"
+      "content_hash": "dd50f5a6726348525406aff3fd99418de3b39b0d06b280d0744f6c18a46d9d59"
     },
     "knowledge/项目接入与配置/架构设计.md": {
       "sources": [
@@ -226,7 +268,7 @@
         "internal/domain/**",
         "README.md"
       ],
-      "content_hash": "9753c3c4c6422b3a3d24a61e6ea29a6d52fda8a81f3de7f82ee04f6681f93759"
+      "content_hash": "4a94d37e763b9cdec52fc9b7eaf7b6eae1d8a54757a2941d582da7d9d5bbca99"
     },
     "knowledge/项目接入与配置/概述.md": {
       "sources": [
@@ -239,7 +281,7 @@
         "internal/domain/**",
         "README.md"
       ],
-      "content_hash": "94380d6019a5adef3362dcba9d94d925e1999122e2d8c91960c8e75f5da18b8d"
+      "content_hash": "1faddc37a346e19c10fa5ded4e6eea15c851df7480ae8f85f2c83f97bcf42f02"
     },
     "knowledge/项目接入与配置/特殊配置与命令.md": {
       "sources": [
@@ -252,7 +294,7 @@
         "internal/domain/**",
         "README.md"
       ],
-      "content_hash": "af43b633778d9e39d2b917798dcd5daf8f1921571afcbbf833db012b15daa5f0"
+      "content_hash": "9ad6e59e950bc3fbfe9d8a0ccc77119011187365f1671097d5c1d31dbb534bff"
     },
     "knowledge/项目接入与配置/编码规范.md": {
       "sources": [
@@ -265,20 +307,20 @@
         "internal/domain/**",
         "README.md"
       ],
-      "content_hash": "5086a7ce6b612cb44c730fbbf0e283b1570287c121da8836597d9d033f448f09"
+      "content_hash": "7268f8bf7715294a1fd21f65df4875adbeaf857ae57d33148acc0cd8be190795"
     },
     "log.md": {
       "sources": [],
-      "content_hash": "7ef020a73f18e71ed40b4e97a59aa1bed751bfac75ce4580b86a64c0ac35177a"
+      "content_hash": "5f34a0593caf4530fbf88871c91d50a9946f529347582d6783e331ad72fac7f5"
     }
   },
-  "snapshot_digest": "266328ebcec908f9aadd1f689744be295ee3e130dd4e8fda48c20b8294afc2d5",
+  "snapshot_digest": "fcd4c7e7b8589cbd311c5787b6e4ab5464c90036b3480b1769c1c192f14a7a4a",
   "snapshot_file": ".repowiki/snapshot.json",
   "last_run": {
     "status": "success",
     "phase": "finalize",
-    "started_at": "2026-09-17T14:45:09.232Z",
-    "finished_at": "2026-09-17T14:49:22.829Z",
+    "started_at": "2026-09-18T01:03:44.612Z",
+    "finished_at": "2026-09-18T01:03:44.612Z",
     "error": ""
   }
 }

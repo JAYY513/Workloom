@@ -9,7 +9,7 @@
 // Write paths: Recover runs storage.Recover (deterministic transaction
 // recovery per M0.3), then releases every expired lease and every
 // orphan-lease (lease present but referenced run file missing) via
-// workitem.ReleaseLease. RepairApply calls workitem.ApplyRepair per
+// workitem.Release. RepairApply calls workitem.ApplyRepair per
 // proposal with the Guard callback supplied by reconcile: the Guard runs
 // INSIDE the core's Write via tx.ReadForExpect and verifies every piece
 // of evidence (file present with matching SHA256 OR file absent). The
@@ -362,7 +362,7 @@ func canonicalProposals(p []Proposal) []Proposal {
 // Confirmation is the plan digest. AllowRepair=true is set on downward
 // moves. Expected is the workitem bytes the dry-run captured.
 //
-// No nested Write: ApplyRepair / ReleaseLease run as top-level Writes,
+// No nested Write: ApplyRepair / Release run as top-level Writes,
 // each guarded by the digest match and the proposal's expected bytes.
 func RepairApply(ctx context.Context, root string, plan Plan, opts Options) (ApplyReport, error) {
 	if opts.Reason == "" {

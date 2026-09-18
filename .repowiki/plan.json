@@ -2,7 +2,7 @@
   "schema": 2,
   "budget": {
     "tier": "模块树",
-    "reason": "72 个扫描文件、多层目录，按规模表采用模块树档位；保持既有两个功能模块与三篇文章，不为填满 caps 扩写。",
+    "reason": "85 个扫描文件、多层目录，沿用模块树档位；M2 提交后 durable-storage scope 增补 internal/reconcile/**，仍保持两个功能模块与三篇文章，新增知识卡但不扩张文章树。",
     "max_total_modules": 8,
     "max_depth": 2,
     "max_total_articles": 30,
@@ -37,6 +37,7 @@
         "internal/run/**",
         "internal/record/**",
         "internal/search/**",
+        "internal/reconcile/**",
         "scripts/**",
         "docs/examples/m1-devsys/**",
         "go.mod",
@@ -81,8 +82,8 @@
     }
   ],
   "coverage_check": {
-    "covered_files": 66,
-    "total_files": 72,
+    "covered_files": 79,
+    "total_files": 85,
     "uncovered": [
       ".gitattributes",
       ".gitignore",

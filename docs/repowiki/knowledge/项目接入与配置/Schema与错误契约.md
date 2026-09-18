@@ -11,9 +11,13 @@ triggers:
   - Project 模型有哪些字段
   - 嵌套结构怎么校验
   - domain.SchemaVersion 是几
-description: devsys 受管 YAML 文件的严格 schema：每文件白名单 + schema_version 闸门 + 行号定位 + Problems 错误结构 + 退出码 4 的语义边界 + M1 完整 Project 模型 + 嵌套字段校验。
+  - --expect 哈希怎么传
+  - --confirm 摘要格式
+  - 写命令必填参数
+  - 退出码 3 何时返回
+description: devsys 受管 YAML 文件的严格 schema：每文件白名单 + schema_version 闸门 + 行号定位 + Problems 错误结构 + 退出码 4 的语义边界 + M1 完整 Project 模型 + 嵌套字段校验；M2 新增退出码 3/4 在 workitem 与 repair 中的扩展语义、--expect 64-hex sha256 + fail-closed、--confirm 摘要格式、写命令 --actor/--reason 必填。
 generated: true
-source_commit: 2735f62
+source_commit: 85b0de7
 generator: repowiki-gen
 ---
 
@@ -90,7 +94,7 @@ generator: repowiki-gen
 | `kindInt` | `!!int` 标量 | `yaml.Node.Decode(&int)` 成功 |
 | `kindString` | `!!str` 标量；非空（当 `required`） | `Kind==ScalarNode && Tag=="!!str"` |
 | `kindTimestamp` | `!!str` 或 `!!timestamp`，必须能 `time.Parse(time.RFC3339, ...)` | 见 [internal/config/validate.go:182-191](../../../internal/config/validate.go#L182-L191) |
-| `kindStrings` | `!!null`（保留“未记录”态）或 `!!seq` 元素皆为 `!!str` | 见 [internal/config/validate.go:160-163](../../../internal/config/validate.go#L160-L163) |
+| `kindStrings` | `!!null`（保留"未记录"态）或 `!!seq` 元素皆为 `!!str` | 见 [internal/config/validate.go:160-163](../../../internal/config/validate.go#L160-L163) |
 | `kindScope` | `!!map`，键仅 `in` / `out`，值皆 `kindStrings` | 见 [internal/config/validate.go:164-167](../../../internal/config/validate.go#L164-L167) + [internal/config/nested.go:23-24](../../../internal/config/nested.go#L23-L24) |
 | `kindCurrent` | `!!map`，子键集合 = `summary/risks/blockers/next_focus` | 见 [internal/config/nested.go:25-26](../../../internal/config/nested.go#L25-L26) |
 | `kindMilestones` | `!!seq`，每元素 mapping 必填 `id/name/status`（皆 `kindString`） | 见 [internal/config/nested.go:18-22](../../../internal/config/nested.go#L18-L22) |
@@ -99,7 +103,7 @@ generator: repowiki-gen
 
 ## `schema_version` 闸门
 
-`validate` 的第一步是检查 `schema_version`（[internal/config/validate.go:98-114](../../../internal/config/validate.go#L98-L114)）。它**早于**字段白名单检查，因此一份未知版本的受管文件**只**会产生一条 `unsupported version N` 问题，不会被后续“未知键 / 类型错误”的噪声淹没。
+`validate` 的第一步是检查 `schema_version`（[internal/config/validate.go:98-114](../../../internal/config/validate.go#L98-L114)）。它**早于**字段白名单检查，因此一份未知版本的受管文件**只**会产生一条 `unsupported version N` 问题，不会被后续"未知键 / 类型错误"的噪声淹没。
 
 触发的拒绝文本（[internal/config/validate.go:110-113](../../../internal/config/validate.go#L110-L113)）：
 
@@ -113,7 +117,7 @@ unsupported version N (this build supports M); refusing to write, migration must
 
 ## 行号定位
 
-每个 `Problem` 都带 `Line`（1-based，0 表示“整文件层级的问题”）。`yaml.Node.Line` 由 `gopkg.in/yaml.v3` 在解码时填入。覆盖以下情形：
+每个 `Problem` 都带 `Line`（1-based，0 表示"整文件层级的问题"）。`yaml.Node.Line` 由 `gopkg.in/yaml.v3` 在解码时填入。覆盖以下情形：
 
 - 顶层不是 mapping：根节点的 `Line`。
 - `schema_version` 缺失：根节点 `Line`，`Field="schema_version"`。
@@ -133,19 +137,89 @@ project.yaml:5: milestones[0].status: required
 
 ## 退出码契约
 
-`CodeInvalid = 4`（[internal/cli/cli.go:27-34](../../../internal/cli/cli.go#L27-L34)）的语义在 `usage` 文本里写明（[internal/cli/cli.go:52-57](../../../internal/cli/cli.go#L52-L57)）：
+`CodeInvalid = 4`（[internal/cli/cli.go:33-44](../../../internal/cli/cli.go#L33-L44)）的语义在 `usage` 文本里写明（[internal/cli/cli.go:66-71](../../../internal/cli/cli.go#L66-L71)）：
 
 ```text
+0  success
+1  internal error
+2  usage error
+3  precondition error (not a git repository, wrong directory, permissions, digest mismatch)
 4  invalid managed state (parse, field or schema_version problems)
 ```
 
-它**只**由 `errInvalid(config.Problems)` 触发（[internal/cli/cli.go:89-100](../../../internal/cli/cli.go#L89-L100)）。写命令在拿到 `Problems` 时返回 `CodeInvalid` 并**不**修改磁盘（被 `TestInitRefusesUnknownSchemaVersion` 守护，见 [internal/cli/cli_test.go:282-331](../../../internal/cli/cli_test.go#L282-L331)）。
+### `CodeInvalid = 4`：受管状态存在但不可信
+
+它**只**由 `errInvalid(config.Problems)` 触发（[internal/cli/cli.go:103-114](../../../internal/cli/cli.go#L103-L114)）。写命令在拿到 `Problems` 时返回 `CodeInvalid` 并**不**修改磁盘（被 `TestInitRefusesUnknownSchemaVersion` 守护，见 [internal/cli/cli_test.go:282-331](../../../internal/cli/cli_test.go#L282-L331)）。
+
+M2 起 `CodeInvalid = 4` 还覆盖 workitem / reconcile 写路径下的领域错误，由 `workitemError` 把非 `storage.ErrNotInitialized` / `workitem.ErrNotFound` 的领域错误升为带 `kind="workitem"` 的 `codedError{Code: CodeInvalid}`（[internal/cli/cli.go:477-482](../../../internal/cli/cli.go#L477-L482)）。`code=4` 在 `--json` 载荷里与配置错误走同一字段，调用脚本可统一按 `code` 分支。
+
+### `CodePrecondition = 3`：前提不满足
+
+原本只承担"环境侧错误"（非 git 仓库、git 不在 PATH、CWD 不是仓库根）。M2 在同一退出码下聚合两类新用法（[internal/cli/cli.go:70](../../../internal/cli/cli.go#L70)）：
+
+| 触发点 | 来源 | 错误提示 |
+|---|---|---|
+| 非 git 仓库 / git 不在 PATH / CWD 不在仓库根 | `project.PreconditionError` → `codedError{Code: CodePrecondition}` | `not a git repository` 等 |
+| `.devsys/` 不存在（`search` / `workitem get` / `workitem create` 等） | `storage.ErrNotInitialized` / `workitem.ErrNotFound` → `workitemError` → `errPrecondition` | `project not initialized; run devsys init` 等 |
+| workitem `--expect` 哈希与现状不符 | `expectedSnapshot` 返回 `version mismatch` → `workitemError` → `errPrecondition` | `version mismatch: work item changed since your read; rerun workitem get` |
+| `repair --apply` 收到的 `--confirm` 与重跑摘要不符 | `reconcile.ErrDigestMismatch` → `errPrecondition` | `confirmation digest does not match current state; run `devsys repair --dry-run` again` |
+
+第 3、4 行即方案 §15.4 "推断→确认→重写" 闭环在退出码层面的体现：调用方必须重新读证据 / 重新干跑，才能继续动盘。脚本可以**只信 `code == 3` 重新发起一次 `get` / `dry-run`**。
 
 `devsys search <keyword>` 路径**不**涉及 `config.Load` / `Diagnose`，因此**不**返回 `CodeInvalid`；它的失败模式是 `CodeInternal`（搜索失败）或 `CodePrecondition`（缺 `.devsys/`）。
 
+## `--expect`：64-hex sha256 + fail-closed
+
+`workitem transition` 与 `workitem claim` 的 `--expect` 是调用方持有的"工作项快照版本哈希"，由 `workitem get` 在 `--json` 模式下的 `version` 字段给出（[internal/cli/cli.go:381-389](../../../internal/cli/cli.go#L381-L389)）。
+
+格式与解析（[internal/cli/cli.go:493-506](../../../internal/cli/cli.go#L493-506)）：
+
+- 编码：小写 64 字符十六进制串，等价于 `fmt.Sprintf("%x", storage.HashBytes(raw))`，即 sha256 的字节级表示。
+- 解析：`strings.TrimSpace` 后用 `hex.DecodeString` 解码；解码结果长度必须等于 `crypto/sha256.Size`（32 字节）；解码失败、长度错误、哈希不匹配**全部**视为哈希不匹配，统一返回 `version mismatch` 错误。
+- fail-closed：`expectedSnapshot` 在哈希不匹配时**不**返回 `raw` 字节；底层 `Transition` / `Claim` 拿不到 `Expected` 入参，写路径被彻底拦截。
+- 退出码：不匹配 → `CodePrecondition = 3`，错误提示 `version mismatch: work item changed since your read; rerun workitem get`。
+
+调用契约：
+
+```sh
+VERSION=$(bin/devsys.exe --json workitem get WLM-0001 | jq -r .version)
+bin/devsys.exe workitem transition --id WLM-0001 --to in_progress \
+    --actor alice --reason "M2 kickoff" --expect "$VERSION"
+```
+
+## `--confirm`：确定性 digest + 摘要回放
+
+`devsys repair --apply --confirm <digest>` 的 `--confirm` 是 `repair --dry-run` 在 `--json` 模式下的 `plan.digest` 字段（[internal/cli/cli.go:659-664](../../../internal/cli/cli.go#L659-L664)）。
+
+格式与判定（[internal/cli/cli.go:614-635](../../../internal/cli/cli.go#L614-L635) + [internal/reconcile/reconcile.go:319-335](../../../internal/reconcile/reconcile.go#L319-335)）：
+
+- 编码：`reconcile.ComputeDigest(plan.Proposals)` 输出小写十六进制摘要；墙钟时间**不**参与计算，相同证据输入产生相同摘要。
+- 判定：`--apply` 内部**先**重跑 `reconcile.RepairDryRun` 取得当前 `Digest`，**再**用调用方的 `--confirm` 覆盖 `plan.Digest`，**再**调 `reconcile.RepairApply`；摘要不一致由 `reconcile.ErrDigestMismatch` 上浮为 `CodePrecondition = 3`，并提示 `run `devsys repair --dry-run` again`。
+- 空摘要：`--apply` 在缺 `--confirm` 时直接返回 `CodeUsage = 2`，**不**进入 reconcile（[internal/cli/cli.go:614-617](../../../internal/cli/cli.go#L614-L617)）。
+
+调用契约：
+
+```sh
+DIGEST=$(bin/devsys.exe --json repair --dry-run --actor alice --reason "M2 audit" | jq -r .plan.digest)
+bin/devsys.exe repair --apply --confirm "$DIGEST" --actor alice --reason "M2 audit"
+```
+
+## 写命令必填 `--actor` 与 `--reason`
+
+所有动盘的命令在 CLI 层强制记录操作者与原因（审计追溯），缺失即返回 `CodeUsage = 2`：
+
+| 命令 | 必填参数 | 来源 |
+|---|---|---|
+| `workitem create` | `--title` `--actor` `--reason`（`--prefix` 可选） | [internal/cli/cli.go:392-400](../../../internal/cli/cli.go#L392-L400) |
+| `workitem transition` | `--id` `--to` `--actor` `--reason` `--expect` | [internal/cli/cli.go:416-425](../../../internal/cli/cli.go#L416-L425) |
+| `workitem claim` | `--id` `--owner` `--reason`（`--expect` 可选但建议必带） | [internal/cli/cli.go:441-449](../../../internal/cli/cli.go#L441-L449) |
+| `recover` | `--actor` `--reason` | [internal/cli/cli.go:559-566](../../../internal/cli/cli.go#L559-L566) |
+| `repair --dry-run` | `--actor` `--reason` | [internal/cli/cli.go:598-608](../../../internal/cli/cli.go#L598-L608) |
+| `repair --apply --confirm <digest>` | `--actor` `--reason` `--confirm` | [internal/cli/cli.go:598-617](../../../internal/cli/cli.go#L598-L617) |
+
 ## JSON 错误结构（`--json`）
 
-`render` 在 `--json` 时输出（[internal/cli/cli.go:156-170](../../../internal/cli/cli.go#L156-L170)）：
+`render` 在 `--json` 时输出（[internal/cli/cli.go:178-198](../../../internal/cli/cli.go#L178-L198)）：
 
 ```json
 {
@@ -161,7 +235,7 @@ project.yaml:5: milestones[0].status: required
 }
 ```
 
-`kind` 取值与 `codedError.kind` 一致：`"usage"` / `"precondition"` / `"invalid"` / `"internal"`。**调用脚本应当只信 `code` 字段做分支**，不要解析 `message`。
+`kind` 取值与 `codedError.kind` 一致：`"usage"` / `"precondition"` / `"invalid"` / `"internal"`。M2 起 workitem 领域错误的 `kind="workitem"`，code 与 `CodeInvalid = 4` 一致。**调用脚本应当只信 `code` 字段做分支**，不要解析 `message`。
 
 `devsys --json search <keyword>` 的成功载荷则是（[internal/cli/cli.go:270-282](../../../internal/cli/cli.go#L270-L282)）：
 
@@ -175,15 +249,18 @@ project.yaml:5: milestones[0].status: required
 }
 ```
 
+`devsys --json doctor` 与 `devsys --json repair --dry-run` 分别输出 `InspectionReport` 与 `Plan`（[internal/cli/cli.go:523-525](../../../internal/cli/cli.go#L523-L525)、[internal/cli/cli.go:659-664](../../../internal/cli/cli.go#L659-L664)）。
+
 ## 与存储层的边界
 
-本契约**只**诊断“受管元数据文件”（`project.yaml`、`config.yaml`、`state/*.yaml`）。它**不**诊断：
+本契约**只**诊断"受管元数据文件"（`project.yaml`、`config.yaml`、`state/*.yaml`）。它**不**诊断：
 
 - 项目级写锁或事务日志（属于 `internal/storage`）。
 - 工作项 / 知识 / 事件等领域文件（M1+ 在各自 package 内自行校验，落盘前必须通过对应 `domain.DecodeYAML`，未通过时由 `storage.CheckSchemaVersion` 拒绝）。
 - 用户级注册表 `registry.yaml`（它有自己的解析器，见 [internal/registry/registry.go:84-106](../../../internal/registry/registry.go#L84-L106)，不在 schema_version 闸门管辖内）。
+- 租约文件（`.devsys/scheduling/<id>.yaml`，M2 新增；其 schema 由 `internal/workitem` 自管理，**不**走 `config.Load`；doctor / recover / repair 走 `internal/reconcile` 通过 `storage.Inspect` 检查）。
 
-“配置诊断”与“存储恢复”刻意分开：前者是 M0.4 的只读工具，后者是 M0.3 的写路径守护者。**不要**用 `config check` 去尝试恢复锁状态或回放事务日志——这两层互不调用。
+"配置诊断"与"存储恢复"刻意分开：前者是 M0.4 的只读工具，后者是 M0.3 的写路径守护者。**不要**用 `config check` 去尝试恢复锁状态或回放事务日志——这两层互不调用。
 
 ## 演进规则（后续里程碑扩展白名单时）
 
@@ -193,4 +270,4 @@ project.yaml:5: milestones[0].status: required
 2. `internal/config/config.go` 的对应 `Project` / `Config` struct（让 `Load` 能解析；嵌套字段对应到 `domain.*` 类型）。
 3. `internal/project/tree.go` 的对应占位 struct + builder（让 `init` 写出的字节仍然合法；M1 起优先用 `domain.EncodeYAML` 序列化）。
 
-写命令前置校验 `config.Load` 会把第三处漏改的字段立刻暴露为“未知键”，从而保证占位文件与白名单**必须**同步。`domain.DecodeYAML` 在解码时若发现 `schema_version` 不等于 `domain.SchemaVersion` 会立即拒绝（[internal/domain/serialize.go:73-78](../../../internal/domain/serialize.go#L73-L78)），保证 struct 与白名单永远在同一个版本号上。
+写命令前置校验 `config.Load` 会把第三处漏改的字段立刻暴露为"未知键"，从而保证占位文件与白名单**必须**同步。`domain.DecodeYAML` 在解码时若发现 `schema_version` 不等于 `domain.SchemaVersion` 会立即拒绝（[internal/domain/serialize.go:73-78](../../../internal/domain/serialize.go#L73-L78)），保证 struct 与白名单永远在同一个版本号上。
