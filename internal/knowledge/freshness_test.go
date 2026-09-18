@@ -1,6 +1,7 @@
 package knowledge
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -52,6 +53,44 @@ func write(t *testing.T, root, rel, content string) {
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
+}
+
+// renderedPage renders the page fixture the evaluation tests parse.
+func renderedPage(commit string, sources ...string) string {
+	front := "status: current\ntype: module\ntriggers:\n  - x\ndescription: d\nsource_commit: " + commit + "\n"
+	if len(sources) > 0 {
+		front += "sources:\n"
+		for _, source := range sources {
+			front += "  - " + source + "\n"
+		}
+	}
+	return page(front, "\n# 标题\n")
+}
+
+// commitAll commits the working tree of an existing fixture repository.
+func commitAll(root, message string) (string, error) {
+	env := append(os.Environ(),
+		"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@example.com",
+		"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@example.com")
+	for _, args := range [][]string{{"add", "-A"}, {"commit", "-q", "--allow-empty", "-m", message}} {
+		cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
+		cmd.Env = env
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("git %v: %v: %s", args, err, out)
+		}
+	}
+	out, err := exec.Command("git", "-C", root, "rev-parse", "HEAD").Output()
+	return strings.TrimSpace(string(out)), err
+}
+
+// mustRead reads a file the fixture wrote.
+func mustRead(t *testing.T, path string) []byte {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return data
 }
 
 func TestHeadAndChanges(t *testing.T) {
@@ -251,5 +290,44 @@ func TestLoadStateRejectsUnknownVersion(t *testing.T) {
 	write(t, root, StateFile, `{"schema_version": 7, "baseline": {"commit": "x"}}`)
 	if _, err := LoadState(root); err == nil || !strings.Contains(err.Error(), "schema_version") {
 		t.Fatalf("err = %v", err)
+	}
+}
+
+// A page whose content matches its record is current as of the layer baseline:
+// the in-page source_commit a generator writes lags behind the baseline it
+// finalizes at, and judging the page by the older commit would call a page that
+// was just regenerated stale.
+func TestEvaluatePrefersLayerBaselineForMatchingContent(t *testing.T) {
+	root, older := gitRepo(t, map[string]string{"internal/store/a.go": "package store\n"})
+	pagePath := "docs/repowiki/knowledge/存储/概述.md"
+	write(t, root, pagePath, renderedPage(older, "internal/store/**"))
+	// The generator regenerated the page after a later commit and recorded the
+	// content it wrote; the page's own source_commit still names the older one.
+	write(t, root, "internal/store/a.go", "package store // newer\n")
+	committed, err := commitAll(root, "newer")
+	if err != nil {
+		t.Fatal(err)
+	}
+	current, err := HashFile(filepath.Join(root, filepath.FromSlash(pagePath)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := &State{
+		SchemaVersion: StateSchemaVersion,
+		Baseline:      Baseline{Commit: committed},
+		Pages:         map[string]PageState{pagePath: {ContentHash: current}},
+	}
+	parsed, problems := Parse(pagePath, mustRead(t, filepath.Join(root, filepath.FromSlash(pagePath))))
+	for _, problem := range problems {
+		if problem.Severity != "warning" {
+			t.Fatalf("fixture page: %s", problem.String())
+		}
+	}
+	freshness, err := Evaluate(root, []*Page{parsed}, state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(freshness.Affected()) != 0 || freshness.Pages[0].Baseline != committed {
+		t.Fatalf("verdict = %+v, want fresh against the layer baseline", freshness.Pages[0])
 	}
 }

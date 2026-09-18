@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"workloom/internal/config"
 	"workloom/internal/domain"
 	"workloom/internal/next"
 	"workloom/internal/prompt"
@@ -40,6 +41,9 @@ type RunPromptView struct {
 	Refs    []string `json:"refs"`
 	Text    string   `json:"text"`
 	Notices []string `json:"notices,omitempty"`
+	// Snapshot is what this round's context was assembled from; it is recorded
+	// with the round so the attempt's evidence says what the agent saw (方案 §11.3).
+	Snapshot prompt.Snapshot `json:"snapshot"`
 }
 
 // RunPrompt assembles a round's prompt from the run's own facts: the first
@@ -100,7 +104,7 @@ func (s *Service) RunPrompt(ctx context.Context, req RunPromptRequest) (RunPromp
 	if err != nil {
 		return RunPromptView{}, err
 	}
-	wctx, err := s.ContextForWorkitem(ctx, wi.Item.ID)
+	wctx, err := s.ContextForWorkitem(ctx, wi.Item.ID, nil)
 	if err != nil {
 		return RunPromptView{}, err
 	}
@@ -114,9 +118,25 @@ func (s *Service) RunPrompt(ctx context.Context, req RunPromptRequest) (RunPromp
 			Dependencies: wi.Item.Dependencies,
 			WorkflowID:   workflowID(wi.Item), WorkflowStep: workflowStep(wi.Item), WorkflowPaused: workflowPaused(wi.Item),
 		},
-		Policy:  policyBrief,
-		State:   prompt.State{Verdict: report.Verdict, Next: report.Next.Action, Risks: riskLines(report.Risks)},
-		Context: prompt.Context{Decisions: recordPromptRefs(wctx.Decisions), Findings: recordPromptRefs(wctx.Findings), Artifacts: recordPromptRefs(wctx.Artifacts), Comments: eventPromptRefs(wctx.Comments)},
+		Policy: policyBrief,
+		State:  prompt.State{Verdict: report.Verdict, Next: report.Next.Action, Risks: riskLines(report.Risks)},
+		Context: prompt.Context{
+			Decisions: recordPromptRefs(wctx.Decisions), Findings: recordPromptRefs(wctx.Findings),
+			Artifacts: recordPromptRefs(wctx.Artifacts), Comments: eventPromptRefs(wctx.Comments),
+			Knowledge: knowledgePromptRefs(wctx.Knowledge.Pages),
+			Notes:     knowledgeNotes(wctx.Knowledge),
+		},
+		Snapshot: prompt.Snapshot{
+			ProjectStateVersion: projectStateVersion(md),
+			WorkitemVersion:     wi.Version,
+			ArtifactVersions:    artifactVersions(wctx.Artifacts),
+			KnowledgeRevision:   wctx.Knowledge.Baseline,
+			KnowledgePages:      knowledgePagePaths(wctx.Knowledge.Pages),
+			DecisionIDs:         decisionIDs(wctx.Decisions),
+			WorkspaceHead:       r.Claim.HeadSHA,
+			KnowledgeBehind:     knowledgeBehind(r.Claim.HeadSHA, wctx.Knowledge.Baseline),
+			KnowledgeDegraded:   wctx.Knowledge.Degraded,
+		},
 	}
 	if round > 1 {
 		boundary := time.Time{}
@@ -138,6 +158,7 @@ func (s *Service) RunPrompt(ctx context.Context, req RunPromptRequest) (RunPromp
 	view := RunPromptView{
 		RunID: r.ID, Round: assembled.Round, Mode: string(assembled.Mode),
 		Hash: assembled.Hash, Refs: assembled.Refs, Text: assembled.Text, Notices: notices,
+		Snapshot: assembled.Snapshot,
 	}
 	if req.Write {
 		path, err := writePromptFile(s.Root, r.ID, assembled)
@@ -310,4 +331,74 @@ func firstLine(text string) string {
 		line = line[:120] + "…"
 	}
 	return line
+}
+
+// knowledgePromptRefs turns the selected pages into prompt references: a path
+// the agent can read, with the page's own description as the title.
+func knowledgePromptRefs(pages []KnowledgePageRef) []prompt.Ref {
+	refs := make([]prompt.Ref, 0, len(pages))
+	for _, page := range pages {
+		extra := page.Status
+		if page.Stale {
+			extra += " stale"
+		}
+		refs = append(refs, prompt.Ref{Ref: page.Path, Title: page.Description, Extra: strings.TrimSpace(extra)})
+	}
+	return refs
+}
+
+// knowledgeNotes carries the knowledge layer's own caveat into the round: a
+// layer that cannot date its pages is a fact the agent should not have to
+// rediscover.
+func knowledgeNotes(context KnowledgeContext) []string {
+	if context.Notice == "" {
+		return nil
+	}
+	return []string{context.Notice}
+}
+
+// knowledgePagePaths lists the pages a round's knowledge context used.
+func knowledgePagePaths(pages []KnowledgePageRef) []string {
+	paths := make([]string, 0, len(pages))
+	for _, page := range pages {
+		paths = append(paths, page.Path)
+	}
+	return paths
+}
+
+// artifactVersions records which artifacts the round's context carried. The
+// context keeps references, not versions, so the reference itself is what the
+// snapshot can promise.
+func artifactVersions(refs []RecordRef) []string {
+	out := make([]string, 0, len(refs))
+	for _, ref := range refs {
+		out = append(out, ref.Ref)
+	}
+	return out
+}
+
+// decisionIDs lists the decisions a round's context carried.
+func decisionIDs(refs []RecordRef) []string {
+	out := make([]string, 0, len(refs))
+	for _, ref := range refs {
+		out = append(out, ref.Ref)
+	}
+	return out
+}
+
+// projectStateVersion stands in for the project state's version counter: the
+// managed state records no counter, and its last update is the honest answer to
+// "which state did this round read" (方案 §11.3).
+func projectStateVersion(md *config.Metadata) string {
+	if md == nil || md.Project == nil {
+		return ""
+	}
+	return md.Project.UpdatedAt.UTC().Format(time.RFC3339)
+}
+
+// knowledgeBehind reports whether the workspace ran ahead of the knowledge
+// baseline. Knowledge is not split per worktree (方案 §11.3): a workspace ahead
+// is annotated, not re-indexed.
+func knowledgeBehind(workspaceHead, knowledgeRevision string) bool {
+	return workspaceHead != "" && knowledgeRevision != "" && workspaceHead != knowledgeRevision
 }

@@ -789,8 +789,13 @@ func runContext(stdout io.Writer, opts options, rest []string) error {
 		fs := flag.NewFlagSet("context "+rest[0], flag.ContinueOnError)
 		fs.SetOutput(io.Discard)
 		limit := fs.Int("limit", 5, "max references per list")
+		task := fs.String("task", "", "assemble the layered context for one work item")
+		paths := fs.String("path", "", "comma-separated files this task expects to touch")
 		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 {
-			return errUsage("context %s [--limit N]", rest[0])
+			return errUsage("context %s [--limit N] [--task <workitem-id> [--path a,b]]", rest[0])
+		}
+		if *task != "" {
+			return runContextTask(stdout, opts, svc, ctx, *task, splitPaths(*paths), *limit, rest[0] == "refresh")
 		}
 		var (
 			view app.ContextView
@@ -848,10 +853,12 @@ func runContext(stdout io.Writer, opts options, rest []string) error {
 		fs := flag.NewFlagSet("context workitem", flag.ContinueOnError)
 		fs.SetOutput(io.Discard)
 		id := fs.String("id", "", "work item id")
+		pathsFlag := fs.String("path", "", "comma-separated files this task expects to touch")
 		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *id == "" {
-			return errUsage("context workitem --id <workitem-id>")
+			return errUsage("context workitem --id <workitem-id> [--path a,b]")
 		}
-		view, err := svc.ContextForWorkitem(ctx, *id)
+		paths := splitPaths(*pathsFlag)
+		view, err := svc.ContextForWorkitem(ctx, *id, paths)
 		if err != nil {
 			return err
 		}
@@ -880,6 +887,64 @@ func runContext(stdout io.Writer, opts options, rest []string) error {
 	default:
 		return errUsage("unknown `devsys context` subcommand %q", rest[0])
 	}
+}
+
+// runContextTask renders the layered assembly for one task: the project
+// summary, the task with its records, and the knowledge pages it touches
+// (方案 §11.1).
+func runContextTask(stdout io.Writer, opts options, svc *app.Service, ctx context.Context, id string, paths []string, limit int, refresh bool) error {
+	view, err := svc.TaskContext(ctx, id, paths, limit, refresh)
+	if err != nil {
+		return err
+	}
+	if opts.json {
+		return json.NewEncoder(stdout).Encode(struct {
+			OK bool `json:"ok"`
+			app.TaskContext
+		}{OK: true, TaskContext: view})
+	}
+	if !opts.quiet {
+		fmt.Fprintf(stdout, "project: %s (%s)\nphase: %s\nreadiness: %s\n",
+			view.Summary.Project.Name, view.Summary.Project.ID, view.Summary.Project.CurrentPhase, view.Summary.Verdict)
+		fmt.Fprintf(stdout, "task: %s\t%s\t%s\t%s\n", view.Task.WorkItem.ID, view.Task.WorkItem.Status, view.Task.WorkItem.Type, view.Task.WorkItem.Title)
+		for _, ref := range view.Task.Decisions {
+			fmt.Fprintf(stdout, "  decision: %s\t%s\n", ref.Ref, ref.Title)
+		}
+		for _, ref := range view.Task.Findings {
+			fmt.Fprintf(stdout, "  finding: %s\t%s\n", ref.Ref, ref.Title)
+		}
+		for _, ref := range view.Task.Artifacts {
+			fmt.Fprintf(stdout, "  artifact: %s\t%s\n", ref.Ref, ref.Title)
+		}
+		for _, n := range view.Summary.Notices {
+			fmt.Fprintf(stdout, "  notice: %s\n", n)
+		}
+	}
+	// The knowledge references are the part an agent acts on (read these
+	// paths); they stay visible under --quiet like the other findings.
+	if view.Task.Knowledge.Notice != "" {
+		fmt.Fprintf(stdout, "  knowledge: %s\n", view.Task.Knowledge.Notice)
+	}
+	for _, page := range view.Task.Knowledge.Pages {
+		stale := ""
+		if page.Stale {
+			stale = "  [stale]"
+		}
+		fmt.Fprintf(stdout, "  knowledge: %s\t%s\t(%s: %s)%s\n", page.Path, page.Description, page.Match, page.Reason, stale)
+	}
+	return nil
+}
+
+// splitPaths reads a comma-separated path list; empty entries are dropped so
+// `--path a,,b` behaves like `--path a,b`.
+func splitPaths(list string) []string {
+	var out []string
+	for _, item := range strings.Split(list, ",") {
+		if trimmed := strings.TrimSpace(item); trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
 }
 
 // runKnowledge routes the knowledge family: `status` reports the layer's
@@ -1104,10 +1169,14 @@ func reportRefresh(stdout io.Writer, opts options, view app.KnowledgeRefreshView
 	if view.Reason != "" {
 		fmt.Fprintf(stdout, "%s\n", view.Reason)
 	}
-	// What the layer kept out of the generator's reach, and the generator's own
-	// output, stay visible under --quiet: they are what a run is judged by.
+	// What the layer kept out of the generator's reach, what the generator
+	// could not finish by itself, and its own output stay visible under
+	// --quiet: they are what a run is judged by.
 	for _, skip := range view.Skipped {
 		fmt.Fprintf(stdout, "  skipped: %s  (%s)\n", skip.Path, skip.Reason)
+	}
+	for _, page := range view.AwaitingGeneration {
+		fmt.Fprintf(stdout, "  awaiting generation: %s\n", page)
 	}
 	if view.Ran && view.Output != "" {
 		fmt.Fprint(stdout, view.Output)

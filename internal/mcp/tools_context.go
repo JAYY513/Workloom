@@ -29,16 +29,17 @@ func registerContextGet(s *mcpsdk.Server, cfg Config) {
 }
 
 type contextForWorkitemInput struct {
-	ID string `json:"id" jsonschema:"work item id"`
+	ID    string   `json:"id" jsonschema:"work item id"`
+	Paths []string `json:"paths,omitempty" jsonschema:"files this task expects to touch, so knowledge pages covering them are included"`
 }
 
 func registerContextForWorkitem(s *mcpsdk.Server, cfg Config) {
 	mcpsdk.AddTool(s, &mcpsdk.Tool{
 		Name:        "context_for_workitem",
-		Description: "Assemble everything about one work item: the item, its workflow candidates, and the records and comments that reference it. Read-only.",
+		Description: "Assemble everything about one work item: the item, its workflow, the records and comments that reference it, and the knowledge pages it touches (by trigger match, or by the paths the caller names). Read-only.",
 		Annotations: readOnly(),
 	}, func(ctx context.Context, req *mcpsdk.CallToolRequest, in contextForWorkitemInput) (*mcpsdk.CallToolResult, app.WorkitemContextView, error) {
-		view, err := cfg.service().ContextForWorkitem(ctx, in.ID)
+		view, err := cfg.service().ContextForWorkitem(ctx, in.ID, in.Paths)
 		if err != nil {
 			return fail[app.WorkitemContextView](err)
 		}

@@ -43,6 +43,35 @@ type Prompt struct {
 	Hash     string    `json:"hash"`
 	Sections []Section `json:"sections"`
 	Refs     []string  `json:"refs"`
+	// Snapshot records what this round's context was assembled from, so a later
+	// reader can ask what the agent saw and why it decided (方案 §11.3).
+	Snapshot Snapshot `json:"snapshot"`
+}
+
+// Empty reports whether the snapshot carries nothing worth recording.
+func (s Snapshot) Empty() bool {
+	return s.ProjectStateVersion == "" && s.WorkitemVersion == "" && len(s.ArtifactVersions) == 0 &&
+		s.KnowledgeRevision == "" && len(s.KnowledgePages) == 0 && len(s.DecisionIDs) == 0 &&
+		s.WorkspaceHead == "" && !s.KnowledgeBehind && !s.KnowledgeDegraded
+}
+
+// Snapshot is the context record of one round (方案 §11.3): the versions the
+// assembly read, the knowledge revision it used, and the workspace commit it
+// ran against. Knowledge is never split per worktree; a workspace ahead of the
+// knowledge baseline is annotated instead.
+type Snapshot struct {
+	ProjectStateVersion string   `json:"project_state_version,omitempty"`
+	WorkitemVersion     string   `json:"workitem_version,omitempty"`
+	ArtifactVersions    []string `json:"artifact_versions,omitempty"`
+	KnowledgeRevision   string   `json:"knowledge_revision,omitempty"`
+	KnowledgePages      []string `json:"knowledge_pages,omitempty"`
+	DecisionIDs         []string `json:"decision_ids,omitempty"`
+	WorkspaceHead       string   `json:"workspace_head,omitempty"`
+	// KnowledgeBehind is true when the workspace is ahead of the knowledge
+	// baseline: the pages describe older code than the round ran against.
+	KnowledgeBehind bool `json:"knowledge_behind,omitempty"`
+	// KnowledgeDegraded is true when no page layer exists at all.
+	KnowledgeDegraded bool `json:"knowledge_degraded,omitempty"`
 }
 
 // Task is the work item brief.
@@ -89,6 +118,9 @@ type Context struct {
 	Findings  []Ref
 	Artifacts []Ref
 	Comments  []Ref
+	// Knowledge lists the knowledge pages this task touches: the third layer of
+	// 方案 §11.1, loaded on demand and addressed by path.
+	Knowledge []Ref
 	Notes     []string
 }
 
@@ -106,6 +138,7 @@ type Input struct {
 	Policy    Policy
 	State     State
 	Context   Context
+	Snapshot  Snapshot
 	Changes   []Change
 	Remaining []string
 }
@@ -149,8 +182,11 @@ func Assemble(in Input) (Prompt, error) {
 			{Title: "工作流策略正文", Body: strings.TrimRight(body, "\n")},
 			{Title: "当前状态", Body: stateSection(in.State)},
 			{Title: "上下文引用", Body: contextSection(in.Context)},
-			{Title: "汇报协议", Body: protocol},
 		}
+		if knowledgeNotice := knowledgeSection(in.Snapshot); knowledgeNotice != "" {
+			sections = append(sections, Section{Title: "知识基线", Body: knowledgeNotice})
+		}
+		sections = append(sections, Section{Title: "汇报协议", Body: protocol})
 	} else {
 		sections = []Section{
 			{Title: "任务", Body: taskLine(in.Task)},
@@ -169,6 +205,7 @@ func Assemble(in Input) (Prompt, error) {
 		Hash:     hex.EncodeToString(sum[:]),
 		Sections: sections,
 		Refs:     refs(in),
+		Snapshot: in.Snapshot,
 	}, nil
 }
 
@@ -249,6 +286,7 @@ func contextSection(c Context) string {
 	writeRefs(&b, "发现", c.Findings)
 	writeRefs(&b, "产物", c.Artifacts)
 	writeRefs(&b, "评论", c.Comments)
+	writeRefs(&b, "相关知识页", c.Knowledge)
 	if len(c.Notes) > 0 {
 		b.WriteString("说明：\n")
 		b.WriteString(bullets(c.Notes))
@@ -271,6 +309,29 @@ func writeRefs(b *strings.Builder, title string, refs []Ref) {
 		}
 		b.WriteString(strings.TrimRight(line, " ") + "\n")
 	}
+}
+
+// knowledgeSection annotates the knowledge baseline a round runs against
+// (方案 §11.3): a workspace ahead of it means the pages describe older code,
+// and the round deserves to know that. An absent page layer is stated as the
+// documented degradation rather than left silent.
+func knowledgeSection(snapshot Snapshot) string {
+	switch {
+	case snapshot.KnowledgeDegraded:
+		return "本项目尚未生成知识页面层（方案 §12.6 降级）：上下文只含记录与事件，按需查阅代码。"
+	case snapshot.KnowledgeBehind:
+		return fmt.Sprintf("知识基线 %s 落后于工作区 HEAD %s：本页描述的是较早的代码，涉及细节时以代码为准。",
+			shortCommit(snapshot.KnowledgeRevision), shortCommit(snapshot.WorkspaceHead))
+	default:
+		return ""
+	}
+}
+
+func shortCommit(commit string) string {
+	if len(commit) > 7 {
+		return commit[:7]
+	}
+	return commit
 }
 
 func changesSection(changes []Change) string {
@@ -314,7 +375,7 @@ func orDash(s string) string {
 // input_context_refs records what the agent was pointed at (方案 §11.3).
 func refs(in Input) []string {
 	var out []string
-	for _, list := range [][]Ref{in.Context.Decisions, in.Context.Findings, in.Context.Artifacts, in.Context.Comments} {
+	for _, list := range [][]Ref{in.Context.Decisions, in.Context.Findings, in.Context.Artifacts, in.Context.Comments, in.Context.Knowledge} {
 		for _, ref := range list {
 			if ref.Ref != "" {
 				out = append(out, ref.Ref)

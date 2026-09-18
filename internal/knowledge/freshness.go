@@ -3,6 +3,7 @@ package knowledge
 import (
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -135,6 +136,14 @@ func Evaluate(root string, pages []*Page, state *State) (Freshness, error) {
 		if baseline == "" {
 			baseline = entry.SourceCommit
 		}
+		// A page whose content matches what the generator recorded was written
+		// as of the layer baseline: the in-page source_commit can lag behind it
+		// (generators record the commit they scanned, not the one they
+		// finalized at), and judging it by the older commit would report a page
+		// that was just regenerated as stale.
+		if state != nil && state.Baseline.Commit != "" && recordedMatches(root, page.Path, entry.ContentHash) {
+			baseline = state.Baseline.Commit
+		}
 		if baseline == "" && state != nil {
 			baseline = state.Baseline.Commit
 		}
@@ -175,6 +184,17 @@ func Evaluate(root string, pages []*Page, state *State) (Freshness, error) {
 		freshness.ChangedFiles = len(seen)
 	}
 	return freshness, nil
+}
+
+// recordedMatches reports whether a page's content still matches the hash the
+// generator recorded for it. An unreadable page or an absent record answers
+// false: a claim nobody can check must not move a baseline.
+func recordedMatches(root, pagePath, recorded string) bool {
+	if recorded == "" {
+		return false
+	}
+	actual, err := HashFile(filepath.Join(root, filepath.FromSlash(pagePath)))
+	return err == nil && actual == recorded
 }
 
 // git runs one git command in root and returns stdout. A missing git or a

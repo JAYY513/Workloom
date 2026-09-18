@@ -227,6 +227,9 @@ func (s *Service) RunExec(ctx context.Context, req RunExecRequest) (RunExecView,
 	if err := stream.write(streamRecord{
 		Type: "round", Round: round, Mode: promptView.Mode,
 		PromptHash: promptView.Hash, PromptFile: promptView.Path, Refs: promptView.Refs,
+		// The context snapshot travels with the round record: what the agent
+		// saw is part of the attempt's evidence (方案 §11.3).
+		Context: snapshotRecord(promptView.Snapshot),
 	}, true); err != nil {
 		return RunExecView{}, Internalf("write run stream: %v", err)
 	}

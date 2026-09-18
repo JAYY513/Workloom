@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"workloom/internal/prompt"
 	"workloom/internal/storage"
 )
 
@@ -43,6 +44,43 @@ type streamRecord struct {
 	Phase      string     `json:"phase,omitempty"`
 	Status     string     `json:"status,omitempty"`
 	DueAt      *time.Time `json:"continuation_due_at,omitempty"`
+	// Context is the round's context snapshot (方案 §11.3): the versions the
+	// assembly read, the knowledge revision, and the commit it ran against.
+	Context *contextSnapshot `json:"context,omitempty"`
+}
+
+// contextSnapshot is the context snapshot a round record carries. It mirrors
+// prompt.Snapshot; the field names are the on-disk contract, so they are spelled
+// out here rather than inherited from a type that may evolve.
+type contextSnapshot struct {
+	ProjectStateVersion string   `json:"project_state_version,omitempty"`
+	WorkitemVersion     string   `json:"workitem_version,omitempty"`
+	ArtifactVersions    []string `json:"artifact_versions,omitempty"`
+	KnowledgeRevision   string   `json:"knowledge_revision,omitempty"`
+	KnowledgePages      []string `json:"knowledge_pages,omitempty"`
+	DecisionIDs         []string `json:"decision_ids,omitempty"`
+	WorkspaceHead       string   `json:"workspace_head,omitempty"`
+	KnowledgeBehind     bool     `json:"knowledge_behind,omitempty"`
+	KnowledgeDegraded   bool     `json:"knowledge_degraded,omitempty"`
+}
+
+// snapshotRecord converts a prompt snapshot for the stream; an empty snapshot
+// stays absent rather than becoming an empty object.
+func snapshotRecord(snapshot prompt.Snapshot) *contextSnapshot {
+	if snapshot.Empty() {
+		return nil
+	}
+	return &contextSnapshot{
+		ProjectStateVersion: snapshot.ProjectStateVersion,
+		WorkitemVersion:     snapshot.WorkitemVersion,
+		ArtifactVersions:    snapshot.ArtifactVersions,
+		KnowledgeRevision:   snapshot.KnowledgeRevision,
+		KnowledgePages:      snapshot.KnowledgePages,
+		DecisionIDs:         snapshot.DecisionIDs,
+		WorkspaceHead:       snapshot.WorkspaceHead,
+		KnowledgeBehind:     snapshot.KnowledgeBehind,
+		KnowledgeDegraded:   snapshot.KnowledgeDegraded,
+	}
 }
 
 // readRunStream parses a run's stream. A missing stream reads as empty, and a

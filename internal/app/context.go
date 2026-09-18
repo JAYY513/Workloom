@@ -2,11 +2,14 @@ package app
 
 import (
 	"context"
+	"errors"
 	"sort"
+	"strings"
 	"time"
 
 	"workloom/internal/domain"
 	"workloom/internal/events"
+	"workloom/internal/knowledge"
 	"workloom/internal/record"
 )
 
@@ -45,7 +48,9 @@ type EventRef struct {
 	Time    time.Time `json:"time"`
 }
 
-// WorkitemContextView is the context assembled around one work item.
+// WorkitemContextView is the context assembled around one work item: the
+// second layer of 方案 §11.1 (the task itself and the records that reference
+// it), plus the third layer — the knowledge pages the task touches.
 type WorkitemContextView struct {
 	WorkItem  *domain.WorkItem `json:"workitem"`
 	Version   string           `json:"version"`
@@ -54,7 +59,59 @@ type WorkitemContextView struct {
 	Findings  []RecordRef      `json:"findings"`
 	Artifacts []RecordRef      `json:"artifacts"`
 	Comments  []EventRef       `json:"comments"`
+	Knowledge KnowledgeContext `json:"knowledge"`
 	Notices   []string         `json:"notices,omitempty"`
+}
+
+// KnowledgeContext is the knowledge layer's contribution to a task's context:
+// references, not bodies. The pages stay one read away, and a project without
+// a page layer degrades to an empty list with a notice (方案 §12.6).
+type KnowledgeContext struct {
+	Baseline string             `json:"baseline,omitempty"`
+	Pages    []KnowledgePageRef `json:"pages"`
+	Degraded bool               `json:"degraded,omitempty"`
+	Notice   string             `json:"notice,omitempty"`
+}
+
+// KnowledgePageRef is one page a task touches, with why it matched.
+type KnowledgePageRef struct {
+	Path        string `json:"path"`
+	Description string `json:"description,omitempty"`
+	Type        string `json:"type,omitempty"`
+	Status      string `json:"status,omitempty"`
+	Match       string `json:"match"`
+	Reason      string `json:"reason,omitempty"`
+	Stale       bool   `json:"stale,omitempty"`
+}
+
+// Knowledge match kinds.
+const (
+	MatchTrigger = "trigger"
+	MatchSources = "sources"
+)
+
+// TaskContext is the layered assembly for one task (方案 §11.1): the project
+// summary, the task's own context and records, and the knowledge pages the task
+// touches. Two assemblies of the same task are identical field for field — an
+// agent that re-reads its context must not see a different world.
+type TaskContext struct {
+	Summary ContextView         `json:"summary"`
+	Task    WorkitemContextView `json:"task"`
+}
+
+// TaskContext assembles the layers around one work item. paths are the files
+// the caller expects to touch; refresh asks for a fresh policy evaluation
+// instead of a summarized one.
+func (s *Service) TaskContext(ctx context.Context, id string, paths []string, limit int, refresh bool) (TaskContext, error) {
+	summary, err := s.context(ctx, limit, refresh)
+	if err != nil {
+		return TaskContext{}, err
+	}
+	task, err := s.ContextForWorkitem(ctx, id, paths)
+	if err != nil {
+		return TaskContext{}, err
+	}
+	return TaskContext{Summary: summary, Task: task}, nil
 }
 
 // ContextGet assembles the project working context. limit bounds each
@@ -148,7 +205,11 @@ func (s *Service) context(ctx context.Context, limit int, withNotices bool) (Con
 // ContextForWorkitem assembles everything an executor needs about one work
 // item: the item itself, its workflow candidates, and the records that
 // reference it.
-func (s *Service) ContextForWorkitem(ctx context.Context, id string) (WorkitemContextView, error) {
+// ContextForWorkitem assembles the task's context. paths are the files the
+// caller expects to touch: pages whose `sources` cover them join the page list
+// even when no trigger matches, which is what makes the third layer useful
+// before any code has been read.
+func (s *Service) ContextForWorkitem(ctx context.Context, id string, paths []string) (WorkitemContextView, error) {
 	view, err := s.WorkitemGet(ctx, id)
 	if err != nil {
 		return WorkitemContextView{}, err
@@ -207,7 +268,146 @@ func (s *Service) ContextForWorkitem(ctx context.Context, id string) (WorkitemCo
 	for _, ev := range comments {
 		out.Comments = append(out.Comments, EventRef{ID: ev.ID, Type: ev.Type, Subject: ev.Subject.Type + ":" + ev.Subject.ID, Actor: ev.Actor, Time: ev.Time})
 	}
+	knowledge, err := s.knowledgeContext(ctx, out.WorkItem, paths)
+	if err != nil {
+		return WorkitemContextView{}, err
+	}
+	out.Knowledge = knowledge
 	return out, nil
+}
+
+// knowledgeContext selects the pages a task touches. Selection is deliberate
+// and replayable: a page is included when one of its `triggers` appears in the
+// task's own text, or when one of its `sources` patterns covers a path the
+// caller named. Handing an agent every page it could possibly need would be the
+// same as handing it none.
+func (s *Service) knowledgeContext(ctx context.Context, item *domain.WorkItem, paths []string) (KnowledgeContext, error) {
+	md, err := s.project()
+	if err != nil {
+		return KnowledgeContext{}, err
+	}
+	report, err := knowledge.Scan(s.Root, s.pageRoots(md))
+	if err != nil {
+		return KnowledgeContext{}, Internalf("knowledge context: %v", err)
+	}
+	if len(report.Pages) == 0 {
+		return KnowledgeContext{
+			Degraded: true,
+			Pages:    []KnowledgePageRef{},
+			Notice:   "no page layer: no generator is installed or configured (方案 §12.6); knowledge queries degrade to records and events",
+		}, nil
+	}
+	state, _, err := s.knowledgeState(md)
+	if err != nil {
+		return KnowledgeContext{}, err
+	}
+	text := strings.ToLower(strings.Join([]string{
+		item.Title, item.Description, item.Type, workflowID(item), workflowStep(item),
+	}, "\n"))
+
+	var matched []*knowledge.Page
+	refs := map[string]KnowledgePageRef{}
+	record := func(page *knowledge.Page, match, reason string) {
+		if _, seen := refs[page.Path]; seen {
+			return
+		}
+		refs[page.Path] = KnowledgePageRef{
+			Path: page.Path, Description: page.Description, Type: page.Type, Status: page.Status,
+			Match: match, Reason: reason,
+		}
+		matched = append(matched, page)
+	}
+	for _, page := range report.Pages {
+		if hit, ok := triggerHit(page.Triggers, text); ok {
+			record(page, MatchTrigger, hit)
+		}
+	}
+	for _, page := range report.Pages {
+		sources := page.Sources
+		if len(sources) == 0 {
+			if entry, ok := state.Mapping(page.Path); ok {
+				sources = entry.Sources
+			}
+		}
+		for _, source := range sources {
+			hit := ""
+			for _, path := range paths {
+				if knowledge.Match(source, path) {
+					hit = source + " covers " + path
+					break
+				}
+			}
+			if hit != "" {
+				record(page, MatchSources, hit)
+				break
+			}
+		}
+	}
+
+	view := KnowledgeContext{Pages: []KnowledgePageRef{}}
+	if state != nil {
+		view.Baseline = state.Baseline.Commit
+	}
+	if len(matched) == 0 {
+		return view, nil
+	}
+	if view.Baseline == "" && !anyBaseline(matched, state) {
+		view.Notice = "the knowledge layer records no baseline: no page can be called current (方案 §12.5)"
+	}
+	// Staleness is computed for the selected pages only: the question is
+	// whether these references still describe the tree, not what the whole
+	// layer thinks.
+	freshness, err := knowledge.Evaluate(s.Root, matched, state)
+	if err != nil {
+		if errors.Is(err, knowledge.ErrNoGit) {
+			view.Notice = "freshness unavailable: " + err.Error()
+			for _, page := range matched {
+				view.Pages = append(view.Pages, refs[page.Path])
+			}
+			return view, nil
+		}
+		return KnowledgeContext{}, Internalf("knowledge context: %v", err)
+	}
+	stale := map[string]bool{}
+	for _, page := range freshness.Pages {
+		stale[page.Path] = page.Stale
+	}
+	for _, page := range matched {
+		ref := refs[page.Path]
+		ref.Stale = stale[page.Path]
+		view.Pages = append(view.Pages, ref)
+	}
+	return view, nil
+}
+
+// anyBaseline reports whether any of the pages has a baseline to judge against,
+// either its own or one from the layer's mapping.
+func anyBaseline(pages []*knowledge.Page, state *knowledge.State) bool {
+	for _, page := range pages {
+		if page.SourceCommit != "" {
+			return true
+		}
+		if entry, ok := state.Mapping(page.Path); ok && entry.SourceCommit != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// triggerHit reports the first trigger that appears in the lowercased task
+// text. Triggers are short phrases; matching is a substring test because that
+// is what a reader would do.
+func triggerHit(triggers []string, text string) (string, bool) {
+	for _, trigger := range triggers {
+		trimmed := strings.TrimSpace(trigger)
+		if trimmed == "" {
+			continue
+		}
+		if strings.Contains(text, strings.ToLower(trimmed)) {
+			return trimmed, true
+		}
+	}
+	return "", false
 }
 
 // policyProblems lists located policy failures (read-only).

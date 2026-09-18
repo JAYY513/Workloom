@@ -102,6 +102,45 @@ func TestRunExecFirstRoundIsFull(t *testing.T) {
 	if code, out, errOut := run(t, "--json", "run", "get", runID); code != CodeOK || !strings.Contains(out, `"status":"running"`) {
 		t.Fatalf("run status after a clean round: code=%d out=%q stderr=%q", code, out, errOut)
 	}
+	// The round record carries the context snapshot: the versions the assembly
+	// read, the commit the run works against, and whether the knowledge layer
+	// was there at all (方案 §11.3).
+	streamData, err := os.ReadFile(filepath.Join(repo, ".devsys", "runs", runID+".jsonl"))
+	if err != nil {
+		t.Fatalf("read run stream: %v", err)
+	}
+	var round struct {
+		Type    string `json:"type"`
+		Context *struct {
+			ProjectStateVersion string `json:"project_state_version"`
+			WorkitemVersion     string `json:"workitem_version"`
+			WorkspaceHead       string `json:"workspace_head"`
+			KnowledgeDegraded   bool   `json:"knowledge_degraded"`
+		} `json:"context"`
+	}
+	found := false
+	for _, line := range strings.Split(strings.TrimSpace(string(streamData)), "\n") {
+		var record struct {
+			Type string `json:"type"`
+		}
+		if err := json.Unmarshal([]byte(line), &record); err != nil || record.Type != "round" {
+			continue
+		}
+		if err := json.Unmarshal([]byte(line), &round); err != nil {
+			t.Fatalf("round record: %v", err)
+		}
+		found = true
+	}
+	if !found || round.Context == nil {
+		t.Fatalf("round record has no context snapshot: %s", streamData)
+	}
+	if round.Context.ProjectStateVersion == "" || round.Context.WorkitemVersion == "" {
+		t.Fatalf("snapshot = %+v", round.Context)
+	}
+	if !round.Context.KnowledgeDegraded {
+		t.Fatalf("a project without a page layer must say so: %+v", round.Context)
+	}
+
 	promptPath := filepath.Join(repo, ".devsys", "local", "runs", runID, "round-1.md")
 	body, err := os.ReadFile(promptPath)
 	if err != nil {

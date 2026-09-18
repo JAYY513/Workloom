@@ -878,3 +878,248 @@ func TestKnowledgeRefreshRejectsCorruptCheckpoint(t *testing.T) {
 		t.Fatalf("stderr = %q", errOut)
 	}
 }
+
+// The layered assembly is the point of M5.6: `context get --task` carries the
+// project summary, the task with its records, and the pages the task touches.
+func TestContextGetTaskLayers(t *testing.T) {
+	root, _ := gatedProject(t)
+	writePage(t, root, "internal/store/a.go", "package store\n")
+	base := gitCommitAll(t, root, "source")
+	writePage(t, root, "docs/repowiki/knowledge/存储.md", knowledgePage(base, "internal/store/**"))
+	gitCommitAll(t, root, "page")
+
+	// The page's triggers are 存储层: the task text has to contain one of them
+	// for a trigger match, which is exactly what the layer promises.
+	code, out, errOut := run(t, "workitem", "create", "--title", "整理存储层的写入路径", "--actor", "t", "--reason", "fixture")
+	if code != CodeOK {
+		t.Fatalf("workitem create: code=%d stderr=%q", code, errOut)
+	}
+	id := strings.Fields(out)[0]
+
+	// Trigger match: the page's trigger 存储层 appears in the title.
+	code, out, errOut = run(t, "--json", "context", "get", "--task", id)
+	if code != CodeOK {
+		t.Fatalf("context get --task: code=%d stderr=%q", code, errOut)
+	}
+	var first struct {
+		Summary struct {
+			Project struct {
+				ID string `json:"id"`
+			} `json:"project"`
+		} `json:"summary"`
+		Task struct {
+			WorkItem struct {
+				ID string `json:"id"`
+			} `json:"workitem"`
+			Knowledge struct {
+				Baseline string `json:"baseline"`
+				Pages    []struct {
+					Path   string `json:"path"`
+					Match  string `json:"match"`
+					Reason string `json:"reason"`
+					Stale  bool   `json:"stale"`
+				} `json:"pages"`
+				Degraded bool   `json:"degraded"`
+				Notice   string `json:"notice"`
+			} `json:"knowledge"`
+		} `json:"task"`
+	}
+	if err := json.Unmarshal([]byte(out), &first); err != nil {
+		t.Fatal(err)
+	}
+	if first.Summary.Project.ID == "" || first.Task.WorkItem.ID != id {
+		t.Fatalf("assembly = %s", out)
+	}
+	if len(first.Task.Knowledge.Pages) != 1 || first.Task.Knowledge.Pages[0].Match != "trigger" || first.Task.Knowledge.Pages[0].Reason != "存储层" {
+		t.Fatalf("knowledge = %s", out)
+	}
+	// No generator has written state.json here, so the layer has no baseline:
+	// the verdict rests on the page's own source_commit instead, and the
+	// assembly says so by leaving the field empty rather than inventing one.
+	if first.Task.Knowledge.Baseline != "" {
+		t.Fatalf("baseline = %q, want empty", first.Task.Knowledge.Baseline)
+	}
+	if first.Task.Knowledge.Pages[0].Stale {
+		t.Fatalf("page judged stale although nothing changed: %s", out)
+	}
+
+	// The same task assembles identically: a second read must not see a
+	// different world.
+	code, again, errOut := run(t, "--json", "context", "get", "--task", id)
+	if code != CodeOK {
+		t.Fatalf("second assembly: code=%d stderr=%q", code, errOut)
+	}
+	if again != out {
+		t.Fatalf("assembly is not stable:\n%s\n---\n%s", out, again)
+	}
+
+	// A named path pulls in a page whose sources cover it even when the task
+	// text says nothing about it.
+	code, out, errOut = run(t, "--json", "context", "get", "--task", id, "--path", "internal/store/other.go")
+	_ = errOut
+	if code != CodeOK {
+		t.Fatalf("context get --path: code=%d stderr=%q", code, errOut)
+	}
+	if err := json.Unmarshal([]byte(out), &first); err != nil {
+		t.Fatal(err)
+	}
+	if len(first.Task.Knowledge.Pages) != 1 {
+		t.Fatalf("knowledge = %s", out)
+	}
+	page := first.Task.Knowledge.Pages[0]
+	if page.Match != "trigger" || !strings.Contains(page.Reason, "存储层") {
+		t.Fatalf("match = %q reason = %q", page.Match, page.Reason)
+	}
+}
+
+// Without a page layer the assembly still works and says why the knowledge
+// section is empty.
+func TestContextGetTaskDegrades(t *testing.T) {
+	gatedProject(t)
+	code, out, errOut := run(t, "workitem", "create", "--title", "没有任何知识页", "--actor", "t", "--reason", "fixture")
+	if code != CodeOK {
+		t.Fatalf("workitem create: code=%d stderr=%q", code, errOut)
+	}
+	id := strings.Fields(out)[0]
+	code, out, errOut = run(t, "--json", "context", "get", "--task", id)
+	if code != CodeOK {
+		t.Fatalf("context get --task: code=%d stderr=%q", code, errOut)
+	}
+	var view struct {
+		Task struct {
+			Knowledge struct {
+				Degraded bool   `json:"degraded"`
+				Notice   string `json:"notice"`
+				Pages    []any  `json:"pages"`
+			} `json:"knowledge"`
+		} `json:"task"`
+	}
+	if err := json.Unmarshal([]byte(out), &view); err != nil {
+		t.Fatal(err)
+	}
+	if !view.Task.Knowledge.Degraded || len(view.Task.Knowledge.Pages) != 0 || !strings.Contains(view.Task.Knowledge.Notice, "generator") {
+		t.Fatalf("degradation = %s", out)
+	}
+}
+
+// A bundle whose pages keep their sources in the generator's state becomes
+// attributable once the configured adapter imports them: the same pages stop
+// being "unverifiable" and are judged against the tree.
+func TestKnowledgeStatusUsesAdapterImport(t *testing.T) {
+	root, _ := gatedProject(t)
+	writePage(t, root, "internal/store/a.go", "package store\n")
+	base := gitCommitAll(t, root, "source")
+	page := strings.Replace(knowledgePage(base, "internal/store/**"), "sources:\n  - internal/store/**\n", "", 1)
+	writePage(t, root, "docs/repowiki/knowledge/存储.md", page)
+	gitCommitAll(t, root, "page")
+	pagePath := filepath.Join(root, "docs", "repowiki", "knowledge", "存储.md")
+	data, err := os.ReadFile(pagePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writePage(t, root, ".repowiki/state.json", fmt.Sprintf(`{
+  "git": {"commit": "%s", "branch": "master"},
+  "pages": {"knowledge/存储.md": {"content_hash": "%s", "sources": ["internal/store/**"]}}
+}
+`, base, knowledgeHash(data)))
+
+	// Without an adapter the page has no sources: unverifiable, hence stale.
+	code, out, _ := run(t, "--json", "knowledge", "status")
+	if code != CodeStale {
+		t.Fatalf("without adapter: code=%d out=%s", code, out)
+	}
+	if !strings.Contains(out, "unverifiable_pages") {
+		t.Fatalf("without adapter: %s", out)
+	}
+
+	// Naming the adapter imports the mapping (the tool itself is only needed to
+	// generate, not to read a page's provenance).
+	configPath := filepath.Join(root, ".devsys", "config.yaml")
+	config, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(configPath, []byte(strings.Replace(string(config), "schema_version: 1",
+		"schema_version: 1\nknowledge_generator: repowiki", 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	code, out, errOut := run(t, "--json", "knowledge", "status")
+	if code != CodeOK {
+		t.Fatalf("with adapter: code=%d stderr=%q out=%s", code, errOut, out)
+	}
+	var view struct {
+		Status           string   `json:"status"`
+		Adapter          string   `json:"adapter"`
+		AdapterInstalled bool     `json:"adapter_installed"`
+		Baseline         string   `json:"baseline"`
+		Affected         []string `json:"affected_pages"`
+		Unverifiable     []string `json:"unverifiable_pages"`
+	}
+	if err := json.Unmarshal([]byte(out), &view); err != nil {
+		t.Fatal(err)
+	}
+	if view.Status != "fresh" || view.Adapter != "repowiki" || view.Baseline != base {
+		t.Fatalf("view = %s", out)
+	}
+	if len(view.Affected) != 0 || len(view.Unverifiable) != 0 {
+		t.Fatalf("view = %s", out)
+	}
+	if !view.AdapterInstalled {
+		t.Fatalf("repowiki is installed on this machine but the probe says otherwise: %s", out)
+	}
+}
+
+// --path brings in a page whose triggers do not match the task at all: the
+// sources half of the selection rule, on its own.
+func TestContextGetTaskPathOnlyMatch(t *testing.T) {
+	root, _ := gatedProject(t)
+	writePage(t, root, "internal/store/a.go", "package store\n")
+	base := gitCommitAll(t, root, "source")
+	writePage(t, root, "docs/repowiki/knowledge/数据库.md",
+		strings.Replace(knowledgePage(base, "internal/store/**"), "- 存储层", "- 数据库", 1))
+	gitCommitAll(t, root, "page")
+
+	code, out, errOut := run(t, "workitem", "create", "--title", "无关的任务", "--description", "与页面触发词毫无关系", "--actor", "t", "--reason", "fixture")
+	if code != CodeOK {
+		t.Fatalf("workitem create: code=%d stderr=%q", code, errOut)
+	}
+	id := strings.Fields(out)[0]
+
+	var view struct {
+		Task struct {
+			Knowledge struct {
+				Pages []struct {
+					Path   string `json:"path"`
+					Match  string `json:"match"`
+					Reason string `json:"reason"`
+				} `json:"pages"`
+			} `json:"knowledge"`
+		} `json:"task"`
+	}
+	// Without --path the page is not selected: no trigger matches.
+	code, out, errOut = run(t, "--json", "context", "get", "--task", id)
+	if code != CodeOK {
+		t.Fatalf("context get: code=%d stderr=%q", code, errOut)
+	}
+	if err := json.Unmarshal([]byte(out), &view); err != nil {
+		t.Fatal(err)
+	}
+	if len(view.Task.Knowledge.Pages) != 0 {
+		t.Fatalf("a page was selected without a match: %s", out)
+	}
+	// With --path naming a covered file the page joins through its sources.
+	code, out, errOut = run(t, "--json", "context", "get", "--task", id, "--path", "internal/store/a.go")
+	if code != CodeOK {
+		t.Fatalf("context get --path: code=%d stderr=%q", code, errOut)
+	}
+	if err := json.Unmarshal([]byte(out), &view); err != nil {
+		t.Fatal(err)
+	}
+	if len(view.Task.Knowledge.Pages) != 1 {
+		t.Fatalf("sources match missing: %s", out)
+	}
+	page := view.Task.Knowledge.Pages[0]
+	if page.Match != "sources" || !strings.Contains(page.Reason, "internal/store/**") {
+		t.Fatalf("page = %+v", page)
+	}
+}

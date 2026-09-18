@@ -58,11 +58,17 @@ type KnowledgeStatusView struct {
 	IndexFiles int `json:"index_files,omitempty"`
 	// Pages is the page-layer size; zero means the layer has not been generated.
 	Pages int `json:"pages"`
-	// Generator is the configured generator command, if any.
-	Generator    string   `json:"generator,omitempty"`
-	ChangedFiles int      `json:"changed_files"`
-	Affected     []string `json:"affected_pages"`
-	Unverifiable []string `json:"unverifiable_pages,omitempty"`
+	// Generator is the configured generator, if any.
+	Generator string `json:"generator,omitempty"`
+	// Adapter is the built-in adapter backing that generator, when it names one
+	// (方案 §12.6); AdapterInstalled reports whether the tool it drives is on
+	// PATH.
+	Adapter          string   `json:"adapter,omitempty"`
+	AdapterInstalled bool     `json:"adapter_installed,omitempty"`
+	AdapterDetail    string   `json:"adapter_detail,omitempty"`
+	ChangedFiles     int      `json:"changed_files"`
+	Affected         []string `json:"affected_pages"`
+	Unverifiable     []string `json:"unverifiable_pages,omitempty"`
 	// FreshPages counts pages with a verdict of fresh.
 	FreshPages int `json:"fresh_pages"`
 }
@@ -104,9 +110,19 @@ func (s *Service) KnowledgeStatus(ctx context.Context) (KnowledgeStatusView, err
 		return KnowledgeStatusView{}, Invalidf(KindKnowledge, report.Problems,
 			"knowledge status: the page layer has %d invalid page(s)", report.Errors())
 	}
-	state, err := knowledge.LoadState(s.Root)
-	if err != nil && !knowledge.MissingState(err) {
-		return KnowledgeStatusView{}, Invalidf(KindKnowledge, nil, "knowledge status: %v", err)
+	state, adapterName, err := s.knowledgeState(md)
+	if err != nil {
+		return KnowledgeStatusView{}, err
+	}
+	view.Adapter = adapterName
+	if adapterName != "" {
+		adapter, ok := knowledge.AdapterByName(adapterName)
+		if !ok {
+			return KnowledgeStatusView{}, Internalf("knowledge status: adapter %q disappeared", adapterName)
+		}
+		availability := adapter.Probe(ctx)
+		view.AdapterInstalled = availability.Installed
+		view.AdapterDetail = availability.Detail
 	}
 	if state != nil {
 		view.Baseline = state.Baseline.Commit
@@ -187,6 +203,12 @@ type KnowledgeRefreshView struct {
 	// generator's to replace. With Force they were regenerated anyway and each
 	// entry says so.
 	Skipped []knowledge.Skip `json:"skipped,omitempty"`
+	// Finalized reports that the generator recorded a new baseline.
+	Finalized bool `json:"finalized,omitempty"`
+	// AwaitingGeneration lists the pages the generator cannot write by itself:
+	// RepoWiki writes pages through its skill, so its CLI alone leaves them for
+	// an agent (方案 §12.6).
+	AwaitingGeneration []string `json:"awaiting_generation,omitempty"`
 	// Failed reports a generator that ran and did not finish cleanly.
 	Failed bool `json:"failed,omitempty"`
 	// Error is the generator failure, when Failed.
@@ -224,9 +246,9 @@ func (s *Service) KnowledgeRefresh(ctx context.Context, req KnowledgeRefreshRequ
 	if err != nil {
 		return KnowledgeRefreshView{}, Internalf("knowledge refresh: %v", err)
 	}
-	state, err := knowledge.LoadState(s.Root)
-	if err != nil && !knowledge.MissingState(err) {
-		return KnowledgeRefreshView{}, Invalidf(KindKnowledge, nil, "knowledge refresh: %v", err)
+	state, adapterName, err := s.knowledgeState(md)
+	if err != nil {
+		return KnowledgeRefreshView{}, err
 	}
 
 	// What this run would ask for on its own: every page (full) or the pages a
@@ -387,7 +409,7 @@ func (s *Service) KnowledgeRefresh(ctx context.Context, req KnowledgeRefreshRequ
 		return KnowledgeRefreshView{}, Internalf("knowledge refresh: %v", err)
 	}
 	view.Checkpoint = checkpointFile
-	output, err := s.runGenerator(ctx, argv)
+	output, err := s.generate(ctx, adapterName, view.Generator, argv, view.Pages, &view)
 	view.Output = output
 	if err != nil {
 		checkpoint.Phase = knowledge.PhaseFailed
@@ -479,6 +501,27 @@ func hostname() string {
 // a generator that streams without end must not take the report (or the
 // caller's memory) down with it.
 const generatorOutputLimit = 256 << 10
+
+// generate runs the configured generator: through its adapter when the value
+// names one (方案 §12.6), otherwise as a command implementing the contract.
+func (s *Service) generate(ctx context.Context, adapterName, configured string, argv, pages []string, view *KnowledgeRefreshView) (string, error) {
+	if adapterName == "" {
+		return s.runGenerator(ctx, argv)
+	}
+	adapter, ok := knowledge.AdapterByName(adapterName)
+	if !ok {
+		return "", Usagef("knowledge_generator %q names an unknown adapter", configured)
+	}
+	result, err := adapter.Generate(ctx, knowledge.GenerateRequest{
+		Root: s.Root, ScopeFile: view.ScopeFile, Pages: pages,
+	})
+	view.Finalized = result.Finalized
+	view.AwaitingGeneration = result.AwaitingGeneration
+	if result.Note != "" {
+		view.Reason = result.Note
+	}
+	return result.Output, err
+}
 
 // runGenerator runs the configured generator in the project root and returns
 // its combined output. The process is a child of this command: a refresh is
@@ -593,6 +636,33 @@ func (s *Service) KnowledgeValidate(ctx context.Context, roots []string) (Knowle
 			"knowledge validate: %d errors, %d warnings", view.Errors, view.Warnings)
 	}
 	return view, nil
+}
+
+// knowledgeState loads the layer's own state and layers the configured
+// generator's imported mapping under it (方案 §12.6). The second return value is
+// the generator's name when a built-in adapter supplied the mapping.
+//
+// The import is what makes a generator that keeps `sources` in its own state —
+// RepoWiki does — attributable at all: without it those pages are unverifiable
+// by construction.
+func (s *Service) knowledgeState(md *config.Metadata) (*knowledge.State, string, error) {
+	local, err := knowledge.LoadState(s.Root)
+	if err != nil && !knowledge.MissingState(err) {
+		return nil, "", Invalidf(KindKnowledge, nil, "knowledge state: %v", err)
+	}
+	generator := ""
+	if md != nil && md.Config != nil {
+		generator = strings.TrimSpace(md.Config.KnowledgeGenerator)
+	}
+	adapter, ok := knowledge.AdapterByName(generator)
+	if !ok {
+		return local, "", nil
+	}
+	imported, err := adapter.Import(s.Root)
+	if err != nil {
+		return nil, "", Internalf("knowledge import (%s): %v", adapter.Name(), err)
+	}
+	return knowledge.MergeStates(local, imported), adapter.Name(), nil
 }
 
 // pageRoots resolves the page roots: the project's configuration wins, and the
