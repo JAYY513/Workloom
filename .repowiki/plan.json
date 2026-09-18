@@ -2,7 +2,7 @@
   "schema": 2,
   "budget": {
     "tier": "模块树",
-    "reason": "116 个扫描文件、多层目录，沿用模块树档位；M3 在 internal/workflow、internal/approval、internal/next 新增三个包与 storage.AppendJSONLRaw/Staged、events.AppendBatchTx、workitem 的 propagate/workflow_instance/Guard、record.ListArtifacts、CLI 新命令族与 m3helper/smoke-m3.* 与 docs/examples/workflows/*.md；沿用模块树档位，scope 同步扩增，新增加一张自定义卡（策略、门禁与质量门）与一张 next 风险卡，但保留两模块与三篇文章的目录与文件路径不变（路径稳定性优先）。",
+    "reason": "154 个扫描文件（go:120、yaml:11、markdown:8、other:6、shell:5、powershell:4）、多层目录，沿用模块树档位；M4 在 internal/app 落地共享应用服务（错误分类 + Service + Session/Context/Wire/KnowledgeStatus/Project/Workitem/Workflow/Approval/Decision/Finding/Artifact/Event/Run/Next），internal/mcp 以官方 Go SDK 暴露 profile 过滤的工具族，internal/cli 薄化渲染并拆分 records.go/wire/diagnostics，internal/record/update.go 引入 ReadSnapshot + 守卫 Update，internal/run 提供 ReadSnapshot，scripts/m4helper + scripts/smoke-m4.{sh,ps1} + scripts/exchange-demo.sh 端到端覆盖；go.mod 新增 github.com/modelcontextprotocol/go-sdk v1.8.0（vendored）。新增第三个模块 `shared-app-mcp`（internal/app + internal/mcp），在 `项目接入与配置` 模块新增两张自定义卡（CLI 渲染与交换协议、AGENTS.md 写入），在 `可靠文本存储` 模块新增一张自定义卡（读快照与守卫更新）；两模块与三篇文章的目录与文件路径保持不变。",
     "max_total_modules": 8,
     "max_depth": 2,
     "max_total_articles": 30,
@@ -23,7 +23,14 @@
         "internal/registry/**",
         "internal/version/**",
         "internal/domain/**",
-        "README.md"
+        "README.md",
+        "internal/cli/records.go",
+        "internal/cli/diagnostics.go",
+        "internal/cli/mcp.go",
+        "scripts/m4helper",
+        "scripts/smoke-m4.sh",
+        "scripts/smoke-m4.ps1",
+        "scripts/exchange-demo.sh"
       ]
     },
     {
@@ -47,6 +54,15 @@
         "go.mod",
         "go.sum"
       ]
+    },
+    {
+      "slug": "shared-app-mcp",
+      "title": "共享应用与MCP",
+      "dir": "共享应用与MCP",
+      "scope": [
+        "internal/app/**",
+        "internal/mcp/**"
+      ]
     }
   ],
   "articles": [
@@ -57,7 +73,8 @@
       "type": "overview",
       "modules": [
         "project-access",
-        "durable-storage"
+        "durable-storage",
+        "shared-app-mcp"
       ]
     },
     {
@@ -67,7 +84,8 @@
       "type": "getting_started",
       "modules": [
         "project-access",
-        "durable-storage"
+        "durable-storage",
+        "shared-app-mcp"
       ]
     },
     {
@@ -77,7 +95,8 @@
       "type": "developer_guide",
       "modules": [
         "project-access",
-        "durable-storage"
+        "durable-storage",
+        "shared-app-mcp"
       ],
       "scope": [
         "docs/开发记录.md",
@@ -86,16 +105,15 @@
     }
   ],
   "coverage_check": {
-    "covered_files": 109,
-    "total_files": 116,
+    "covered_files": 148,
+    "total_files": 154,
     "uncovered": [
       ".gitattributes",
       ".gitignore",
       "AGENTS.md",
-      "docs/开发记录.md",
-      "docs/原始文档/独立于Harness的Agent开发基础设施方案.md",
       "docs/原始文档/实施计划.md",
-      "docs/examples/workflows/.gitignore"
+      "docs/原始文档/独立于Harness的Agent开发基础设施方案.md",
+      "docs/开发记录.md"
     ]
   }
 }

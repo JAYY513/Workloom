@@ -3,9 +3,9 @@
   "partition": {
     "locale": "zh"
   },
-  "generated_at": "2026-09-18T04:13:44.989Z",
+  "generated_at": "2026-09-18T08:44:06.365Z",
   "git": {
-    "commit": "238b58451808be343ec7c207b6ecd5be2f33191c",
+    "commit": "997c5f812fe3a3577ecedd6c6fea06cd6c835d63",
     "branch": "master"
   },
   "pages": {
@@ -21,6 +21,13 @@
         "internal/version/**",
         "internal/domain/**",
         "README.md",
+        "internal/cli/records.go",
+        "internal/cli/diagnostics.go",
+        "internal/cli/mcp.go",
+        "scripts/m4helper",
+        "scripts/smoke-m4.sh",
+        "scripts/smoke-m4.ps1",
+        "scripts/exchange-demo.sh",
         "internal/storage/**",
         "internal/workitem/**",
         "internal/events/**",
@@ -35,9 +42,11 @@
         "docs/examples/m1-devsys/**",
         "docs/examples/workflows/**",
         "go.mod",
-        "go.sum"
+        "go.sum",
+        "internal/app/**",
+        "internal/mcp/**"
       ],
-      "content_hash": "8f4937a307f682e72937726284d5029205c164553bbccbc219bd64b2e11284a5"
+      "content_hash": "530fb58c6add8e28f676e0c7d68869b08067146e4239573c7dab36275d5135e7"
     },
     "content/快速开始.md": {
       "sources": [
@@ -49,6 +58,13 @@
         "internal/version/**",
         "internal/domain/**",
         "README.md",
+        "internal/cli/records.go",
+        "internal/cli/diagnostics.go",
+        "internal/cli/mcp.go",
+        "scripts/m4helper",
+        "scripts/smoke-m4.sh",
+        "scripts/smoke-m4.ps1",
+        "scripts/exchange-demo.sh",
         "internal/storage/**",
         "internal/workitem/**",
         "internal/events/**",
@@ -63,9 +79,11 @@
         "docs/examples/m1-devsys/**",
         "docs/examples/workflows/**",
         "go.mod",
-        "go.sum"
+        "go.sum",
+        "internal/app/**",
+        "internal/mcp/**"
       ],
-      "content_hash": "b1e579e1db258c9506b41f57c65f649e216efec38634bc5a4c008cc74aad24cf"
+      "content_hash": "319b59a53bd549aae3da84eed3bfeeb5ddd9feb67b5afa3e39b3a9a855675c9f"
     },
     "content/项目总览.md": {
       "sources": [
@@ -77,6 +95,13 @@
         "internal/version/**",
         "internal/domain/**",
         "README.md",
+        "internal/cli/records.go",
+        "internal/cli/diagnostics.go",
+        "internal/cli/mcp.go",
+        "scripts/m4helper",
+        "scripts/smoke-m4.sh",
+        "scripts/smoke-m4.ps1",
+        "scripts/exchange-demo.sh",
         "internal/storage/**",
         "internal/workitem/**",
         "internal/events/**",
@@ -91,13 +116,43 @@
         "docs/examples/m1-devsys/**",
         "docs/examples/workflows/**",
         "go.mod",
-        "go.sum"
+        "go.sum",
+        "internal/app/**",
+        "internal/mcp/**"
       ],
-      "content_hash": "69c216123374b4909df24fbeef13a84cc24e0ebfe58c675ad52bdc43da96b0b1"
+      "content_hash": "2fb3a896df4beb299ee5e176179e237f0b748ccd7e08be14e6e08d2b46f56c48"
     },
     "index.md": {
       "sources": [],
-      "content_hash": "eba9557c2a7306914f545501d8321c0b468bcbe8a19608551e831a0185c0e730"
+      "content_hash": "88f106cd176f304e4a0c7f00251437db6ef29c2ac1fdbba048be761b4bc89e5f"
+    },
+    "knowledge/共享应用与MCP/工具与Profile.md": {
+      "sources": [
+        "internal/app/**",
+        "internal/mcp/**"
+      ],
+      "content_hash": "03f89865b0eb19016acaf1a9c28bc9132c49de186e9622b669d1e8675b0388f8"
+    },
+    "knowledge/共享应用与MCP/架构设计.md": {
+      "sources": [
+        "internal/app/**",
+        "internal/mcp/**"
+      ],
+      "content_hash": "0a70e8d74c3dc3d02c1fb39efdce35efcc39e3eb1e70036f76a4305c4c08b1fc"
+    },
+    "knowledge/共享应用与MCP/概述.md": {
+      "sources": [
+        "internal/app/**",
+        "internal/mcp/**"
+      ],
+      "content_hash": "2de9426fa7d288eac8db54b88378e11a507a08cad90389f823413e2ef584d419"
+    },
+    "knowledge/共享应用与MCP/错误语义.md": {
+      "sources": [
+        "internal/app/**",
+        "internal/mcp/**"
+      ],
+      "content_hash": "c8874c50d11b82a8c46140ca8d41eae6d7a79917c9ae7a321742cbc49fb789d2"
     },
     "knowledge/可靠文本存储/事务与恢复.md": {
       "sources": [
@@ -177,7 +232,7 @@
         "go.mod",
         "go.sum"
       ],
-      "content_hash": "f25f32e588f45cfa8dceef1f637a4b8b2db2faee01d1d85dea9b7d09ca2dbf9c"
+      "content_hash": "e81b618f34baa422c4acb14a7729ebe1f4ae6086ee9ccf33d9a414074144b544"
     },
     "knowledge/可靠文本存储/概述.md": {
       "sources": [
@@ -197,7 +252,7 @@
         "go.mod",
         "go.sum"
       ],
-      "content_hash": "3c3c654192082d807acb0d156a258a7ee04086e0e18c0b8108edc81d5a26ac9e"
+      "content_hash": "44404b35836c8dd9749dd5871585e7ba7a0a9ab8860f5753d9e5a49f5d1997c2"
     },
     "knowledge/可靠文本存储/特殊配置与命令.md": {
       "sources": [
@@ -259,6 +314,26 @@
       ],
       "content_hash": "94369f4f40bf58e25982cd9a2280f7bd6768679d9ae2048506f5920b51809775"
     },
+    "knowledge/可靠文本存储/读快照与守卫更新.md": {
+      "sources": [
+        "internal/storage/**",
+        "internal/workitem/**",
+        "internal/events/**",
+        "internal/run/**",
+        "internal/record/**",
+        "internal/search/**",
+        "internal/reconcile/**",
+        "internal/workflow/**",
+        "internal/approval/**",
+        "internal/next/**",
+        "scripts/**",
+        "docs/examples/m1-devsys/**",
+        "docs/examples/workflows/**",
+        "go.mod",
+        "go.sum"
+      ],
+      "content_hash": "2b18eaa4ef0a726325b9d1a70049d9f3330703da2d53420b2c0e5b1bedd7973f"
+    },
     "knowledge/可靠文本存储/领域记录与事件.md": {
       "sources": [
         "internal/storage/**",
@@ -279,6 +354,46 @@
       ],
       "content_hash": "7619ea80d0fa17e20333918c9ca19dd663497bbf39cda0425af3bdb6a98c115f"
     },
+    "knowledge/项目接入与配置/AGENTS.md写入.md": {
+      "sources": [
+        "cmd/**",
+        "internal/cli/**",
+        "internal/config/**",
+        "internal/project/**",
+        "internal/registry/**",
+        "internal/version/**",
+        "internal/domain/**",
+        "README.md",
+        "internal/cli/records.go",
+        "internal/cli/diagnostics.go",
+        "internal/cli/mcp.go",
+        "scripts/m4helper",
+        "scripts/smoke-m4.sh",
+        "scripts/smoke-m4.ps1",
+        "scripts/exchange-demo.sh"
+      ],
+      "content_hash": "544f9974558df8a3d4670259a2aaf41017f57cd8525249deeeeab67e2f7c55d2"
+    },
+    "knowledge/项目接入与配置/CLI渲染与交换协议.md": {
+      "sources": [
+        "cmd/**",
+        "internal/cli/**",
+        "internal/config/**",
+        "internal/project/**",
+        "internal/registry/**",
+        "internal/version/**",
+        "internal/domain/**",
+        "README.md",
+        "internal/cli/records.go",
+        "internal/cli/diagnostics.go",
+        "internal/cli/mcp.go",
+        "scripts/m4helper",
+        "scripts/smoke-m4.sh",
+        "scripts/smoke-m4.ps1",
+        "scripts/exchange-demo.sh"
+      ],
+      "content_hash": "ae8d2f2ba3328a8f912057245cece2a4fc92618b1fbcaa0efef7264757736e46"
+    },
     "knowledge/项目接入与配置/Schema与错误契约.md": {
       "sources": [
         "cmd/**",
@@ -288,9 +403,16 @@
         "internal/registry/**",
         "internal/version/**",
         "internal/domain/**",
-        "README.md"
+        "README.md",
+        "internal/cli/records.go",
+        "internal/cli/diagnostics.go",
+        "internal/cli/mcp.go",
+        "scripts/m4helper",
+        "scripts/smoke-m4.sh",
+        "scripts/smoke-m4.ps1",
+        "scripts/exchange-demo.sh"
       ],
-      "content_hash": "a3b7e53e7c32f69d97f90a787127d36c0262f7c6616bc74d8f82166085532104"
+      "content_hash": "6d2267e2b84e91d5dc8146d5075e90aa208e5a36eff18b791138b5015e2aed9e"
     },
     "knowledge/项目接入与配置/技术栈.md": {
       "sources": [
@@ -301,9 +423,16 @@
         "internal/registry/**",
         "internal/version/**",
         "internal/domain/**",
-        "README.md"
+        "README.md",
+        "internal/cli/records.go",
+        "internal/cli/diagnostics.go",
+        "internal/cli/mcp.go",
+        "scripts/m4helper",
+        "scripts/smoke-m4.sh",
+        "scripts/smoke-m4.ps1",
+        "scripts/exchange-demo.sh"
       ],
-      "content_hash": "d99990a5f960fd7ed01ce9dd26e248cd5fc0af8901369c4e57adc9ba6d83e54f"
+      "content_hash": "e33aaa4454a9bf9750fc23baf2163d7f33cdbfed7511ed634532fc4263d0d256"
     },
     "knowledge/项目接入与配置/架构设计.md": {
       "sources": [
@@ -314,9 +443,16 @@
         "internal/registry/**",
         "internal/version/**",
         "internal/domain/**",
-        "README.md"
+        "README.md",
+        "internal/cli/records.go",
+        "internal/cli/diagnostics.go",
+        "internal/cli/mcp.go",
+        "scripts/m4helper",
+        "scripts/smoke-m4.sh",
+        "scripts/smoke-m4.ps1",
+        "scripts/exchange-demo.sh"
       ],
-      "content_hash": "0af5f1b635a5b69d3b4a69d13134ee71c19f4478ab52051f57cfb91895693025"
+      "content_hash": "c7d7b3bd883adbb8cd6577e90131376285603baab8d3b158199c6d24cd4d4d1b"
     },
     "knowledge/项目接入与配置/概述.md": {
       "sources": [
@@ -327,9 +463,16 @@
         "internal/registry/**",
         "internal/version/**",
         "internal/domain/**",
-        "README.md"
+        "README.md",
+        "internal/cli/records.go",
+        "internal/cli/diagnostics.go",
+        "internal/cli/mcp.go",
+        "scripts/m4helper",
+        "scripts/smoke-m4.sh",
+        "scripts/smoke-m4.ps1",
+        "scripts/exchange-demo.sh"
       ],
-      "content_hash": "32175ce4014cfd7a051140b535822c5f116e6b42e9f83487a3f13be8d106cc36"
+      "content_hash": "edf21b50a626c7578124c7a6d25543eedff38fbebfacb5f87c8764c964e09c41"
     },
     "knowledge/项目接入与配置/特殊配置与命令.md": {
       "sources": [
@@ -340,9 +483,16 @@
         "internal/registry/**",
         "internal/version/**",
         "internal/domain/**",
-        "README.md"
+        "README.md",
+        "internal/cli/records.go",
+        "internal/cli/diagnostics.go",
+        "internal/cli/mcp.go",
+        "scripts/m4helper",
+        "scripts/smoke-m4.sh",
+        "scripts/smoke-m4.ps1",
+        "scripts/exchange-demo.sh"
       ],
-      "content_hash": "ca5b9ae36d3efbed7d1ca020cc1c5d971178fa659433109df423497261bd3bd5"
+      "content_hash": "6f63369c597e654bb4d7b782415e1412fe34247ece56ae659e6ab63ab6b79996"
     },
     "knowledge/项目接入与配置/编码规范.md": {
       "sources": [
@@ -353,22 +503,29 @@
         "internal/registry/**",
         "internal/version/**",
         "internal/domain/**",
-        "README.md"
+        "README.md",
+        "internal/cli/records.go",
+        "internal/cli/diagnostics.go",
+        "internal/cli/mcp.go",
+        "scripts/m4helper",
+        "scripts/smoke-m4.sh",
+        "scripts/smoke-m4.ps1",
+        "scripts/exchange-demo.sh"
       ],
-      "content_hash": "16a2171bc786e369794874dd441e8d5ba6bd64f0294c53f45c45f2bbf6e6e3a5"
+      "content_hash": "73bddeef7ef4387e5c9786ca491a4b1bff15a2f837d28956783ce12483fbf287"
     },
     "log.md": {
       "sources": [],
       "content_hash": "00a0bd1b7b3d0422e6ef174cea24033bcca600c3bebefd7326642ad4f6fb396d"
     }
   },
-  "snapshot_digest": "947a82bc425726f17903722ffde75112d0cb1addee58074fd082272dcae53b35",
+  "snapshot_digest": "0551aab7b70d016fcdde3d302f0658b924e946396f9a61c0de2ad0b60badd4a1",
   "snapshot_file": ".repowiki/snapshot.json",
   "last_run": {
     "status": "success",
     "phase": "finalize",
-    "started_at": "2026-09-18T04:13:44.989Z",
-    "finished_at": "2026-09-18T04:13:44.989Z",
+    "started_at": "2026-09-18T08:44:06.365Z",
+    "finished_at": "2026-09-18T08:44:06.365Z",
     "error": ""
   }
 }

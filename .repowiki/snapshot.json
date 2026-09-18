@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "generated_at": "2026-09-18T03:53:02.916Z",
+  "generated_at": "2026-09-18T07:59:37.879Z",
   "files": [
     {
       "path": ".gitattributes",
@@ -32,10 +32,10 @@
     },
     {
       "path": "docs/开发记录.md",
-      "size": 35503,
-      "hash": "003424600acfc0050f68534c456011b5355b0308cfb96e9324cd336dc027ee3b",
+      "size": 52678,
+      "hash": "fd2bfd98ea0882549759b857884896cbffbd72aa344473ee1b44adf7e1b1a159",
       "language": "markdown",
-      "lines": 182
+      "lines": 247
     },
     {
       "path": "docs/原始文档/独立于Harness的Agent开发基础设施方案.md",
@@ -165,17 +165,101 @@
     },
     {
       "path": "go.mod",
-      "size": 58,
-      "hash": "8a03c652e7bfd70bd3155bb20682917e2a3ec667fb687bcb9abf0bec246396db",
+      "size": 477,
+      "hash": "b5c38b0e056ba3c27a50294b26fd55828c02fa097bab5d6582456d88751a6c52",
       "language": "other",
-      "lines": 5
+      "lines": 17
     },
     {
       "path": "go.sum",
-      "size": 360,
-      "hash": "e42794fa9b56301ad073de55cac1dea683b320ed951454d8709ffc7156088dd2",
+      "size": 2388,
+      "hash": "db59c83746ca96a61536ba7a9b1e2d397d98069df5d290d85bee8f47b7fb6093",
       "language": "other",
-      "lines": 4
+      "lines": 28
+    },
+    {
+      "path": "internal/app/app.go",
+      "size": 3917,
+      "hash": "ba5482467192867e20439c3c9505a20efee31dbd41708c1d927c72e22a0d0200",
+      "language": "go",
+      "lines": 129
+    },
+    {
+      "path": "internal/app/approval.go",
+      "size": 6582,
+      "hash": "670acfbf7f4eb16711745bffb4095be2886a2bdc938f9e3f8c67d23bc3a3e025",
+      "language": "go",
+      "lines": 195
+    },
+    {
+      "path": "internal/app/context.go",
+      "size": 8536,
+      "hash": "7e45c91e16eca3153cf01e4bea6ff545fe081d4100da1a36a57adfa83142bfb9",
+      "language": "go",
+      "lines": 277
+    },
+    {
+      "path": "internal/app/knowledge.go",
+      "size": 1643,
+      "hash": "92b33d7951a93326f090bb35d9beba8c90c8b7a5d2f54212da1702a4a60b4095",
+      "language": "go",
+      "lines": 43
+    },
+    {
+      "path": "internal/app/next.go",
+      "size": 2975,
+      "hash": "7d9b4832e33f8b2d87eb014bb2d6b287eff728d3ecb14534f7ae4a389dddc4b1",
+      "language": "go",
+      "lines": 87
+    },
+    {
+      "path": "internal/app/project.go",
+      "size": 10860,
+      "hash": "e3395ed5ed0c00f8a42c757cd1ad9fe8ef504d06e9a2eaced4c494ef64d4624b",
+      "language": "go",
+      "lines": 374
+    },
+    {
+      "path": "internal/app/record.go",
+      "size": 12008,
+      "hash": "19bdbfade8079e3150a4863fb64d18571167cbd2e5a5b81103fc2146309738e7",
+      "language": "go",
+      "lines": 407
+    },
+    {
+      "path": "internal/app/run.go",
+      "size": 7587,
+      "hash": "dfcb47789e19969f448edc4776afdfeece1d81befc33b66fc2f72b96d71712db",
+      "language": "go",
+      "lines": 245
+    },
+    {
+      "path": "internal/app/session.go",
+      "size": 8511,
+      "hash": "94063be34c17215f13174591448fa9ca143786f894edb8aae4fe57045e93a528",
+      "language": "go",
+      "lines": 257
+    },
+    {
+      "path": "internal/app/wire.go",
+      "size": 7714,
+      "hash": "eb0004e9652fde8f6ccb19fd277051e8843f279393d44ac069c0ba629b57a828",
+      "language": "go",
+      "lines": 243
+    },
+    {
+      "path": "internal/app/workflow.go",
+      "size": 7927,
+      "hash": "0ba45ab52e02f4535e829a6ef39bfc7329062f270e35f0f53a086eafb6d881ab",
+      "language": "go",
+      "lines": 217
+    },
+    {
+      "path": "internal/app/workitem.go",
+      "size": 20758,
+      "hash": "c7d7dcefc338a86b75a924fb2bd6402c85efce25296e8154a5d116974aba69df",
+      "language": "go",
+      "lines": 613
     },
     {
       "path": "internal/approval/approval_test.go",
@@ -200,10 +284,66 @@
     },
     {
       "path": "internal/cli/cli.go",
-      "size": 56509,
-      "hash": "3c3c0108a70eedc4e3e670a552960a692b8a5d0e64c4e91f42ca4154a2755480",
+      "size": 48872,
+      "hash": "f47d2559d6ba686781d68f8571adc15f8c589620eb537f6ffa2f293a1d3ac9c3",
       "language": "go",
-      "lines": 1620
+      "lines": 1402
+    },
+    {
+      "path": "internal/cli/diagnostics.go",
+      "size": 9671,
+      "hash": "a75621f09b0e92d455b21fdc361ead052a17222bfbc9aebc494cf69a2108ac56",
+      "language": "go",
+      "lines": 295
+    },
+    {
+      "path": "internal/cli/exchange_test.go",
+      "size": 4930,
+      "hash": "5dbe3784c175b306912fe746c37fe8b9937a972f57501692bb224e5ec2e58f76",
+      "language": "go",
+      "lines": 153
+    },
+    {
+      "path": "internal/cli/mcp_test.go",
+      "size": 7484,
+      "hash": "bcf7e0ece1df06c7e70a181846373063c6f7d816d0b4c9704085375e5e00fe25",
+      "language": "go",
+      "lines": 252
+    },
+    {
+      "path": "internal/cli/mcp.go",
+      "size": 3206,
+      "hash": "21b1221a675f975de83c88bc71987d69357bc26c8a6af6c884c78e6b64257bfe",
+      "language": "go",
+      "lines": 86
+    },
+    {
+      "path": "internal/cli/records_test.go",
+      "size": 9692,
+      "hash": "ef3498a63b96ffe9c966338f393160e156b947a092eccac55961f05ba0deb5d7",
+      "language": "go",
+      "lines": 296
+    },
+    {
+      "path": "internal/cli/records.go",
+      "size": 27355,
+      "hash": "682e83153004228c284d21522ae0a5cb641d707855a43074791d7db2c551a1f2",
+      "language": "go",
+      "lines": 802
+    },
+    {
+      "path": "internal/cli/session_test.go",
+      "size": 4563,
+      "hash": "3ad7edafc343c43710491bdb52157098b55dbdc8d42caa8a7ee663cb3a72fd50",
+      "language": "go",
+      "lines": 140
+    },
+    {
+      "path": "internal/cli/wire_test.go",
+      "size": 5680,
+      "hash": "5ef400269ea551ead3ce8bef40ecd7d1698fcda8e311b0adc367b05bcb2d9b18",
+      "language": "go",
+      "lines": 153
     },
     {
       "path": "internal/config/config_test.go",
@@ -274,6 +414,90 @@
       "hash": "b8602ce20d51189276c34eb86bdea53e8e40396bebf734fa7fe63251169e4dcd",
       "language": "go",
       "lines": 328
+    },
+    {
+      "path": "internal/mcp/server_test.go",
+      "size": 7854,
+      "hash": "bd84687212d31c2293e7423e796aa8d011dfe59f778ff00952799eb7c5343962",
+      "language": "go",
+      "lines": 236
+    },
+    {
+      "path": "internal/mcp/server.go",
+      "size": 4445,
+      "hash": "118392272925f4db6061744c12a6144faa5504b0f2b871f223fb6803b1b47140",
+      "language": "go",
+      "lines": 134
+    },
+    {
+      "path": "internal/mcp/tools_approval.go",
+      "size": 5147,
+      "hash": "7fe3556c5a67908b9eb227fe208452f259b62e1cbc2bdd8055abda0ecd480a17",
+      "language": "go",
+      "lines": 130
+    },
+    {
+      "path": "internal/mcp/tools_context.go",
+      "size": 3591,
+      "hash": "04c6a5bfa54f5b2ad34800774efe7ca3c071ecac215019c78195af57db18ec30",
+      "language": "go",
+      "lines": 99
+    },
+    {
+      "path": "internal/mcp/tools_health.go",
+      "size": 2140,
+      "hash": "6cc68dc7fe7369e658f966f17a658e67d98d21640f0a171ff0bd0c4f67441dcb",
+      "language": "go",
+      "lines": 73
+    },
+    {
+      "path": "internal/mcp/tools_project.go",
+      "size": 6495,
+      "hash": "19e68f7cf6bc5b482ded90ca8c7ee387d225c47040e2683d955bab09b71c990f",
+      "language": "go",
+      "lines": 175
+    },
+    {
+      "path": "internal/mcp/tools_record.go",
+      "size": 15095,
+      "hash": "3a4a1dec30904cbedd9eda52302d29e3d6d6d5318cfca11e016554ce92dd3dcd",
+      "language": "go",
+      "lines": 378
+    },
+    {
+      "path": "internal/mcp/tools_run.go",
+      "size": 6393,
+      "hash": "6f61045d3eda37e7288d361b5654839192cc6c51a71af8d2d820ae9a9d73f9b6",
+      "language": "go",
+      "lines": 161
+    },
+    {
+      "path": "internal/mcp/tools_session.go",
+      "size": 1553,
+      "hash": "0fc24617ff104efa8987620a2a82b1f26621e63ce22292a2c3a5d2a9c6a4d761",
+      "language": "go",
+      "lines": 37
+    },
+    {
+      "path": "internal/mcp/tools_workflow.go",
+      "size": 6553,
+      "hash": "a5daee026808d3bddac25f70426867fb72288e17915d3e836e33bf03e776772d",
+      "language": "go",
+      "lines": 160
+    },
+    {
+      "path": "internal/mcp/tools_workitem.go",
+      "size": 14108,
+      "hash": "ccb6f62f6cc05e1e4ae691469cae2bc2e09d05586243183ce2a608a2e9576b73",
+      "language": "go",
+      "lines": 328
+    },
+    {
+      "path": "internal/mcp/tools.go",
+      "size": 7704,
+      "hash": "3c9b93095d66c1ed1d17f48776a4e7f60a92622a1466ab2568c57f3f148d115d",
+      "language": "go",
+      "lines": 166
     },
     {
       "path": "internal/next/evaluate_test.go",
@@ -358,6 +582,20 @@
       "hash": "ce16489118a076a16e4952c7885f06f48838235bb0a7d8b1421fe1f4573d6fb3",
       "language": "go",
       "lines": 368
+    },
+    {
+      "path": "internal/record/update_test.go",
+      "size": 3740,
+      "hash": "7da0f5efcdec6bd124a350dddf1bdddbcf700192f8560de20223c6f547d77a0b",
+      "language": "go",
+      "lines": 123
+    },
+    {
+      "path": "internal/record/update.go",
+      "size": 5661,
+      "hash": "a6f4935f01cdb8f9a92159030b11aa2abc65d29d5d97c82a56ec88e75e965f34",
+      "language": "go",
+      "lines": 189
     },
     {
       "path": "internal/registry/registry_test.go",
@@ -753,10 +991,17 @@
     },
     {
       "path": "README.md",
-      "size": 20752,
-      "hash": "90d1af43f129f4da9f77a07d8d02a42500ef5a155810dc3e217d9a5081655401",
+      "size": 27671,
+      "hash": "de75ddd7abf295c540d5cdec4aaf3edb3c35645a69c115e6b729a11dfb9c9325",
       "language": "markdown",
-      "lines": 247
+      "lines": 283
+    },
+    {
+      "path": "scripts/exchange-demo.sh",
+      "size": 3209,
+      "hash": "8c8237d55c80c49a28d60aa704f8e17afc53de3b021d9979c1db3e9ada045fea",
+      "language": "shell",
+      "lines": 94
     },
     {
       "path": "scripts/m3helper/main.go",
@@ -764,6 +1009,13 @@
       "hash": "179db3a9d17909857010a2ef778bbbf1f26ddb8943091bdca0d49b506ec40b49",
       "language": "go",
       "lines": 220
+    },
+    {
+      "path": "scripts/m4helper/main.go",
+      "size": 6159,
+      "hash": "efc6531fad232271fbc118f886add5ca0f991d408d36093097a4d5d2e9836abd",
+      "language": "go",
+      "lines": 174
     },
     {
       "path": "scripts/smoke-m1-helper.go",
@@ -813,18 +1065,32 @@
       "hash": "a80fc95ad97c47466780e47392d89bfa82ed399801958bbf8db6f7a8244a286d",
       "language": "shell",
       "lines": 204
+    },
+    {
+      "path": "scripts/smoke-m4.ps1",
+      "size": 6074,
+      "hash": "684227c6d7ef8b49076c919edf4a03e7503dd73210538492be7adbf460c73849",
+      "language": "powershell",
+      "lines": 131
+    },
+    {
+      "path": "scripts/smoke-m4.sh",
+      "size": 4231,
+      "hash": "5f5222a3a2b77abfdc01112dfeb8d4a90e836dd074d670d805a9189da20db655",
+      "language": "shell",
+      "lines": 116
     }
   ],
   "stats": {
-    "total_files": 116,
-    "total_size": 914362,
-    "total_lines": 27118,
+    "total_files": 154,
+    "total_size": 1215017,
+    "total_lines": 35205,
     "languages": {
       "other": 6,
       "markdown": 8,
-      "go": 85,
-      "powershell": 3,
-      "shell": 3,
+      "shell": 5,
+      "go": 120,
+      "powershell": 4,
       "yaml": 11
     }
   },

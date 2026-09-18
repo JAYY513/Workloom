@@ -19,9 +19,13 @@ triggers:
   - approval kind
   - workflow kind
   - next verdict
-description: devsys 受管 YAML 文件的严格 schema：每文件白名单 + schema_version 闸门 + 行号定位 + Problems 错误结构 + 退出码 4 的语义边界 + M1 完整 Project 模型 + 嵌套字段校验；M2 新增退出码 3/4 在 workitem 与 repair 中的扩展语义、--expect 64-hex sha256 + fail-closed、--confirm 摘要格式、写命令 --actor/--reason 必填；M3 新增 workflow/approval/next 的 kind 与 code 语义、workitem.TransitionRequest.Guard 签名、policy issue 与 LKG 报错。
+  - app.Error Class
+  - 10/11 知识层约定
+  - --jsonl 列表流
+  - tool error code
+description: devsys 受管 YAML 文件的严格 schema：每文件白名单 + schema_version 闸门 + 行号定位 + Problems 错误结构 + 退出码 4 的语义边界 + M1 完整 Project 模型 + 嵌套字段校验；M2 新增退出码 3/4 在 workitem 与 repair 中的扩展语义、--expect 64-hex sha256 + fail-closed、--confirm 摘要格式、写命令 --actor/--reason 必填；M3 新增 workflow/approval/next 的 kind 与 code 语义、workitem.TransitionRequest.Guard 签名、policy issue 与 LKG 报错；M4 收口到 *app.Error.Class() 四类（映射 CLI 退出码 + MCP tool error code）、--jsonl 列表流、知识层 10/11 退出码预留。
 generated: true
-source_commit: cf7b256
+source_commit: 997c5f8
 generator: repowiki-gen
 ---
 
@@ -361,6 +365,156 @@ bin/devsys.exe repair --apply --confirm "$DIGEST" --actor alice --reason "M3 aud
 ```
 
 `devsys --json doctor` / `repair --dry-run` / `workflow check` / `approval list` / `next` 分别输出 `InspectionReport` / `Plan` / `{ok, policies[], warnings[]}` / `{ok, approvals[]}` / `{ok, readiness, …}`。
+## M4 错误分类：`*app.Error` 与 `Class()`
+
+M4 把所有业务错误收口到 `internal/app/app.go` 的 `*app.Error` 类型：
+
+```go
+type Error struct {
+    Kind     string            // 展示类型（9 种）
+    Message  string
+    Problems []config.Problem  // 仅 invalid / workflow 等结构化失败存在
+}
+
+func (e *Error) Class() string {
+    switch e.Kind {
+    case KindUsage, KindPrecondition, KindInternal:
+        return e.Kind
+    }
+    return KindInvalid
+}
+```
+
+### Kind 值域（9 种）
+
+| 常量 | 值 | 含义 | Class |
+|---|---|---|---|
+| `KindUsage` | `usage` | 参数或调用形态错误 | `usage` |
+| `KindPrecondition` | `precondition` | 状态/环境不满足（未初始化、版本哈希不符等） | `precondition` |
+| `KindInternal` | `internal` | 系统/IO 失败 | `internal` |
+| `KindInvalid` | `invalid` | 受管状态不可信（parse / 未知键 / schema_version） | `invalid` |
+| `KindWorkflow` | `workflow` | 策略或实例操作拒绝 | `invalid` |
+| `KindGate` | `gate` | 门禁未满足（artifact / comment / approval） | `invalid` |
+| `KindQuality` | `quality` | 质量门未通过 | `invalid` |
+| `KindWorkitem` | `workitem` | 工作项非法状态转换 / 锁冲突 | `invalid` |
+| `KindApproval` | `approval` | 审批请求/决定/消费被拒绝 | `invalid` |
+
+### `Class()` 四类归一
+
+归一到 `usage / precondition / internal / invalid` 四类。CLI 与 MCP 共用此分类：
+
+| `Class()` | CLI 退出码 | MCP tool error code |
+|---|---|---|
+| `usage` | `CodeUsage = 2` | `usage` |
+| `precondition` | `CodePrecondition = 3` | `precondition` |
+| `internal` | `CodeInternal = 1` | `internal` |
+| `invalid` | `CodeInvalid = 4` | `invalid` |
+
+### 构造器
+
+- `Usagef(format, ...)` / `Preconditionf(format, ...)` / `Internalf(format, ...)` — 直接构造 `*app.Error`。
+- `Invalidf(kind string, problems []config.Problem, format string, args ...)` — 构造结构化失败，`kind` 取 `KindInvalid / KindWorkflow / KindGate / KindQuality / KindWorkitem / KindApproval` 之一。
+- `Classify(err)` — 任意 error 包装：`nil` 透传；`*app.Error` 透传；其它 → `Internalf("%v", err)`。
+
+### CLI 翻译：`toCoded`
+
+[internal/cli/cli.go:99-117](../../../internal/cli/cli.go#L99-L117)：
+
+```go
+func toCoded(err error) *codedError {
+    var ae *app.Error
+    if errors.As(err, &ae) {
+        code := CodeInvalid
+        switch ae.Class() {
+        case app.KindUsage:        code = CodeUsage
+        case app.KindPrecondition: code = CodePrecondition
+        case app.KindInternal:     code = CodeInternal
+        }
+        return &codedError{code: code, kind: ae.Kind, msg: ae.Message, problems: ae.Problems}
+    }
+    var ce *codedError
+    if errors.As(err, &ce) { return ce }
+    return errInternal("%v", err)
+}
+```
+
+M3 之前的 `workitemError` / `approvalError` / `mapWorkflowError` 三个工具函数被统一替换——任何 `*app.Error` 都走 `toCoded`。
+
+### MCP 翻译：`fail` / `failNotice` / `usageFail`
+
+`internal/mcp/tools.go:108-156` 的 `toolError` 结构 + `fail[Out any](err)`：
+
+```go
+type toolError struct {
+    Code     string           `json:"code"`
+    Message  string           `json:"message"`
+    Problems []config.Problem `json:"problems,omitempty"`
+    Notice   string           `json:"notice,omitempty"`
+}
+```
+
+| 函数 | 行为 |
+|---|---|
+| `fail[Out](err)` | `*app.Error` → `toolError{Code: ae.Class()}`；其它 → `toolError{Code: "internal"}` |
+| `failNotice[Out](err, notice)` | 同上，附 last-known-good `notice` |
+| `usageFail[Out](format, args...)` | 构造 `app.Usagef` 并调用 `fail` |
+
+返回的 `isError=true` tool result 通过 SDK `StructuredContent` 暴露给客户端。
+
+### JSON 错误信封（CLI `--json`）
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": 4,
+    "kind": "approval",
+    "message": "approval: not approved",
+    "problems": null
+  }
+}
+```
+
+`problems` 仅当 `kind` 为结构化失败（`invalid` / `workflow` / `gate` / `quality` / `workitem` / `approval`）且构造时携带时存在；其它情况为 `null` 或省略。
+
+### 调用脚本分支约定
+
+只信 `code` 字段：
+
+- `usage` (exit 2)：修正参数。
+- `precondition` (exit 3)：运行 `devsys init` / `devsys recover` / 重新 `get` 取新 version。
+- `internal` (exit 1)：重试或上报。
+- `invalid` (exit 4)：按 `problems[]` 修复受管状态，或按 `message` 处理拒绝原因（门禁未满足、审批失效等）。
+
+`kind` 字段是给人看的（让 stderr 更易读），**不是**分支依据。
+
+## M4 输出形态：`--json` 与 `--jsonl`
+
+- `--json`：成功输出走 stdout（`{ok: true, …}`），错误信封走 stderr（`{ok: false, error: {code, kind, message, problems?}}`）。
+- `--jsonl`：列表类命令按「一行一条 JSON 记录」输出，字段名与 `--json` 信封内同名数组字段一致。
+- `--quiet`：抑制成功输出；error / warning 始终走 stderr。
+- 列表子命令：`workitem list` / `decision list` / `finding list` / `event list` / `artifact list` / `run list` / `approval list` / `workflow list` 都支持 `--jsonl`。
+- 详情子命令（`get` / `create` / `update` 等）只支持 `--json`，不支持 `--jsonl`。
+
+实现：[internal/cli/cli.go:124-133](../../../internal/cli/cli.go#L124-L133) 的 `writeJSONL[T]` 泛型。
+
+## M4 知识层退出码（10/11 预留）
+
+CLI 注释 [internal/cli/cli.go:33-44](../../../internal/cli/cli.go#L33-L44)：
+
+```go
+// The knowledge layer reserves its own 0/10/11 convention (0 fresh, 10 stale,
+// 11 missing — 方案 §12.5) for `knowledge status`, arriving with M5.
+const (
+    CodeOK           = 0
+    CodeInternal     = 1
+    CodeUsage        = 2
+    CodePrecondition = 3
+    CodeInvalid      = 4
+)
+```
+
+M4 阶段 `devsys knowledge status` 仍然返回 `CodeOK = 0`（与 `app.Error{Kind: precondition}` 同源，仅语义占位）。M5 达到时 `CodeKnowledgeStale = 10` / `CodeKnowledgeMissing = 11` 启用。
 
 ## 与存储层的边界
 
