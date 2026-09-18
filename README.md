@@ -47,6 +47,7 @@
 | M4 收尾：里程碑剧本与提交 | 已完成：`scripts/smoke-m4.{sh,ps1}` 双平台实跑通过（MCP 面 / CLI-MCP 读写一致 / 会话接口 / 退出码分支 / jsonl / wire 幂等 / 知识降级）；repowiki 增量刷新至 M4 基线；`feat(m4)` + `docs(repowiki)` 两个提交 |
 | M6.2 工作区管理与不变量 | 已完成：`internal/workspace`（目录名净化 + 哈希后缀、工作区根 `workspace_root`、路径不变量含符号链接逃逸拒绝、git worktree 创建/复用/回收、四个生命周期钩子）；`devsys worktree prepare\|remove\|list`；`run exec` 启动前校验工作区不变量并执行 `before_run`（致命）/`after_run`（仅记录） |
 | M6.3 Run 生命周期与多轮续跑 | 已完成：`internal/prompt` 装配（首轮全量含策略正文渲染，续跑只发「上一轮以来变化 + 未完成项」，确定性 Hash 可重放）；轮次簿记在 run 事件流（`round` 记录），下一轮号从流推导；轮数上限 `limits.max_attempts` 超限即拒；§4.8 阶段推进（`building_prompt→launching_agent→streaming_turns→finishing`）与终态（succeeded/failed/timed_out/stalled/canceled）；`devsys run prompt\|complete\|fail\|cancel` + MCP `run_complete/run_fail/run_cancel` |
+| M6.4 调度 tick、派发与阻塞 | 已完成：`devsys dispatch [--once\|--watch]`——恢复事务与租约 → 计划（priority 降序 → created_at → 标识符；全局/按状态并发上限，未声明缺省 1；`blocked_by` 未满足即跳过且不领取）→ 领取 → 工作区准备并绑定 → 子进程启动尝试 → `run_dispatched` 事件；`--dry-run` 只计划；只读命令不派发 |
 | M6.1 Harness Adapter 接口与 Shell Adapter | 已完成：`internal/harness`（方案 §9.2 九方法映射 + 八项能力声明 + Session 句柄承载 stream/stop/collect）；Shell 适配器 argv 直通、逐行 stdout/stderr、超长行按 rune 边界 64 KiB 分块、超时与取消终止整棵进程树（POSIX 进程组 / Windows `taskkill /T /F`）；`devsys run exec` 把输出实时镜像并写入 `.devsys/runs/<run-id>.jsonl`（追加写、周期 fsync、断尾修复留痕），结束后更新 run 证据（commands/logs/result.errors）并记事件 |
 
 ## 构建与验收
@@ -236,6 +237,19 @@ bin/devsys.exe --json run exec --id <run-id> --actor <a> --reason <r> -- <comman
 `run exec` 通过 Harness Adapter 接口（`internal/harness`）启动命令：argv 直通、不做 shell 解释（要 shell 特性就自己传 `sh -c` / `cmd /c`），stdout/stderr 逐行实时镜像（`--json` 时命令输出走 stderr，stdout 只承载信封）；输出同时追加到 `.devsys/runs/<run-id>.jsonl`（`start` / `output` / `exit` 记录，控制记录与每 128 行刷盘，崩溃留下的断尾在下次运行时截断并写入 `repair` 记录）。命令结束后把 `commands`、`logs` 引用与非零退出的说明写回 run，并记 `run_exec_started`/`run_exec_finished` 事件。超时或 Ctrl-C 会终止整棵进程树（POSIX 进程组 / Windows `taskkill /T /F`），不会留下孙进程。
 
 **退出码语义**：`run exec` 的退出码描述 devsys 操作本身（0 已执行并落盘 / 2 用法 / 3 前置条件 / 4 受管状态不可信 / 1 内部）；被跑命令自己的退出码是**证据**，写在 JSONL 的 `exit` 记录与 run 的 `result.errors` 里，并由 `--json` 输出——两者不混用（否则命令退出 3 会被误读成 devsys 前置条件错误）。
+
+调度 tick（M6.4，方案 §4.8/§7.4）：
+
+```sh
+bin/devsys.exe dispatch --once --actor <a> --reason <r>        # 一次 tick（缺省）
+bin/devsys.exe dispatch --watch --interval 30s --actor <a> --reason <r>   # 前台循环，Ctrl-C 结束
+bin/devsys.exe dispatch --dry-run --actor <a> --reason <r>     # 只计划：不恢复、不领取、不建工作区、不启动
+bin/devsys.exe --json dispatch --once --actor <a> --reason <r> # 完整报告
+```
+
+一次 tick 的顺序是固定的：**恢复**（事务重放 + 释放过期/孤儿租约，与 `devsys recover` 同一实现）→ **计划**（纯函数 `internal/dispatch`）→ **启动**。排序为 `priority` 降序 → `created_at` 最早 → 标识符字典序；闸门是全局与按状态的并发上限（策略 `concurrency.global` / `concurrency.per_status`，多策略取最严；**未声明时缺省 1**——策略不说就一次一个），计数对象是已持有租约的项（claimed/running）；`dependencies` 未全部 `done`/`cancelled` 的项报 `blocked_by` 且**不领取**（避免占着并发额度等依赖），被取消的依赖视为已解决（它永远不会 done，死等会锁死队列）。到期重试看 `next_attempt_at`：未到期报 `retry_not_due`（退避计算属 M6.5，本步只消费该字段）。
+
+被选中的项按「领取（owner=`dispatch`，质量门与策略检查照常生效）→ 工作区准备并绑定 run → 以子进程启动尝试 → 记 `run_dispatched` 事件」处理；尝试命令取自 `.devsys/config.yaml` 的 `dispatch_command`（宿主 shell 脚本，M6.7 的 per-harness 适配器将取代它；未配置且有候选 → exit 3 并说明，不静默空转）。tick **不等待**尝试结束：证据在 run 事件流，尝试自身的 stdout/stderr 另存 `.devsys/local/runs/<run-id>.exec.log`。一个候选被拒（策略无效、门禁不过、工作区失败）只记 notice 并让出名额给下一个候选，不会拖住整个队列。**只读命令永不派发**：`next`/`doctor`/`status` 不改变调度态、不产生 run。
 
 工作区与生命周期钩子（M6.2，方案 §4.8）：
 

@@ -87,6 +87,9 @@ type Config struct {
 	// absolute, or relative to the project root. Empty selects the default
 	// below .devsys/.
 	WorkspaceRoot string `json:"workspace_root,omitempty"`
+	// DispatchCommand is the command a scheduling tick runs for each attempt
+	// it dispatches (M6.4). Empty means the tick refuses to start attempts.
+	DispatchCommand string `json:"dispatch_command,omitempty"`
 }
 
 // Metadata is what Load or Diagnose could read. A field is nil when its file
@@ -167,6 +170,11 @@ func parseConfig(rel string, data []byte) (*Config, Problems) {
 	if node, ok := values["workspace_root"]; ok {
 		if err := node.Decode(&c.WorkspaceRoot); err != nil {
 			return nil, Problems{{File: rel, Field: "workspace_root", Reason: fmt.Sprintf("decode: %v", err)}}
+		}
+	}
+	if node, ok := values["dispatch_command"]; ok {
+		if err := node.Decode(&c.DispatchCommand); err != nil {
+			return nil, Problems{{File: rel, Field: "dispatch_command", Reason: fmt.Sprintf("decode: %v", err)}}
 		}
 	}
 	return c, nil

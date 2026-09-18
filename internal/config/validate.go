@@ -61,6 +61,9 @@ var configSpec = fileSpec{fields: []fieldSpec{
 	// workspace_root relocates the execution workspaces of 方案 §4.8; it is
 	// optional and defaults to <project>/.devsys/workspaces.
 	{name: "workspace_root", kind: kindString},
+	// dispatch_command is the shell command a scheduling tick runs for each
+	// dispatched attempt (M6.4); the per-harness adapters of M6.7 replace it.
+	{name: "dispatch_command", kind: kindString},
 }}
 
 var currentFields = []fieldSpec{
