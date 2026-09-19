@@ -316,6 +316,33 @@ func inspectOrUnlocked(ctx context.Context, st *storage.Store, fn func(r *storag
 	return err
 }
 
+// LeaseAudit lists every scheduling lease through the read-only inspector:
+// live, expired, orphaned and undecodable alike. Read-only — never creates
+// the lock, never recovers (方案 §15.4). `sync status` (M8.1) classifies the
+// probes into handoff blockers doctor's verdict shape cannot carry: an
+// expired lease means the old device never finished its release playbook, an
+// orphan means scheduling drifted from the run records, and an unreadable
+// lease means the state cannot be trusted at all. Probes arrive sorted by
+// work item ID; the slice is never nil.
+func LeaseAudit(ctx context.Context, root string, opts Options) ([]LeaseProbe, error) {
+	now := opts.Now
+	if now == nil {
+		now = time.Now
+	}
+	st, err := storage.Open(root, storage.Options{Now: now})
+	if err != nil {
+		return nil, err
+	}
+	probes, err := walkScheduling(ctx, st, now())
+	if err != nil {
+		return nil, err
+	}
+	if probes == nil {
+		probes = []LeaseProbe{}
+	}
+	return probes, nil
+}
+
 // ComputeDigest returns the canonical digest of p. Wall-clock times are
 // never inputs. Proposals and evidence within each proposal are sorted to
 // remove ordering dependence.

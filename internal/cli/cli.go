@@ -85,6 +85,7 @@ commands:
   doctor        report transactions and orphaned claims (read-only)
   recover       recover transactions, release expired/orphaned claims
   repair        --dry-run proposes repairs; --apply --confirm <digest> applies
+  sync status   handoff readiness: divergence, uncommitted state, leases (read-only)
   mcp serve     serve the Model Context Protocol over stdio (--profile ...)
 
 options:
@@ -267,6 +268,8 @@ func RunWithIO(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			return render(stderr, opts, errUsage("`devsys init` takes no arguments (got %q)", rest[0]))
 		}
 		return render(stderr, opts, runInit(stdout, opts))
+	case "sync":
+		return render(stderr, opts, runSync(stdout, opts, rest))
 	case "config":
 		return render(stderr, opts, runConfigCheck(stdout, opts, rest))
 	case "search":

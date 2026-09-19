@@ -146,6 +146,17 @@ bin/devsys.exe repair --apply --confirm <digest> --actor <a> --reason <r>
 # digest 不符或证据漂移：exit 3，不写任何文件；apply 是唯一允许降低完成度的路径
 ```
 
+设备接力检查（M8.1，方案 §14.4：仅前后接力，不支持同时写）：
+
+```sh
+bin/devsys.exe sync status                        # 只读：分叉、未提交状态、待恢复事务、活跃领取
+# 阻塞也 exit 0（阻塞是被检查的状态，不是命令失败）；git 缺失/非仓库/缺 .devsys/ 才 exit 3
+```
+
+接力剧本：旧设备停 `--watch` 并结束执行 → `recover`（清 pending）→ 释放领取 → 提交推送
+（状态提交用 `chore(devsys):` 前缀）→ 新设备 `git fetch` 后 `sync status` 报 ready 再接手。
+`sync status` 只读本地上游镜像（不 fetch），不能证明另一台设备已停写——交接完成前旧设备不得继续写入。
+
 M2 完整剧本（Go 与 Git 必须在 PATH）：
 
 ```sh
