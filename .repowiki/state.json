@@ -3,9 +3,9 @@
   "partition": {
     "locale": "zh"
   },
-  "generated_at": "2026-09-19T09:54:33.188Z",
+  "generated_at": "2026-09-19T09:55:49.140Z",
   "git": {
-    "commit": "67e7dfec842781ad3b201a9d5762fb2e13bdfcb1",
+    "commit": "f84bb4cf37921b4abdd45336de02616e33ab6a9b",
     "branch": "master"
   },
   "pages": {
@@ -130,7 +130,7 @@
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "a20cc6e73913dc59b1c6d79171b6fadf038ec4971d401ea938941bf53d497dd4"
+      "content_hash": "ca3662780ffd2db596ca50dfb67f12bf755b0c608f5108645fc412830d45bb29"
     },
     "content/项目总览.md": {
       "sources": [
@@ -190,7 +190,7 @@
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "84e9002ae73f3fdbde17ab3273487d0b4b01bf0f51503a8825b7a3f730ba86fc"
+      "content_hash": "b6b0108fc60f92f04f80aac442ac97d73a60e48c9c0d6f6985efc703f168c614"
     },
     "index.md": {
       "sources": [],
@@ -998,8 +998,8 @@
   "last_run": {
     "status": "success",
     "phase": "finalize",
-    "started_at": "2026-09-19T09:54:33.188Z",
-    "finished_at": "2026-09-19T09:54:33.188Z",
+    "started_at": "2026-09-19T09:55:49.140Z",
+    "finished_at": "2026-09-19T09:55:49.140Z",
     "error": ""
   }
 }
