@@ -172,7 +172,10 @@
    "docs/M6-一致性自检.md",
    "docs/原始文档/实施计划.md",
    "docs/原始文档/独立于Harness的Agent开发基础设施方案.md",
-   "docs/开发记录.md"
+   "docs/开发记录.md",
+   "docs/M9-验收报告.md",
+   "docs/使用手册.md",
+   "docs/迁移指南.md"
   ]
  }
 }
