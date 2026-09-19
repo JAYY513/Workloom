@@ -144,6 +144,14 @@ type siteData struct {
 	TrustState string
 	TrustNote  string
 	Pending    []string
+	// Freshness rendering (derived in Go; the templates only switch on
+	// ShowFreshness). FreshnessCmd is empty when no command applies
+	// (fresh, or unavailable where refresh would point at nothing to fix).
+	ShowFreshness   bool
+	FreshnessTitle  string
+	FreshnessText   string
+	FreshnessReason string
+	FreshnessCmd    string
 	// Derived, order-stable.
 	ProgressCounts   []kv
 	RecentRuns       []view.RunEntry
@@ -160,6 +168,22 @@ func head5[T any](list []T) []T {
 	return list
 }
 
+// freshnessHint derives the site-wide freshness banner from the knowledge
+// status (M7.4, 方案 §17 数据过期时明确提示）. The model is fact; this is
+// rendering — the caller keeps the verdict strings out of the templates.
+func freshnessHint(k view.Knowledge) (show bool, title, text, reason, cmd string) {
+	switch k.Status {
+	case view.KnowledgeStale:
+		return true, "知识已过期", "执行以下命令重新生成受影响页面：", k.Reason, "devsys knowledge refresh"
+	case view.KnowledgeMissing:
+		return true, "知识页面层缺失", "配置 knowledge_generator 后执行：", k.Reason, "devsys knowledge refresh --full"
+	case view.KnowledgeUnavailable:
+		return true, "知识新鲜度不可判", "", k.Reason, ""
+	default:
+		return false, "", "", "", ""
+	}
+}
+
 func newSiteData(m *view.Model, generatedAt time.Time, title, active, section string, sources []string) siteData {
 	var approvals []next.Risk
 	for _, r := range m.Progress.Readiness.Risks {
@@ -167,6 +191,7 @@ func newSiteData(m *view.Model, generatedAt time.Time, title, active, section st
 			approvals = append(approvals, r)
 		}
 	}
+	show, ftitle, ftext, freason, fcmd := freshnessHint(m.Knowledge)
 	return siteData{
 		M: m, Title: title, Active: active, Section: section, Sources: sources,
 		GeneratedAt:      generatedAt.UTC().Format(time.RFC3339),
@@ -175,6 +200,11 @@ func newSiteData(m *view.Model, generatedAt time.Time, title, active, section st
 		TrustState:       m.Trust.State,
 		TrustNote:        m.Trust.Note,
 		Pending:          m.Trust.Pending,
+		ShowFreshness:    show,
+		FreshnessTitle:   ftitle,
+		FreshnessText:    ftext,
+		FreshnessReason:  freason,
+		FreshnessCmd:     fcmd,
 		ProgressCounts:   sortedCounts(m.Progress.Counts),
 		RecentRuns:       head5(m.Runs.Entries),
 		RecentDecisions:  head5(m.Records.Decisions),
@@ -264,8 +294,10 @@ const siteTemplates = `{{define "head"}}<!DOCTYPE html>
 <body>
 {{template "nav" .}}
 {{template "banner" .}}
+{{template "freshness" .}}
 <main>
 {{end}}
+{{define "freshness"}}{{if .ShowFreshness}}<div class="banner" role="alert"><strong>{{.FreshnessTitle}}</strong>{{if .FreshnessReason}} — {{.FreshnessReason}}{{end}}{{if .FreshnessText}}<br>{{.FreshnessText}}{{if .FreshnessCmd}}<code>{{.FreshnessCmd}}</code>{{end}}{{end}}</div>{{end}}{{end}}
 {{define "nav"}}<nav class="top">
 <a href="index.html"{{if eq .Active "index.html"}} class="active"{{end}}>总览</a>
 <a href="tasks.html"{{if eq .Active "tasks.html"}} class="active"{{end}}>任务</a>
@@ -274,7 +306,7 @@ const siteTemplates = `{{define "head"}}<!DOCTYPE html>
 <a href="records.html"{{if eq .Active "records.html"}} class="active"{{end}}>记录</a>
 <a href="knowledge.html"{{if eq .Active "knowledge.html"}} class="active"{{end}}>知识</a>
 </nav>{{end}}
-{{define "banner"}}{{if .ShowBanner}}<div class="banner" role="alert"><strong>trust: {{.TrustState}}</strong>{{if .TrustNote}} — {{.TrustNote}}{{end}}{{if .Pending}}<br>pending: {{join .Pending ", "}}{{end}}{{if .IsPending}}<br>存在未完成的事务，业务数据按方案 §15.4 置空：先执行 <code>devsys recover</code> 再信任本页。{{end}}</div>{{end}}{{end}}
+{{define "banner"}}{{if .ShowBanner}}<div class="banner" role="alert"><strong>trust: {{.TrustState}}</strong>{{if .TrustNote}} — {{.TrustNote}}{{end}}{{if .Pending}}<br>pending: {{join .Pending ", "}}{{end}}{{if .IsPending}}<br>存在未完成的事务，业务数据按方案 §15.4 置空：先执行 <code>devsys recover</code> 再信任本页。可用 <code>devsys doctor</code> 先查看事务详情。{{end}}</div>{{end}}{{end}}
 {{define "foot"}}</main>
 <footer>
 <h3>数据来源与基线</h3>
@@ -367,6 +399,7 @@ const siteTemplates = `{{define "head"}}<!DOCTYPE html>
 {{define "knowledge"}}{{template "head" .}}
 <h1>知识新鲜度</h1>
 <p>状态：<span class="verdict">{{.M.Knowledge.Status}}</span>{{if .M.Knowledge.Reason}} — {{.M.Knowledge.Reason}}{{end}}</p>
+{{if .ShowFreshness}}{{if .FreshnessText}}<p>{{.FreshnessText}}{{if .FreshnessCmd}}<code>{{.FreshnessCmd}}</code>{{end}}</p>{{end}}{{end}}
 <ul class="tight">
 <li>基线：{{if .M.Knowledge.Baseline}}<code>{{short12 .M.Knowledge.Baseline}}</code>{{else}}（无）{{end}} · 当前：{{if .M.Knowledge.Head}}<code>{{short12 .M.Knowledge.Head}}</code>{{else}}（无）{{end}}{{if .M.Knowledge.Branch}}（{{.M.Knowledge.Branch}}）{{end}}</li>
 <li>索引：{{if .M.Knowledge.IndexReady}}就绪（{{.M.Knowledge.IndexFiles}} 文件）{{else}}未就绪{{end}}{{if .M.Knowledge.Generator}} · 生成器：{{.M.Knowledge.Generator}}{{end}}{{if .M.Knowledge.Adapter}}（{{.M.Knowledge.Adapter}}）{{end}}</li>

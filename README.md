@@ -64,6 +64,7 @@
 | M7.1 只读聚合层 | 已完成：`internal/view` 从 `.devsys/` 与 git 状态装配视图快照（蓝图/进度含 §7.4 就绪判定/Run/记录/知识新鲜度），每节带来源文件、顶层带 git 基线；`devsys workspace view [--json] [--limit N]`；只走 `storage.Inspect`（不建锁、不恢复、不修断尾、不写 `.cache/`），无锁文件降级 `advisory_unlocked` 并照常渲染，pending 事务按 §15.4 不渲染业务事实；模型无墙钟字段（两次运行逐字节一致），只读副本实跑通过 |
 | M7.2 静态构建 | 已完成：`internal/sitestatic` 把 `view` 模型渲染为离线静态站（零 JS、零外部引用、单本地样式）；`devsys workspace build --static [--out DIR] [--limit N]`；产物 8 文件（总览/任务/工作流/运行/记录/知识 + `assets/style.css` + `data/model.json` 与 `--json` 同一模型）；每页导航互链、来源文件、基线提交与生成时间；pending 事务全站横幅；缺省 out `.devsys/dist/site/`（git 忽略，见 `.gitignore`），`--out` 显式指向可跟踪位置即发布；除 out 外零写入（`--out` 指项目外时项目指纹零变化） |
 | M7.3 本地只读服务 | 已完成：`devsys workspace serve [--host 127.0.0.1] [--port N] [--allow-remote] [--limit N]`（前台长进程，Ctrl+C 停）；缺省只绑 127.0.0.1，非环回须 `--allow-remote`（否则 exit 2 并明示风险）；每请求现装 `view.Build` 并用同一套模板内存渲染（6 页 + `assets/style.css` + `data/model.json` + 只读 JSON `/api/view` + `/healthz`），页脚来源/基线/生成时间；GET/HEAD 外一律 405（`Allow: GET, HEAD`）；运行期零写入 |
+| M7.4 新鲜度提示 | 已完成：知识状态与 `devsys knowledge status` 同一条判定（`knowledge.Evaluate`），状态字符串 fresh/stale/missing 一致（退出码 10/11 专属 knowledge，workspace 保持 0/1/2/3/4）；CLI 文本脸 stale 列 `affected:`/`unverifiable:` 并给 `devsys knowledge refresh`、missing 给 `--full`、unavailable（非 pending）给 `knowledge status`、pending 给 `devsys doctor`；静态站与 serve 全站第二横幅（trust 横幅之后）+ knowledge 页内联提示；其他数据面（工作项/记录/Run）沿用本节 sources + 顶层基线 commit 标注，不虚构新鲜度 |
 
 ## 构建与验收
 
@@ -329,8 +330,7 @@ bin/devsys.exe run complete|fail|cancel --id <run-id> [--expect <hash>] --actor 
 
 工作区视图（M7.1，方案 §17）：只读聚合 `.devsys/` 状态与 git 状态，不写回、不引入第二套存储。`workspace` 是**视图域**；执行工作区是 `devsys worktree`（M6.2），两者不是同一概念。
 
-```sh
-bin/devsys.exe workspace view              # 摘要：蓝图/进度/就绪/运行/记录/知识/来源
+bin/devsys.exe workspace view              # 摘要：蓝图/进度/就绪/运行/记录/知识/来源；stale 时列 affected 页并提示 devsys knowledge refresh
 bin/devsys.exe --json workspace view       # {ok, schema_version, project, trust, baseline, progress, runs, records, knowledge, sources}
 bin/devsys.exe workspace view --limit 20   # 列表节上限（runs/records/pages，缺省 50）
 bin/devsys.exe workspace build --static                         # 离线站 → .devsys/dist/site/（本地派生，不提交）

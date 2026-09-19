@@ -196,14 +196,30 @@ func renderWorkspaceView(stdout io.Writer, m *view.Model) {
 	k := m.Knowledge
 	if k.Status == view.KnowledgeMissing {
 		fmt.Fprintf(stdout, "  knowledge: missing — %s\n", k.Reason)
+		fmt.Fprintf(stdout, "  hint: configure `knowledge_generator`, then run `devsys knowledge refresh --full`\n")
 	} else {
 		fmt.Fprintf(stdout, "  knowledge: %s — %d page(s)%s%s\n", k.Status, len(k.Pages), truncatedSuffix(k.Truncated), reasonSuffix(k.Reason))
+		for _, page := range k.Affected {
+			fmt.Fprintf(stdout, "  affected: %s\n", page)
+		}
+		for _, page := range k.Unverifiable {
+			fmt.Fprintf(stdout, "  unverifiable: %s\n", page)
+		}
+		switch k.Status {
+		case view.KnowledgeStale:
+			fmt.Fprintf(stdout, "  hint: run `devsys knowledge refresh` to regenerate affected pages\n")
+		case view.KnowledgeUnavailable:
+			if m.Trust.State != view.TrustPending {
+				fmt.Fprintf(stdout, "  hint: run `devsys knowledge status` to see the underlying error\n")
+			}
+		}
 	}
 	if m.Trust.State != view.TrustOK {
 		fmt.Fprintf(stdout, "  trust: %s — %s\n", m.Trust.State, m.Trust.Note)
 	}
 	if len(m.Trust.Pending) > 0 {
 		fmt.Fprintf(stdout, "  pending: %s\n", strings.Join(m.Trust.Pending, ", "))
+		fmt.Fprintf(stdout, "  hint: run `devsys doctor` to inspect before `devsys recover`\n")
 	}
 	for _, problem := range m.Problems {
 		fmt.Fprintf(stdout, "  problem: %s\n", problem)
