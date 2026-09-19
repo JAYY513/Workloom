@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "generated_at": "2026-09-19T07:23:10.287Z",
+  "generated_at": "2026-09-19T10:12:35.974Z",
   "files": [
     {
       "path": ".gitattributes",
@@ -32,10 +32,24 @@
     },
     {
       "path": "docs/开发记录.md",
-      "size": 81016,
-      "hash": "3bca7f6d5ef467205a2213694bcbaa40503f315230e1f43c596ec22b59a06173",
+      "size": 84496,
+      "hash": "ea0b0e5bc8325c9b900acd165d9ae9db77ed6c16bd0aaeaf9f5ba05f63786e84",
       "language": "markdown",
-      "lines": 373
+      "lines": 391
+    },
+    {
+      "path": "docs/迁移指南.md",
+      "size": 3867,
+      "hash": "4d44ed7b53f2d5a5d27f6018d0ae7bbccc9dec8c7802ad67467cb46486eff669",
+      "language": "markdown",
+      "lines": 72
+    },
+    {
+      "path": "docs/使用手册.md",
+      "size": 7081,
+      "hash": "64c2b298f88d92bb868acf408571842d9edfdb32db7a4ca5dc3a4d3f4846bb10",
+      "language": "markdown",
+      "lines": 131
     },
     {
       "path": "docs/原始文档/独立于Harness的Agent开发基础设施方案.md",
@@ -169,6 +183,13 @@
       "hash": "b739a17323ffd0f4c56a0e0561980cb1ff6f54561f3eff991b597067a0f4eab4",
       "language": "markdown",
       "lines": 111
+    },
+    {
+      "path": "docs/M9-验收报告.md",
+      "size": 30203,
+      "hash": "cfb02fb625bae4db4fbfff9b47d771800e1f5642b4ba1d9e83122140ef4144bb",
+      "language": "markdown",
+      "lines": 355
     },
     {
       "path": "go.mod",
@@ -1621,10 +1642,10 @@
     },
     {
       "path": "README.md",
-      "size": 55760,
-      "hash": "92f1e6853f5323fc2571cd3610b8108be2ba62333535bb5a0745bc23aa221cae",
+      "size": 56892,
+      "hash": "44e0377e1d3dbebd7101b4d5d3c41f95d43f8ec0522a3c0e99b7721f5e685c16",
       "language": "markdown",
-      "lines": 457
+      "lines": 462
     },
     {
       "path": "scripts/contrabass/export.py",
@@ -1775,10 +1796,10 @@
     },
     {
       "path": "scripts/smoke-m8.ps1",
-      "size": 14821,
-      "hash": "48a6d87a24b18e80f7eee416f981ca7020ad03a891a33aabb1ea430e114d86b9",
+      "size": 15000,
+      "hash": "814f2ee3ef52cdbf9096554acfd17d8e4c4acdc1e7d8ee7f79e9fec1cbc34cc7",
       "language": "powershell",
-      "lines": 242
+      "lines": 245
     },
     {
       "path": "scripts/smoke-m8.sh",
@@ -1789,12 +1810,12 @@
     }
   ],
   "stats": {
-    "total_files": 255,
-    "total_size": 2199397,
-    "total_lines": 60908,
+    "total_files": 258,
+    "total_size": 2245339,
+    "total_lines": 61492,
     "languages": {
       "other": 6,
-      "markdown": 10,
+      "markdown": 13,
       "shell": 9,
       "go": 209,
       "powershell": 8,

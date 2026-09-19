@@ -3,9 +3,9 @@
   "partition": {
     "locale": "zh"
   },
-  "generated_at": "2026-09-19T09:58:08.847Z",
+  "generated_at": "2026-09-19T10:12:52.963Z",
   "git": {
-    "commit": "cde332095b1f2caf0ff68323a12b6fe704908fd6",
+    "commit": "c5b5533481feb59b3585c31ca530e6884ab5216f",
     "branch": "master"
   },
   "pages": {
@@ -993,13 +993,13 @@
       "content_hash": "323df4baab8f87e0b2be15d03a74af9d84ea56d25259286fa170ab02302a4b94"
     }
   },
-  "snapshot_digest": "48ede2198eea3db774e4b1bc91b4c1243b97706232d2a0ce763903ee22a5f747",
+  "snapshot_digest": "942401f6500d3dff4892a5a987ee78c49f8892b7f636dd6251b4d4d1f365c2de",
   "snapshot_file": ".repowiki/snapshot.json",
   "last_run": {
     "status": "success",
     "phase": "finalize",
-    "started_at": "2026-09-19T09:58:08.847Z",
-    "finished_at": "2026-09-19T09:58:08.847Z",
+    "started_at": "2026-09-19T10:12:52.963Z",
+    "finished_at": "2026-09-19T10:12:52.963Z",
     "error": ""
   }
 }

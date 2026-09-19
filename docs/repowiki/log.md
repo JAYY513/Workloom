@@ -1,3 +1,12 @@
+## 2026-09-19 · c5b5533 M9 状态同步（state-only，无内容重生成）
+
+- 源码基线：`c5b5533`（相对上次 wiki 基线 `cde3320` 仅 1 提交，即前轮 `state.json` 记录提交本身；`repowiki status --json` 报 `1 new commits, 0 files changed`、`affected_pages: []`）；增量模式运行，无受影响页即跳过 4a/4b。
+- 计划：`.repowiki/plan.json` schema 2 不变，模块树档位（6 模块 / 3 文章，caps 内）；`coverage_check` 248/255，uncovered 10 项不变（含 M9 三文档，bundle 外用户文档）。
+- 增量范围：无。`repowiki scan` 刷新快照（258 files，go:209；`docs/开发记录.md` 等 size/hash 跟进）；受管 55 页零改动，D4 比对不触发，人工保护无跳过。
+- 文档校验：`repowiki validate` 报告 **55 files、0 errors、0 warnings**（含可达性与 plan 一致性）。
+- 收尾：`repowiki state --update` 刷新基线 `cde3320` → `c5b5533`（55 页、coverage 248/255、phase finalize success）；`repowiki status` 报告 **fresh**。
+- 验证边界：本轮仅同步 state/snapshot，不碰 Go 源码与 wiki 内容；全量测试结论沿用 M9 收尾（25 包绿、gofmt/vet 净）。
+
 ## 2026-09-19 · def1735 M9 基线（M8-close 修正 + M9 文档增量）
 
 - 源码基线：`def1735`（相对上次 wiki 基线 `52294b0` 共 7 提交：M8 `f7653a8` smoke-m8 双平台剧本 + `471aa33` M8 基线刷新 + M8-close `1ac4d56` 评审 4 项 + M9 `d5423fb` 三文档 + `6214330` README 行 + 本轮 `def1735`；Go 源码自 M8 基线后零变更，仅 `scripts/smoke-m8.ps1` +20/-10）；增量模式运行。
