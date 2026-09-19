@@ -18,7 +18,7 @@ import (
 )
 
 // Excluded directories are never scanned.
-var excluded = map[string]bool{".cache": true, "local": true}
+var excluded = map[string]bool{".cache": true, "local": true, "archive": true}
 
 // Match is one located keyword hit.
 type Match struct {

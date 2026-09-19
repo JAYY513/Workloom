@@ -68,6 +68,7 @@
 | M7 收尾：里程碑剧本与提交 | 已完成：`scripts/smoke-m7.{sh,ps1}` 双平台实跑通过（view 只读零写入 / 静态站 8 文件离线 / serve 只读与环回绑定 / 新鲜度 stale-missing-pending 三态）；全量 `go test ./...` 25 包绿；gofmt/vet 净；repowiki 已由 #259 刷新至 M7.4 基线（本卡复用，不重做）；`feat(m7)` 提交 |
 | M8.1 分叉检测 | 已完成：`devsys sync status` 只读接力 verdict（本地/上游 ahead-behind、porcelain 未合并/合并施工痕迹、待恢复事务、全类租约审计 + handoff_ready + 接力剧本）；阻塞仍 exit 0，环境失败 exit 3 |
 | M8.2 冲突标注与修复接入 | 已完成：`repair --dry-run` 把未解合并列为 `note_unmerged_paths`（人工项，apply 恒 rejected、零写入）；`dispatch`（含 dry-run）在合并未解时拒绝启动（exit 3）；git 保留双方、无时间戳选赢家 |
+| M8.3 归档与裁剪 | 已完成：`devsys archive events --before <YYYY-MM> \| runs --id <id,...>` 把 JSONL 流移入 `.devsys/archive/`（manifest 清单审计，无删除形态）；`event list` 与 run 流自动合并现役+归档；`search` 排除归档树 |
 
 ## 构建与验收
 
@@ -164,6 +165,21 @@ bin/devsys.exe sync status                        # 只读：分叉、未提交�
 解决合并（双方显式二选一或手动合并，状态提交同样用 `chore(devsys):` 前缀）→ `repair --apply`
 清租约残留（`note_*` 项恒为 rejected，零写入）→ `dispatch` 恢复。合并未解时 `dispatch`
 （含 `--dry-run`）直接拒绝启动（exit 3），`sync status` 报 NOT ready。
+
+归档与裁剪（M8.3，方案 §14.2：默认保守，不删只归档）：
+
+```sh
+bin/devsys.exe archive events --before <YYYY-MM> --actor <a> --reason <r>   # 整月分片早于该月
+bin/devsys.exe archive runs --id <run-id,...> --actor <a> --reason <r>      # 仅终态 run 的流
+bin/devsys.exe archive events --before <YYYY-MM> --dry-run --actor <a> --reason <r>
+```
+
+归档把 `events/<月>.jsonl` 与 `runs/<id>.jsonl` 移入 `.devsys/archive/`（同名，目录区分），
+并追加 `archive/manifest.yaml`（来源/sha/字节/行数/归档人/原因）作为审计指针；同一事务内
+复制+删除+写清单，中断可恢复。`event list` 与 run 流自动合并现役+归档（归档后历史仍可查，
+同名分片两段都读并按时间排序）；`search` 不扫归档树。`runs/*.yaml` 摘要不动；running 的流
+拒绝归档（exit 2）；归档体积口径是现役 `.devsys/events+runs(*.jsonl)` 字节下降（git 对象库
+不立即收缩，不承诺 `.git/` 下降）。
 
 M2 完整剧本（Go 与 Git 必须在 PATH）：
 

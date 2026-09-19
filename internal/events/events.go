@@ -190,8 +190,9 @@ func (f Filter) matches(ev *domain.Event) bool {
 }
 
 // Read returns the events of the stream in time order, filtered by f.
-// Shards are read in ascending month order, so the result ascends even
-// across month boundaries.
+// Live shards and archived shards (M8.3) are both covered: an archived
+// shard holds the segment as of archival, later events land on the live
+// shard of the same month, so both are read and merged by event time.
 func (s *Store) Read(ctx context.Context, f Filter) ([]*domain.Event, error) {
 	st, err := s.store()
 	if err != nil {
@@ -212,6 +213,12 @@ func (s *Store) Read(ctx context.Context, f Filter) ([]*domain.Event, error) {
 			return nil, err
 		}
 	}
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].Time.Equal(out[j].Time) {
+			return out[i].ID < out[j].ID
+		}
+		return out[i].Time.Before(out[j].Time)
+	})
 	return out, nil
 }
 
@@ -244,27 +251,29 @@ func (s *Store) readShard(ctx context.Context, rel string, f Filter, out *[]*dom
 	})
 }
 
-// listShards returns the managed shard paths overlapping the filter window,
-// in ascending month order.
+// listShards returns the live and archived shard paths overlapping the
+// filter window. Final order is fixed by Read's time sort, not by shards.
 func listShards(st *storage.Store, f Filter) ([]string, error) {
-	entries, err := filepath.Glob(filepath.Join(st.DevsysDir(), dirRel, "*.jsonl"))
-	if err != nil {
-		return nil, err
-	}
 	var rels []string
-	for _, abs := range entries {
-		name := strings.TrimSuffix(filepath.Base(abs), ".jsonl")
-		if len(name) != 7 || name[4] != '-' {
-			continue
-		}
-		month, err := time.Parse("2006-01", name)
+	for _, dir := range []string{dirRel, "archive/" + dirRel} {
+		entries, err := filepath.Glob(filepath.Join(st.DevsysDir(), filepath.FromSlash(dir), "*.jsonl"))
 		if err != nil {
-			continue
+			return nil, err
 		}
-		if !overlaps(f, month) {
-			continue
+		for _, abs := range entries {
+			name := strings.TrimSuffix(filepath.Base(abs), ".jsonl")
+			if len(name) != 7 || name[4] != '-' {
+				continue
+			}
+			month, err := time.Parse("2006-01", name)
+			if err != nil {
+				continue
+			}
+			if !overlaps(f, month) {
+				continue
+			}
+			rels = append(rels, dir+"/"+name+".jsonl")
 		}
-		rels = append(rels, dirRel+"/"+name+".jsonl")
 	}
 	return rels, nil
 }

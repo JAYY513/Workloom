@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -83,12 +84,18 @@ func snapshotRecord(snapshot prompt.Snapshot) *contextSnapshot {
 	}
 }
 
-// readRunStream parses a run's stream. A missing stream reads as empty, and a
-// torn tail left by an interrupted writer yields the records that completed
-// before it — reading must not be blocked by a tail the writer repairs on its
-// next open.
+// readRunStream parses a run's stream. A missing live stream falls back to
+// the archived stream (M8.3): archiving only takes terminal runs, whose
+// streams are never written again, so live-wins-or-fallback is exact.
+// A torn tail yields the records completed before it.
 func readRunStream(root, runID string) ([]streamRecord, error) {
 	path := filepath.Join(root, ".devsys", "runs", runID+".jsonl")
+	if _, err := os.Stat(path); err != nil && os.IsNotExist(err) {
+		archived := filepath.Join(root, ".devsys", "archive", "runs", runID+".jsonl")
+		if _, aerr := os.Stat(archived); aerr == nil {
+			path = archived
+		}
+	}
 	var lines []streamRecord
 	err := storage.ScanJSONL(path, func(raw []byte) error {
 		var line streamRecord

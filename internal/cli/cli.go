@@ -77,7 +77,7 @@ commands:
   run           list | get | log | create | update | heartbeat | exec | prompt | complete | fail | cancel
   worktree      prepare | remove | list execution workspaces (方案 §4.8)
   dispatch      one scheduling tick: recover, reconcile, dispatch (--watch loops; refused while a merge conflicts)
-  context       get [--task ID] [--path a,b] | workitem | refresh | compact working context (read-only)
+  archive       events --before <YYYY-MM> | runs --id <id,...> move JSONL streams to .devsys/archive/ (conservative, no delete)
   workspace     view [--limit N] | build --static [--out DIR] [--limit N] | serve [--host 127.0.0.1] [--port N] read-only project view / offline site / local service (方案 §17)
   knowledge         status | scan | validate [dir|page.md...] | refresh
   session start  one-shot session orientation (project, work in flight, next action)
@@ -304,6 +304,8 @@ func RunWithIO(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return render(stderr, opts, runWorktree(stdout, opts, rest))
 	case "dispatch":
 		return render(stderr, opts, runDispatch(stdout, opts, rest))
+	case "archive":
+		return render(stderr, opts, runArchive(stdout, opts, rest))
 	case "context":
 		return render(stderr, opts, runContext(stdout, opts, rest))
 	case "workspace":
