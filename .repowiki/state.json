@@ -3,9 +3,9 @@
   "partition": {
     "locale": "zh"
   },
-  "generated_at": "2026-09-19T03:17:03.214Z",
+  "generated_at": "2026-09-19T03:18:04.977Z",
   "git": {
-    "commit": "fa2a87d9bd07a35ea94a5551ec4553569cf0c71f",
+    "commit": "b7855fbd62d400bb693861639d2524c3d0914696",
     "branch": "master"
   },
   "pages": {
@@ -804,7 +804,7 @@
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1"
       ],
-      "content_hash": "e7b1fdd4e4613e7981f6a2e501ddc6f1698907ba4d98e7155bd6effc43d3048a"
+      "content_hash": "07a435abe6deec74f6702f0500c7a3f57587bf9741c15ed82a6979b0b0e26b6a"
     },
     "knowledge/项目接入与配置/特殊配置与命令.md": {
       "sources": [
@@ -866,8 +866,8 @@
   "last_run": {
     "status": "success",
     "phase": "finalize",
-    "started_at": "2026-09-19T03:17:03.214Z",
-    "finished_at": "2026-09-19T03:17:03.214Z",
+    "started_at": "2026-09-19T03:18:04.977Z",
+    "finished_at": "2026-09-19T03:18:04.977Z",
     "error": ""
   }
 }
