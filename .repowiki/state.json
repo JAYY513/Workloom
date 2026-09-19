@@ -3,9 +3,9 @@
   "partition": {
     "locale": "zh"
   },
-  "generated_at": "2026-09-19T09:55:49.140Z",
+  "generated_at": "2026-09-19T09:56:25.446Z",
   "git": {
-    "commit": "f84bb4cf37921b4abdd45336de02616e33ab6a9b",
+    "commit": "6218eb020d6733ecded7d353102792068ff03518",
     "branch": "master"
   },
   "pages": {
@@ -998,8 +998,8 @@
   "last_run": {
     "status": "success",
     "phase": "finalize",
-    "started_at": "2026-09-19T09:55:49.140Z",
-    "finished_at": "2026-09-19T09:55:49.140Z",
+    "started_at": "2026-09-19T09:56:25.446Z",
+    "finished_at": "2026-09-19T09:56:25.446Z",
     "error": ""
   }
 }
