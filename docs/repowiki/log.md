@@ -1,3 +1,13 @@
+## 2026-09-19 · def1735 M9 基线（M8-close 修正 + M9 文档增量）
+
+- 源码基线：`def1735`（相对上次 wiki 基线 `52294b0` 共 7 提交：M8 `f7653a8` smoke-m8 双平台剧本 + `471aa33` M8 基线刷新 + M8-close `1ac4d56` 评审 4 项 + M9 `d5423fb` 三文档 + `6214330` README 行 + 本轮 `def1735`；Go 源码自 M8 基线后零变更，仅 `scripts/smoke-m8.ps1` +20/-10）；增量模式运行。
+- 计划：`.repowiki/plan.json` schema 2，模块树档位不变，scope 零改动；`coverage_check.uncovered` 增 M9 三文档（`docs/M9-验收报告.md`、`docs/使用手册.md`、`docs/迁移指南.md`，bundle 外用户文档，与 `docs/M6-一致性自检.md` 同类）；coverage 248/255。
+- 增量范围：**project-access** 特殊配置与命令卡增「M8 收尾剧本」节（四段口径 + 双平台命令 + M8-close 三修复行号）；**三篇文章**各增 M9 条目 + `source_commit` → `6214330`（项目总览版本边界同步扩展 M9 句）；**开发与故障诊断**未知版本行指向 `docs/迁移指南.md`（bundle 外，不做跨包链接）+ BOM 行引注修正（写卡 `smoke-m8.ps1:205`，增 clash `104-116` / dry-run `163-165` 两行）；** cites 修正**（runstream `87-112`→`87-118` 两处、`smoke-m8.ps1:1-242`→`1-245`、`198-202`→`203-205`）。
+- 文档校验：`repowiki validate` 报告 **55 files、0 errors、0 warnings**。
+- 保护：D4 逐页 hash 比对 55 页，仅 2 页 mismatch（`执行命令族.md`、`特殊配置与命令.md`，均为 `1ac4d56` M8-close 评审修正本身，无人工修改）；2 子代理配额失败（429），主代理直写 5 页（3 文章 + 1 卡 + plan）。
+- 收尾：`repowiki state --update` 刷新页面 hash、scope 与源码基线 `def1735`（55 页、coverage 248/255、phase finalize success）；`repowiki status` 报告 **fresh**。
+- 验证边界：Go 源码未动（全量 `go test ./...` 25 包绿 wall 365s、`gofmt -l` 无输出、`go vet ./...` 干净均在本轮 test 阶段完成，见任务 artifact）；M9 三文档命令全部隔离实跑（MANUAL-ALL-GREEN + CHAIN-GREEN + ROLLBACK-TAG-GREEN）。
+
 ## 2026-09-19 · bae7e28 M7 收尾（smoke 剧本 + wiki 补齐）
 
 - 源码基线：`bae7e28`（M7 收尾：`scripts/smoke-m7.{sh,ps1}` 双平台实跑 exit 0 + README 收尾行 + tag `m7`；相对上次 wiki 基线 `b7855fb` 3 提交、6 文件、23 affected pages）；增量模式运行。
