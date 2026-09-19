@@ -78,6 +78,7 @@ commands:
   worktree      prepare | remove | list execution workspaces (方案 §4.8)
   dispatch      one scheduling tick: recover, reconcile, dispatch (--watch loops)
   context       get [--task ID] [--path a,b] | workitem | refresh | compact working context (read-only)
+  workspace     view [--limit N] read-only project view: blueprint, progress, runs, records, knowledge (方案 §17)
   knowledge         status | scan | validate [dir|page.md...] | refresh
   session start  one-shot session orientation (project, work in flight, next action)
   wire          inject the devsys discipline block into AGENTS.md (idempotent; --dry-run previews)
@@ -302,6 +303,8 @@ func RunWithIO(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return render(stderr, opts, runDispatch(stdout, opts, rest))
 	case "context":
 		return render(stderr, opts, runContext(stdout, opts, rest))
+	case "workspace":
+		return render(stderr, opts, runWorkspace(stdout, opts, rest))
 	case "knowledge":
 		return render(stderr, opts, runKnowledge(stdout, opts, rest))
 	case "session":

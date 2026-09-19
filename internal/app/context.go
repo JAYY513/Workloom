@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"sort"
-	"strings"
 	"time"
 
 	"workloom/internal/domain"
@@ -301,9 +300,7 @@ func (s *Service) knowledgeContext(ctx context.Context, item *domain.WorkItem, p
 	if err != nil {
 		return KnowledgeContext{}, err
 	}
-	text := strings.ToLower(strings.Join([]string{
-		item.Title, item.Description, item.Type, workflowID(item), workflowStep(item),
-	}, "\n"))
+	text := knowledge.WorkItemText(item)
 
 	var matched []*knowledge.Page
 	refs := map[string]KnowledgePageRef{}
@@ -318,7 +315,7 @@ func (s *Service) knowledgeContext(ctx context.Context, item *domain.WorkItem, p
 		matched = append(matched, page)
 	}
 	for _, page := range report.Pages {
-		if hit, ok := triggerHit(page.Triggers, text); ok {
+		if hit, ok := knowledge.TriggerHit(page.Triggers, text); ok {
 			record(page, MatchTrigger, hit)
 		}
 	}
@@ -392,22 +389,6 @@ func anyBaseline(pages []*knowledge.Page, state *knowledge.State) bool {
 		}
 	}
 	return false
-}
-
-// triggerHit reports the first trigger that appears in the lowercased task
-// text. Triggers are short phrases; matching is a substring test because that
-// is what a reader would do.
-func triggerHit(triggers []string, text string) (string, bool) {
-	for _, trigger := range triggers {
-		trimmed := strings.TrimSpace(trigger)
-		if trimmed == "" {
-			continue
-		}
-		if strings.Contains(text, strings.ToLower(trimmed)) {
-			return trimmed, true
-		}
-	}
-	return "", false
 }
 
 // policyProblems lists located policy failures (read-only).
