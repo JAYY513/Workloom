@@ -13,7 +13,7 @@ triggers:
   - --dry-run
 description: M4 `devsys wire` 把 devsys 纪律块注入 AGENTS.md；`<!-- devsys:begin/end -->` 标记、幂等（三次运行字节一致）、区段外字节保留（含其它工具的管理块）、`--dry-run` 预览
 generated: true
-source_commit: 463c2d8
+source_commit: fa2a87d
 generator: repowiki-gen
 ---
 

@@ -3,9 +3,9 @@
   "partition": {
     "locale": "zh"
   },
-  "generated_at": "2026-09-19T01:26:01.235Z",
+  "generated_at": "2026-09-19T03:17:03.214Z",
   "git": {
-    "commit": "463c2d88902569c587611ddef6d799e6c8a02832",
+    "commit": "fa2a87d9bd07a35ea94a5551ec4553569cf0c71f",
     "branch": "master"
   },
   "pages": {
@@ -59,9 +59,10 @@
         "internal/knowledge/**",
         ".devsys/knowledge/**",
         ".repowikiignore",
-        "internal/view/**"
+        "internal/view/**",
+        "internal/sitestatic/**"
       ],
-      "content_hash": "79fc105a3a0a374de5704d31eb47f1668ca78c56bd134892f3537720ffb88ce2"
+      "content_hash": "0f27a662a1974d019636a084559572afb6bd7a2b51f7edc43a63a4d5d3949b93"
     },
     "content/快速开始.md": {
       "sources": [
@@ -110,9 +111,10 @@
         "internal/knowledge/**",
         ".devsys/knowledge/**",
         ".repowikiignore",
-        "internal/view/**"
+        "internal/view/**",
+        "internal/sitestatic/**"
       ],
-      "content_hash": "921a12ce53550e8ac725271d7f62e901ddf46efbb9b9aca68a7d5b53d7f3c3f9"
+      "content_hash": "ff8ed78107bb6e6b64774d527496ec58f9b1b2c0f98a755f6526c252e60ea1fc"
     },
     "content/项目总览.md": {
       "sources": [
@@ -161,13 +163,14 @@
         "internal/knowledge/**",
         ".devsys/knowledge/**",
         ".repowikiignore",
-        "internal/view/**"
+        "internal/view/**",
+        "internal/sitestatic/**"
       ],
-      "content_hash": "cd98caf5d5cd2f0f42884e26a6a025536b5c8364c98f7ebc33b60e9dc478808a"
+      "content_hash": "0a317547e8676a5bfbc91738af78f26580f2d0cc911ffcee9b9278911ab471cc"
     },
     "index.md": {
       "sources": [],
-      "content_hash": "1f23b0c0fa3a9e097d1bd1489f4d63177a08f4dafee0af207bce3e564dcb97fe"
+      "content_hash": "a3463ac5553b6a6fe5ffa205af5c10c19b373249749b4b3ac84eb05434abbd79"
     },
     "knowledge/共享应用与MCP/完成校验与人工复核.md": {
       "sources": [
@@ -581,45 +584,52 @@
     },
     "knowledge/视图层/技术栈.md": {
       "sources": [
-        "internal/view/**"
+        "internal/view/**",
+        "internal/sitestatic/**"
       ],
-      "content_hash": "c98ac64baeef638f60c56f92ae38ad7c7a1745f75942a6f1cd48937f12eb2338"
+      "content_hash": "34ccea3f6e6b2124253e2ffc02647d0f0e804620cb35ab5f122f4974f344a8d1"
     },
     "knowledge/视图层/架构设计.md": {
       "sources": [
-        "internal/view/**"
+        "internal/view/**",
+        "internal/sitestatic/**"
       ],
-      "content_hash": "4dcac18ea638cec2596fac07767533bb4e9d4281303f035e35ae7848c7b6e67f"
+      "content_hash": "b7ef8a19a2fec32758b333c0f8aa50b793eeee9548ee3a966960327558f47e8d"
     },
     "knowledge/视图层/概述.md": {
       "sources": [
-        "internal/view/**"
+        "internal/view/**",
+        "internal/sitestatic/**"
       ],
-      "content_hash": "ae6cdd7acd28619ffc10002183b2b52f136a352cfea1382e6c04af796463ec9c"
+      "content_hash": "cba1d7553a8fe81e8d1335eed1bea1566e742d8e772808d60692d01ba0dd29a7"
     },
     "knowledge/视图层/特殊配置与命令.md": {
       "sources": [
-        "internal/view/**"
+        "internal/view/**",
+        "internal/sitestatic/**"
       ],
-      "content_hash": "13a7ddbf28b1aca245d603a757248830e9e63730a278265868b9e02f30b43472"
+      "content_hash": "58073b98eaad2d8ea0e2895bdb53ca3ef9eaac36d3f300147e91045a8c433c83"
     },
     "knowledge/视图层/编码规范.md": {
       "sources": [
-        "internal/view/**"
+        "internal/view/**",
+        "internal/sitestatic/**"
       ],
-      "content_hash": "4c1602f362db19e19d3cd34345355c0544acc8a39517d4e95fa8a81d839c0d0d"
+      "content_hash": "88853e8c2d47a20b9145f2e28fce11f76dd491d2236754d23dc504846d26de30"
     },
     "knowledge/视图层/视图数据模型.md": {
       "sources": [
-        "internal/view/**"
+        "internal/view/**",
+        "internal/sitestatic/**"
       ],
-      "content_hash": "e62f9c0ae886f6de987afc07063701d8d21798740e7b7c242a02e3b7689dd782"
+      "content_hash": "8c3b6379a9dc8eaac1023dee01e499863cc05dde53cdad617d2366652bb0aaa9"
     },
     "knowledge/视图层/读取纪律与信任语义.md": {
       "sources": [
-        "internal/view/**"
+        "internal/view/**",
+        "internal/sitestatic/**"
       ],
-      "content_hash": "2b8a255b32342f3d234fd9cb79f6533077ed7b56bbec0ea6558bb4ade5fefcf2"
+      "content_hash": "0b1fa80d720a82678c5ab0f7238e55937849f967b509d5404d4977a44d72bf70"
     },
     "knowledge/项目接入与配置/AGENTS.md写入.md": {
       "sources": [
@@ -644,7 +654,7 @@
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1"
       ],
-      "content_hash": "98a4bc37f2db7107b21db27a1368f1550e3b86ff1ae4689de381d32631792e0a"
+      "content_hash": "503d589cae82296bd674aa30a6bc932caa0f9a5f42bc3523b2cc465f58ddcc64"
     },
     "knowledge/项目接入与配置/CLI渲染与交换协议.md": {
       "sources": [
@@ -669,7 +679,7 @@
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1"
       ],
-      "content_hash": "5f9d0e0498a0e818cf1a43bb51607ee3e0465fbcecf53207d40e974ba4fb2ed0"
+      "content_hash": "2bd4bda74c83242e02d87a23a2e22c728829331d95034d8868931980ca659b00"
     },
     "knowledge/项目接入与配置/Schema与错误契约.md": {
       "sources": [
@@ -694,7 +704,7 @@
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1"
       ],
-      "content_hash": "835c4ec17f768440a021fc2e819ad8c73d99b735413ca2dc86bf0536ddb87b0f"
+      "content_hash": "3c73aa31502a89db8910963d512d9ae7e5d0baf800206adaf5056d1ab3717055"
     },
     "knowledge/项目接入与配置/执行命令与DEVSYS_PROJECT_ROOT.md": {
       "sources": [
@@ -719,7 +729,7 @@
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1"
       ],
-      "content_hash": "f9a1fcb3ee751bf44587c240b08a984ceb79afc27e005fed40a27a299fada989"
+      "content_hash": "55f1d4f562baaf329cdd4fd1e8c1696ea2c1e3f600b1f88f8f4677f5adc297a2"
     },
     "knowledge/项目接入与配置/技术栈.md": {
       "sources": [
@@ -744,7 +754,7 @@
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1"
       ],
-      "content_hash": "e397b13eebaed3319030ae2b729dfaceaf29ee2cbbef3bc84e9b10f179c78034"
+      "content_hash": "b8345efee973b5361f11e13572101e51186c08fb59bcb1f98bb759754bc3ee04"
     },
     "knowledge/项目接入与配置/架构设计.md": {
       "sources": [
@@ -769,7 +779,7 @@
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1"
       ],
-      "content_hash": "69bd146b6e3fed35c0e152c480212f773d9f3ce961ce167cb9aebff3b695fc16"
+      "content_hash": "0bbd6dd091b73f0becb7bfe048237500db6162a79fdf74c3fa4863eb4b047fcc"
     },
     "knowledge/项目接入与配置/概述.md": {
       "sources": [
@@ -794,7 +804,7 @@
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1"
       ],
-      "content_hash": "b7504d31051f987459d15ac5120ebac21280c52f90a87d3e6ed8ef1f8b4ec1a9"
+      "content_hash": "e7b1fdd4e4613e7981f6a2e501ddc6f1698907ba4d98e7155bd6effc43d3048a"
     },
     "knowledge/项目接入与配置/特殊配置与命令.md": {
       "sources": [
@@ -819,7 +829,7 @@
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1"
       ],
-      "content_hash": "c455ae15d2180a66dd39df946496460b87b5af4dc9c55cd88d297f4b6c9bcad8"
+      "content_hash": "b55e67e139995cb1aae81a78c1b32c079982504fd658694236bc310a64f63e77"
     },
     "knowledge/项目接入与配置/编码规范.md": {
       "sources": [
@@ -844,20 +854,20 @@
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1"
       ],
-      "content_hash": "47bda415f595e1a4c4acb7cec9a17d264b2171bff635ecb66a9e7181b6865a00"
+      "content_hash": "401d27506ba5657d302a6773e88425fb3de6325b56cde62cbe25bed18ee11783"
     },
     "log.md": {
       "sources": [],
-      "content_hash": "c3bb0089923f7e5b80c14e76f65cbfa32f739623ebe2138477caa8914e55f08b"
+      "content_hash": "0e7334eb8ce2f84cce6d51b795b967aeef4360ecc4c890638a208709817c1c12"
     }
   },
-  "snapshot_digest": "83858bc25d4116f13ee9d41595828da9b349669f97fa1771dd989a61bd8d8779",
+  "snapshot_digest": "3269a71b4b42d0fa33e2d0e742195161e93240c461d0c5fe8501e6df96bda6d9",
   "snapshot_file": ".repowiki/snapshot.json",
   "last_run": {
     "status": "success",
     "phase": "finalize",
-    "started_at": "2026-09-19T01:26:01.235Z",
-    "finished_at": "2026-09-19T01:26:01.235Z",
+    "started_at": "2026-09-19T03:17:03.214Z",
+    "finished_at": "2026-09-19T03:17:03.214Z",
     "error": ""
   }
 }

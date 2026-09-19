@@ -1,3 +1,13 @@
+## 2026-09-19 · fa2a87d M7.2–M7.4 增量刷新
+
+- 源码基线：`fa2a87d`（M7.2 静态构建 `internal/sitestatic` + M7.3 本地只读服务 + M7.4 新鲜度提示；相对上次 wiki 基线 `463c2d8` 4 提交、50 文件、12 affected pages）；增量模式运行。
+- 计划：`.repowiki/plan.json` schema 2，沿用模块树档位（235 个扫描文件、多层目录）。`view-layer` scope 补 `internal/sitestatic/**`（M7.1 时已预告此归属）；三篇文章 `modules` 不变；coverage 228/235（未覆盖 7 个均为源码主干外：`.gitattributes/.gitignore/AGENTS.md/docs×4`）。
+- 增量范围：**view-layer** 7 张全重写（概述/架构设计/技术栈/编码规范/特殊配置与命令/视图数据模型/读取纪律与信任语义：M7.2 `Build` 落 8 文件 + `DefaultOutRel`/`ResolveOut`，M7.3 `RenderPage/ModelJSON` 逐字节一致 + serve 每请求现装 + 127.0.0.1:8080/`--allow-remote`/405，M7.4 `freshnessHint` 纯渲染 + 全站第二横幅 + CLI hint 行，纠正“TS/React/计划中”旧表述）；**project-access** 9 张复核（概述/架构设计/CLI 渲染与交换协议/Schema 与错误契约/执行命令与 DEVSYS_PROJECT_ROOT/技术栈/编码规范/特殊配置与命令覆盖 build/serve/hint，AGENTS.md写入仅刷 commit；修正 workspace.go 行号漂移与 `{view}`→`{view,build,serve}`）；三篇文章增量（项目总览/快速开始/开发与故障诊断：综述段 + `## 更新摘要` + build/serve/hint 示例与诊断行）；`index.md` 两行（M7.1→M7）。
+- 文档校验：`repowiki validate` 报告 **55 files、0 errors、0 warnings**。中途修 3 项（两卡 `description:` 冒号键丢失致 missing-field、视图 setup 卡一条指向不存在知识页的跨目录链接并入既有纪律卡）。
+- 保护：D4 逐页 hash 比对 12 affected 页与 state 一致，无人工修改；16 子代理分写（视图 7 + 接入 9）各守一卡，无越界。
+- 收尾：`repowiki state --update` 刷新页面 hash、scope 与源码基线 `fa2a87d`（55 页、coverage 228/235、phase finalize success）；`repowiki status` 报告 **Wiki is up to date**。
+- 验证边界：本轮为文档刷新，未触动 Go 源码或脚本；`gofmt -l cmd internal` 无输出，`go vet`（sitestatic/view）干净；全量 Go 测试未重跑（M7.4 提交 `fa2a87d` 前已绿：四包回归 + 12 新例 + scratch 实跑）。
+
 ## 2026-09-19 · 463c2d8 M7.1 增量刷新
 
 - 源码基线：`463c2d8`（M7.1：只读聚合层 `internal/view` + `devsys workspace view` + 触发器匹配抽到知识层；相对上次 wiki 基线 `75998a8` 2 提交、16 文件受影响）；增量模式运行。

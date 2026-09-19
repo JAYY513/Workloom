@@ -32,7 +32,7 @@ triggers:
   - M6 接线
 description: M6 执行层（harness/workspace/dispatch/retry/prompt）到 CLI/MCP 的接线：`devsys worktree/dispatch/run exec|prompt|verify|complete|fail|cancel` 与 MCP `run_prompt/verify/complete/fail/cancel` 的对应；`DEVSYS_PROJECT_ROOT` 与 `HookEnv` 注入规则；`config.workspace_root` / `config.dispatch_command` 解析与默认；M7.1 视图域 `devsys workspace view` 的接线（不经 internal/app、调 internal/view.Build 与 storage.Inspect）与 §4.8 `worktree`（执行工作区）严格分开的边界。
 generated: true
-source_commit: 463c2d8
+source_commit: fa2a87d
 generator: repowiki-gen
 ---
 
@@ -55,7 +55,9 @@ generator: repowiki-gen
 | `run fail` | `run_fail` | executor | `Service.RunFinish(ctx, RunFinishRequest{Outcome: RunFailed, ...})` | `internal/app.finishAttempt` |
 | `run cancel` | `run_cancel` | executor | `Service.RunFinish(ctx, RunFinishRequest{Outcome: RunCanceled, ...})` | `internal/app.finishAttempt` |
 
-| `devsys workspace view [--limit N]` | — | — | 直接调 `internal/view.Build(ctx, root, view.Options{Limit: *limit})`（不经 `internal/app`） | `internal/view.Build` + `storage.Inspect` / `storage.InspectUnlocked`（[internal/cli/workspace.go:51-56](../../../internal/cli/workspace.go#L51-L56)） |
+| `devsys workspace view [--limit N]` | — | — | 直接调 `internal/view.Build(ctx, root, view.Options{Limit: *limit})`（不经 `internal/app`） | `internal/view.Build` + `storage.Inspect` / `storage.InspectUnlocked`（[internal/cli/workspace.go:128-134](../../../internal/cli/workspace.go#L128-L134)） |
+| `devsys workspace build --static [--out DIR] [--limit N]` | — | — | 直接调 `internal/view.Build` + `sitestatic.Build` 落盘到 `--out`（默认 `.devsys/dist/site/`，不经 `internal/app`） | `internal/view.Build` + `internal/sitestatic.Build`（[internal/cli/workspace.go:44-108](../../../internal/cli/workspace.go#L44-L108)） |
+| `devsys workspace serve [--host 127.0.0.1] [--port N] [--allow-remote] [--limit N]` | — | — | 直接调 `internal/view.Build` 每请求一次 + `sitestatic.RenderPage` 内存渲染，不写盘（不经 `internal/app`） | `internal/view.Build` + `internal/sitestatic.RenderPage`（[internal/cli/workspace_serve.go:140](../../../internal/cli/workspace_serve.go#L140)） |
 
 `run update --status <terminal>` 仍走 `Service.RunUpdate`（M4 引入），但 M6 起 CLI 文档推荐用 `run complete\|fail\|cancel`（语义对应 §4.8 终态）。
 ## 配置：`config.yaml` 新增键
@@ -135,17 +137,17 @@ func ByName(name string) (Adapter, bool) {
 
 M7.1 把方案 §17「视图域」落在 `internal/view` 包 + `internal/cli/workspace.go`，与 M6 §4.8 `worktree`（执行工作区）共享 **`workspace` 这个英文名**但语义不同——`runWorkspace` 路由 `view` 子命令调 `internal/view.Build`，**不**走 `internal/app`；`runWorktree` 路由 `prepare|remove|list` 走 `app.WorkspacePrepare/Remove/List`，跑 git worktree + 生命周期钩子 + claim_head。
 
-| 维度 | `worktree`（执行工作区，§4.8） | `workspace view`（视图域，§17） |
-|---|---|---|
-| 写盘？ | 是（`prepare` / `remove`） | **否**（只读聚合） |
-| 锁策略 | `app.WorkspacePrepare` 走完整事务路径（`storage.Recover` + 写） | `storage.Inspect`（共享锁，**绝不创建**）→ `storage.InspectUnlocked` 退路（advisory） |
-| 触发 lifecycle hook | 是（`after_create` / `before_run` / `after_run` / `before_remove`） | 否 |
-| 写 `.devsys/.cache/` | 间接（workflow LKG 缓存路径） | **绝不** |
-| 写 `.devsys/local/` | 是（hook 输出、attempt 输出、prompt round 落盘） | **绝不读**，更不写 |
-| 恢复事务 / 修断尾 | 否（M6 留给 `dispatch --once`） | **绝不**（视图只读路径） |
-| 退出码 | `app.Error.Class()` 翻译（0/2/3/1/4） | 沿用 0/2/3/1（10/11 仍专属 `knowledge status`） |
-| 是否依赖 `DEVSYS_PROJECT_ROOT` | 是（attempt 内 agent 报告目标） | 否（视图是只读聚合，无需注入） |
-| 是否走 `internal/app` | 是 | **否**（直调 `view.Build`） |
+| 维度 | `worktree`（执行工作区，§4.8） | `workspace view`（视图域，§17） | `workspace build` / `workspace serve`（视图域，§17） |
+|---|---|---|---|
+| 写盘？ | 是（`prepare` / `remove`） | **否**（只读聚合） | `build` 仅 `--out` 下（默认 `.devsys/dist/site/`），`serve` 否 |
+| 锁策略 | `app.WorkspacePrepare` 走完整事务路径（`storage.Recover` + 写） | `storage.Inspect`（共享锁，**绝不创建**）→ `storage.InspectUnlocked` 退路（advisory） | 同 `view`（共享锁，**绝不创建**） |
+| 触发 lifecycle hook | 是（`after_create` / `before_run` / `after_run` / `before_remove`） | 否 | 否 |
+| 写 `.devsys/.cache/` | 间接（workflow LKG 缓存路径） | **绝不** | **绝不** |
+| 写 `.devsys/local/` | 是（hook 输出、attempt 输出、prompt round 落盘） | **绝不读**，更不写 | **绝不读**，更不写 |
+| 恢复事务 / 修断尾 | 否（M6 留给 `dispatch --once`） | **绝不**（视图只读路径） | **绝不** |
+| 退出码 | `app.Error.Class()` 翻译（0/2/3/1/4） | 沿用 0/2/3/1（10/11 仍专属 `knowledge status`） | 同 `view` |
+| 是否依赖 `DEVSYS_PROJECT_ROOT` | 是（attempt 内 agent 报告目标） | 否（视图是只读聚合，无需注入） | 否 |
+| 是否走 `internal/app` | 是 | **否**（直调 `view.Build`） | **否**（直调 `view.Build` + `sitestatic.Build`/`RenderPage`） |
 
 视图域独有的契约：
 

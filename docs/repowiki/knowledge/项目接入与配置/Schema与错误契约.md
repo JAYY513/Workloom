@@ -28,7 +28,7 @@ triggers:
   - run complete exit code
 description: devsys 受管 YAML 文件的严格 schema：每文件白名单 + schema_version 闸门 + 行号定位 + Problems 错误结构（含 SeverityWarning） + 退出码 4 的语义边界 + M1 完整 Project 模型 + 嵌套字段校验；M2 新增退出码 3/4 在 workitem 与 repair 中的扩展语义、--expect 64-hex sha256 + fail-closed、--confirm 摘要格式、写命令 --actor/--reason 必填；M3 新增 workflow/approval/next 的 kind 与 code 语义、workitem.TransitionRequest.Guard 签名、policy issue 与 LKG 报错；M4 收口到 *app.Error.Class() 四类（映射 CLI 退出码 + MCP tool error code）、--jsonl 列表流、知识层 10/11 退出码预留；M5 新增 KnowledgePages / KnowledgeGenerator 配置键、kindStrings（接受 null 与空列表）+ kindMilestones 双路径、warning severity、KindKnowledge 错误类、knowledge_pages / knowledge_generator 字段解析；M6 增 workspace_root / dispatch_command 配置键、HookEnv 注入、run exec / run complete 在执行层的扩展退出码语义；M7.1 增 workspace view 在视图域的退出码语义（沿用 0/2/3/1，10/11 仍专属 knowledge status）、workspace view 的 --limit 与子命令缺失 → 2、缺 .devsys/ → 3、view.Build 失败 → 1、advisory_unlocked 是事实标签不是失败码。
 generated: true
-source_commit: 463c2d8
+source_commit: fa2a87d
 generator: repowiki-gen
 ---
 
@@ -267,12 +267,14 @@ M3 新增触发：
 - `workflow` 子命令缺失或不在 `{check, start, next, step-complete, pause, resume, cancel}` → exit 2。
 - `approval` 子命令缺失或不在 `{list, request, approve, reject}` → exit 2。
 
-M7.1 在 `CodeUsage = 2` 下扩展 `devsys workspace` 子命令面（视图域只读；与 §4.8 `worktree` 子命令独立）：
+M7.1–M7.4 在 `CodeUsage = 2` 与 `CodePrecondition = 3` / `CodeInternal = 1` 下扩展 `devsys workspace` 子命令面（视图域只读，与 §4.8 `worktree` 子命令独立）：
 
-- `devsys workspace` 子命令缺失或不在 `{view}` → exit 2：`errUsage("`devsys workspace` needs a subcommand: view")` / `errUsage("unknown `devsys workspace` subcommand %q", rest[0])`（[internal/cli/workspace.go:21-31](../../../internal/cli/workspace.go#L21-L31)）。
-- `devsys workspace view --limit N` 且 `N <= 0` → exit 2：`errUsage("`--limit` must be positive")`（[internal/cli/workspace.go:44-46](../../../internal/cli/workspace.go#L44-L46)）。
+- `devsys workspace` 子命令缺失或不在 `{view, build, serve}` → exit 2：`errUsage("`devsys workspace` needs a subcommand: view | build | serve")` / `errUsage("unknown `devsys workspace` subcommand %q", rest[0])`（[internal/cli/workspace.go:24-38](../../../internal/cli/workspace.go#L24-L38)）。
+- `devsys workspace view --limit N` 且 `N <= 0` → exit 2：`errUsage("`--limit` must be positive")`（[internal/cli/workspace.go:121-123](../../../internal/cli/workspace.go#L121-L123)）。
+- `devsys workspace build` 不带 `--static`（M7.2 唯一支持的站点形态）→ exit 2：`errUsage("`devsys workspace build` needs --static (the only site form in M7.2)")`（[internal/cli/workspace.go:53-54](../../../internal/cli/workspace.go#L53-L54)）；参数解析失败 / 含未知位置参数 → exit 2：`errUsage("`devsys workspace build --static [--out DIR] [--limit N]`")`（[internal/cli/workspace.go:50-51](../../../internal/cli/workspace.go#L50-L51)）；非法 `--out` → exit 2：`errUsage("workspace build: %v", err)`（[internal/cli/workspace.go:62-64](../../../internal/cli/workspace.go#L62-L64)）。
+- `devsys workspace serve --host <non-loopback>` 且未带 `--allow-remote` → exit 2：`errUsage("refusing non-loopback bind %q without --allow-remote ...")`（[internal/cli/workspace_serve.go:159-161](../../../internal/cli/workspace_serve.go#L159-L161)）；`--port` 越界或带 `--json`/`--quiet` → exit 2（[internal/cli/workspace_serve.go:153-157](../../../internal/cli/workspace_serve.go#L153-L157)）。
 
-`workspace view` 不引入新退出码：成功（含 `trust.state = advisory_unlocked`）→ 0、`storage.ErrNotInitialized` → 3（precondition）、`view.Build` 其它失败 → 1（internal）。**不**复用 10/11——10/11 仍专属 `devsys knowledge status`（[internal/cli/cli.go:52-56](../../../internal/cli/cli.go#L52-L56)）。
+`workspace view` / `build` / `serve` 不引入新退出码：成功（含 `trust.state = advisory_unlocked` / `pending_transaction`）→ 0；缺 `.devsys/`（`storage.ErrNotInitialized`）→ 3（precondition）；`view.Build` 其它失败 → 1（internal）；`workspace build` 写盘失败 → 1（`sitestatic.Build` 错误，[internal/cli/workspace.go:70-73](../../../internal/cli/workspace.go#L70-L73)）；`workspace serve` 端口占用 → 1（`net.Listen` 失败，[internal/cli/workspace_serve.go:172-174](../../../internal/cli/workspace_serve.go#L172-L174)）。**build/serve 沿用同一 0/1/2/3/4**，10/11 仍专属 `devsys knowledge status`（[internal/cli/cli.go:52-55](../../../internal/cli/cli.go#L52-L55)）。
 
 ## `--expect`：64-hex sha256 + fail-closed
 
@@ -572,17 +574,27 @@ M6 在 `CodePrecondition = 3` 与 `CodeInvalid = 4` 下扩展执行层错误语�
 | `devsys dispatch --once` 无候选 dispatchable | `app.Dispatch` 返回 `Report{Started: nil}` + notice | exit 0（不是错误） |
 | `devsys dispatch --watch` Ctrl-C | `signal.NotifyContext` cancel | exit 0 |
 
-## M7.1 退出码语义扩展（视图域）
+## M7.1–M7.4 退出码语义扩展（视图域）
 
-M7.1 视图域只读入口沿用既有 0/1/2/3 退出码（[internal/cli/cli.go:31-56](../../../internal/cli/cli.go#L31-L56)），**不**新设退出码、不复用 10/11：
+M7.1–M7.4 视图域只读入口（`workspace view` / `workspace build --static` / `workspace serve`）沿用既有 0/1/2/3 退出码（[internal/cli/cli.go:31-55](../../../internal/cli/cli.go#L31-L55)），**不**新设退出码、不复用 10/11：
 
 | 触发点 | 来源 | 错误分类 |
 |---|---|---|
-| `devsys workspace` 子命令缺失或不在 `{view}` | `runWorkspace` `errUsage`（[internal/cli/workspace.go:21-31](../../../internal/cli/workspace.go#L21-L31)） | `CodeUsage = 2`（kind="usage"） |
-| `devsys workspace view --limit N` 且 `N <= 0` | `runWorkspaceView` `errUsage`（[internal/cli/workspace.go:44-46](../../../internal/cli/workspace.go#L44-L46)） | `CodeUsage = 2`（kind="usage"） |
-| `devsys workspace view` 且 `.devsys/` 不存在 | `view.Build` 返回 `storage.ErrNotInitialized` → `errPrecondition`（[internal/cli/workspace.go:51-56](../../../internal/cli/workspace.go#L51-L56)） | `CodePrecondition = 3`（kind="precondition"） |
-| `view.Build` 其它失败（inspect / read / decode） | `errInternal`（[internal/cli/workspace.go:55-56](../../../internal/cli/workspace.go#L55-L56)） | `CodeInternal = 1`（kind="internal"） |
-| 成功（含 `trust.state = advisory_unlocked` / `pending_transaction`） | `renderWorkspaceView` 写 stdout，`render` 返 0 | `CodeOK = 0` |
+| `devsys workspace` 子命令缺失或不在 `{view, build, serve}` | `runWorkspace` `errUsage`（[internal/cli/workspace.go:24-38](../../../internal/cli/workspace.go#L24-L38)） | `CodeUsage = 2`（kind="usage"） |
+| `devsys workspace view` 参数解析失败 / 含未知位置参数 | `runWorkspaceView` `errUsage`（[internal/cli/workspace.go:118-120](../../../internal/cli/workspace.go#L118-L120)） | `CodeUsage = 2`（kind="usage"） |
+| `devsys workspace view --limit N` 且 `N <= 0` | `runWorkspaceView` `errUsage`（[internal/cli/workspace.go:121-123](../../../internal/cli/workspace.go#L121-L123)） | `CodeUsage = 2`（kind="usage"） |
+| `devsys workspace view` 且 `.devsys/` 不存在 | `view.Build` 返回 `storage.ErrNotInitialized` → `errPrecondition`（[internal/cli/workspace.go:128-134](../../../internal/cli/workspace.go#L128-L134)） | `CodePrecondition = 3`（kind="precondition"） |
+| `view.Build` 其它失败（inspect / read / decode） | `errInternal`（[internal/cli/workspace.go:132-133](../../../internal/cli/workspace.go#L132-L133)） | `CodeInternal = 1`（kind="internal"） |
+| `devsys workspace build` 不带 `--static` | `runWorkspaceBuild` `errUsage`（[internal/cli/workspace.go:53-54](../../../internal/cli/workspace.go#L53-L54)） | `CodeUsage = 2`（kind="usage"） |
+| `devsys workspace build` 参数解析失败 / 含未知位置参数 | `errUsage`（[internal/cli/workspace.go:50-51](../../../internal/cli/workspace.go#L50-L51)） | `CodeUsage = 2`（kind="usage"） |
+| `devsys workspace build --out DIR` 非法 | `sitestatic.ResolveOut` 失败 → `errUsage`（[internal/cli/workspace.go:62-64](../../../internal/cli/workspace.go#L62-L64)） | `CodeUsage = 2`（kind="usage"） |
+| `devsys workspace build` 且 `.devsys/` 不存在 | `view.Build` 返回 `storage.ErrNotInitialized` → `errPrecondition`（[internal/cli/workspace.go:66-69](../../../internal/cli/workspace.go#L66-L69)） | `CodePrecondition = 3`（kind="precondition"） |
+| `view.Build` 其它失败 / `sitestatic.Build` 写盘失败 | `errInternal`（[internal/cli/workspace.go:69-73](../../../internal/cli/workspace.go#L69-L73)） | `CodeInternal = 1`（kind="internal"） |
+| `devsys workspace serve --host <non-loopback>` 无 `--allow-remote` | `runWorkspaceServe` `errUsage`（[internal/cli/workspace_serve.go:159-161](../../../internal/cli/workspace_serve.go#L159-L161)） | `CodeUsage = 2`（kind="usage"） |
+| `devsys workspace serve --port` 越界 / 带 `--json` / `--quiet` / `--limit N<=0` | `errUsage`（[internal/cli/workspace_serve.go:150-157](../../../internal/cli/workspace_serve.go#L150-L157)） | `CodeUsage = 2`（kind="usage"） |
+| `devsys workspace serve` 且 `.devsys/` 不存在 | `view.Build` 返回 `storage.ErrNotInitialized` → `errPrecondition`（[internal/cli/workspace_serve.go:166-170](../../../internal/cli/workspace_serve.go#L166-L170)） | `CodePrecondition = 3`（kind="precondition"） |
+| `net.Listen` 端口占用 / 服务运行期错误 | `errInternal`（[internal/cli/workspace_serve.go:172-193](../../../internal/cli/workspace_serve.go#L172-L193)） | `CodeInternal = 1`（kind="internal"） |
+| 成功（含 `trust.state = advisory_unlocked` / `pending_transaction`） | `renderWorkspaceView` / `Build` 写 stdout，`render` 返 0 | `CodeOK = 0` |
 | 成功且 `knowledge.status == "missing"` | 同上，但 `view.Knowledge` 段降级提示 | `CodeOK = 0`（`missing` 是事实标签，不是失败） |
 
 `advisory_unlocked`（无锁文件、未跑过写命令）→ `view.Build` 仍渲染业务事实，`Trust.State` 写进 `view.Model.trust.state` 与人类输出 `trust: advisory_unlocked — <note>` 行；**不**算作错误。`pending_transaction` → `view.Build` 进入 §15.4 路径：`emptyBusiness` 抹掉业务事实，`Progress.Readiness` 走 `pendingReadiness`（`next.Evaluate` FAIL + `recoverCommand`），但**仍**退出码 0——`trust` 字段已经告诉调用方状态不可信。10/11 仍只承载 `devsys knowledge status`（[internal/cli/cli.go:52-56](../../../internal/cli/cli.go#L52-L56)）；视图层把 `view.Knowledge.Status` 用 `KnowledgeFresh / Stale / Missing / Unavailable` 字符串承载（[internal/view/view.go:46-51](../../../internal/view/view.go#L46-L51)），但不映射到退出码。

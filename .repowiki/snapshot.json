@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "generated_at": "2026-09-19T00:51:46.888Z",
+  "generated_at": "2026-09-19T02:59:36.298Z",
   "files": [
     {
       "path": ".gitattributes",
@@ -11,10 +11,10 @@
     },
     {
       "path": ".gitignore",
-      "size": 214,
-      "hash": "bd7fe5ad7a93cbf1736575f448b56fac984a6a048609db4e1366e63156441bb9",
+      "size": 229,
+      "hash": "5e802278528047b44625bd032111f0b84db22d714c208780ea290c2f921b4b70",
       "language": "other",
-      "lines": 14
+      "lines": 15
     },
     {
       "path": "AGENTS.md",
@@ -368,8 +368,8 @@
     },
     {
       "path": "internal/cli/cli.go",
-      "size": 51457,
-      "hash": "29ce926385d98ce23dc61c5b85aa2a61118231aa6917d583b6d660aaf0f3e88e",
+      "size": 51520,
+      "hash": "d262e6823db81e99737e1949848a67ba126aeb9f44c846e31db6c8779d9c2bc5",
       "language": "go",
       "lines": 1452
     },
@@ -479,6 +479,34 @@
       "lines": 153
     },
     {
+      "path": "internal/cli/workspace_build_test.go",
+      "size": 5703,
+      "hash": "c07b6feb8169c88e0505e21f7a23034cebf02ced5ebbdae75531f40906456245",
+      "language": "go",
+      "lines": 171
+    },
+    {
+      "path": "internal/cli/workspace_freshness_test.go",
+      "size": 4750,
+      "hash": "2ff656bcb5ce4c29f908c71f364dd5666bad6d17168cfef3f40f15f430f583fd",
+      "language": "go",
+      "lines": 141
+    },
+    {
+      "path": "internal/cli/workspace_serve_test.go",
+      "size": 7506,
+      "hash": "86ab02d350e1ada62d34892467ea95119569ddf411f5b1cf8293ff4e8d9c97c8",
+      "language": "go",
+      "lines": 225
+    },
+    {
+      "path": "internal/cli/workspace_serve.go",
+      "size": 6647,
+      "hash": "8f1fcc566ec2581725b10472cecfadf45c9ffb3a168fc0412a15343a4a315a13",
+      "language": "go",
+      "lines": 195
+    },
+    {
       "path": "internal/cli/workspace_test.go",
       "size": 5115,
       "hash": "58ba97617ed20d7498fc2f2b4834b4cc3d08a5e239f800bb61cdba19212bb877",
@@ -487,10 +515,10 @@
     },
     {
       "path": "internal/cli/workspace.go",
-      "size": 6128,
-      "hash": "d06cd0d83edf3c6703400aadedc6d42fdb602a664610e2bf5d6c447f305f353b",
+      "size": 9791,
+      "hash": "662cdd93d8d15ceb276a910c95bf4f62fa074831f74b8a89b734baf00f1238a3",
       "language": "go",
-      "lines": 187
+      "lines": 280
     },
     {
       "path": "internal/cli/worktree_test.go",
@@ -1025,6 +1053,41 @@
       "lines": 173
     },
     {
+      "path": "internal/sitestatic/freshness_test.go",
+      "size": 4205,
+      "hash": "009f37de0d4fa2ff284fcc14b95b0c7af01ef924dcd72ec250e616f9e3f2ee1c",
+      "language": "go",
+      "lines": 133
+    },
+    {
+      "path": "internal/sitestatic/render_test.go",
+      "size": 1565,
+      "hash": "f24e8ac3e092e139bb34ed50be88f154f7453ed47df78d41bd85b12753f1061b",
+      "language": "go",
+      "lines": 54
+    },
+    {
+      "path": "internal/sitestatic/render.go",
+      "size": 1491,
+      "hash": "353b864a9261f8d5d54d9ccd70ec8d76b583e6ebd3c17c8e09a82a8546a60da7",
+      "language": "go",
+      "lines": 49
+    },
+    {
+      "path": "internal/sitestatic/static_test.go",
+      "size": 8864,
+      "hash": "da3af09929f8a2e94cf974166c33dd82201b86f7177d3ac79d531863ba586a50",
+      "language": "go",
+      "lines": 266
+    },
+    {
+      "path": "internal/sitestatic/static.go",
+      "size": 24627,
+      "hash": "223ee1e33c994189b39b45585885c6148dad8550d2dd97f0d92fc78141a7a63b",
+      "language": "go",
+      "lines": 483
+    },
+    {
       "path": "internal/storage/atomic_test.go",
       "size": 3166,
       "hash": "b78ce45e3ebeaa49c2cf67ea4081fd9cc27e6bd776de1d350265876496543b11",
@@ -1467,10 +1530,10 @@
     },
     {
       "path": "README.md",
-      "size": 49040,
-      "hash": "0f424799d84b612737b2cb1b518b0ed340d63a815131835659fcc9d1fa241f80",
+      "size": 51488,
+      "hash": "e4fd99e8ef1873f6cb8ab8ad92566e03491c4d1458db7788f388b13a13354e82",
       "language": "markdown",
-      "lines": 409
+      "lines": 414
     },
     {
       "path": "scripts/exchange-demo.sh",
@@ -1586,14 +1649,14 @@
     }
   ],
   "stats": {
-    "total_files": 226,
-    "total_size": 1971711,
-    "total_lines": 55182,
+    "total_files": 235,
+    "total_size": 2043258,
+    "total_lines": 56998,
     "languages": {
       "other": 6,
       "markdown": 9,
       "shell": 7,
-      "go": 187,
+      "go": 196,
       "powershell": 6,
       "yaml": 11
     }

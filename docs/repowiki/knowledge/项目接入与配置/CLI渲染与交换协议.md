@@ -12,9 +12,9 @@ triggers:
   - 10/11
   - knowledge status
   - 输出格式
-description: M4 CLI 的 `--json` / `--jsonl` 两种结构化输出形态、`writeJSONL` 列表行流、退出码与 MCP 工具错误的对应；知识层保留的 10/11 约定；M7.1 增 `--json` 信封把 `view.Model` 嵌入 `data`（view.Model 字段：schema_version/project/trust/baseline/progress/runs/records/knowledge/sources/problems），人类输出走「一行一事实」+ 缩进层级（project/phase/baseline/state/milestones/progress/readiness/risk/next/runs/records/knowledge/trust/pending/problem/sources），退出码 0/1/2/3 沿用、10/11 仍只承载 knowledge status。
+description: M4 CLI 的 `--json` / `--jsonl` 两种结构化输出形态与退出码/MCP 错误对应；M7.1–M7.4 workspace 子命令族 view/build/serve（信封差异 + hint 行），人类输出一行一事实。
 generated: true
-source_commit: 463c2d8
+source_commit: fa2a87d
 generator: repowiki-gen
 ---
 
@@ -126,9 +126,11 @@ CLI 与 MCP 共享同一份 `*app.Error.Class()`（usage / precondition / intern
 | `approval list` | `<id>\t<workitem>\t<stage>\t<status>` |
 | `search <kw>` | `<rel-path>:<line>: <trimmed text>`，末行 `<N> match(es)` |
 
-## `devsys workspace view` 的协议（M7.1）
+## `devsys workspace view/build/serve` 的协议（M7.1–M7.4）
 
-M7.1 在 `--json` 单文档信封之上新增**视图域**形态，专用、不复用 `--jsonl`（视图不是单条记录，是一个多节快照）。
+M7.1 起 workspace 子命令族扩成三种形态：view（M7.1）打印聚合视图、build（M7.2）落地离线静态站、serve（M7.3）暴露本地只读 HTTP。它们共享同一份 `view.Model`，但每一种都重新组装自己的外层信封——`--jsonl` 不复用，因为视图与站点清单都不是单条记录。
+
+### view（`--json`）—— `view.Model` 平铺信封
 
 `--json` 信封（成功）：
 
@@ -148,11 +150,57 @@ M7.1 在 `--json` 单文档信封之上新增**视图域**形态，专用、不�
 }
 ```
 
-- 形态：`json.NewEncoder(stdout).Encode(struct{OK bool; view.Model})`（[internal/cli/workspace.go:58-63](../../../internal/cli/workspace.go#L58-L63)）——`OK: true` 与 `view.Model` 字段在 JSON 顶层并列；M4 的 `{ok: true, data}` 写法在此被打破，因为视图本身就是数据。
+- 形态：`json.NewEncoder(stdout).Encode(struct{OK bool; view.Model})`（[internal/cli/workspace.go:135-140](../../../internal/cli/workspace.go#L135-L140)）——`OK: true` 与 `view.Model` 字段在 JSON 顶层并列；M4 的 `{ok: true, data}` 写法在此被打破，因为视图本身就是数据。
 - 字段顺序：与 `view.Model` struct 字段序一致（[internal/view/view.go:65-80](../../../internal/view/view.go#L65-L80)），保证序列化稳定。
 - 错误：`--json` 模式下错误仍走 M4 错误信封 `{ok: false, error: {code, kind, message, problems?}}`（`render` 函数统一处理）。
 
-人类输出（无 `--json` / 无 `--quiet`）由 `renderWorkspaceView`（[internal/cli/workspace.go:72-135](../../../internal/cli/workspace.go#L72-L135)）生成，**一行一事实 + 缩进层级**：
+### build（`--json`）—— 站点清单信封
+
+`workspace build --static`（M7.2）走自己的外层信封，承载"产物路径 + 页列表 + 时间戳"，不再回退到 `view.Model`：
+
+```json
+{
+  "ok": true,
+  "out": ".devsys/dist/site",
+  "pages": ["index.html", "tasks.html", "workflows.html", "runs.html", "records.html", "knowledge.html"],
+  "generated_at": "2026-09-19T12:34:56Z",
+  "baseline": { "available": true, "commit": "abc…", "branch": "main", "dirty": false, "changed_files": 0 },
+  "trust_state": "ok"
+}
+```
+
+- 形态：`json.NewEncoder(stdout).Encode(struct{OK bool; Out string; Pages []string; GeneratedAt string; Baseline view.Baseline; TrustState string})`（[internal/cli/workspace.go:84-91](../../../internal/cli/workspace.go#L84-L91)）。
+- `out` 字段是相对仓库根的相对路径（无法相对时回退到绝对路径）；`pages` 与 `sitestatic.PageFiles` 列出的离线页一一对应（首页 + 五个二级页）。
+- `baseline` 与 `trust_state` 取自同一份 `view.Model`——脚本拿到的"站点 + 时间 + 信任态"和 view 共源，但接口不再共用，避免下游把站点清单误读成视图。
+
+### serve（`/api/view`）—— 与 view --json 同一模型，加 `generated_at`
+
+`workspace serve`（M7.3）在 `/api/view` 暴露同样的视图模型，外层补一个 `generated_at` 时间戳供前端缓存/对比：
+
+```json
+{
+  "ok": true,
+  "generated_at": "2026-09-19T12:34:56Z",
+  "schema_version": 1,
+  "project": { ... },
+  "trust":   { ... },
+  "baseline": { ... },
+  "progress": { ... },
+  "runs":    { ... },
+  "records": { ... },
+  "knowledge": { ... },
+  "sources":  [ ... ],
+  "problems": []
+}
+```
+
+- 形态：`json.NewEncoder(w).Encode(struct{OK bool; GeneratedAt string; view.Model})`（[internal/cli/workspace_serve.go:85-87](../../../internal/cli/workspace_serve.go#L85-L87)，嵌套在 `serveHTTP` 的 `/api/view` 分支里）。
+- 与 `view --json` 共享同一份 `view.Build` 结果——`/data/model.json` 走 `sitestatic.ModelJSON`（无 `generated_at`），`/api/view` 走这条带时间戳的信封，前端按需选。
+- 其它路由：`/` 与 `/<page>.html` 走 `servePage` 渲染离线页，`/assets/style.css` 走 `sitestatic.Stylesheet()`，`/healthz` 是 `{"ok":true}`，写方法一律 `405`。
+
+### 人类输出（一行一事实 + 缩进）
+
+无 `--json` / 无 `--quiet` 时由 `renderWorkspaceView`（[internal/cli/workspace.go:149-228](../../../internal/cli/workspace.go#L149-L228)）生成：
 
 | 行 | 触发条件 | 形态 |
 |---|---|---|
@@ -169,15 +217,18 @@ M7.1 在 `--json` 单文档信封之上新增**视图域**形态，专用、不�
 | `  runs: <N> — <status counts>[(truncated; raise --limit for more)]` | 恒有 | 二级 |
 | `  records: decisions <N>  findings <N>  artifacts <N>[…]` | 恒有 | 二级 |
 | `  knowledge: missing — <reason>` | `k.Status == KnowledgeMissing` | 二级 |
-| `  knowledge: <status> — <N> page(s)[…][— <reason>]` | 其它 | 二级 |
+| `  affected: <rel page>` | 每个 `k.Affected` 项 | 二级 |
+| `  unverifiable: <rel page>` | 每个 `k.Unverifiable` 项 | 二级 |
+| `  hint: run `devsys knowledge refresh` to regenerate affected pages` | `k.Status == KnowledgeStale` | 二级 |
+| `  hint: run `devsys knowledge status` to see the underlying error` | `k.Status == KnowledgeUnavailable && trust != pending` | 二级 |
+| `  hint: run `devsys doctor` to inspect before `devsys recover`` | `len(m.Trust.Pending) > 0` | 二级 |
+| `  hint: configure `knowledge_generator`, then run `devsys knowledge refresh --full`` | `k.Status == KnowledgeMissing` | 二级 |
 | `  trust: <state> — <note>` | `m.Trust.State != TrustOK` | 二级 |
 | `  pending: <id1>, <id2>, …` | `len(m.Trust.Pending) > 0` | 二级 |
 | `  problem: <msg>` | 每个 `m.Problems` 项 | 二级 |
 | `  sources: <rel path>, …` | 恒有 | 二级 |
 
-`--quiet` 抑制整段；`-q` / `--json` 互斥（已知 `--json` 优先）。
-
-退出码（沿用既有体系）：成功 0 / 子命令缺失或 `--limit <= 0` → 2 / `storage.ErrNotInitialized` → 3 / `view.Build` 其它失败 → 1。**`advisory_unlocked` / `pending_transaction` 都是 exit 0**——`trust` 与 `pending` 字段在 JSON / 人类输出里告诉调用方状态不可信，而不是用退出码隐藏语义。10/11 仍专属 `devsys knowledge status`，视图层把 `knowledge.status` 用字符串承载（`KnowledgeFresh / Stale / Missing / Unavailable`），不与退出码耦合。
+退出码（沿用既有体系）：成功 0 / 子命令缺失或未知（`view | build | serve` 之外的子命令）或 `--limit <= 0`（view/build）、`--port` 越界或非 loopback host 且无 `--allow-remote`（serve） → 2 / `storage.ErrNotInitialized` → 3 / `view.Build` 其它失败 → 1。**`advisory_unlocked` / `pending_transaction` 都是 exit 0**——`trust` 与 `pending` 字段在 JSON / 人类输出里告诉调用方状态不可信，而不是用退出码隐藏语义。10/11 仍专属 `devsys knowledge status`，视图层把 `knowledge.status` 用字符串承载（`KnowledgeFresh / Stale / Missing / Unavailable`），不与退出码耦合。`build --static` 没有 `--static` 也走 2（与 M7.2 "唯一支持的站点形态"约定一致）；`serve` 在 `--json` / `--quiet` 下也走 2（HTTP 服务器不接受这两种输出形态）。
 
 ## 与其他层的关系
 
