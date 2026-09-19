@@ -3,9 +3,9 @@
   "partition": {
     "locale": "zh"
   },
-  "generated_at": "2026-09-19T03:18:04.977Z",
+  "generated_at": "2026-09-19T03:57:36.357Z",
   "git": {
-    "commit": "b7855fbd62d400bb693861639d2524c3d0914696",
+    "commit": "bae7e282ffb704708d0f5de8bde132b57d47fbab",
     "branch": "master"
   },
   "pages": {
@@ -34,6 +34,8 @@
         "scripts/smoke-m5.sh",
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1",
+        "scripts/smoke-m7.sh",
+        "scripts/smoke-m7.ps1",
         "internal/storage/**",
         "internal/workitem/**",
         "internal/events/**",
@@ -62,7 +64,7 @@
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "0f27a662a1974d019636a084559572afb6bd7a2b51f7edc43a63a4d5d3949b93"
+      "content_hash": "563fc2bfa276a50b0b382f00a49320a4cddfd10a7c6dca1c1d023ff59b9b80f5"
     },
     "content/快速开始.md": {
       "sources": [
@@ -86,6 +88,8 @@
         "scripts/smoke-m5.sh",
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1",
+        "scripts/smoke-m7.sh",
+        "scripts/smoke-m7.ps1",
         "internal/storage/**",
         "internal/workitem/**",
         "internal/events/**",
@@ -114,7 +118,7 @@
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "ff8ed78107bb6e6b64774d527496ec58f9b1b2c0f98a755f6526c252e60ea1fc"
+      "content_hash": "b4bac71d5709380b50c7dfc0a8cc8921594f241770e8167793d69cf10608c6ab"
     },
     "content/项目总览.md": {
       "sources": [
@@ -138,6 +142,8 @@
         "scripts/smoke-m5.sh",
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1",
+        "scripts/smoke-m7.sh",
+        "scripts/smoke-m7.ps1",
         "internal/storage/**",
         "internal/workitem/**",
         "internal/events/**",
@@ -166,7 +172,7 @@
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "0a317547e8676a5bfbc91738af78f26580f2d0cc911ffcee9b9278911ab471cc"
+      "content_hash": "3c08a7eeccd35a9d79360bc7ce7de5bf8fd5ef4d764bc65048b471640dddd0bb"
     },
     "index.md": {
       "sources": [],
@@ -608,7 +614,7 @@
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "58073b98eaad2d8ea0e2895bdb53ca3ef9eaac36d3f300147e91045a8c433c83"
+      "content_hash": "3d51c61ca491945970cd951690b75f72fca62452fe9a8d4afc0ca9eb80feb16f"
     },
     "knowledge/视图层/编码规范.md": {
       "sources": [
@@ -652,7 +658,9 @@
         "scripts/exchange-demo.sh",
         "scripts/smoke-m5.sh",
         "scripts/smoke-m6.sh",
-        "scripts/smoke-m6.ps1"
+        "scripts/smoke-m6.ps1",
+        "scripts/smoke-m7.sh",
+        "scripts/smoke-m7.ps1"
       ],
       "content_hash": "503d589cae82296bd674aa30a6bc932caa0f9a5f42bc3523b2cc465f58ddcc64"
     },
@@ -677,7 +685,9 @@
         "scripts/exchange-demo.sh",
         "scripts/smoke-m5.sh",
         "scripts/smoke-m6.sh",
-        "scripts/smoke-m6.ps1"
+        "scripts/smoke-m6.ps1",
+        "scripts/smoke-m7.sh",
+        "scripts/smoke-m7.ps1"
       ],
       "content_hash": "2bd4bda74c83242e02d87a23a2e22c728829331d95034d8868931980ca659b00"
     },
@@ -702,7 +712,9 @@
         "scripts/exchange-demo.sh",
         "scripts/smoke-m5.sh",
         "scripts/smoke-m6.sh",
-        "scripts/smoke-m6.ps1"
+        "scripts/smoke-m6.ps1",
+        "scripts/smoke-m7.sh",
+        "scripts/smoke-m7.ps1"
       ],
       "content_hash": "3c73aa31502a89db8910963d512d9ae7e5d0baf800206adaf5056d1ab3717055"
     },
@@ -727,7 +739,9 @@
         "scripts/exchange-demo.sh",
         "scripts/smoke-m5.sh",
         "scripts/smoke-m6.sh",
-        "scripts/smoke-m6.ps1"
+        "scripts/smoke-m6.ps1",
+        "scripts/smoke-m7.sh",
+        "scripts/smoke-m7.ps1"
       ],
       "content_hash": "55f1d4f562baaf329cdd4fd1e8c1696ea2c1e3f600b1f88f8f4677f5adc297a2"
     },
@@ -752,9 +766,11 @@
         "scripts/exchange-demo.sh",
         "scripts/smoke-m5.sh",
         "scripts/smoke-m6.sh",
-        "scripts/smoke-m6.ps1"
+        "scripts/smoke-m6.ps1",
+        "scripts/smoke-m7.sh",
+        "scripts/smoke-m7.ps1"
       ],
-      "content_hash": "b8345efee973b5361f11e13572101e51186c08fb59bcb1f98bb759754bc3ee04"
+      "content_hash": "6eed186ae680675ce5cf5a1563371da05d43838721817368855b405c2a95bf75"
     },
     "knowledge/项目接入与配置/架构设计.md": {
       "sources": [
@@ -777,7 +793,9 @@
         "scripts/exchange-demo.sh",
         "scripts/smoke-m5.sh",
         "scripts/smoke-m6.sh",
-        "scripts/smoke-m6.ps1"
+        "scripts/smoke-m6.ps1",
+        "scripts/smoke-m7.sh",
+        "scripts/smoke-m7.ps1"
       ],
       "content_hash": "0bbd6dd091b73f0becb7bfe048237500db6162a79fdf74c3fa4863eb4b047fcc"
     },
@@ -802,7 +820,9 @@
         "scripts/exchange-demo.sh",
         "scripts/smoke-m5.sh",
         "scripts/smoke-m6.sh",
-        "scripts/smoke-m6.ps1"
+        "scripts/smoke-m6.ps1",
+        "scripts/smoke-m7.sh",
+        "scripts/smoke-m7.ps1"
       ],
       "content_hash": "07a435abe6deec74f6702f0500c7a3f57587bf9741c15ed82a6979b0b0e26b6a"
     },
@@ -827,9 +847,11 @@
         "scripts/exchange-demo.sh",
         "scripts/smoke-m5.sh",
         "scripts/smoke-m6.sh",
-        "scripts/smoke-m6.ps1"
+        "scripts/smoke-m6.ps1",
+        "scripts/smoke-m7.sh",
+        "scripts/smoke-m7.ps1"
       ],
-      "content_hash": "b55e67e139995cb1aae81a78c1b32c079982504fd658694236bc310a64f63e77"
+      "content_hash": "b79a9b667c8a18a690302465fc9366bc6a62cbc541f3da07358b8a54c20ad972"
     },
     "knowledge/项目接入与配置/编码规范.md": {
       "sources": [
@@ -852,7 +874,9 @@
         "scripts/exchange-demo.sh",
         "scripts/smoke-m5.sh",
         "scripts/smoke-m6.sh",
-        "scripts/smoke-m6.ps1"
+        "scripts/smoke-m6.ps1",
+        "scripts/smoke-m7.sh",
+        "scripts/smoke-m7.ps1"
       ],
       "content_hash": "401d27506ba5657d302a6773e88425fb3de6325b56cde62cbe25bed18ee11783"
     },
@@ -866,8 +890,8 @@
   "last_run": {
     "status": "success",
     "phase": "finalize",
-    "started_at": "2026-09-19T03:18:04.977Z",
-    "finished_at": "2026-09-19T03:18:04.977Z",
+    "started_at": "2026-09-19T03:57:36.357Z",
+    "finished_at": "2026-09-19T03:57:36.357Z",
     "error": ""
   }
 }

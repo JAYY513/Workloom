@@ -35,7 +35,9 @@
         "scripts/exchange-demo.sh",
         "scripts/smoke-m5.sh",
         "scripts/smoke-m6.sh",
-        "scripts/smoke-m6.ps1"
+        "scripts/smoke-m6.ps1",
+        "scripts/smoke-m7.sh",
+        "scripts/smoke-m7.ps1"
       ]
     },
     {

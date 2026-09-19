@@ -1,3 +1,13 @@
+## 2026-09-19 · bae7e28 M7 收尾（smoke 剧本 + wiki 补齐）
+
+- 源码基线：`bae7e28`（M7 收尾：`scripts/smoke-m7.{sh,ps1}` 双平台实跑 exit 0 + README 收尾行 + tag `m7`；相对上次 wiki 基线 `b7855fb` 3 提交、6 文件、23 affected pages）；增量模式运行。
+- 计划：`.repowiki/plan.json` schema 2，沿用模块树档位（237 个扫描文件）。`project-access` scope 补 `scripts/smoke-m7.{sh,ps1}`（M6 轮同款归属）；`view-layer` scope 不变（`internal/view/**` + `internal/sitestatic/**`）；三篇文章 `modules` 不变；coverage 228/235（未覆盖 7 个均为源码主干外，与上轮同）。
+- 增量范围：**view-layer** 特殊配置与命令卡增「端到端验证」节（五段断言口径 + 双平台命令）；**project-access** 特殊配置与命令卡增「M7 收尾剧本」节（与视图卡互链）+ 技术栈卡 description 补 `scripts/smoke-m7.*`；三篇文章各一行（项目总览版本边界 + 快速开始 M7 节尾 + 开发与故障诊断测试节尾，均链向视图卡端到端验证节）。
+- 文档校验：`repowiki validate` 报告 **55 files、0 errors、0 warnings**。中途修 1 项（视图卡新增跨目录链接少一层 `../`，phantom，沿用 #259 轮教训即时纠正）。
+- 保护：`repowiki scan` 先刷新快照（235→237 文件）；D4 适用页均与 state 一致，无人工修改；主代理直写 6 页，无子代理。
+- 收尾：`repowiki state --update` 刷新页面 hash、scope 与源码基线 `bae7e28`（55 页、coverage 228/235、phase finalize success）；`repowiki status` 报告 **fresh**。
+- 验证边界：Go 源码未动（终验全量 `go test ./...` 25 包绿、`gofmt -l` 无输出、`go vet` 干净均在本卡 test 阶段完成，见任务 artifact）；双脚本实跑 exit 0（Git Bash 14.9s / PowerShell 10.9s）。
+
 ## 2026-09-19 · fa2a87d M7.2–M7.4 增量刷新
 
 - 源码基线：`fa2a87d`（M7.2 静态构建 `internal/sitestatic` + M7.3 本地只读服务 + M7.4 新鲜度提示；相对上次 wiki 基线 `463c2d8` 4 提交、50 文件、12 affected pages）；增量模式运行。
