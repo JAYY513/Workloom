@@ -5,6 +5,7 @@ bin/
 .devsys/local/
 .devsys/.cache/
 .devsys/workspaces/
+.devsys/dist/
 
 # Go test binaries
 *.test

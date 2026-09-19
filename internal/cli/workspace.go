@@ -7,9 +7,12 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
+	"workloom/internal/sitestatic"
 	"workloom/internal/storage"
 	"workloom/internal/view"
 )
@@ -20,14 +23,86 @@ import (
 // the two concepts apart and so do their commands.
 func runWorkspace(stdout io.Writer, opts options, rest []string) error {
 	if len(rest) == 0 {
-		return errUsage("`devsys workspace` needs a subcommand: view")
+		return errUsage("`devsys workspace` needs a subcommand: view | build")
 	}
 	switch rest[0] {
 	case "view":
 		return runWorkspaceView(stdout, opts, rest[1:])
+	case "build":
+		return runWorkspaceBuild(stdout, opts, rest[1:])
 	default:
 		return errUsage("unknown `devsys workspace` subcommand %q", rest[0])
 	}
+}
+
+// runWorkspaceBuild renders the read-only view as an offline static site
+// (M7.2, 方案 §17 两种形态之一). It reads through view.Build — the shared
+// lock is never created, transactions are never recovered — and the only
+// writes are the site files below --out.
+func runWorkspaceBuild(stdout io.Writer, opts options, rest []string) error {
+	fs := flag.NewFlagSet("workspace build", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	static := fs.Bool("static", false, "render the offline static site")
+	out := fs.String("out", "", "output directory (default .devsys/dist/site/)")
+	limit := fs.Int("limit", view.DefaultLimit, "max entries per list section (runs, records, pages)")
+	if err := fs.Parse(rest); err != nil || fs.NArg() != 0 {
+		return errUsage("`devsys workspace build --static [--out DIR] [--limit N]`")
+	}
+	if !*static {
+		return errUsage("`devsys workspace build` needs --static (the only site form in M7.2)")
+	}
+	if *limit <= 0 {
+		return errUsage("`--limit` must be positive")
+	}
+	svc, err := requireProjectRoot()
+	if err != nil {
+		return err
+	}
+	outDir, err := sitestatic.ResolveOut(svc.Root, *out)
+	if err != nil {
+		return errUsage("workspace build: %v", err)
+	}
+	model, err := view.Build(context.Background(), svc.Root, view.Options{Limit: *limit})
+	if err != nil {
+		if errors.Is(err, storage.ErrNotInitialized) {
+			return errPrecondition("workspace build: %v", err)
+		}
+		return errInternal("workspace build: %v", err)
+	}
+	generatedAt := time.Now().UTC().Truncate(time.Second)
+	pages, err := sitestatic.Build(model, outDir, generatedAt)
+	if err != nil {
+		return errInternal("workspace build: %v", err)
+	}
+	rel, relErr := filepath.Rel(svc.Root, outDir)
+	if relErr != nil {
+		rel = outDir
+	}
+	if opts.json {
+		return json.NewEncoder(stdout).Encode(struct {
+			OK          bool          `json:"ok"`
+			Out         string        `json:"out"`
+			Pages       []string      `json:"pages"`
+			GeneratedAt string        `json:"generated_at"`
+			Baseline    view.Baseline `json:"baseline"`
+			TrustState  string        `json:"trust_state"`
+		}{OK: true, Out: rel, Pages: pages, GeneratedAt: generatedAt.Format(time.RFC3339), Baseline: model.Baseline, TrustState: model.Trust.State})
+	}
+	if !opts.quiet {
+		summary := fmt.Sprintf("site: %s (%d pages) — baseline %s (%s)", rel, len(pages), shortSHA(model.Baseline.Commit), model.Baseline.Branch)
+		if !model.Baseline.Available {
+			summary = fmt.Sprintf("site: %s (%d pages) — baseline unavailable", rel, len(pages))
+		}
+		fmt.Fprintln(stdout, summary)
+		if model.Trust.State != view.TrustOK {
+			note := model.Trust.State
+			if model.Trust.Note != "" {
+				note += " — " + model.Trust.Note
+			}
+			fmt.Fprintf(stdout, "trust: %s\n", note)
+		}
+	}
+	return nil
 }
 
 // runWorkspaceView assembles and prints the read-only view (M7.1). It writes

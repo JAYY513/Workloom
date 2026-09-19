@@ -78,7 +78,7 @@ commands:
   worktree      prepare | remove | list execution workspaces (方案 §4.8)
   dispatch      one scheduling tick: recover, reconcile, dispatch (--watch loops)
   context       get [--task ID] [--path a,b] | workitem | refresh | compact working context (read-only)
-  workspace     view [--limit N] read-only project view: blueprint, progress, runs, records, knowledge (方案 §17)
+  workspace     view [--limit N] | build --static [--out DIR] [--limit N] read-only project view / offline site (方案 §17)
   knowledge         status | scan | validate [dir|page.md...] | refresh
   session start  one-shot session orientation (project, work in flight, next action)
   wire          inject the devsys discipline block into AGENTS.md (idempotent; --dry-run previews)

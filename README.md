@@ -62,6 +62,7 @@
 | M5 收尾 | 已完成：`scripts/smoke-m5.sh`/`.ps1`（八段：契约/索引/新鲜度/生成器契约/保护/续跑与互斥/装配/降级）、真实 repowiki 循环验证、repowiki 增量刷新、独立评审逐条处置 |
 | M6.1 Harness Adapter 接口与 Shell Adapter | 已完成：`internal/harness`（方案 §9.2 九方法映射 + 八项能力声明 + Session 句柄承载 stream/stop/collect）；Shell 适配器 argv 直通、逐行 stdout/stderr、超长行按 rune 边界 64 KiB 分块、超时与取消终止整棵进程树（POSIX 进程组 / Windows `taskkill /T /F`）；`devsys run exec` 把输出实时镜像并写入 `.devsys/runs/<run-id>.jsonl`（追加写、周期 fsync、断尾修复留痕），结束后更新 run 证据（commands/logs/result.errors）并记事件 |
 | M7.1 只读聚合层 | 已完成：`internal/view` 从 `.devsys/` 与 git 状态装配视图快照（蓝图/进度含 §7.4 就绪判定/Run/记录/知识新鲜度），每节带来源文件、顶层带 git 基线；`devsys workspace view [--json] [--limit N]`；只走 `storage.Inspect`（不建锁、不恢复、不修断尾、不写 `.cache/`），无锁文件降级 `advisory_unlocked` 并照常渲染，pending 事务按 §15.4 不渲染业务事实；模型无墙钟字段（两次运行逐字节一致），只读副本实跑通过 |
+| M7.2 静态构建 | 已完成：`internal/sitestatic` 把 `view` 模型渲染为离线静态站（零 JS、零外部引用、单本地样式）；`devsys workspace build --static [--out DIR] [--limit N]`；产物 8 文件（总览/任务/工作流/运行/记录/知识 + `assets/style.css` + `data/model.json` 与 `--json` 同一模型）；每页导航互链、来源文件、基线提交与生成时间；pending 事务全站横幅；缺省 out `.devsys/dist/site/`（git 忽略，见 `.gitignore`），`--out` 显式指向可跟踪位置即发布；除 out 外零写入（`--out` 指项目外时项目指纹零变化） |
 
 ## 构建与验收
 
@@ -331,7 +332,9 @@ bin/devsys.exe run complete|fail|cancel --id <run-id> [--expect <hash>] --actor 
 bin/devsys.exe workspace view              # 摘要：蓝图/进度/就绪/运行/记录/知识/来源
 bin/devsys.exe --json workspace view       # {ok, schema_version, project, trust, baseline, progress, runs, records, knowledge, sources}
 bin/devsys.exe workspace view --limit 20   # 列表节上限（runs/records/pages，缺省 50）
-bin/devsys.exe workspace view; echo $?     # 缺 .devsys/：3；用法错误：2
+bin/devsys.exe workspace build --static                         # 离线站 → .devsys/dist/site/（本地派生，不提交）
+bin/devsys.exe workspace build --static --out dist-site         # 产物进可跟踪位置即发布（操作者自选提交/部署）
+bin/devsys.exe --json workspace build --static --out /tmp/site  # {ok,out,pages[6],generated_at,baseline,trust_state}
 ```
 
 **只读的精确含义**：读取走 `storage.Inspect`（在既有锁文件上取共享锁，不创建），没有锁文件时（只读副本、从未写过状态的新检出）降级为无锁读取并把 `trust.state` 标为 `advisory_unlocked`；不恢复事务、不修断尾、不写 `.cache/`、不探测生成器（不起进程）。存在待恢复事务时按方案 §15.4 不渲染业务事实：`trust.state=pending_transaction` 列出事务 ID 并提示 `devsys recover`，git 基线照常给出。每个节带 `sources[]`（读过的状态文件，目录以 `/` 结尾），顶层 `baseline` 给出提交/分支/脏状态与改动文件数；模型不含墙钟字段，同一状态两次运行逐字节一致。实跑证据（M7.1）：把 `docs/examples/m1-devsys/` 装进临时项目后连跑两次 `--json`，输出同为 3288 字节；整树置 0444 的副本上仍输出同一模型，且未创建 `local/lock`。M7.2 的静态站点与 M7.3 的本地只读服务在同一聚合层上渲染。
@@ -371,9 +374,9 @@ internal/config/     严格配置解析、错误定位与 schema_version 校验�
 internal/domain/     Project/WorkItem/Run/Decision/Finding/Event/Artifact/Approval 与版本化序列化
 internal/project/    init 与项目内布局（后续：领域 / 访问 / 执行）
 internal/registry/   用户级项目路径注册表（方案 §14.4）
-internal/workflow/   策略文件解析与严格校验 .devsys/workflows/<id>.md（方案 §5.3；M3.1）
-internal/mcp/        MCP stdio 服务：JSON-RPC 生命周期、工具注册与 profile 分级（方案 §8.1/§8.6；M4.1）
 internal/view/       工作区视图的只读聚合：从 .devsys/ 与 git 状态装配快照（方案 §17；M7.1）
+internal/sitestatic/ 工作区视图的离线静态渲染：view 模型 → 6 页 + 本地样式 + data/model.json（方案 §17；M7.2）
+internal/mcp/        MCP stdio 服务：JSON-RPC 生命周期、工具注册与 profile 分级（方案 §8.1/§8.6；M4.1）
 internal/version/    构建标识（可用 -ldflags 覆盖）
 vendor/              依赖副本（gopkg.in/yaml.v3），保证干净机器离线构建
 docs/原始文档/       方案与实施计划（源文档，不再拆分）
@@ -391,9 +394,8 @@ bin/                 构建产物（不提交）
   也可 `HTTPS_PROXY=http://127.0.0.1:10808` 走本地代理），随后 `go mod tidy && go mod vendor` 一起提交。
 - 锁与事务恢复材料只依赖标准库系统调用（Windows 动态调用 LockFileEx，POSIX 用 flock），不引入锁库。
 
-## 约定
+- 核心用 Go；M7 的工作区视图：聚合层在 `internal/view`（Go，只读、不写状态；M7.1），静态渲染在 `internal/sitestatic`（Go 模板直出 HTML/CSS，无 JS 依赖、无外部引用；M7.2），只读渲染、不碰进程。
 
-- 核心用 Go；M7 的工作区视图：聚合层在 `internal/view`（Go，只读、不写状态；M7.1），渲染层按既有约定用 TypeScript/React 实现（M7.2/M7.3），只读渲染、不碰进程。
 - 一切项目状态写成可 diff、可合并的文本（YAML / Markdown / JSONL）。
 - 不使用数据库；任何缓存都是可删除、可重建的普通文件。
 - 行尾统一 LF（见 `.gitattributes`），保证状态文件跨机器合并不产生幽灵 diff。
