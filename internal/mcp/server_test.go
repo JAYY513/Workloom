@@ -99,22 +99,47 @@ func TestServerAdvertisesIdentityAndInstructions(t *testing.T) {
 
 func TestToolsListFiltersByProfile(t *testing.T) {
 	def := toolNames(t, session(t, Config{Root: t.TempDir(), ServerVersion: "test"}))
-	if !contains(def, "health") || !contains(def, "workitem_list") || !contains(def, "workflow_step_complete") {
-		t.Fatalf("default profile lacks expected tools: %v", def)
+	if !contains(def, "health") || !contains(def, "workitem_list") || !contains(def, "agent_session_start") {
+		t.Fatalf("default tier lacks expected core tools: %v", def)
 	}
-	if contains(def, "project_update") || contains(def, "approval_decide") || contains(def, "project_create") {
-		t.Fatalf("default profile exposes admin/reviewer tools: %v", def)
+	if contains(def, "workflow_step_complete") || contains(def, "project_update") || contains(def, "approval_decide") || contains(def, "project_create") {
+		t.Fatalf("default tier exposes non-core tools: %v", def)
 	}
-	admin := toolNames(t, session(t, Config{Root: t.TempDir(), ServerVersion: "test", Profiles: []string{ProfileAdmin}}))
+	admin := toolNames(t, session(t, Config{Root: t.TempDir(), ServerVersion: "test", Profiles: []string{ProfileAdmin}, Tier: TierStandard}))
 	if !contains(admin, "project_update") || !contains(admin, "project_create") || !contains(admin, "project_state_update") {
 		t.Fatalf("admin profile lacks admin tools: %v", admin)
 	}
 	if contains(admin, "health") || contains(admin, "workitem_get") {
 		t.Fatalf("admin profile leaks session tools: %v", admin)
 	}
-	reviewer := toolNames(t, session(t, Config{Root: t.TempDir(), ServerVersion: "test", Profiles: []string{ProfileReviewer}}))
+	reviewer := toolNames(t, session(t, Config{Root: t.TempDir(), ServerVersion: "test", Profiles: []string{ProfileReviewer}, Tier: TierStandard}))
 	if !contains(reviewer, "approval_decide") {
 		t.Fatalf("reviewer profile lacks approval_decide: %v", reviewer)
+	}
+}
+
+// TestTierStandardRestoresFullSessionExecutor pins that --tier standard shows
+// everything the selected profiles expose (the pre-tier default surface).
+func TestTierStandardRestoresFullSessionExecutor(t *testing.T) {
+	names := toolNames(t, session(t, Config{Root: t.TempDir(), ServerVersion: "test", Tier: TierStandard}))
+	for _, want := range []string{"health", "workitem_list", "workflow_step_complete", "workitem_update", "context_get", "knowledge_status"} {
+		if !contains(names, want) {
+			t.Fatalf("standard tier lacks %s: %v", want, names)
+		}
+	}
+}
+
+// TestParseTier rejects unknown tiers so a typo cannot silently widen or
+// narrow the tool surface.
+func TestParseTier(t *testing.T) {
+	if got, err := ParseTier(""); err != nil || got != TierCore {
+		t.Fatalf("default tier = %q, %v", got, err)
+	}
+	if got, err := ParseTier("standard"); err != nil || got != TierStandard {
+		t.Fatalf("standard tier = %q, %v", got, err)
+	}
+	if _, err := ParseTier("root"); err == nil {
+		t.Fatal("unknown tier accepted")
 	}
 }
 

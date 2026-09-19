@@ -12,10 +12,13 @@ import (
 )
 
 // toolSpec is one registrable tool: its name, the profiles that expose it,
-// and the registration function that binds it to the SDK server.
+// its tier (core tools are the daily subset; the rest is standard), and the
+// registration function that binds it to the SDK server. An empty tier means
+// standard: a tool must opt in to core explicitly, never by omission.
 type toolSpec struct {
 	name     string
 	profiles []string
+	tier     string
 	register func(*mcpsdk.Server, Config)
 }
 
@@ -24,87 +27,85 @@ type toolSpec struct {
 func allTools() []toolSpec {
 	return []toolSpec{
 		// health
-		{"health", []string{ProfileSession}, registerHealth},
+		{"health", []string{ProfileSession}, TierCore, registerHealth},
 
 		// project (方案 §8.2 project_*)
-		{"project_list", []string{ProfileSession}, registerProjectList},
-		{"project_get", []string{ProfileSession}, registerProjectGet},
-		{"project_status", []string{ProfileSession}, registerProjectStatus},
-		{"project_blueprint_get", []string{ProfileSession}, registerProjectBlueprint},
-		{"project_create", []string{ProfileAdmin}, registerProjectCreate},
-		{"project_update", []string{ProfileAdmin}, registerProjectUpdate},
-		{"project_state_update", []string{ProfileAdmin}, registerProjectStateUpdate},
+		{"project_list", []string{ProfileSession}, "", registerProjectList},
+		{"project_get", []string{ProfileSession}, TierCore, registerProjectGet},
+		{"project_create", []string{ProfileAdmin}, "", registerProjectCreate},
+		{"project_update", []string{ProfileAdmin}, "", registerProjectUpdate},
+		{"project_state_update", []string{ProfileAdmin}, "", registerProjectStateUpdate},
 
 		// workitem (方案 §8.2 workitem_*)
-		{"workitem_list", []string{ProfileSession}, registerWorkitemList},
-		{"workitem_get", []string{ProfileSession}, registerWorkitemGet},
-		{"workitem_next", []string{ProfileSession}, registerWorkitemNext},
-		{"workitem_create", []string{ProfileExecutor}, registerWorkitemCreate},
-		{"workitem_update", []string{ProfileExecutor}, registerWorkitemUpdate},
-		{"workitem_transition", []string{ProfileExecutor}, registerWorkitemTransition},
-		{"workitem_claim", []string{ProfileExecutor}, registerWorkitemClaim},
-		{"workitem_release", []string{ProfileExecutor}, registerWorkitemRelease},
-		{"workitem_start", []string{ProfileExecutor}, registerWorkitemStart},
-		{"workitem_block", []string{ProfileExecutor}, registerWorkitemBlock},
-		{"workitem_complete", []string{ProfileExecutor}, registerWorkitemComplete},
-		{"workitem_comment", []string{ProfileExecutor}, registerWorkitemComment},
-		{"workitem_add_dependency", []string{ProfileExecutor}, registerWorkitemAddDependency},
-		{"workitem_remove_dependency", []string{ProfileExecutor}, registerWorkitemRemoveDependency},
+		{"workitem_list", []string{ProfileSession}, TierCore, registerWorkitemList},
+		{"workitem_get", []string{ProfileSession}, TierCore, registerWorkitemGet},
+		{"workitem_next", []string{ProfileSession}, "", registerWorkitemNext},
+		{"workitem_create", []string{ProfileExecutor}, TierCore, registerWorkitemCreate},
+		{"workitem_update", []string{ProfileExecutor}, "", registerWorkitemUpdate},
+		{"workitem_transition", []string{ProfileExecutor}, TierCore, registerWorkitemTransition},
+		{"workitem_claim", []string{ProfileExecutor}, TierCore, registerWorkitemClaim},
+		{"workitem_release", []string{ProfileExecutor}, "", registerWorkitemRelease},
+		{"workitem_start", []string{ProfileExecutor}, "", registerWorkitemStart},
+		{"workitem_block", []string{ProfileExecutor}, "", registerWorkitemBlock},
+		{"workitem_complete", []string{ProfileExecutor}, "", registerWorkitemComplete},
+		{"workitem_comment", []string{ProfileExecutor}, TierCore, registerWorkitemComment},
+		{"workitem_add_dependency", []string{ProfileExecutor}, "", registerWorkitemAddDependency},
+		{"workitem_remove_dependency", []string{ProfileExecutor}, "", registerWorkitemRemoveDependency},
 
 		// workflow (方案 §8.2 workflow_*)
-		{"workflow_list", []string{ProfileSession}, registerWorkflowList},
-		{"workflow_get", []string{ProfileSession}, registerWorkflowGet},
-		{"workflow_start", []string{ProfileExecutor}, registerWorkflowStart},
-		{"workflow_step_next", []string{ProfileSession}, registerWorkflowStepNext},
-		{"workflow_step_complete", []string{ProfileExecutor}, registerWorkflowStepComplete},
-		{"workflow_pause", []string{ProfileExecutor}, registerWorkflowPause},
-		{"workflow_resume", []string{ProfileExecutor}, registerWorkflowResume},
-		{"workflow_cancel", []string{ProfileExecutor}, registerWorkflowCancel},
+		{"workflow_list", []string{ProfileSession}, "", registerWorkflowList},
+		{"workflow_get", []string{ProfileSession}, "", registerWorkflowGet},
+		{"workflow_start", []string{ProfileExecutor}, "", registerWorkflowStart},
+		{"workflow_step_next", []string{ProfileSession}, "", registerWorkflowStepNext},
+		{"workflow_step_complete", []string{ProfileExecutor}, "", registerWorkflowStepComplete},
+		{"workflow_pause", []string{ProfileExecutor}, "", registerWorkflowPause},
+		{"workflow_resume", []string{ProfileExecutor}, "", registerWorkflowResume},
+		{"workflow_cancel", []string{ProfileExecutor}, "", registerWorkflowCancel},
 
 		// approval (方案 §4.9/§8.2 approval_*)
-		{"approval_list", []string{ProfileSession}, registerApprovalList},
-		{"approval_get", []string{ProfileSession}, registerApprovalGet},
-		{"approval_request", []string{ProfileExecutor}, registerApprovalRequest},
-		{"approval_decide", []string{ProfileReviewer}, registerApprovalDecide},
+		{"approval_list", []string{ProfileSession}, "", registerApprovalList},
+		{"approval_get", []string{ProfileSession}, "", registerApprovalGet},
+		{"approval_request", []string{ProfileExecutor}, TierCore, registerApprovalRequest},
+		{"approval_decide", []string{ProfileReviewer}, "", registerApprovalDecide},
 
 		// records (方案 §8.2 decision_*/finding_*/event_*/artifact_*)
-		{"decision_list", []string{ProfileSession}, registerDecisionList},
-		{"decision_get", []string{ProfileSession}, registerDecisionGet},
-		{"decision_create", []string{ProfileExecutor}, registerDecisionCreate},
-		{"decision_approve", []string{ProfileReviewer}, registerDecisionApprove},
-		{"finding_list", []string{ProfileSession}, registerFindingList},
-		{"finding_get", []string{ProfileSession}, registerFindingGet},
-		{"finding_create", []string{ProfileExecutor}, registerFindingCreate},
-		{"finding_resolve", []string{ProfileExecutor}, registerFindingResolve},
-		{"event_list", []string{ProfileSession}, registerEventList},
-		{"event_record", []string{ProfileExecutor}, registerEventRecord},
-		{"artifact_list", []string{ProfileSession}, registerArtifactList},
-		{"artifact_get", []string{ProfileSession}, registerArtifactGet},
-		{"artifact_register", []string{ProfileExecutor}, registerArtifactRegister},
-		{"artifact_update", []string{ProfileExecutor}, registerArtifactUpdate},
-		{"artifact_history", []string{ProfileSession}, registerArtifactHistory},
+		{"decision_list", []string{ProfileSession}, "", registerDecisionList},
+		{"decision_get", []string{ProfileSession}, "", registerDecisionGet},
+		{"decision_create", []string{ProfileExecutor}, TierCore, registerDecisionCreate},
+		{"decision_approve", []string{ProfileReviewer}, "", registerDecisionApprove},
+		{"finding_list", []string{ProfileSession}, "", registerFindingList},
+		{"finding_get", []string{ProfileSession}, "", registerFindingGet},
+		{"finding_create", []string{ProfileExecutor}, TierCore, registerFindingCreate},
+		{"finding_resolve", []string{ProfileExecutor}, "", registerFindingResolve},
+		{"event_list", []string{ProfileSession}, "", registerEventList},
+		{"event_record", []string{ProfileExecutor}, TierCore, registerEventRecord},
+		{"artifact_list", []string{ProfileSession}, "", registerArtifactList},
+		{"artifact_get", []string{ProfileSession}, "", registerArtifactGet},
+		{"artifact_register", []string{ProfileExecutor}, TierCore, registerArtifactRegister},
+		{"artifact_update", []string{ProfileExecutor}, "", registerArtifactUpdate},
+		{"artifact_history", []string{ProfileSession}, "", registerArtifactHistory},
 
 		// runs (方案 §8.2 run_*；生命周期推进属 M6.3/M6.6)
-		{"run_list", []string{ProfileSession}, registerRunList},
-		{"run_get", []string{ProfileSession}, registerRunGet},
-		{"run_log", []string{ProfileSession}, registerRunLog},
-		{"run_create", []string{ProfileExecutor}, registerRunCreate},
-		{"run_update", []string{ProfileExecutor}, registerRunUpdate},
-		{"run_heartbeat", []string{ProfileExecutor}, registerRunHeartbeat},
-		{"run_verify", []string{ProfileSession}, registerRunVerify},
-		{"run_complete", []string{ProfileExecutor}, registerRunFinish},
-		{"run_fail", []string{ProfileExecutor}, registerRunFinish},
-		{"run_cancel", []string{ProfileExecutor}, registerRunFinish},
+		{"run_list", []string{ProfileSession}, "", registerRunList},
+		{"run_get", []string{ProfileSession}, "", registerRunGet},
+		{"run_log", []string{ProfileSession}, "", registerRunLog},
+		{"run_create", []string{ProfileExecutor}, TierCore, registerRunCreate},
+		{"run_update", []string{ProfileExecutor}, "", registerRunUpdate},
+		{"run_heartbeat", []string{ProfileExecutor}, "", registerRunHeartbeat},
+		{"run_verify", []string{ProfileSession}, TierCore, registerRunVerify},
+		{"run_complete", []string{ProfileExecutor}, TierCore, registerRunFinish},
+		{"run_fail", []string{ProfileExecutor}, "", registerRunFinish},
+		{"run_cancel", []string{ProfileExecutor}, "", registerRunFinish},
 
 		// context and knowledge (方案 §8.2 context_*/knowledge_*)
-		{"context_get", []string{ProfileSession}, registerContextGet},
-		{"context_for_workitem", []string{ProfileSession}, registerContextForWorkitem},
-		{"context_refresh", []string{ProfileSession}, registerContextRefresh},
-		{"context_compact", []string{ProfileSession}, registerContextCompact},
-		{"agent_session_start", []string{ProfileSession}, registerAgentSessionStart},
-		{"knowledge_status", []string{ProfileSession}, registerKnowledgeStatus},
-		{"knowledge_validate", []string{ProfileSession}, registerKnowledgeValidate},
-		{"knowledge_refresh", []string{ProfileSession}, registerKnowledgeRefresh},
+		{"context_get", []string{ProfileSession}, TierCore, registerContextGet},
+		{"context_for_workitem", []string{ProfileSession}, "", registerContextForWorkitem},
+		{"context_refresh", []string{ProfileSession}, "", registerContextRefresh},
+		{"context_compact", []string{ProfileSession}, "", registerContextCompact},
+		{"agent_session_start", []string{ProfileSession}, TierCore, registerAgentSessionStart},
+		{"knowledge_status", []string{ProfileSession}, TierCore, registerKnowledgeStatus},
+		{"knowledge_validate", []string{ProfileSession}, "", registerKnowledgeValidate},
+		{"knowledge_refresh", []string{ProfileSession}, "", registerKnowledgeRefresh},
 	}
 }
 

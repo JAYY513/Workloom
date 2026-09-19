@@ -51,7 +51,7 @@ func cliRecordVersion(t *testing.T, kind, id string) string {
 // points, identical identity and version hash.
 func TestRecordCLIAndMCPAgree(t *testing.T) {
 	gatedProject(t)
-	cs, _ := serveSession(t)
+	cs, _ := serveSession(t, "--tier", "standard")
 
 	// CLI creates, MCP reads.
 	wi := newWorkitem(t, "sdk adoption task")
@@ -129,7 +129,7 @@ func TestRecordCLIAndMCPAgree(t *testing.T) {
 // decisions without reading source.
 func TestContextLocatesRecords(t *testing.T) {
 	gatedProject(t)
-	cs, _ := serveSession(t)
+	cs, _ := serveSession(t, "--tier", "standard")
 	wi := newWorkitem(t, "context probe task")
 
 	if code, _, errOut := run(t, "decision", "create", "--title", "context probe",

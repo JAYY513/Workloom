@@ -15,6 +15,7 @@ type healthResult struct {
 	Status   string           `json:"status"`
 	Server   healthServer     `json:"server"`
 	Profiles []string         `json:"profiles"`
+	Tier     string           `json:"tier"`
 	Root     string           `json:"root"`
 	Project  *healthProject   `json:"project"`
 	Devsys   healthDevsys     `json:"devsys"`
@@ -53,10 +54,15 @@ func registerHealth(s *mcpsdk.Server, cfg Config) {
 		if info, err := os.Stat(devsysDir); err == nil && info.IsDir() {
 			present = true
 		}
+		tier := cfg.Tier
+		if tier == "" {
+			tier = DefaultTier()
+		}
 		result := healthResult{
 			Status:   "ok",
 			Server:   healthServer{Name: ServerName, Version: cfg.ServerVersion},
 			Profiles: append([]string(nil), cfg.Profiles...),
+			Tier:     tier,
 			Root:     cfg.Root,
 			Devsys:   healthDevsys{Present: present},
 			Problems: problems,

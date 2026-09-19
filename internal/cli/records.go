@@ -92,8 +92,12 @@ func runDecision(stdout io.Writer, opts options, rest []string) error {
 		id := fs.String("id", "", "decision id")
 		by := fs.String("by", "", "decider identity")
 		expect := fs.String("expect", "", "version hash from decision get")
+		latest := latestFlag(fs)
 		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *id == "" || *by == "" {
-			return errUsage("decision approve --id <decision-id> --by <decider> [--expect <hash>]")
+			return errUsage("decision approve --id <decision-id> --by <decider> [--expect <hash> | --latest]")
+		}
+		if err := checkLatest(*latest, *expect, "decision approve --id <decision-id> --by <decider> [--expect <hash> | --latest]"); err != nil {
+			return err
 		}
 		view, err := svc.DecisionApprove(ctx, *id, *by, *expect)
 		if err != nil {
@@ -178,8 +182,12 @@ func runFinding(stdout io.Writer, opts options, rest []string) error {
 		id := fs.String("id", "", "finding id")
 		resolution := fs.String("resolution", "", "how it was resolved")
 		expect := fs.String("expect", "", "version hash from finding get")
+		latest := latestFlag(fs)
 		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *id == "" {
-			return errUsage("finding resolve --id <finding-id> [--resolution R] [--expect <hash>]")
+			return errUsage("finding resolve --id <finding-id> [--resolution R] [--expect <hash> | --latest]")
+		}
+		if err := checkLatest(*latest, *expect, "finding resolve --id <finding-id> [--resolution R] [--expect <hash> | --latest]"); err != nil {
+			return err
 		}
 		view, err := svc.FindingResolve(ctx, *id, *resolution, *expect)
 		if err != nil {
@@ -346,8 +354,12 @@ func runArtifact(stdout io.Writer, opts options, rest []string) error {
 		source := fs.String("source", "", "new source")
 		related := fs.String("related", "", "comma-separated related work items (replaces)")
 		expect := fs.String("expect", "", "version hash from artifact get")
+		latest := latestFlag(fs)
 		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *id == "" {
-			return errUsage("artifact update --id <artifact-id> [--status S] [--path P] [--source S] [--related a,b] [--expect <hash>]")
+			return errUsage("artifact update --id <artifact-id> [--status S] [--path P] [--source S] [--related a,b] [--expect <hash> | --latest]")
+		}
+		if err := checkLatest(*latest, *expect, "artifact update --id <artifact-id> [--status S] [--path P] [--source S] [--related a,b] [--expect <hash> | --latest]"); err != nil {
+			return err
 		}
 		req := app.UpdateArtifactRequest{ID: *id, Expect: *expect, Status: *status, Path: *path, Source: *source}
 		fs.Visit(func(f *flag.Flag) {
@@ -548,8 +560,12 @@ func runRun(stdout io.Writer, opts options, rest []string) error {
 		test := fs.String("test", "", "test to append")
 		changed := fs.String("changed-files", "", "comma-separated changed files (replaces)")
 		expect := fs.String("expect", "", "version hash from run get")
+		latest := latestFlag(fs)
 		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *id == "" {
-			return errUsage("run update --id <run-id> [--status S] [--phase P] [--log L] [--command C] [--test T] [--changed-files a,b] [--expect <hash>]")
+			return errUsage("run update --id <run-id> [--status S] [--phase P] [--log L] [--command C] [--test T] [--changed-files a,b] [--expect <hash> | --latest]")
+		}
+		if err := checkLatest(*latest, *expect, "run update --id <run-id> [--status S] [--phase P] [--log L] [--command C] [--test T] [--changed-files a,b] [--expect <hash> | --latest]"); err != nil {
+			return err
 		}
 		req := app.UpdateRunRequest{ID: *id, Expect: *expect}
 		fs.Visit(func(f *flag.Flag) {
@@ -747,8 +763,12 @@ func runRun(stdout io.Writer, opts options, rest []string) error {
 		note := fs.String("note", "", "detail kept with the run's evidence")
 		force := fs.Bool("force", false, "accept a completion the check refused (requires --by)")
 		by := fs.String("by", "", "reviewer accepting a forced completion")
+		latest := latestFlag(fs)
 		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *id == "" || *actor == "" || *reason == "" {
-			return errUsage("%s", "run "+rest[0]+" --id <run-id> [--expect <hash>] --actor <a> --reason <r> [--note <text>] [--force --by <reviewer>]")
+			return errUsage("%s", "run "+rest[0]+" --id <run-id> [--expect <hash> | --latest] --actor <a> --reason <r> [--note <text>] [--force --by <reviewer>]")
+		}
+		if err := checkLatest(*latest, *expect, "run "+rest[0]+" --id <run-id> [--expect <hash> | --latest] --actor <a> --reason <r> [--note <text>] [--force --by <reviewer>]"); err != nil {
+			return err
 		}
 		view, err := svc.RunFinish(ctx, app.RunFinishRequest{
 			RunID: *id, Expect: *expect, Outcome: outcome,
@@ -1212,6 +1232,31 @@ func indexSummary(view app.KnowledgeStatusView) string {
 	return fmt.Sprintf("%d files", view.IndexFiles)
 }
 
+// runPrime is `devsys prime`: an alias for `session start --compact` with the
+// same optional identity flags. One call, minimal orientation, read-only.
+func runPrime(stdout io.Writer, opts options, rest []string) error {
+	fs := flag.NewFlagSet("prime", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	harness := fs.String("harness", "", "harness name")
+	agentID := fs.String("agent", "", "agent identity")
+	workspace := fs.String("workspace", "", "workspace path")
+	intent := fs.String("intent", "", "what the agent intends to do")
+	if err := fs.Parse(rest); err != nil || fs.NArg() != 0 {
+		return errUsage("prime [--harness codex] [--agent <id>] [--workspace <path>] [--intent <text>]")
+	}
+	svc, err := requireProjectRoot()
+	if err != nil {
+		return err
+	}
+	view, err := svc.SessionStart(context.Background(), app.SessionRequest{
+		Harness: *harness, AgentID: *agentID, Workspace: *workspace, Intent: *intent, Compact: true,
+	})
+	if err != nil {
+		return err
+	}
+	return outputSession(stdout, opts, view)
+}
+
 // runSession routes the session family: `start` is the one-shot orientation
 // a new agent session runs first (方案 §8.3, 实施计划 M4.4).
 func runSession(stdout io.Writer, opts options, rest []string) error {
@@ -1238,6 +1283,11 @@ func runSession(stdout io.Writer, opts options, rest []string) error {
 	if err != nil {
 		return err
 	}
+	return outputSession(stdout, opts, view)
+}
+
+// outputSession renders one SessionView for both `session start` and `prime`.
+func outputSession(stdout io.Writer, opts options, view app.SessionView) error {
 	if opts.json {
 		return json.NewEncoder(stdout).Encode(struct {
 			OK bool `json:"ok"`

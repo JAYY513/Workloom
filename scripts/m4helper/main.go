@@ -39,7 +39,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, binary, "mcp", "serve")
+	cmd := exec.CommandContext(ctx, binary, "mcp", "serve", "--tier", "standard")
 	cmd.Dir = project
 	stdin, err := cmd.StdinPipe()
 	if err != nil {

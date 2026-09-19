@@ -40,6 +40,8 @@ func runMCPServe(opts options, stdin io.Reader, stdout, stderr io.Writer, rest [
 	fs.SetOutput(io.Discard)
 	profileList := fs.String("profile", strings.Join(mcp.DefaultProfiles(), ","),
 		"comma-separated profile set (session, executor, reviewer, admin)")
+	tierName := fs.String("tier", mcp.DefaultTier(),
+		"tool tier ceiling (core or standard; core is the daily subset)")
 	// Registered only so the refusal names both spellings; serve output is
 	// protocol JSON regardless.
 	jsonFlag := fs.Bool("json", false, "unsupported")
@@ -57,6 +59,10 @@ func runMCPServe(opts options, stdin io.Reader, stdout, stderr io.Writer, rest [
 	if err != nil {
 		return errUsage("`devsys mcp serve`: %v", err)
 	}
+	tier, err := mcp.ParseTier(*tierName)
+	if err != nil {
+		return errUsage("`devsys mcp serve`: %v", err)
+	}
 	svc, err := requireProjectRoot()
 	if err != nil {
 		return err
@@ -64,6 +70,7 @@ func runMCPServe(opts options, stdin io.Reader, stdout, stderr io.Writer, rest [
 	cfg := mcp.Config{
 		Root:          svc.Root,
 		Profiles:      profiles,
+		Tier:          tier,
 		ServerVersion: version.String(),
 		Instructions:  mcpInstructions,
 		Log:           stderr,

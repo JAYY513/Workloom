@@ -14,7 +14,8 @@ import (
 
 // serveSession starts `devsys mcp serve` in-process over pipes and connects
 // a real SDK client to it: the test exercises the CLI wiring and the whole
-// protocol path, not internals.
+// protocol path, not internals. Extra args are appended to the serve command
+// (e.g. "--tier", "standard" for tests that need the full surface).
 func serveSession(t *testing.T, args ...string) (*mcpsdk.ClientSession, func() int) {
 	t.Helper()
 	toServerR, toServerW := io.Pipe()
@@ -67,14 +68,14 @@ func TestMCPServeEndToEnd(t *testing.T) {
 	cs, wait := serveSession(t)
 
 	names := toolNamesOf(t, cs)
-	for _, want := range []string{"health", "workitem_list", "workitem_get", "workflow_list", "approval_list"} {
+	for _, want := range []string{"health", "workitem_list", "workitem_get", "agent_session_start"} {
 		if !hasTool(names, want) {
-			t.Fatalf("default profile lacks %s: %v", want, names)
+			t.Fatalf("default tier lacks %s: %v", want, names)
 		}
 	}
-	for _, forbidden := range []string{"project_update", "approval_decide", "project_create"} {
+	for _, forbidden := range []string{"project_update", "approval_decide", "project_create", "workflow_step_complete"} {
 		if hasTool(names, forbidden) {
-			t.Fatalf("default profile exposes %s: %v", forbidden, names)
+			t.Fatalf("default tier exposes %s: %v", forbidden, names)
 		}
 	}
 
@@ -208,6 +209,10 @@ func TestMCPServeRejectsUnknownProfile(t *testing.T) {
 	code, _, stderr := runMCPArgs(t, "--profile", "root")
 	if code != CodeUsage || !strings.Contains(stderr, "unknown profile") {
 		t.Fatalf("code=%d stderr=%q", code, stderr)
+	}
+	code, _, stderr = runMCPArgs(t, "--tier", "root")
+	if code != CodeUsage || !strings.Contains(stderr, "unknown tier") {
+		t.Fatalf("tier code=%d stderr=%q", code, stderr)
 	}
 }
 

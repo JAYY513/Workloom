@@ -34,6 +34,39 @@ const (
 	ProfileAdmin    = "admin"
 )
 
+// Tool tiers (#301): core is the daily subset, standard is everything the
+// selected profiles expose. Tiers compose with profiles by conjunction.
+const (
+	TierCore     = "core"
+	TierStandard = "standard"
+)
+
+// DefaultTier is the tier an unconfigured server exposes.
+func DefaultTier() string { return TierCore }
+
+// ParseTier parses the --tier flag. Unknown names are rejected so a typo
+// cannot silently widen or narrow the tool surface.
+func ParseTier(tier string) (string, error) {
+	tier = strings.TrimSpace(tier)
+	if tier == "" {
+		return DefaultTier(), nil
+	}
+	switch tier {
+	case TierCore, TierStandard:
+		return tier, nil
+	default:
+		return "", fmt.Errorf("unknown tier %q (expected core or standard)", tier)
+	}
+}
+
+// tierLevel orders tiers: a selected tier exposes its own level and below.
+func tierLevel(tier string) int {
+	if tier == TierCore {
+		return 0
+	}
+	return 1
+}
+
 // DefaultProfiles is the profile set an unconfigured server exposes.
 func DefaultProfiles() []string { return []string{ProfileSession, ProfileExecutor} }
 
@@ -71,6 +104,9 @@ type Config struct {
 	Root string
 	// Profiles is the active profile set.
 	Profiles []string
+	// Tier caps the exposed tools: core shows the daily subset, standard
+	// shows everything the profiles expose. Empty means the default tier.
+	Tier string
 	// ServerVersion is the build identity reported to clients.
 	ServerVersion string
 	// Instructions is the discipline note clients receive at initialize.
@@ -94,8 +130,12 @@ func NewServer(cfg Config) *mcpsdk.Server {
 		opts.Logger = slog.New(slog.NewTextHandler(cfg.Log, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	}
 	server := mcpsdk.NewServer(&mcpsdk.Implementation{Name: ServerName, Version: cfg.ServerVersion}, opts)
+	tier := cfg.Tier
+	if tier == "" {
+		tier = DefaultTier()
+	}
 	for _, spec := range allTools() {
-		if !visible(spec.profiles, cfg.Profiles) {
+		if !visible(spec.profiles, cfg.Profiles) || !visibleTier(spec.tier, tier) {
 			continue
 		}
 		spec.register(server, cfg)
@@ -131,4 +171,11 @@ func visible(toolProfiles, selected []string) bool {
 		}
 	}
 	return false
+}
+
+// visibleTier reports whether a tool tier is exposed under the selected tier:
+// core tools show at every tier, standard tools only at standard and above.
+// An empty tool tier means standard (opt in to core explicitly).
+func visibleTier(toolTier, selected string) bool {
+	return tierLevel(toolTier) <= tierLevel(selected)
 }

@@ -80,13 +80,13 @@ commands:
   archive       events --before <YYYY-MM> | runs --id <id,...> move JSONL streams to .devsys/archive/ (conservative, no delete)
   workspace     view [--limit N] | build --static [--out DIR] [--limit N] | serve [--host 127.0.0.1] [--port N] read-only project view / offline site / local service (方案 §17)
   knowledge         status | scan | validate [dir|page.md...] | refresh
+  prime         alias for session start --compact (minimal orientation for agents)
   session start  one-shot session orientation (project, work in flight, next action)
   wire          AGENTS.md block [--dry-run] | --check | --skill | --print-mcp <codex|claude|opencode>
   doctor        report transactions and orphaned claims (read-only)
   recover       recover transactions, release expired/orphaned claims
   repair        --dry-run proposes repairs; --apply --confirm <digest> applies (unmerged paths surface as human-only notes)
-  sync status   handoff readiness: divergence, uncommitted state, leases (read-only)
-  mcp serve     serve the Model Context Protocol over stdio (--profile ...)
+  mcp serve     serve the Model Context Protocol over stdio (--profile ... --tier core|standard)
 
 options:
   --json      machine-readable output (one JSON document)
@@ -301,6 +301,8 @@ func RunWithIO(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return render(stderr, opts, runWorkspace(stdout, opts, rest))
 	case "knowledge":
 		return render(stderr, opts, runKnowledge(stdout, opts, rest))
+	case "prime":
+		return render(stderr, opts, runPrime(stdout, opts, rest))
 	case "session":
 		return render(stderr, opts, runSession(stdout, opts, rest))
 	case "wire":
@@ -520,6 +522,22 @@ func runWire(stdout io.Writer, opts options, rest []string) error {
 	return nil
 }
 
+// latestFlag registers the --latest convenience flag next to --expect:
+// --latest is the explicit spelling of the empty-expect path (read the
+// current snapshot inside the same operation, still CAS).
+func latestFlag(fs *flag.FlagSet) *bool {
+	return fs.Bool("latest", false, "use the current snapshot (single-operator convenience)")
+}
+
+// checkLatest rejects --latest together with --expect and reports the usage
+// string of the calling subcommand.
+func checkLatest(latest bool, expect, usage string) error {
+	if latest && strings.TrimSpace(expect) != "" {
+		return errUsage("%s (pass --expect or --latest, not both)", usage)
+	}
+	return nil
+}
+
 // runProject routes the project family (方案 §8.2 project_*).
 func runProject(stdout io.Writer, opts options, rest []string) error {
 	if len(rest) == 0 {
@@ -635,8 +653,12 @@ func runProject(stdout io.Writer, opts options, rest []string) error {
 		status := fs.String("status", "", "project status")
 		phase := fs.String("phase", "", "current phase")
 		expect := fs.String("expect", "", "version hash from project get")
+		latest := latestFlag(fs)
 		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 {
-			return errUsage("project update [--name N] [--description D] [--status S] [--phase P] [--expect <hash>]")
+			return errUsage("project update [--name N] [--description D] [--status S] [--phase P] [--expect <hash> | --latest]")
+		}
+		if err := checkLatest(*latest, *expect, "project update [--name N] [--description D] [--status S] [--phase P] [--expect <hash> | --latest]"); err != nil {
+			return err
 		}
 		req := app.UpdateProjectRequest{Expect: *expect}
 		fs.Visit(func(f *flag.Flag) {
@@ -674,8 +696,12 @@ func runProject(stdout io.Writer, opts options, rest []string) error {
 		blockers := fs.String("blockers", "", "comma-separated blockers")
 		focus := fs.String("next-focus", "", "comma-separated next focus items")
 		expect := fs.String("expect", "", "version hash from project state")
+		latest := latestFlag(fs)
 		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 {
-			return errUsage("project state-update [--summary S] [--risks a,b] [--blockers a,b] [--next-focus a,b] [--expect <hash>]")
+			return errUsage("project state-update [--summary S] [--risks a,b] [--blockers a,b] [--next-focus a,b] [--expect <hash> | --latest]")
+		}
+		if err := checkLatest(*latest, *expect, "project state-update [--summary S] [--risks a,b] [--blockers a,b] [--next-focus a,b] [--expect <hash> | --latest]"); err != nil {
+			return err
 		}
 		req := app.UpdateStateRequest{Expect: *expect}
 		fs.Visit(func(f *flag.Flag) {
@@ -827,8 +853,12 @@ func runWorkitem(stdout io.Writer, opts options, rest []string) error {
 		assignedAgent := fs.String("assigned-agent", "", "agent identity to assign (empty clears)")
 		assignedHarness := fs.String("assigned-harness", "", "harness adapter dispatch should drive (empty clears)")
 		expect := fs.String("expect", "", "version hash from workitem get")
+		latest := latestFlag(fs)
 		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *id == "" {
-			return errUsage("workitem update --id <id> [--title T] [--description D] [--priority N] [--acceptance a,b] [--assigned-agent A] [--assigned-harness H] [--expect <hash>]")
+			return errUsage("workitem update --id <id> [--title T] [--description D] [--priority N] [--acceptance a,b] [--assigned-agent A] [--assigned-harness H] [--expect <hash> | --latest]")
+		}
+		if err := checkLatest(*latest, *expect, "workitem update --id <id> [--expect <hash> | --latest]"); err != nil {
+			return err
 		}
 		req := app.UpdateWorkitemRequest{Expect: *expect}
 		fs.Visit(func(f *flag.Flag) {
@@ -860,8 +890,12 @@ func runWorkitem(stdout io.Writer, opts options, rest []string) error {
 		actor := fs.String("actor", "", "operator")
 		reason := fs.String("reason", "", "transition reason")
 		expect := fs.String("expect", "", "version hash from workitem get")
+		latest := latestFlag(fs)
 		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 {
-			return errUsage("workitem transition --id <id> --to <status> --actor <a> --reason <r> --expect <hash>")
+			return errUsage("workitem transition --id <id> --to <status> --actor <a> --reason <r> [--expect <hash> | --latest]")
+		}
+		if err := checkLatest(*latest, *expect, "workitem transition --id <id> --to <status> --actor <a> --reason <r> [--expect <hash> | --latest]"); err != nil {
+			return err
 		}
 		view, notice, err := svc.WorkitemTransition(ctx, *id, *to, *actor, *reason, *expect)
 		if notice != "" && !opts.quiet {
@@ -881,8 +915,12 @@ func runWorkitem(stdout io.Writer, opts options, rest []string) error {
 		owner := fs.String("owner", "", "claimer identity")
 		reason := fs.String("reason", "", "claim reason")
 		expect := fs.String("expect", "", "version hash from workitem get")
+		latest := latestFlag(fs)
 		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 {
-			return errUsage("workitem claim --id <id> --owner <owner> --reason <reason> [--expect <hash>]")
+			return errUsage("workitem claim --id <id> --owner <owner> --reason <reason> [--expect <hash> | --latest]")
+		}
+		if err := checkLatest(*latest, *expect, "workitem claim --id <id> --owner <owner> --reason <reason> [--expect <hash> | --latest]"); err != nil {
+			return err
 		}
 		res, err := svc.WorkitemClaim(ctx, *id, *owner, *reason, *expect)
 		if err != nil {
@@ -909,8 +947,12 @@ func runWorkitem(stdout io.Writer, opts options, rest []string) error {
 		actor := fs.String("actor", "", "operator")
 		reason := fs.String("reason", "", "release reason")
 		expect := fs.String("expect", "", "version hash from workitem get")
+		latest := latestFlag(fs)
 		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 {
-			return errUsage("workitem release --id <id> --owner <owner> --token <token> --actor <a> --reason <r> [--expect <hash>]")
+			return errUsage("workitem release --id <id> --owner <owner> --token <token> --actor <a> --reason <r> [--expect <hash> | --latest]")
+		}
+		if err := checkLatest(*latest, *expect, "workitem release --id <id> --owner <owner> --token <token> --actor <a> --reason <r> [--expect <hash> | --latest]"); err != nil {
+			return err
 		}
 		view, err := svc.WorkitemRelease(ctx, *id, *owner, *token, *actor, *reason, *expect)
 		if err != nil {
@@ -926,8 +968,12 @@ func runWorkitem(stdout io.Writer, opts options, rest []string) error {
 		actor := fs.String("actor", "", "operator")
 		reason := fs.String("reason", "", "start reason")
 		expect := fs.String("expect", "", "version hash from workitem get")
+		latest := latestFlag(fs)
 		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 {
-			return errUsage("workitem start --id <id> --owner <owner> --token <token> --actor <a> --reason <r> [--expect <hash>]")
+			return errUsage("workitem start --id <id> --owner <owner> --token <token> --actor <a> --reason <r> [--expect <hash> | --latest]")
+		}
+		if err := checkLatest(*latest, *expect, "workitem start --id <id> --owner <owner> --token <token> --actor <a> --reason <r> [--expect <hash> | --latest]"); err != nil {
+			return err
 		}
 		res, err := svc.WorkitemStart(ctx, *id, *owner, *token, *actor, *reason, *expect)
 		if err != nil {
@@ -956,8 +1002,12 @@ func runWorkitem(stdout io.Writer, opts options, rest []string) error {
 		actor := fs.String("actor", "", "operator")
 		reason := fs.String("reason", "", "reason")
 		expect := fs.String("expect", "", "version hash from workitem get")
+		latest := latestFlag(fs)
 		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 {
-			return errUsage("workitem %s --id <id> --actor <a> --reason <r> [--expect <hash>]", rest[0])
+			return errUsage("workitem %s --id <id> --actor <a> --reason <r> [--expect <hash> | --latest]", rest[0])
+		}
+		if err := checkLatest(*latest, *expect, "workitem "+rest[0]+" --id <id> --actor <a> --reason <r> [--expect <hash> | --latest]"); err != nil {
+			return err
 		}
 		view, notice, err := svc.WorkitemTransition(ctx, *id, target, *actor, *reason, *expect)
 		if notice != "" && !opts.quiet {
@@ -993,19 +1043,23 @@ func runWorkitem(stdout io.Writer, opts options, rest []string) error {
 		return nil
 	case "dep":
 		if len(rest) < 2 {
-			return errUsage("workitem dep add|remove --id <id> --depends-on <id> [--expect <hash>]")
+			return errUsage("workitem dep add|remove --id <id> --depends-on <id> [--expect <hash> | --latest]")
 		}
 		action := rest[1]
 		if action != "add" && action != "remove" {
-			return errUsage("workitem dep add|remove --id <id> --depends-on <id> [--expect <hash>]")
+			return errUsage("workitem dep add|remove --id <id> --depends-on <id> [--expect <hash> | --latest]")
 		}
 		fs := flag.NewFlagSet("workitem dep "+action, flag.ContinueOnError)
 		fs.SetOutput(io.Discard)
 		id := fs.String("id", "", "work item id")
 		dependsOn := fs.String("depends-on", "", "dependency target id")
 		expect := fs.String("expect", "", "version hash from workitem get")
+		latest := latestFlag(fs)
 		if err := fs.Parse(rest[2:]); err != nil || fs.NArg() != 0 || *id == "" || *dependsOn == "" {
-			return errUsage("workitem dep %s --id <id> --depends-on <id> [--expect <hash>]", action)
+			return errUsage("workitem dep %s --id <id> --depends-on <id> [--expect <hash> | --latest]", action)
+		}
+		if err := checkLatest(*latest, *expect, "workitem dep "+action+" --id <id> --depends-on <id> [--expect <hash> | --latest]"); err != nil {
+			return err
 		}
 		var view app.WorkItemView
 		var err error
@@ -1207,8 +1261,12 @@ func runWorkflowStart(stdout io.Writer, opts options, rest []string) error {
 	expect := fs.String("expect", "", "version hash from workitem get")
 	owner := fs.String("owner", "", "lease owner when the work item is claimed")
 	token := fs.String("token", "", "lease token when the work item is claimed")
+	latest := latestFlag(fs)
 	if err := fs.Parse(rest); err != nil || fs.NArg() != 0 || *id == "" || *policyID == "" || *actor == "" || *reason == "" {
-		return errUsage("workflow start --id <workitem-id> --policy <id> --actor <a> --reason <r> [--owner <o> --token <t>] [--expect <hash>]")
+		return errUsage("workflow start --id <workitem-id> --policy <id> --actor <a> --reason <r> [--owner <o> --token <t>] [--expect <hash> | --latest]")
+	}
+	if err := checkLatest(*latest, *expect, "workflow start --id <workitem-id> --policy <id> --actor <a> --reason <r> [--owner <o> --token <t>] [--expect <hash> | --latest]"); err != nil {
+		return err
 	}
 	svc, err := requireProjectRoot()
 	if err != nil {
@@ -1249,8 +1307,12 @@ func runWorkflowStepComplete(stdout io.Writer, opts options, rest []string) erro
 	expect := fs.String("expect", "", "version hash from workitem get")
 	owner := fs.String("owner", "", "lease owner when the work item is claimed")
 	token := fs.String("token", "", "lease token when the work item is claimed")
+	latest := latestFlag(fs)
 	if err := fs.Parse(rest); err != nil || fs.NArg() != 0 || *id == "" || *actor == "" || *reason == "" {
-		return errUsage("workflow step-complete --id <workitem-id> [--to <step>] --actor <a> --reason <r> [--owner <o> --token <t>] [--expect <hash>]")
+		return errUsage("workflow step-complete --id <workitem-id> [--to <step>] --actor <a> --reason <r> [--owner <o> --token <t>] [--expect <hash> | --latest]")
+	}
+	if err := checkLatest(*latest, *expect, "workflow step-complete --id <workitem-id> [--to <step>] --actor <a> --reason <r> [--owner <o> --token <t>] [--expect <hash> | --latest]"); err != nil {
+		return err
 	}
 	svc, err := requireProjectRoot()
 	if err != nil {
@@ -1275,8 +1337,12 @@ func runWorkflowSignal(stdout io.Writer, opts options, action string, rest []str
 	expect := fs.String("expect", "", "version hash from workitem get")
 	owner := fs.String("owner", "", "lease owner when the work item is claimed")
 	token := fs.String("token", "", "lease token when the work item is claimed")
+	latest := latestFlag(fs)
 	if err := fs.Parse(rest); err != nil || fs.NArg() != 0 || *id == "" || *actor == "" || *reason == "" {
-		return errUsage("workflow %s --id <workitem-id> --actor <a> --reason <r> [--owner <o> --token <t>] [--expect <hash>]", action)
+		return errUsage("workflow %s --id <workitem-id> --actor <a> --reason <r> [--owner <o> --token <t>] [--expect <hash> | --latest]", action)
+	}
+	if err := checkLatest(*latest, *expect, "workflow "+action+" --id <workitem-id> --actor <a> --reason <r> [--owner <o> --token <t>] [--expect <hash> | --latest]"); err != nil {
+		return err
 	}
 	svc, err := requireProjectRoot()
 	if err != nil {
