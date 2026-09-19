@@ -23,13 +23,15 @@ import (
 // the two concepts apart and so do their commands.
 func runWorkspace(stdout io.Writer, opts options, rest []string) error {
 	if len(rest) == 0 {
-		return errUsage("`devsys workspace` needs a subcommand: view | build")
+		return errUsage("`devsys workspace` needs a subcommand: view | build | serve")
 	}
 	switch rest[0] {
 	case "view":
 		return runWorkspaceView(stdout, opts, rest[1:])
 	case "build":
 		return runWorkspaceBuild(stdout, opts, rest[1:])
+	case "serve":
+		return runWorkspaceServe(stdout, opts, rest[1:])
 	default:
 		return errUsage("unknown `devsys workspace` subcommand %q", rest[0])
 	}
