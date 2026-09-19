@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"workloom/internal/archive"
@@ -31,11 +30,7 @@ func runArchive(stdout io.Writer, opts options, rest []string) error {
 }
 
 func archiveRoot() (string, error) {
-	root, err := os.Getwd()
-	if err != nil {
-		return "", errInternal("resolve working directory: %v", err)
-	}
-	return root, nil
+	return resolveRoot()
 }
 
 func runArchiveEvents(stdout io.Writer, opts options, rest []string) error {

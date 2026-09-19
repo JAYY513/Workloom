@@ -27,7 +27,7 @@ func runSearch(stdout io.Writer, opts options, rest []string) error {
 	if len(rest) != 1 {
 		return errUsage("`devsys search` needs exactly one keyword")
 	}
-	cwd, err := os.Getwd()
+	cwd, err := resolveRoot()
 	if err != nil {
 		return errInternal("resolve working directory: %v", err)
 	}
@@ -75,7 +75,7 @@ func runConfigCheck(stdout io.Writer, opts options, rest []string) error {
 	if len(rest) > 1 {
 		return errUsage("`devsys config check` takes no arguments (got %q)", rest[1])
 	}
-	cwd, err := os.Getwd()
+	cwd, err := resolveRoot()
 	if err != nil {
 		return errInternal("resolve working directory: %v", err)
 	}
@@ -116,7 +116,7 @@ func runDoctor(stdout io.Writer, opts options, rest []string) error {
 	if len(rest) != 0 {
 		return errUsage("`devsys doctor` takes no arguments")
 	}
-	root, err := os.Getwd()
+	root, err := resolveRoot()
 	if err != nil {
 		return errInternal("resolve working directory: %v", err)
 	}
@@ -169,7 +169,7 @@ func runRecover(stdout io.Writer, opts options, rest []string) error {
 	if err := fs.Parse(rest); err != nil || fs.NArg() != 0 || *actor == "" || *reason == "" {
 		return errUsage("recover --actor <actor> --reason <reason>")
 	}
-	root, err := os.Getwd()
+	root, err := resolveRoot()
 	if err != nil {
 		return errInternal("resolve working directory: %v", err)
 	}
@@ -212,7 +212,7 @@ func runRepair(stdout io.Writer, opts options, rest []string) error {
 	if err := fs.Parse(rest); err != nil || fs.NArg() != 0 || *actor == "" || *reason == "" {
 		return errUsage("repair --dry-run --actor <a> --reason <r> | repair --apply --confirm <digest> --actor <a> --reason <r>")
 	}
-	root, err := os.Getwd()
+	root, err := resolveRoot()
 	if err != nil {
 		return errInternal("resolve working directory: %v", err)
 	}

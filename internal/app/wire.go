@@ -26,7 +26,7 @@ const wireBlock = wireBegin + `
 - 查询与变更通过 CLI（` + "`devsys …`" + `）或 MCP（` + "`devsys mcp serve`" + `，工作目录 = 项目根）；两者共用同一应用服务，约束一致。
 - 先读后写：写操作携带版本哈希（` + "`--expect`" + ` / 工具的 ` + "`expect`" + `），过期哈希一律拒绝。
 - 入口：` + "`devsys session start`" + ` 一次给出项目状态与下一步；` + "`devsys next`" + ` 给出就绪判定与推荐动作；` + "`devsys project status`" + ` 给出计数与风险。
-- 结构化输出：` + "`--json`" + `（单文档信封）或 ` + "`--jsonl`" + `（列表一行一条记录）；退出码 0/1/2/3/4（10/11 预留给知识层）。
+- 详细工作流见 ` + "`.agents/skills/devsys/SKILL.md`" + `（MCP 不可用时用 ` + "`devsys --json`" + `）。
 ` + wireEnd
 
 // WireView reports what `devsys wire` did (or would do).

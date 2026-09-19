@@ -81,7 +81,7 @@ commands:
   workspace     view [--limit N] | build --static [--out DIR] [--limit N] | serve [--host 127.0.0.1] [--port N] read-only project view / offline site / local service (方案 §17)
   knowledge         status | scan | validate [dir|page.md...] | refresh
   session start  one-shot session orientation (project, work in flight, next action)
-  wire          inject the devsys discipline block into AGENTS.md (idempotent; --dry-run previews)
+  wire          AGENTS.md block [--dry-run] | --check | --skill | --print-mcp <codex|claude|opencode>
   doctor        report transactions and orphaned claims (read-only)
   recover       recover transactions, release expired/orphaned claims
   repair        --dry-run proposes repairs; --apply --confirm <digest> applies (unmerged paths surface as human-only notes)
@@ -183,25 +183,14 @@ func writeJSONL[T any](w io.Writer, items []T) error {
 	return nil
 }
 
-// appService binds the shared application service to the working directory.
 // appService binds the service to the project the command works on: the
-// working directory, unless DEVSYS_PROJECT_ROOT names one. An agent working
-// inside its workspace (a git worktree) gets that variable from the attempt's
-// environment (方案 §4.8), so its reports land in the project's own state
-// instead of the copy of .devsys/ the worktree carries.
+// resolved root (DEVSYS_PROJECT_ROOT, else the nearest ancestor carrying
+// `.devsys/`), so a command run from a subdirectory reaches the project.
+// An agent working inside its workspace (a git worktree) gets that variable
+// from the attempt's environment (方案 §4.8), so its reports land in the
+// project's own state instead of the copy of .devsys/ the worktree carries.
 func appService() (*app.Service, error) {
-	if override := strings.TrimSpace(os.Getenv("DEVSYS_PROJECT_ROOT")); override != "" {
-		abs, err := filepath.Abs(override)
-		if err != nil {
-			return nil, errInternal("resolve DEVSYS_PROJECT_ROOT %q: %v", override, err)
-		}
-		return app.New(abs), nil
-	}
-	root, err := os.Getwd()
-	if err != nil {
-		return nil, errInternal("resolve working directory: %v", err)
-	}
-	return app.New(root), nil
+	return resolveService()
 }
 
 // requireProjectRoot verifies .devsys/ exists before a command runs, so the
@@ -416,13 +405,90 @@ func runInit(stdout io.Writer, opts options) error {
 
 // runWire implements `devsys wire`: the idempotent AGENTS.md managed block
 // (方案 §12.5, 实施计划 M4.6). Content outside the block — including other
-// tools' blocks — is never touched.
+// tools' blocks — is never touched. `--check` is the read-only environment
+// report, `--skill` writes the agent skill files, `--print-mcp` prints a
+// copy-paste MCP client snippet; all three are read-only except `--skill`.
 func runWire(stdout io.Writer, opts options, rest []string) error {
 	fs := flag.NewFlagSet("wire", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	dryRun := fs.Bool("dry-run", false, "preview the change without writing")
+	check := fs.Bool("check", false, "environment report (read-only, exit 0)")
+	skill := fs.Bool("skill", false, "write .agents/skills/devsys/ files (idempotent)")
+	printMCP := fs.String("print-mcp", "", "print MCP client snippet (codex|claude|opencode)")
 	if err := fs.Parse(rest); err != nil || fs.NArg() != 0 {
-		return errUsage("`devsys wire` takes no arguments (use --dry-run to preview)")
+		return errUsage("`devsys wire` [--dry-run] [--check] [--skill] [--print-mcp codex|claude|opencode]")
+	}
+	if *check || *printMCP != "" {
+		if *dryRun || *skill {
+			return errUsage("`devsys wire --check/--print-mcp` takes no other flags")
+		}
+		svc, err := appService()
+		if err != nil {
+			return err
+		}
+		if *printMCP != "" {
+			snippet, err := app.MCPSnippet(*printMCP, os.Args[0])
+			if err != nil {
+				return err
+			}
+			if opts.json {
+				return json.NewEncoder(stdout).Encode(struct {
+					OK      bool   `json:"ok"`
+					Harness string `json:"harness"`
+					Snippet string `json:"snippet"`
+				}{OK: true, Harness: *printMCP, Snippet: snippet})
+			}
+			if !opts.quiet {
+				fmt.Fprintln(stdout, snippet)
+			}
+			return nil
+		}
+		view := svc.WireCheck()
+		if opts.json {
+			return json.NewEncoder(stdout).Encode(struct {
+				OK bool `json:"ok"`
+				app.WireCheckView
+			}{OK: true, WireCheckView: view})
+		}
+		if !opts.quiet {
+			for _, l := range view.Lines {
+				mark := "x"
+				if l.OK {
+					mark = "v"
+				}
+				fmt.Fprintf(stdout, "[%s] %s: %s\n", mark, l.Name, l.Detail)
+			}
+		}
+		return nil
+	}
+	if *skill {
+		if *dryRun {
+			return errUsage("`devsys wire --skill` takes no other flags")
+		}
+		svc, err := requireProjectRoot()
+		if err != nil {
+			return err
+		}
+		changed, err := svc.WriteSkill()
+		if err != nil {
+			return err
+		}
+		if opts.json {
+			return json.NewEncoder(stdout).Encode(struct {
+				OK      bool     `json:"ok"`
+				Changed []string `json:"changed"`
+			}{OK: true, Changed: changed})
+		}
+		if !opts.quiet {
+			if len(changed) == 0 {
+				fmt.Fprintln(stdout, "skill: already installed (no change)")
+			} else {
+				for _, p := range changed {
+					fmt.Fprintf(stdout, "skill: wrote %s\n", p)
+				}
+			}
+		}
+		return nil
 	}
 	svc, err := requireProjectRoot()
 	if err != nil {
