@@ -69,6 +69,7 @@
 | M8.1 分叉检测 | 已完成：`devsys sync status` 只读接力 verdict（本地/上游 ahead-behind、porcelain 未合并/合并施工痕迹、待恢复事务、全类租约审计 + handoff_ready + 接力剧本）；阻塞仍 exit 0，环境失败 exit 3 |
 | M8.2 冲突标注与修复接入 | 已完成：`repair --dry-run` 把未解合并列为 `note_unmerged_paths`（人工项，apply 恒 rejected、零写入）；`dispatch`（含 dry-run）在合并未解时拒绝启动（exit 3）；git 保留双方、无时间戳选赢家 |
 | M8.3 归档与裁剪 | 已完成：`devsys archive events --before <YYYY-MM> \| runs --id <id,...>` 把 JSONL 流移入 `.devsys/archive/`（manifest 清单审计，无删除形态）；`event list` 与 run 流自动合并现役+归档；`search` 排除归档树 |
+| M8.4 Contrabass 作为执行后端（可选） | 已完成：`scripts/contrabass/` 双向文件映射（export 九态→六态看板卡片 + import 仅四态回流 transition、其余只 comment，经 CLI `--expect`，无第二事实来源）；fixture 闭环已验证；真机字段待复验（`[UNVERIFIED]`） |
 
 ## 构建与验收
 
@@ -180,6 +181,12 @@ bin/devsys.exe archive events --before <YYYY-MM> --dry-run --actor <a> --reason 
 同名分片两段都读并按时间排序）；`search` 不扫归档树。`runs/*.yaml` 摘要不动；running 的流
 拒绝归档（exit 2）；归档体积口径是现役 `.devsys/events+runs(*.jsonl)` 字节下降（git 对象库
 不立即收缩，不承诺 `.git/` 下降）。
+
+可选执行后端（M8.4，方案 §10.3：`.devsys/` 是唯一事实来源，看板卡片只是投递副本）：
+`scripts/contrabass/` 有双向映射脚本与映射说明——export 把工作项映成看板卡片
+（九态→六态，open/review 为合流态），import 把看板执行结论经 CLI
+（`transition --expect` 仅 done/review/blocked/closed→cancelled 四种，其余只 `comment`）
+回流。fixture 闭环（仿真看板）已验证；真实 Contrabass 字段待有环境后复验。
 
 M2 完整剧本（Go 与 Git 必须在 PATH）：
 
