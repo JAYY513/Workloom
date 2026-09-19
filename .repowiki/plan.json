@@ -2,7 +2,7 @@
   "schema": 2,
   "budget": {
     "tier": "模块树",
-    "reason": "218 个扫描文件（go:180、yaml:11、markdown:9、shell:7、other:6、powershell:5），多层目录，沿用模块树档位；M5 落地知识层 `internal/knowledge`（page 契约 + 校验、索引快照 + 匹配器、新鲜度 + 基线、人工保护、生成器契约与适配器、断点续跑与锁）与 `internal/app.knowledge.go` 完整接线（KnowledgeStatus/Scan/Validate/Refresh）、`internal/cli` knowledge status|scan|validate|refresh 四族、`internal/mcp` knowledge_validate/knowledge_refresh/context_for_workitem + paths 参数、`internal/config` knowledge_pages/knowledge_generator、`internal/storage.LockFile` OS 锁原语、`scripts/smoke-m5.sh`（Page 契约 + 索引扫描 + 新鲜度 0/10/11 + 生成器契约 + 人工保护 + 续跑 + 并发拒绝 + 上下文装配 + 降级）。新增第五个模块 `knowledge-layer`（internal/knowledge + .devsys/knowledge 状态）；在 `项目接入与配置` 模块新增一张自定义卡（Schema 与错误契约增 knowledge_pages/knowledge_generator 字段 + 0/10/11 退出码 + 新鲜度检查 + 0/10/11 + severity=warning），在 `可靠文本存储` 模块新增一张自定义卡（锁文件与 OS 锁 — internal/storage.LockFile 给 refresh 互斥复用，在 `共享应用与 MCP` 模块新增两张自定义卡（knowledge 服务接线 与 context get --task 与 knowledge_context 装配）。三篇文章的目录与文件路径保持不变；既有模块卡补 M5 接线；模块数 4→5，最大文章数 30（不变）。",
+    "reason": "226 个扫描文件（go:187、yaml:11、markdown:9、shell:7、other:6、powershell:6），多层目录，沿用模块树档位；M7.1 落地视图层 `internal/view`（只读聚合：`Build` 装配五节 + `trust`/`baseline`/`sources`/`problems`，`storage.Inspect` 共享锁 → 缺锁文件时 `InspectUnlocked` 降级、pending 事务按方案 §15.4 不渲染业务事实、每节 sources + git 基线、无墙钟字段的确定性装配），`internal/cli/workspace.go` 新增 `devsys workspace view [--json] [--limit N]`（`workspace` = 方案 §17 视图域，与 `worktree` 执行工作区分开），`internal/knowledge/trigger.go` 抽出 `TriggerHit`/`WorkItemText` 供 `context get --task` 与视图共用一份触发词匹配，`internal/app/context.go` 改走该入口，README 与 docs/开发记录.md 记 M7.1。新增第六个模块 `view-layer`（internal/view + 后续 M7.2 静态构建 / M7.3 serve / M7.4 新鲜度 UI 归此域）；`项目接入与配置` 模块补 `workspace view` 命令族与视图信封渲染，`知识层` 模块补触发器匹配抽出后的归属，`共享应用与MCP` 模块补 context 装配复用。三篇文章的目录与文件路径保持不变；模块数 5→6，最大文章数 30（不变）。",
     "max_total_modules": 8,
     "max_depth": 2,
     "max_total_articles": 30,
@@ -90,6 +90,14 @@
         ".devsys/knowledge/**",
         ".repowikiignore"
       ]
+    },
+    {
+      "slug": "view-layer",
+      "title": "视图层",
+      "dir": "视图层",
+      "scope": [
+        "internal/view/**"
+      ]
     }
   ],
   "articles": [
@@ -103,7 +111,8 @@
         "durable-storage",
         "shared-app-mcp",
         "execution-layer",
-        "knowledge-layer"
+        "knowledge-layer",
+        "view-layer"
       ]
     },
     {
@@ -116,7 +125,8 @@
         "durable-storage",
         "shared-app-mcp",
         "execution-layer",
-        "knowledge-layer"
+        "knowledge-layer",
+        "view-layer"
       ]
     },
     {
@@ -129,7 +139,8 @@
         "durable-storage",
         "shared-app-mcp",
         "execution-layer",
-        "knowledge-layer"
+        "knowledge-layer",
+        "view-layer"
       ],
       "scope": [
         "docs/开发记录.md",
@@ -139,8 +150,8 @@
     }
   ],
   "coverage_check": {
-    "covered_files": 211,
-    "total_files": 218,
+    "covered_files": 219,
+    "total_files": 226,
     "uncovered": [
       ".gitattributes",
       ".gitignore",

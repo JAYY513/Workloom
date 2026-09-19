@@ -11,9 +11,9 @@ triggers:
   - 工具过滤
   - 拼错 profile
   - visible 规则
-description: MCP 服务端的四种 profile（session / executor / reviewer / admin）暴露规则、默认组合与 `visible` 的注册期过滤语义
+description: MCP 服务端的四种 profile（session / executor / reviewer / admin）暴露规则、默认组合与 `visible` 的注册期过滤语义。
 generated: true
-source_commit: 997c5f8
+source_commit: 463c2d8
 generator: repowiki-gen
 ---
 

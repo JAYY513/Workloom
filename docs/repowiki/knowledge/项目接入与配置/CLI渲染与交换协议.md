@@ -12,9 +12,9 @@ triggers:
   - 10/11
   - knowledge status
   - 输出格式
-description: M4 CLI 的 `--json` / `--jsonl` 两种结构化输出形态、`writeJSONL` 列表行流、退出码与 MCP 工具错误的对应；知识层保留的 10/11 约定
+description: M4 CLI 的 `--json` / `--jsonl` 两种结构化输出形态、`writeJSONL` 列表行流、退出码与 MCP 工具错误的对应；知识层保留的 10/11 约定；M7.1 增 `--json` 信封把 `view.Model` 嵌入 `data`（view.Model 字段：schema_version/project/trust/baseline/progress/runs/records/knowledge/sources/problems），人类输出走「一行一事实」+ 缩进层级（project/phase/baseline/state/milestones/progress/readiness/risk/next/runs/records/knowledge/trust/pending/problem/sources），退出码 0/1/2/3 沿用、10/11 仍只承载 knowledge status。
 generated: true
-source_commit: 997c5f8
+source_commit: 463c2d8
 generator: repowiki-gen
 ---
 
@@ -126,9 +126,61 @@ CLI 与 MCP 共享同一份 `*app.Error.Class()`（usage / precondition / intern
 | `approval list` | `<id>\t<workitem>\t<stage>\t<status>` |
 | `search <kw>` | `<rel-path>:<line>: <trimmed text>`，末行 `<N> match(es)` |
 
-`--quiet` 抑制这些文本；`--json` / `--jsonl` 取代。
+## `devsys workspace view` 的协议（M7.1）
+
+M7.1 在 `--json` 单文档信封之上新增**视图域**形态，专用、不复用 `--jsonl`（视图不是单条记录，是一个多节快照）。
+
+`--json` 信封（成功）：
+
+```json
+{
+  "ok": true,
+  "schema_version": 1,
+  "project": { "id": "demo", "name": "demo", "status": "active", "degraded": false, "reason": "", "sources": ["project.yaml"] },
+  "trust": { "state": "ok", "inspection_ok": true, "note": "", "pending": [] },
+  "baseline": { "available": true, "commit": "abc…", "branch": "main", "dirty": false, "changed_files": 0 },
+  "progress": { "counts": {"ready": 2, "in_progress": 1}, "items": [...], "readiness": {...}, "sources": ["workitems/"] },
+  "runs":     { "entries": [...], "truncated": false, "sources": ["runs/"] },
+  "records":  { "decisions": [...], "findings": [...], "artifacts": [...], "truncated": false },
+  "knowledge":{ "status": "fresh", "pages": [...], "truncated": false, "root": "docs", "baseline": "abc…", "generator": "", "reason": "" },
+  "sources":  [".devsys/project.yaml", ".devsys/workitems/", ".devsys/runs/", "..."],
+  "problems": []
+}
+```
+
+- 形态：`json.NewEncoder(stdout).Encode(struct{OK bool; view.Model})`（[internal/cli/workspace.go:58-63](../../../internal/cli/workspace.go#L58-L63)）——`OK: true` 与 `view.Model` 字段在 JSON 顶层并列；M4 的 `{ok: true, data}` 写法在此被打破，因为视图本身就是数据。
+- 字段顺序：与 `view.Model` struct 字段序一致（[internal/view/view.go:65-80](../../../internal/view/view.go#L65-L80)），保证序列化稳定。
+- 错误：`--json` 模式下错误仍走 M4 错误信封 `{ok: false, error: {code, kind, message, problems?}}`（`render` 函数统一处理）。
+
+人类输出（无 `--json` / 无 `--quiet`）由 `renderWorkspaceView`（[internal/cli/workspace.go:72-135](../../../internal/cli/workspace.go#L72-L135)）生成，**一行一事实 + 缩进层级**：
+
+| 行 | 触发条件 | 形态 |
+|---|---|---|
+| `project: <name> (<id>) — <status>` | 恒有 | 顶层 |
+| `  phase: <current_phase>` | `current_phase != ""` | 二级 |
+| `  baseline: <short_sha> (<branch>)  dirty: yes/no/unknown [— <reason>]` | `baseline.Available` | 二级 |
+| `  baseline: unavailable — <reason>` | `!baseline.Available` | 二级 |
+| `  state: <summary>` | `p.Summary != ""` | 二级 |
+| `  milestone: <id> <status>` | 每个 milestone | 二级 |
+| `  progress: <N> item(s) — <status counts>` | 恒有 | 二级 |
+| `  readiness: <verdict>` | 恒有 | 二级 |
+| `    risk: <kind> [<workitem_id>]: <detail>` | 每个 risk | 三级 |
+| `    next: <action> [<workitem_id>] — <reason>` | 恒有 | 三级 |
+| `  runs: <N> — <status counts>[(truncated; raise --limit for more)]` | 恒有 | 二级 |
+| `  records: decisions <N>  findings <N>  artifacts <N>[…]` | 恒有 | 二级 |
+| `  knowledge: missing — <reason>` | `k.Status == KnowledgeMissing` | 二级 |
+| `  knowledge: <status> — <N> page(s)[…][— <reason>]` | 其它 | 二级 |
+| `  trust: <state> — <note>` | `m.Trust.State != TrustOK` | 二级 |
+| `  pending: <id1>, <id2>, …` | `len(m.Trust.Pending) > 0` | 二级 |
+| `  problem: <msg>` | 每个 `m.Problems` 项 | 二级 |
+| `  sources: <rel path>, …` | 恒有 | 二级 |
+
+`--quiet` 抑制整段；`-q` / `--json` 互斥（已知 `--json` 优先）。
+
+退出码（沿用既有体系）：成功 0 / 子命令缺失或 `--limit <= 0` → 2 / `storage.ErrNotInitialized` → 3 / `view.Build` 其它失败 → 1。**`advisory_unlocked` / `pending_transaction` 都是 exit 0**——`trust` 与 `pending` 字段在 JSON / 人类输出里告诉调用方状态不可信，而不是用退出码隐藏语义。10/11 仍专属 `devsys knowledge status`，视图层把 `knowledge.status` 用字符串承载（`KnowledgeFresh / Stale / Missing / Unavailable`），不与退出码耦合。
 
 ## 与其他层的关系
 
 - [架构设计](./架构设计.md) — 命令分发 + `render` + `toCoded`
 - [共享应用与 MCP 错误语义](../共享应用与MCP/错误语义.md) — `*app.Error.Class()` 是双入口错误翻译的源头
+- [视图层 · 概述](../视图层/概述.md) — M7.1 `view.Model` 字段序与 Provenance / Trust / Knowledge 状态的完整定义

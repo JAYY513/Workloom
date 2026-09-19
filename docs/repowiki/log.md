@@ -1,3 +1,14 @@
+## 2026-09-19 · 463c2d8 M7.1 增量刷新
+
+- 源码基线：`463c2d8`（M7.1：只读聚合层 `internal/view` + `devsys workspace view` + 触发器匹配抽到知识层；相对上次 wiki 基线 `75998a8` 2 提交、16 文件受影响）；增量模式运行。
+- 计划：`.repowiki/plan.json` schema 2，沿用模块树档位（226 个扫描文件、多层目录）。新增第六个模块 `view-layer`（scope `internal/view/**`）；三篇文章的 `modules` 补 `view-layer`；coverage 219/226 = 96.9%（未覆盖 7 个文件同前）。
+- 增量范围：**view-layer** 新建 7 张知识卡（概述 / 架构设计 / 技术栈 / 编码规范 / 特殊配置与命令 + 自定义卡「视图数据模型」dimension `view_model`、「读取纪律与信任语义」dimension `read_discipline`）；**project-access** 9 张全部刷新覆盖 M7.1（概述增 `workspace view` 命令行与视图域边界；架构设计新增「M7.1 命令族详解」+ 依赖关系行 + 源码位置行；CLI渲染与交换协议增 `workspace view` 协议节；Schema与错误契约增 M7.1 退出码语义扩展；特殊配置与命令增 `workspace view` 节；执行命令与DEVSYS_PROJECT_ROOT 增视图域 vs §4.8 `worktree` 边界；技术栈 / 编码规范 / AGENTS.md写入 保持既有形态）；**knowledge-layer** 11 张刷新（概述 / 架构设计 / 知识服务接线 / 上下文装配 覆盖 `TriggerHit` / `WorkItemText` 归属，其余 7 张刷新 `source_commit`）；**shared-app-mcp** 6 张刷新（概述 / 架构设计 覆盖 `context.go` 改走知识层匹配，其余 4 张保持既有形态）；三篇文章全部覆盖 M7.1（项目总览增视图层行 + 架构图节点 + 版本边界 + 快速链接；快速开始新增「M7.1 视图域（只读）」小节 + 退出码表行 + 修正章节目录；开发与故障诊断新增「M7.1 视图层只读契约」与「M7.1 视图层诊断」两节 + 测试口径 + 更新摘要）。
+- 核心内容新增：`internal/view`（`view.go` 数据契约；`collect.go` 共享锁 → `InspectUnlocked` 降级 + reader / `sortedUnique` / problems 收集；`build.go` `Build` → `reconcile.Doctor` → git 基线 → pending 提前返回（`emptyBusiness` + `pendingReadiness` 走 `next.Evaluate`）→ 各节装配 + `capList` 先定序后截断 + `collectSources`；`view_test.go` 10 例覆盖确定性 / 零写入 / 只读副本 / pending / 降级 / 截断 / 断尾）；`internal/cli/workspace.go`（`runWorkspace` 路由 + `runWorkspaceView` + `renderWorkspaceView` 一行一事实）；`internal/knowledge/trigger.go`（`TriggerHit` / `WorkItemText`，`context get --task` 与视图层共用）。
+- 文档校验：`repowiki validate` 报告 **55 files、0 errors、0 warnings**（含新模块目录锚与可达性）。本轮同时修复：两篇文章缺失的 frontmatter 结束 `---`、`快速开始.md` 两处未闭合代码围栏与失效章节目录、6 页 description 含 `: ` 未加引号；并修正增量改写中丢失的 3 处标题与 1 处被截断的目录树。
+- 保护：起始工作区干净（逐页与 `HEAD` 一致，无人工修改），无需跳过页；`.repowiki/run.json` 记录已写清单（view-layer 7 张新卡 + 既有模块卡 26 张 + 三篇文章）。
+- 收尾：`repowiki state --update` 刷新页面 hash、scope 与源码基线 `463c2d8`（55 页、coverage 219/226、phase finalize success）；`repowiki status` 报告 **Wiki is up to date**。
+- 验证边界：本轮为文档刷新，未触动 Go 源码或脚本，未重跑全量 Go 测试（M7.1 提交 `463c2d8` 前已通过 24 包全量测试、gofmt/vet 与只读副本实跑）。
+
 ## 2026-09-19 · 75998a8 M5.6 增量刷新
 
 - 源码基线：`75998a8`（M5.6：分层任务上下文、生成器适配层、上下文快照；相对上次 wiki 基线 `7c3fcde` 4 个提交、23 文件受影响）；增量模式运行。

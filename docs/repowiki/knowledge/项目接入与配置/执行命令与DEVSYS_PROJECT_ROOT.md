@@ -30,9 +30,9 @@ triggers:
   - workspace_root 解析
   - dispatch_command 解析
   - M6 接线
-description: M6 执行层（harness/workspace/dispatch/retry/prompt）到 CLI/MCP 的接线：`devsys worktree/dispatch/run exec|prompt|verify|complete|fail|cancel` 与 MCP `run_prompt/verify/complete/fail/cancel` 的对应；`DEVSYS_PROJECT_ROOT` 与 `HookEnv` 注入规则；`config.workspace_root` / `config.dispatch_command` 解析与默认
+description: M6 执行层（harness/workspace/dispatch/retry/prompt）到 CLI/MCP 的接线：`devsys worktree/dispatch/run exec|prompt|verify|complete|fail|cancel` 与 MCP `run_prompt/verify/complete/fail/cancel` 的对应；`DEVSYS_PROJECT_ROOT` 与 `HookEnv` 注入规则；`config.workspace_root` / `config.dispatch_command` 解析与默认；M7.1 视图域 `devsys workspace view` 的接线（不经 internal/app、调 internal/view.Build 与 storage.Inspect）与 §4.8 `worktree`（执行工作区）严格分开的边界。
 generated: true
-source_commit: 997c5f8
+source_commit: 463c2d8
 generator: repowiki-gen
 ---
 
@@ -55,8 +55,9 @@ generator: repowiki-gen
 | `run fail` | `run_fail` | executor | `Service.RunFinish(ctx, RunFinishRequest{Outcome: RunFailed, ...})` | `internal/app.finishAttempt` |
 | `run cancel` | `run_cancel` | executor | `Service.RunFinish(ctx, RunFinishRequest{Outcome: RunCanceled, ...})` | `internal/app.finishAttempt` |
 
-`run update --status <terminal>` 仍走 `Service.RunUpdate`（M4 引入），但 M6 起 CLI 文档推荐用 `run complete\|fail\|cancel`（语义对应 §4.8 终态）。
+| `devsys workspace view [--limit N]` | — | — | 直接调 `internal/view.Build(ctx, root, view.Options{Limit: *limit})`（不经 `internal/app`） | `internal/view.Build` + `storage.Inspect` / `storage.InspectUnlocked`（[internal/cli/workspace.go:51-56](../../../internal/cli/workspace.go#L51-L56)） |
 
+`run update --status <terminal>` 仍走 `Service.RunUpdate`（M4 引入），但 M6 起 CLI 文档推荐用 `run complete\|fail\|cancel`（语义对应 §4.8 终态）。
 ## 配置：`config.yaml` 新增键
 
 ```yaml
@@ -130,10 +131,40 @@ func ByName(name string) (Adapter, bool) {
 - `internal/app.dispatchOne` 选 spawn 策略：① `WorkItem.AssignedHarness` 非空 → 调 `ByName`；② 否则 `config.DispatchCommand` 模板渲染（默认模板即 CLI 调 `devsys run exec`）——这是 M6.4 默认路径。
 - `Probe` 由 cliAdapter 跑 `codex --version` / `opencode --version` / `claude --version`，超时 10s（`probeTimeout`）；不静默替换为其它 harness。
 
+## M7.1 视图域：与 §4.8 `worktree` 的严格边界
+
+M7.1 把方案 §17「视图域」落在 `internal/view` 包 + `internal/cli/workspace.go`，与 M6 §4.8 `worktree`（执行工作区）共享 **`workspace` 这个英文名**但语义不同——`runWorkspace` 路由 `view` 子命令调 `internal/view.Build`，**不**走 `internal/app`；`runWorktree` 路由 `prepare|remove|list` 走 `app.WorkspacePrepare/Remove/List`，跑 git worktree + 生命周期钩子 + claim_head。
+
+| 维度 | `worktree`（执行工作区，§4.8） | `workspace view`（视图域，§17） |
+|---|---|---|
+| 写盘？ | 是（`prepare` / `remove`） | **否**（只读聚合） |
+| 锁策略 | `app.WorkspacePrepare` 走完整事务路径（`storage.Recover` + 写） | `storage.Inspect`（共享锁，**绝不创建**）→ `storage.InspectUnlocked` 退路（advisory） |
+| 触发 lifecycle hook | 是（`after_create` / `before_run` / `after_run` / `before_remove`） | 否 |
+| 写 `.devsys/.cache/` | 间接（workflow LKG 缓存路径） | **绝不** |
+| 写 `.devsys/local/` | 是（hook 输出、attempt 输出、prompt round 落盘） | **绝不读**，更不写 |
+| 恢复事务 / 修断尾 | 否（M6 留给 `dispatch --once`） | **绝不**（视图只读路径） |
+| 退出码 | `app.Error.Class()` 翻译（0/2/3/1/4） | 沿用 0/2/3/1（10/11 仍专属 `knowledge status`） |
+| 是否依赖 `DEVSYS_PROJECT_ROOT` | 是（attempt 内 agent 报告目标） | 否（视图是只读聚合，无需注入） |
+| 是否走 `internal/app` | 是 | **否**（直调 `view.Build`） |
+
+视图域独有的契约：
+
+- `view.Build(ctx, root, opts)` 只读；`opts.Now` 仅用于 readiness 求值，不进模型。
+- `view.Model` 无墙钟字段；同一状态两次构建**逐字节一致**。
+- `trust.state ∈ {ok, advisory_unlocked, pending_transaction}`，`advisory_unlocked` / `pending_transaction` 都算 exit 0（语义通过 `trust` / `pending` 字段告诉调用方）。
+- `knowledge.status ∈ {fresh, stale, missing, unavailable}`，与 `devsys knowledge status` 的 0/10/11 退出码**不**映射——退出码表里 10/11 仍只承载 knowledge status。
+
+开发期不变量（PR review 会驳回的几种形态）：
+
+- 把 `runWorkspace` 重构进 `internal/app`：拒绝。视图只读，应保持独立包、可静态分析不依赖业务包。
+- 把 `runWorktree` 接到 `view.Model` 或反过来：拒绝。`worktree` 操作需要事务与钩子；视图是只读聚合。
+- 把 `view.Model` 的 `advisory_unlocked` 升级为 exit 3：拒绝。`advisory` 是事实标签而非错误，让调用脚本按 `trust.state` 分支。
+
 ## 与其他卡的关系
 
 - [架构设计](./架构设计.md) — M6 CLI 进一步承载执行层命令；MCP 与 CLI 共用同一 Service
-- [特殊配置与命令](./特殊配置与命令.md) — CLI 命令族详细剧本（含 M6 七族）
+- [特殊配置与命令](./特殊配置与命令.md) — CLI 命令族详细剧本（含 M6 七族与 M7.1 workspace view）
 - [Schema 与错误契约](./Schema与错误契约.md) — `workspace_root` / `dispatch_command` 字段白名单与错误语义
 - [共享应用与 MCP](../共享应用与MCP/工具与Profile.md) — MCP `run_prompt` / `run_verify` 是 session profile；`run_complete` / `run_fail` / `run_cancel` 是 executor profile
 - [执行层 · 架构设计](../执行层/架构设计.md) — 五子包依赖方向 + Plan 纯函数 + Retry/Prompt 可复现
+- [视图层 · 概述](../视图层/概述.md) — M7.1 视图域只读入口：`workspace view` 与 §4.8 `worktree`（执行工作区）的严格边界
