@@ -66,6 +66,8 @@
 | M7.3 本地只读服务 | 已完成：`devsys workspace serve [--host 127.0.0.1] [--port N] [--allow-remote] [--limit N]`（前台长进程，Ctrl+C 停）；缺省只绑 127.0.0.1，非环回须 `--allow-remote`（否则 exit 2 并明示风险）；每请求现装 `view.Build` 并用同一套模板内存渲染（6 页 + `assets/style.css` + `data/model.json` + 只读 JSON `/api/view` + `/healthz`），页脚来源/基线/生成时间；GET/HEAD 外一律 405（`Allow: GET, HEAD`）；运行期零写入 |
 | M7.4 新鲜度提示 | 已完成：知识状态与 `devsys knowledge status` 同一条判定（`knowledge.Evaluate`），状态字符串 fresh/stale/missing 一致（退出码 10/11 专属 knowledge，workspace 保持 0/1/2/3/4）；CLI 文本脸 stale 列 `affected:`/`unverifiable:` 并给 `devsys knowledge refresh`、missing 给 `--full`、unavailable（非 pending）给 `knowledge status`、pending 给 `devsys doctor`；静态站与 serve 全站第二横幅（trust 横幅之后）+ knowledge 页内联提示；其他数据面（工作项/记录/Run）沿用本节 sources + 顶层基线 commit 标注，不虚构新鲜度 |
 | M7 收尾：里程碑剧本与提交 | 已完成：`scripts/smoke-m7.{sh,ps1}` 双平台实跑通过（view 只读零写入 / 静态站 8 文件离线 / serve 只读与环回绑定 / 新鲜度 stale-missing-pending 三态）；全量 `go test ./...` 25 包绿；gofmt/vet 净；repowiki 已由 #259 刷新至 M7.4 基线（本卡复用，不重做）；`feat(m7)` 提交 |
+| M8.1 分叉检测 | 已完成：`devsys sync status` 只读接力 verdict（本地/上游 ahead-behind、porcelain 未合并/合并施工痕迹、待恢复事务、全类租约审计 + handoff_ready + 接力剧本）；阻塞仍 exit 0，环境失败 exit 3 |
+| M8.2 冲突标注与修复接入 | 已完成：`repair --dry-run` 把未解合并列为 `note_unmerged_paths`（人工项，apply 恒 rejected、零写入）；`dispatch`（含 dry-run）在合并未解时拒绝启动（exit 3）；git 保留双方、无时间戳选赢家 |
 
 ## 构建与验收
 
@@ -156,6 +158,12 @@ bin/devsys.exe sync status                        # 只读：分叉、未提交�
 接力剧本：旧设备停 `--watch` 并结束执行 → `recover`（清 pending）→ 释放领取 → 提交推送
 （状态提交用 `chore(devsys):` 前缀）→ 新设备 `git fetch` 后 `sync status` 报 ready 再接手。
 `sync status` 只读本地上游镜像（不 fetch），不能证明另一台设备已停写——交接完成前旧设备不得继续写入。
+
+冲突解决（M8.2，方案 §14.4：git 保留双方，devsys 不自动合并、不按时间戳选赢家）：
+`repair --dry-run` 把未解合并列为 `note_unmerged_paths`（人工项，只看不修）→ 人工用 git
+解决合并（双方显式二选一或手动合并，状态提交同样用 `chore(devsys):` 前缀）→ `repair --apply`
+清租约残留（`note_*` 项恒为 rejected，零写入）→ `dispatch` 恢复。合并未解时 `dispatch`
+（含 `--dry-run`）直接拒绝启动（exit 3），`sync status` 报 NOT ready。
 
 M2 完整剧本（Go 与 Git 必须在 PATH）：
 

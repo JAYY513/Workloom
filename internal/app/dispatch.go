@@ -15,6 +15,7 @@ import (
 	"workloom/internal/dispatch"
 	"workloom/internal/domain"
 	"workloom/internal/events"
+	"workloom/internal/knowledge"
 	"workloom/internal/reconcile"
 	"workloom/internal/retry"
 	"workloom/internal/run"
@@ -82,6 +83,16 @@ func (s *Service) Dispatch(ctx context.Context, req DispatchRequest) (DispatchRe
 		return DispatchReport{}, err
 	}
 	rep := DispatchReport{DryRun: req.DryRun, Started: []DispatchedAttempt{}}
+	// The merge gate runs before Recover on purpose: a conflicted tree
+	// holds both sides at once, so the tick must not write anything —
+	// not even recovery — until a human resolves the merge. Pending
+	// replays and expired-lease releases wait for the next tick.
+	if blocked, notice := mergeConflict(s.Root); blocked != "" {
+		rep.Notices = append(rep.Notices, notice)
+		return rep, Preconditionf("dispatch blocked: %s; resolve the merge with git, then `devsys repair --dry-run`", blocked)
+	} else if notice != "" {
+		rep.Notices = append(rep.Notices, notice)
+	}
 	if !req.DryRun {
 		recovered, err := reconcile.Recover(ctx, s.Root, reconcile.Options{
 			Actor: req.Actor, Reason: req.Reason, Now: s.now,
@@ -214,6 +225,51 @@ func (s *Service) dispatchCaps(ctx context.Context, items []*domain.WorkItem) (d
 		})
 	}
 	return dispatch.ResolveCaps(declared), notices
+}
+
+// mergeConflict is the M8.2 dispatch gate (方案 §14.4): an unresolved git
+// merge means the working tree holds both sides at once, so no tick may
+// start anything. It reuses the read-only probes `sync status` (M8.1) is
+// built on. A probe failure is not a conflict: it degrades to a notice and
+// the tick proceeds, so a broken git environment is never disguised as a
+// merge conflict. Returns (blocked-summary, notice); blocked is "" when the
+// tick may proceed.
+func mergeConflict(root string) (string, string) {
+	entries, err := knowledge.PorcelainStatus(root)
+	if err != nil {
+		return "", "git conflict probe unavailable (" + gitErrLine(err) + ")"
+	}
+	mergeWork, err := knowledge.MergeHeads(root)
+	if err != nil {
+		return "", "git conflict probe unavailable (" + gitErrLine(err) + ")"
+	}
+	var unmerged []string
+	for _, e := range entries {
+		if e.Unmerged {
+			unmerged = append(unmerged, e.Path)
+		}
+	}
+	var parts []string
+	if len(unmerged) > 0 {
+		parts = append(parts, "unmerged paths: "+strings.Join(unmerged, ", "))
+	}
+	if len(mergeWork) > 0 {
+		parts = append(parts, "unfinished merge ("+strings.Join(mergeWork, ", ")+")")
+	}
+	if len(parts) == 0 {
+		return "", ""
+	}
+	return strings.Join(parts, "; "), ""
+}
+
+// gitErrLine keeps a git stderr to its first line: the runner already names
+// the failing subcommand.
+func gitErrLine(err error) string {
+	msg := err.Error()
+	if i := strings.IndexByte(msg, '\n'); i >= 0 {
+		msg = msg[:i]
+	}
+	return strings.TrimSpace(msg)
 }
 
 // dispatchOne starts one attempt: claim, workspace, spawn, running.

@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"workloom/internal/domain"
+	"workloom/internal/knowledge"
 	"workloom/internal/storage"
 	"workloom/internal/workitem"
 )
@@ -41,6 +42,11 @@ const (
 	ProposalReleaseExpiredLease  ProposalKind = "release_expired_lease"
 	ProposalReleaseOrphanLease   ProposalKind = "release_orphan_lease"
 	ProposalMarkDoneToInProgress ProposalKind = "mark_done_to_in_progress"
+	// ProposalNoteUnmerged is a human-only observation (M8.2, 方案 §14.4):
+	// a git merge conflict git itself preserves. It carries no file hash
+	// evidence — the conflicted paths live in the working tree, outside
+	// the storage-managed tree — and RepairApply always rejects it.
+	ProposalNoteUnmerged ProposalKind = "note_unmerged_paths"
 )
 
 // EvidenceKind distinguishes file-on-disk from file-absent.
@@ -279,7 +285,6 @@ func Recover(ctx context.Context, root string, opts Options) (RecoverReport, err
 	return rep, nil
 }
 
-// RepairDryRun returns a timestamp-free plan.
 func RepairDryRun(ctx context.Context, root string, opts Options) (Plan, error) {
 	now := opts.Now
 	if now == nil {
@@ -298,9 +303,74 @@ func RepairDryRun(ctx context.Context, root string, opts Options) (Plan, error) 
 	if err != nil {
 		return plan, err
 	}
+	notes, note := conflictNotes(root)
+	proposals = append(proposals, notes...)
+	if note != "" {
+		if plan.Note != "" {
+			plan.Note += "; " + note
+		} else {
+			plan.Note = note
+		}
+	}
 	plan.Proposals = proposals
 	plan.Digest = ComputeDigest(proposals)
 	return plan, nil
+}
+
+// conflictNotes surfaces unresolved git merges as human-only proposals
+// (M8.2, 方案 §14.4). It reuses the read-only probes `sync status` (M8.1)
+// is built on: porcelain unmerged paths plus merge machinery. Git itself
+// preserves both sides — devsys never merges, never annotates sidecars, and
+// never picks a winner by timestamp. A git failure degrades to a plan note,
+// never to a RepairDryRun error: most reconcile callers run outside a git
+// checkout in tests.
+func conflictNotes(root string) ([]Proposal, string) {
+	entries, err := knowledge.PorcelainStatus(root)
+	if err != nil {
+		return nil, "git conflict probe unavailable: " + oneLine(err)
+	}
+	mergeWork, err := knowledge.MergeHeads(root)
+	if err != nil {
+		return nil, "git conflict probe unavailable: " + oneLine(err)
+	}
+	var out []Proposal
+	for _, e := range entries {
+		if !e.Unmerged {
+			continue
+		}
+		out = append(out, Proposal{
+			Kind:        ProposalNoteUnmerged,
+			Description: "unmerged path " + e.Path + ": resolve with git (keep both sides explicit), then `devsys repair --dry-run`",
+			Evidence: []Evidence{
+				{Kind: EvidenceAbsent, Path: "git:" + e.Path, Note: "human resolution required"},
+			},
+			Note: "human-only",
+		})
+	}
+	for _, m := range mergeWork {
+		out = append(out, Proposal{
+			Kind:        ProposalNoteUnmerged,
+			Description: "unfinished merge machinery " + m + ": finish or abort the merge with git first",
+			Evidence: []Evidence{
+				{Kind: EvidenceAbsent, Path: "git:" + m, Note: "human resolution required"},
+			},
+			Note: "human-only",
+		})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].Description < out[j].Description
+	})
+	return out, ""
+}
+
+// oneLine keeps a git stderr to its first line: the runner already names
+// the failing subcommand.
+func oneLine(err error) string {
+	msg := strings.TrimSpace(err.Error())
+	if i := strings.Index(msg, "\n"); i >= 0 {
+		msg = msg[:i]
+	}
+	return msg
 }
 
 // inspectOrUnlocked runs fn through storage.Inspect; when no lock file
@@ -361,14 +431,12 @@ func ComputeDigest(p []Proposal) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// The third key (first evidence path) only disambiguates today's single-
+// evidence notes: every current kind emits at most one proposal per
+// (kind, workitem) with its own path. A future multi-evidence kind sharing
+// one first path needs a fourth key.
 func canonicalProposals(p []Proposal) []Proposal {
 	out := append([]Proposal(nil), p...)
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].Kind != out[j].Kind {
-			return string(out[i].Kind) < string(out[j].Kind)
-		}
-		return out[i].WorkitemID < out[j].WorkitemID
-	})
 	for i := range out {
 		out[i].Evidence = append([]Evidence(nil), out[i].Evidence...)
 		sort.Slice(out[i].Evidence, func(a, b int) bool {
@@ -378,6 +446,21 @@ func canonicalProposals(p []Proposal) []Proposal {
 			return string(out[i].Evidence[a].Kind) < string(out[i].Evidence[b].Kind)
 		})
 	}
+	firstEvidence := func(pr Proposal) string {
+		if len(pr.Evidence) == 0 {
+			return ""
+		}
+		return pr.Evidence[0].Path
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Kind != out[j].Kind {
+			return string(out[i].Kind) < string(out[j].Kind)
+		}
+		if out[i].WorkitemID != out[j].WorkitemID {
+			return out[i].WorkitemID < out[j].WorkitemID
+		}
+		return firstEvidence(out[i]) < firstEvidence(out[j])
+	})
 	return out
 }
 
@@ -416,6 +499,15 @@ func RepairApply(ctx context.Context, root string, plan Plan, opts Options) (App
 	rep := ApplyReport{}
 	ordered := canonicalProposals(plan.Proposals)
 	for _, p := range ordered {
+		if p.Kind == ProposalNoteUnmerged {
+			// Human-only: git owns both sides, devsys writes nothing.
+			label := p.WorkitemID
+			if len(p.Evidence) > 0 {
+				label = strings.TrimPrefix(p.Evidence[0].Path, "git:")
+			}
+			rep.Rejected = append(rep.Rejected, label+": requires human resolution; no automatic merge")
+			continue
+		}
 		// Pre-read the workitem bytes the proposal was authored against.
 		// This pre-read is OUTSIDE any Write, so it is allowed (Main's
 		// "no nested Write" rule). The bytes are passed as Expected.

@@ -76,7 +76,7 @@ commands:
   artifact      list | get | register | update | history artifact records
   run           list | get | log | create | update | heartbeat | exec | prompt | complete | fail | cancel
   worktree      prepare | remove | list execution workspaces (方案 §4.8)
-  dispatch      one scheduling tick: recover, reconcile, dispatch (--watch loops)
+  dispatch      one scheduling tick: recover, reconcile, dispatch (--watch loops; refused while a merge conflicts)
   context       get [--task ID] [--path a,b] | workitem | refresh | compact working context (read-only)
   workspace     view [--limit N] | build --static [--out DIR] [--limit N] | serve [--host 127.0.0.1] [--port N] read-only project view / offline site / local service (方案 §17)
   knowledge         status | scan | validate [dir|page.md...] | refresh
@@ -84,7 +84,7 @@ commands:
   wire          inject the devsys discipline block into AGENTS.md (idempotent; --dry-run previews)
   doctor        report transactions and orphaned claims (read-only)
   recover       recover transactions, release expired/orphaned claims
-  repair        --dry-run proposes repairs; --apply --confirm <digest> applies
+  repair        --dry-run proposes repairs; --apply --confirm <digest> applies (unmerged paths surface as human-only notes)
   sync status   handoff readiness: divergence, uncommitted state, leases (read-only)
   mcp serve     serve the Model Context Protocol over stdio (--profile ...)
 
