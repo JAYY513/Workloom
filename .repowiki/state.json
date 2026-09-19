@@ -3,9 +3,9 @@
   "partition": {
     "locale": "zh"
   },
-  "generated_at": "2026-09-19T07:41:17.200Z",
+  "generated_at": "2026-09-19T09:53:57.601Z",
   "git": {
-    "commit": "52294b09dfe06165c9dab1e97509d218a31f14ee",
+    "commit": "def17354f6c06b62daa48ddc809ddc8e15c944d9",
     "branch": "master"
   },
   "pages": {
@@ -70,7 +70,7 @@
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "bfe4bec28c86920351a2b60b16ed0564cdb3b92db73737d159393f5e235d4b0f"
+      "content_hash": "86b3e6297eb4b5f448044467de53a93f6642fc6d428fd099537c88d092ad7abe"
     },
     "content/快速开始.md": {
       "sources": [
@@ -130,7 +130,7 @@
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "7a4d7b46a87593e4638b35d17c3b6d5922cf2254e6787f9e4bfdb2f9c226860a"
+      "content_hash": "a20cc6e73913dc59b1c6d79171b6fadf038ec4971d401ea938941bf53d497dd4"
     },
     "content/项目总览.md": {
       "sources": [
@@ -190,7 +190,7 @@
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "e27e963b52ad196c933c87d58c1e0ee7edb35b6973807555d73e419049999202"
+      "content_hash": "84e9002ae73f3fdbde17ab3273487d0b4b01bf0f51503a8825b7a3f730ba86fc"
     },
     "index.md": {
       "sources": [],
@@ -221,7 +221,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "7c70d39d1de08016de16309d4479fa8fd72ada164a7643f85263850c41470f18"
+      "content_hash": "cfe41c00a1f947e0ae0a700500a4eb7b578c4cc430628564dd824484b0c5eb9b"
     },
     "knowledge/共享应用与MCP/架构设计.md": {
       "sources": [
@@ -954,7 +954,7 @@
         "scripts/smoke-m8.ps1",
         "scripts/contrabass/**"
       ],
-      "content_hash": "d9d2fef86adad1d73094bd24597a86a4a1849279613f2dc6f6a6a31c54d8f9ae"
+      "content_hash": "3f9482bd9de8d014fbc0f9eb57bca5cea2bcbc3fe1084d3fd8260f5e8fb58922"
     },
     "knowledge/项目接入与配置/编码规范.md": {
       "sources": [
@@ -998,8 +998,8 @@
   "last_run": {
     "status": "success",
     "phase": "finalize",
-    "started_at": "2026-09-19T07:41:17.200Z",
-    "finished_at": "2026-09-19T07:41:17.200Z",
+    "started_at": "2026-09-19T09:53:57.601Z",
+    "finished_at": "2026-09-19T09:53:57.601Z",
     "error": ""
   }
 }
