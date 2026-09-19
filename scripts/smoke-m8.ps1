@@ -100,20 +100,22 @@ try {
     if (-not ((& $devsys sync status) -join "`n").Contains('handoff: ready')) { throw 'release did not restore ready' }
     Write-Output 'PASS: an active lease blocks with active-leases; release restores ready'
 
-    Write-Output '== unresolved merge is annotated, never auto-merged (M8.2) =='
-    Set-Content -Path (Join-Path $project 'clash.txt') -Value "base`n" -Encoding UTF8 -NoNewline
+    # clash.txt 用无 BOM UTF-8：与 sh 版裸字节一致（Set-Content -Encoding UTF8 在 PS5.1 带 BOM，会污染冲突内容的字节对等）。
+    [IO.File]::WriteAllText((Join-Path $project 'clash.txt'), "base`n", [Text.UTF8Encoding]::new($false))
     git add -A
     git -c user.email=devsys@test -c user.name=devsys commit -q -m 'clash base'
     git push -q origin main
     git checkout -q -b side
     Assert-Exit 'checkout side'
-    Set-Content -Path (Join-Path $project 'clash.txt') -Value "side`n" -Encoding UTF8 -NoNewline
-    git commit -q -a -m 'side clash'
+    [IO.File]::WriteAllText((Join-Path $project 'clash.txt'), "side`n", [Text.UTF8Encoding]::new($false))
+    git add -A
+    git commit -q -m 'side clash'
     Assert-Exit 'side clash'
     git checkout -q main
     Assert-Exit 'checkout main'
-    Set-Content -Path (Join-Path $project 'clash.txt') -Value "main`n" -Encoding UTF8 -NoNewline
-    git commit -q -a -m 'main clash'
+    [IO.File]::WriteAllText((Join-Path $project 'clash.txt'), "main`n", [Text.UTF8Encoding]::new($false))
+    git add -A
+    git commit -q -m 'main clash'
     Assert-Exit 'main clash'
     Invoke-Expect 'merge must conflict' 1 { git merge side }
     $repair = (& $devsys repair --dry-run --actor me --reason conflict) -join "`n"
@@ -139,7 +141,7 @@ try {
     $ErrorActionPreference = $oldErr
     if (-not $blocked.Contains('dispatch blocked')) { throw "dispatch did not name the block: $blocked" }
     Write-Output 'PASS: dispatch refuses the tick (exit 3) while the merge is open'
-    Set-Content -Path (Join-Path $project 'clash.txt') -Value "resolved`n" -Encoding UTF8 -NoNewline
+    [IO.File]::WriteAllText((Join-Path $project 'clash.txt'), "resolved`n", [Text.UTF8Encoding]::new($false))
     git add -A
     git -c user.email=devsys@test -c user.name=devsys commit -q -m 'resolve: keep main'
     Assert-Exit 'commit resolve'
@@ -158,8 +160,9 @@ try {
     $dryOut = (& $devsys archive events --before 2999-01 --dry-run --actor me --reason trim) -join "`n"
     Assert-Exit 'archive dry-run'
     if (-not $dryOut.Contains('dry-run: nothing was moved')) { throw "dry header missing: $dryOut" }
-    $untracked = (& git status --short) -join "`n" | Select-String -Pattern '^\?\?' -SimpleMatch
-    if ($untracked) { throw "archive dry run created files: $untracked" }
+    $statusOut = (& git status --short) -join "`n"
+    $untracked = $statusOut -split "`n" | Where-Object { $_.StartsWith('??') }
+    if ($untracked) { throw "archive dry run created files: $($untracked -join '; ')" }
     Write-Output 'PASS: the archive dry run lists the move and writes nothing'
     $archOut = (& $devsys archive events --before 2999-01 --actor me --reason trim) -join "`n"
     Assert-Exit 'archive apply'
