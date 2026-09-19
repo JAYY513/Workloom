@@ -3,6 +3,17 @@
 独立于 Harness 的 Agent 开发基础设施。状态保存在项目仓库内（`.devsys/`），
 通过 Git 在设备之间同步，不依赖跨项目共享数据库。
 
+## 安装
+
+```sh
+# 新机（Release 二进制，免 Go）：按平台取对应产物并对 checksums.txt 校验
+bash scripts/install.sh --tag <tag>          # ~/.local/bin/devsys
+# Windows PowerShell：
+# powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1 -Tag <tag>
+# 源码构建（vendor 已提交，可离线）：git clone --branch <tag> 后
+GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys ./cmd/devsys
+```
+
 ## 文档
 
 | 文档 | 说明 |
