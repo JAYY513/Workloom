@@ -69,8 +69,10 @@
 | M8.1 分叉检测 | 已完成：`devsys sync status` 只读接力 verdict（本地/上游 ahead-behind、porcelain 未合并/合并施工痕迹、待恢复事务、全类租约审计 + handoff_ready + 接力剧本）；阻塞仍 exit 0，环境失败 exit 3 |
 | M8.2 冲突标注与修复接入 | 已完成：`repair --dry-run` 把未解合并列为 `note_unmerged_paths`（人工项，apply 恒 rejected、零写入）；`dispatch`（含 dry-run）在合并未解时拒绝启动（exit 3）；git 保留双方、无时间戳选赢家 |
 | M8.3 归档与裁剪 | 已完成：`devsys archive events --before <YYYY-MM> \| runs --id <id,...>` 把 JSONL 流移入 `.devsys/archive/`（manifest 清单审计，无删除形态）；`event list` 与 run 流自动合并现役+归档；`search` 排除归档树 |
+| M8.4 Contrabass 作为执行后端（可选） | 已完成：`scripts/contrabass/` 双向文件映射（export 九态→六态看板卡片 + import 仅四态回流 transition、其余只 comment，经 CLI `--expect`，无第二事实来源）；fixture 闭环已验证；真机字段待复验（`[UNVERIFIED]`） |
 | M9.1 成功标准逐条验收 | 已完成：`docs/M9-验收报告.md` 按方案 §21 的 17 条逐条验证（每条：结论 + 复现命令 + 输出，含 16 审批闭环 / 17 tick 幂等），双证据（隔离临时项目实跑 + 针对性 `go test -run`），偏离 6 项记入报告；基线 `1ac4d56`，源码零改动 |
 | M9.2 使用文档与升级说明 | 已完成：`docs/使用手册.md`（15 分钟上手，每条命令隔离实跑验证）+ `docs/迁移指南.md`（`schema_version` 未知版本拒绝写入只读诊断可用，exit 4 + 迁移指引，承接 M0.4 预留） |
+| M9.3 发布与回退演练 | 已完成：tag `m8`（补，含 M8.4）与 `m9`（含收尾）；回退演练（隔离项目 `git checkout <tag> -- .devsys/` 后 `config check` + 读写复验 ROLLBACK-TAG-GREEN）；repowiki 刷新至最终基线（`validate` 55/0/0、`status` fresh） |
 
 ## 构建与验收
 
