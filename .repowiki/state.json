@@ -3,9 +3,9 @@
   "partition": {
     "locale": "zh"
   },
-  "generated_at": "2026-09-19T03:57:36.357Z",
+  "generated_at": "2026-09-19T07:41:17.200Z",
   "git": {
-    "commit": "bae7e282ffb704708d0f5de8bde132b57d47fbab",
+    "commit": "52294b09dfe06165c9dab1e97509d218a31f14ee",
     "branch": "master"
   },
   "pages": {
@@ -36,6 +36,11 @@
         "scripts/smoke-m6.ps1",
         "scripts/smoke-m7.sh",
         "scripts/smoke-m7.ps1",
+        "internal/syncstatus/**",
+        "internal/archive/**",
+        "scripts/smoke-m8.sh",
+        "scripts/smoke-m8.ps1",
+        "scripts/contrabass/**",
         "internal/storage/**",
         "internal/workitem/**",
         "internal/events/**",
@@ -61,10 +66,11 @@
         "internal/knowledge/**",
         ".devsys/knowledge/**",
         ".repowikiignore",
+        "internal/knowledge/syncgit.go",
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "563fc2bfa276a50b0b382f00a49320a4cddfd10a7c6dca1c1d023ff59b9b80f5"
+      "content_hash": "bfe4bec28c86920351a2b60b16ed0564cdb3b92db73737d159393f5e235d4b0f"
     },
     "content/快速开始.md": {
       "sources": [
@@ -90,6 +96,11 @@
         "scripts/smoke-m6.ps1",
         "scripts/smoke-m7.sh",
         "scripts/smoke-m7.ps1",
+        "internal/syncstatus/**",
+        "internal/archive/**",
+        "scripts/smoke-m8.sh",
+        "scripts/smoke-m8.ps1",
+        "scripts/contrabass/**",
         "internal/storage/**",
         "internal/workitem/**",
         "internal/events/**",
@@ -115,10 +126,11 @@
         "internal/knowledge/**",
         ".devsys/knowledge/**",
         ".repowikiignore",
+        "internal/knowledge/syncgit.go",
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "b4bac71d5709380b50c7dfc0a8cc8921594f241770e8167793d69cf10608c6ab"
+      "content_hash": "7a4d7b46a87593e4638b35d17c3b6d5922cf2254e6787f9e4bfdb2f9c226860a"
     },
     "content/项目总览.md": {
       "sources": [
@@ -144,6 +156,11 @@
         "scripts/smoke-m6.ps1",
         "scripts/smoke-m7.sh",
         "scripts/smoke-m7.ps1",
+        "internal/syncstatus/**",
+        "internal/archive/**",
+        "scripts/smoke-m8.sh",
+        "scripts/smoke-m8.ps1",
+        "scripts/contrabass/**",
         "internal/storage/**",
         "internal/workitem/**",
         "internal/events/**",
@@ -169,54 +186,67 @@
         "internal/knowledge/**",
         ".devsys/knowledge/**",
         ".repowikiignore",
+        "internal/knowledge/syncgit.go",
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "3c08a7eeccd35a9d79360bc7ce7de5bf8fd5ef4d764bc65048b471640dddd0bb"
+      "content_hash": "e27e963b52ad196c933c87d58c1e0ee7edb35b6973807555d73e419049999202"
     },
     "index.md": {
       "sources": [],
-      "content_hash": "a3463ac5553b6a6fe5ffa205af5c10c19b373249749b4b3ac84eb05434abbd79"
+      "content_hash": "7d604fd5749e92702b4fba2e42ccd7a7e7170e9a8b0c8eb3752f5d52de5761fa"
     },
     "knowledge/共享应用与MCP/完成校验与人工复核.md": {
       "sources": [
         "internal/app/**",
-        "internal/mcp/**"
+        "internal/mcp/**",
+        "internal/syncstatus/**",
+        "internal/archive/**"
       ],
       "content_hash": "11cba354f6db1a3bfdbf5edc6e94547468e15779911b8dc3e8fb33e6255b9517"
     },
     "knowledge/共享应用与MCP/工具与Profile.md": {
       "sources": [
         "internal/app/**",
-        "internal/mcp/**"
+        "internal/mcp/**",
+        "internal/syncstatus/**",
+        "internal/archive/**"
       ],
       "content_hash": "9c440b63415ee9bcf1fb1c81b0787db8ece0d52cf1b50d18feb0c3bc2aa32ee7"
     },
     "knowledge/共享应用与MCP/执行命令族.md": {
       "sources": [
         "internal/app/**",
-        "internal/mcp/**"
+        "internal/mcp/**",
+        "internal/syncstatus/**",
+        "internal/archive/**"
       ],
-      "content_hash": "2070c11f397ff4ed4b30219a3b71229a74a55b39b1947c87511966fe8270feca"
+      "content_hash": "7c70d39d1de08016de16309d4479fa8fd72ada164a7643f85263850c41470f18"
     },
     "knowledge/共享应用与MCP/架构设计.md": {
       "sources": [
         "internal/app/**",
-        "internal/mcp/**"
+        "internal/mcp/**",
+        "internal/syncstatus/**",
+        "internal/archive/**"
       ],
       "content_hash": "1534dfe47d4a2da2b6569e833c4085958655fedc8f0ddd3f6378443887441f05"
     },
     "knowledge/共享应用与MCP/概述.md": {
       "sources": [
         "internal/app/**",
-        "internal/mcp/**"
+        "internal/mcp/**",
+        "internal/syncstatus/**",
+        "internal/archive/**"
       ],
-      "content_hash": "f408711c11f09cdeaedccce2d50c46262bc1cc5623b694832e6a4b87fc755294"
+      "content_hash": "429b4a4c414713f878dc1e798752b89561d8627f761b3da6ae0f8c8d7a8f6b11"
     },
     "knowledge/共享应用与MCP/错误语义.md": {
       "sources": [
         "internal/app/**",
-        "internal/mcp/**"
+        "internal/mcp/**",
+        "internal/syncstatus/**",
+        "internal/archive/**"
       ],
       "content_hash": "d70aaf37f8afb42d687318d15af9265f7e23ad3ab572b762abffa526be358ae9"
     },
@@ -236,7 +266,9 @@
         "docs/examples/m1-devsys/**",
         "docs/examples/workflows/**",
         "go.mod",
-        "go.sum"
+        "go.sum",
+        "internal/syncstatus/**",
+        "internal/archive/**"
       ],
       "content_hash": "85d50fadf5aa8ab2a32fd26682e0c52bd6dffee0aabeb86d5d21489fdd43d69d"
     },
@@ -256,7 +288,9 @@
         "docs/examples/m1-devsys/**",
         "docs/examples/workflows/**",
         "go.mod",
-        "go.sum"
+        "go.sum",
+        "internal/syncstatus/**",
+        "internal/archive/**"
       ],
       "content_hash": "02784acac1955b06de7ff475a4f0edbd26535db07bb063d8e9dabe1da2e5039d"
     },
@@ -276,9 +310,11 @@
         "docs/examples/m1-devsys/**",
         "docs/examples/workflows/**",
         "go.mod",
-        "go.sum"
+        "go.sum",
+        "internal/syncstatus/**",
+        "internal/archive/**"
       ],
-      "content_hash": "40ac224024bafd3839ab2460d8e93bf8b9df8e1d5ee8ead5a521baf85954a3a2"
+      "content_hash": "9a04b0cfcb5479a53847138ef1e18f7d770adfa192353c59c13b558c6e096e9e"
     },
     "knowledge/可靠文本存储/架构设计.md": {
       "sources": [
@@ -296,9 +332,11 @@
         "docs/examples/m1-devsys/**",
         "docs/examples/workflows/**",
         "go.mod",
-        "go.sum"
+        "go.sum",
+        "internal/syncstatus/**",
+        "internal/archive/**"
       ],
-      "content_hash": "d8f7f6a5b44ac562ef64e1635b602970acf05947d9f599170f1577a911b6bc39"
+      "content_hash": "26956ac7b35aa972167cdab22c1b87d9a72962f17ee88743103985a93a0388b0"
     },
     "knowledge/可靠文本存储/概述.md": {
       "sources": [
@@ -316,9 +354,11 @@
         "docs/examples/m1-devsys/**",
         "docs/examples/workflows/**",
         "go.mod",
-        "go.sum"
+        "go.sum",
+        "internal/syncstatus/**",
+        "internal/archive/**"
       ],
-      "content_hash": "56cfc10476e6926a750c56cb4b399115fc60c814625fe5c5ce4828e0cbe01b35"
+      "content_hash": "84d37f966d613bf7e1d9ecf27137576b08ffd680b4b842382a5a59956bf4e09a"
     },
     "knowledge/可靠文本存储/特殊配置与命令.md": {
       "sources": [
@@ -336,7 +376,9 @@
         "docs/examples/m1-devsys/**",
         "docs/examples/workflows/**",
         "go.mod",
-        "go.sum"
+        "go.sum",
+        "internal/syncstatus/**",
+        "internal/archive/**"
       ],
       "content_hash": "4a3e2c6efd682d681feb4fd0018c901b30ca1a86d5285c152523d4af8e1c0086"
     },
@@ -356,7 +398,9 @@
         "docs/examples/m1-devsys/**",
         "docs/examples/workflows/**",
         "go.mod",
-        "go.sum"
+        "go.sum",
+        "internal/syncstatus/**",
+        "internal/archive/**"
       ],
       "content_hash": "58f389881b9803cc423cf6aff9beb4c2012756312d51e7b485afd3c78ee524f8"
     },
@@ -376,7 +420,9 @@
         "docs/examples/m1-devsys/**",
         "docs/examples/workflows/**",
         "go.mod",
-        "go.sum"
+        "go.sum",
+        "internal/syncstatus/**",
+        "internal/archive/**"
       ],
       "content_hash": "94369f4f40bf58e25982cd9a2280f7bd6768679d9ae2048506f5920b51809775"
     },
@@ -396,7 +442,9 @@
         "docs/examples/m1-devsys/**",
         "docs/examples/workflows/**",
         "go.mod",
-        "go.sum"
+        "go.sum",
+        "internal/syncstatus/**",
+        "internal/archive/**"
       ],
       "content_hash": "2b18eaa4ef0a726325b9d1a70049d9f3330703da2d53420b2c0e5b1bedd7973f"
     },
@@ -416,9 +464,11 @@
         "docs/examples/m1-devsys/**",
         "docs/examples/workflows/**",
         "go.mod",
-        "go.sum"
+        "go.sum",
+        "internal/syncstatus/**",
+        "internal/archive/**"
       ],
-      "content_hash": "3392b69510a63186d31ca4333377093937dc22b31edf74363c093b803389a947"
+      "content_hash": "585d4235785322a7433b5c97e7089b5b40b5218d0abee1cb4e5b5436950d8e5a"
     },
     "knowledge/可靠文本存储/领域记录与事件.md": {
       "sources": [
@@ -436,7 +486,9 @@
         "docs/examples/m1-devsys/**",
         "docs/examples/workflows/**",
         "go.mod",
-        "go.sum"
+        "go.sum",
+        "internal/syncstatus/**",
+        "internal/archive/**"
       ],
       "content_hash": "7619ea80d0fa17e20333918c9ca19dd663497bbf39cda0425af3bdb6a98c115f"
     },
@@ -468,7 +520,7 @@
         "internal/retry/**",
         "internal/prompt/**"
       ],
-      "content_hash": "d580040ee1b97f598a124cd1c90b2f185beaf7d2e1a58d557875f6552743983d"
+      "content_hash": "b3f86f529182b7eee6840b07fc2991898c83dfc3726c2df4d8b031a484511d92"
     },
     "knowledge/执行层/特殊配置与命令.md": {
       "sources": [
@@ -504,7 +556,8 @@
       "sources": [
         "internal/knowledge/**",
         ".devsys/knowledge/**",
-        ".repowikiignore"
+        ".repowikiignore",
+        "internal/knowledge/syncgit.go"
       ],
       "content_hash": "7374861db8c857fd052ff38cbe8a9baa0d5ec6192a57ee9bf75a2fea3f2bca62"
     },
@@ -512,7 +565,8 @@
       "sources": [
         "internal/knowledge/**",
         ".devsys/knowledge/**",
-        ".repowikiignore"
+        ".repowikiignore",
+        "internal/knowledge/syncgit.go"
       ],
       "content_hash": "8ed8bbcdb73734e6663402faa46cfa7a3ec6871a52ef171e0656d2b44d27ebd9"
     },
@@ -520,7 +574,8 @@
       "sources": [
         "internal/knowledge/**",
         ".devsys/knowledge/**",
-        ".repowikiignore"
+        ".repowikiignore",
+        "internal/knowledge/syncgit.go"
       ],
       "content_hash": "bbcc10a8fd6df0ac3ef6b7d37ff0064e9b179c665b13b8b5035942a69f978507"
     },
@@ -528,7 +583,8 @@
       "sources": [
         "internal/knowledge/**",
         ".devsys/knowledge/**",
-        ".repowikiignore"
+        ".repowikiignore",
+        "internal/knowledge/syncgit.go"
       ],
       "content_hash": "e294042ac8ffc55d01d2ef165c6ca6b6db02b91b0009bcf0bf9a2f7bdff81cd0"
     },
@@ -536,7 +592,8 @@
       "sources": [
         "internal/knowledge/**",
         ".devsys/knowledge/**",
-        ".repowikiignore"
+        ".repowikiignore",
+        "internal/knowledge/syncgit.go"
       ],
       "content_hash": "80fd6872922b0fe318b6fa2065d5163784a498d2c6ea44a1ef95cad21de2e59d"
     },
@@ -544,23 +601,26 @@
       "sources": [
         "internal/knowledge/**",
         ".devsys/knowledge/**",
-        ".repowikiignore"
+        ".repowikiignore",
+        "internal/knowledge/syncgit.go"
       ],
-      "content_hash": "5c255c69ff3ed6d37cb63597c34274ff9e679eb31ff6c327840bb0ec6db98d56"
+      "content_hash": "01e12ccced5564291a4c4e5b72a918e24b39b805052a7289d2c48e02fe8842a8"
     },
     "knowledge/知识层/概述.md": {
       "sources": [
         "internal/knowledge/**",
         ".devsys/knowledge/**",
-        ".repowikiignore"
+        ".repowikiignore",
+        "internal/knowledge/syncgit.go"
       ],
-      "content_hash": "37e57137a44882fe465e94af7c010d5b0c60bd37d75e8b07dbfe2bf39ec5063d"
+      "content_hash": "1c267219ac2646c9c19547ced1eb0dc659a8e232b9f037d32f2183d74ee5e24b"
     },
     "knowledge/知识层/生成器契约与适配器.md": {
       "sources": [
         "internal/knowledge/**",
         ".devsys/knowledge/**",
-        ".repowikiignore"
+        ".repowikiignore",
+        "internal/knowledge/syncgit.go"
       ],
       "content_hash": "a1e509f534d80973be8b470d209ed4a020484ef4611898b0b10c3e69253b1bbc"
     },
@@ -568,7 +628,8 @@
       "sources": [
         "internal/knowledge/**",
         ".devsys/knowledge/**",
-        ".repowikiignore"
+        ".repowikiignore",
+        "internal/knowledge/syncgit.go"
       ],
       "content_hash": "5d281082b0cab989437bdab608fb537ca1f64a5bd242890c84779840e1432ce9"
     },
@@ -576,7 +637,8 @@
       "sources": [
         "internal/knowledge/**",
         ".devsys/knowledge/**",
-        ".repowikiignore"
+        ".repowikiignore",
+        "internal/knowledge/syncgit.go"
       ],
       "content_hash": "503a460d2dc8cc9b9d0a01388d320ef9f9a2ba5d107f3e15f53888fd0f93187b"
     },
@@ -584,7 +646,8 @@
       "sources": [
         "internal/knowledge/**",
         ".devsys/knowledge/**",
-        ".repowikiignore"
+        ".repowikiignore",
+        "internal/knowledge/syncgit.go"
       ],
       "content_hash": "31e74397a2b915465686a1ca1fdabb17ae4d0046de8de4e8de6a42462490a38e"
     },
@@ -660,7 +723,12 @@
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1",
         "scripts/smoke-m7.sh",
-        "scripts/smoke-m7.ps1"
+        "scripts/smoke-m7.ps1",
+        "internal/syncstatus/**",
+        "internal/archive/**",
+        "scripts/smoke-m8.sh",
+        "scripts/smoke-m8.ps1",
+        "scripts/contrabass/**"
       ],
       "content_hash": "503d589cae82296bd674aa30a6bc932caa0f9a5f42bc3523b2cc465f58ddcc64"
     },
@@ -687,9 +755,14 @@
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1",
         "scripts/smoke-m7.sh",
-        "scripts/smoke-m7.ps1"
+        "scripts/smoke-m7.ps1",
+        "internal/syncstatus/**",
+        "internal/archive/**",
+        "scripts/smoke-m8.sh",
+        "scripts/smoke-m8.ps1",
+        "scripts/contrabass/**"
       ],
-      "content_hash": "2bd4bda74c83242e02d87a23a2e22c728829331d95034d8868931980ca659b00"
+      "content_hash": "696b4628e98b4d83bb6768a9eda03fec4efd78953d968a022ebccb06af2f5a4b"
     },
     "knowledge/项目接入与配置/Schema与错误契约.md": {
       "sources": [
@@ -714,7 +787,12 @@
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1",
         "scripts/smoke-m7.sh",
-        "scripts/smoke-m7.ps1"
+        "scripts/smoke-m7.ps1",
+        "internal/syncstatus/**",
+        "internal/archive/**",
+        "scripts/smoke-m8.sh",
+        "scripts/smoke-m8.ps1",
+        "scripts/contrabass/**"
       ],
       "content_hash": "3c73aa31502a89db8910963d512d9ae7e5d0baf800206adaf5056d1ab3717055"
     },
@@ -741,7 +819,12 @@
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1",
         "scripts/smoke-m7.sh",
-        "scripts/smoke-m7.ps1"
+        "scripts/smoke-m7.ps1",
+        "internal/syncstatus/**",
+        "internal/archive/**",
+        "scripts/smoke-m8.sh",
+        "scripts/smoke-m8.ps1",
+        "scripts/contrabass/**"
       ],
       "content_hash": "55f1d4f562baaf329cdd4fd1e8c1696ea2c1e3f600b1f88f8f4677f5adc297a2"
     },
@@ -768,7 +851,12 @@
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1",
         "scripts/smoke-m7.sh",
-        "scripts/smoke-m7.ps1"
+        "scripts/smoke-m7.ps1",
+        "internal/syncstatus/**",
+        "internal/archive/**",
+        "scripts/smoke-m8.sh",
+        "scripts/smoke-m8.ps1",
+        "scripts/contrabass/**"
       ],
       "content_hash": "6eed186ae680675ce5cf5a1563371da05d43838721817368855b405c2a95bf75"
     },
@@ -795,9 +883,14 @@
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1",
         "scripts/smoke-m7.sh",
-        "scripts/smoke-m7.ps1"
+        "scripts/smoke-m7.ps1",
+        "internal/syncstatus/**",
+        "internal/archive/**",
+        "scripts/smoke-m8.sh",
+        "scripts/smoke-m8.ps1",
+        "scripts/contrabass/**"
       ],
-      "content_hash": "0bbd6dd091b73f0becb7bfe048237500db6162a79fdf74c3fa4863eb4b047fcc"
+      "content_hash": "458635e31218a4102b25b1ba02d86f7dd242949366112777e7640adb26bed6ea"
     },
     "knowledge/项目接入与配置/概述.md": {
       "sources": [
@@ -822,9 +915,14 @@
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1",
         "scripts/smoke-m7.sh",
-        "scripts/smoke-m7.ps1"
+        "scripts/smoke-m7.ps1",
+        "internal/syncstatus/**",
+        "internal/archive/**",
+        "scripts/smoke-m8.sh",
+        "scripts/smoke-m8.ps1",
+        "scripts/contrabass/**"
       ],
-      "content_hash": "07a435abe6deec74f6702f0500c7a3f57587bf9741c15ed82a6979b0b0e26b6a"
+      "content_hash": "f0e54a20048ca4a702647a7c8394160154fdba7d2f838c86a385a3e65be2524b"
     },
     "knowledge/项目接入与配置/特殊配置与命令.md": {
       "sources": [
@@ -849,9 +947,14 @@
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1",
         "scripts/smoke-m7.sh",
-        "scripts/smoke-m7.ps1"
+        "scripts/smoke-m7.ps1",
+        "internal/syncstatus/**",
+        "internal/archive/**",
+        "scripts/smoke-m8.sh",
+        "scripts/smoke-m8.ps1",
+        "scripts/contrabass/**"
       ],
-      "content_hash": "b79a9b667c8a18a690302465fc9366bc6a62cbc541f3da07358b8a54c20ad972"
+      "content_hash": "d9d2fef86adad1d73094bd24597a86a4a1849279613f2dc6f6a6a31c54d8f9ae"
     },
     "knowledge/项目接入与配置/编码规范.md": {
       "sources": [
@@ -876,22 +979,27 @@
         "scripts/smoke-m6.sh",
         "scripts/smoke-m6.ps1",
         "scripts/smoke-m7.sh",
-        "scripts/smoke-m7.ps1"
+        "scripts/smoke-m7.ps1",
+        "internal/syncstatus/**",
+        "internal/archive/**",
+        "scripts/smoke-m8.sh",
+        "scripts/smoke-m8.ps1",
+        "scripts/contrabass/**"
       ],
       "content_hash": "401d27506ba5657d302a6773e88425fb3de6325b56cde62cbe25bed18ee11783"
     },
     "log.md": {
       "sources": [],
-      "content_hash": "0e7334eb8ce2f84cce6d51b795b967aeef4360ecc4c890638a208709817c1c12"
+      "content_hash": "9fa4a1b6b09fe5916118d47fcc353ef8f4c21ad24e657c2ca37b707df2483a01"
     }
   },
-  "snapshot_digest": "3269a71b4b42d0fa33e2d0e742195161e93240c461d0c5fe8501e6df96bda6d9",
+  "snapshot_digest": "48ede2198eea3db774e4b1bc91b4c1243b97706232d2a0ce763903ee22a5f747",
   "snapshot_file": ".repowiki/snapshot.json",
   "last_run": {
     "status": "success",
     "phase": "finalize",
-    "started_at": "2026-09-19T03:57:36.357Z",
-    "finished_at": "2026-09-19T03:57:36.357Z",
+    "started_at": "2026-09-19T07:41:17.200Z",
+    "finished_at": "2026-09-19T07:41:17.200Z",
     "error": ""
   }
 }

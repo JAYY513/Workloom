@@ -1,168 +1,178 @@
 {
-  "schema": 2,
-  "budget": {
-    "tier": "模块树",
-    "reason": "235 个扫描文件（go:196、yaml:11、markdown:9、shell:7、other:6、powershell:6），多层目录，沿用模块树档位；M7.2 落地 internal/sitestatic 静态构建（view 模型→6 离线页+本地样式+data/model.json，html/template，缺省 out .devsys/dist/site/ git 忽略，ResolveOut 拒绝状态目录/根/.git），M7.3 落地 serve（render.go RenderPage/ModelJSON 与 Build 落盘逐字节一致 + workspace_serve.go 每请求现装 view.Build，缺省 127.0.0.1:8080，非环回须 --allow-remote，405+Allow: GET, HEAD）；M7.4 落地新鲜度提示（CLI 文本脸 hint 行 + sitestatic freshnessHint 纯函数与全站第二横幅+knowledge 内联提示，JSON/退出码不动，判定复用 knowledge.Evaluate）。view-layer scope 补 internal/sitestatic/**（M7.1 时已预告此归属）；`项目接入与配置` 模块补 build/serve 命令族与退出码；三篇文章目录与文件路径保持不变；模块数仍 6。",
-    "max_total_modules": 8,
-    "max_depth": 2,
-    "max_total_articles": 30,
-    "max_top_articles": 8,
-    "max_sub_per_parent": 5,
-    "max_article_words": 2500
+ "schema": 2,
+ "budget": {
+  "tier": "模块树",
+  "reason": "235 个扫描文件（go:196、yaml:11、markdown:9、shell:7、other:6、powershell:6），多层目录，沿用模块树档位；M7.2 落地 internal/sitestatic 静态构建（view 模型→6 离线页+本地样式+data/model.json，html/template，缺省 out .devsys/dist/site/ git 忽略，ResolveOut 拒绝状态目录/根/.git），M7.3 落地 serve（render.go RenderPage/ModelJSON 与 Build 落盘逐字节一致 + workspace_serve.go 每请求现装 view.Build，缺省 127.0.0.1:8080，非环回须 --allow-remote，405+Allow: GET, HEAD）；M7.4 落地新鲜度提示（CLI 文本脸 hint 行 + sitestatic freshnessHint 纯函数与全站第二横幅+knowledge 内联提示，JSON/退出码不动，判定复用 knowledge.Evaluate）。view-layer scope 补 internal/sitestatic/**（M7.1 时已预告此归属）；`项目接入与配置` 模块补 build/serve 命令族与退出码；三篇文章目录与文件路径保持不变；模块数仍 6。",
+  "max_total_modules": 8,
+  "max_depth": 2,
+  "max_total_articles": 30,
+  "max_top_articles": 8,
+  "max_sub_per_parent": 5,
+  "max_article_words": 2500
+ },
+ "modules": [
+  {
+   "slug": "project-access",
+   "title": "项目接入与配置",
+   "dir": "项目接入与配置",
+   "scope": [
+    "cmd/**",
+    "internal/cli/**",
+    "internal/config/**",
+    "internal/project/**",
+    "internal/registry/**",
+    "internal/version/**",
+    "internal/domain/**",
+    "README.md",
+    "internal/cli/records.go",
+    "internal/cli/diagnostics.go",
+    "internal/cli/mcp.go",
+    "internal/cli/worktree.go",
+    "internal/cli/dispatch.go",
+    "scripts/m4helper",
+    "scripts/smoke-m4.sh",
+    "scripts/smoke-m4.ps1",
+    "scripts/exchange-demo.sh",
+    "scripts/smoke-m5.sh",
+    "scripts/smoke-m6.sh",
+    "scripts/smoke-m6.ps1",
+    "scripts/smoke-m7.sh",
+    "scripts/smoke-m7.ps1",
+    "internal/syncstatus/**",
+    "internal/archive/**",
+    "scripts/smoke-m8.sh",
+    "scripts/smoke-m8.ps1",
+    "scripts/contrabass/**"
+   ]
   },
-  "modules": [
-    {
-      "slug": "project-access",
-      "title": "项目接入与配置",
-      "dir": "项目接入与配置",
-      "scope": [
-        "cmd/**",
-        "internal/cli/**",
-        "internal/config/**",
-        "internal/project/**",
-        "internal/registry/**",
-        "internal/version/**",
-        "internal/domain/**",
-        "README.md",
-        "internal/cli/records.go",
-        "internal/cli/diagnostics.go",
-        "internal/cli/mcp.go",
-        "internal/cli/worktree.go",
-        "internal/cli/dispatch.go",
-        "scripts/m4helper",
-        "scripts/smoke-m4.sh",
-        "scripts/smoke-m4.ps1",
-        "scripts/exchange-demo.sh",
-        "scripts/smoke-m5.sh",
-        "scripts/smoke-m6.sh",
-        "scripts/smoke-m6.ps1",
-        "scripts/smoke-m7.sh",
-        "scripts/smoke-m7.ps1"
-      ]
-    },
-    {
-      "slug": "durable-storage",
-      "title": "可靠文本存储",
-      "dir": "可靠文本存储",
-      "scope": [
-        "internal/storage/**",
-        "internal/workitem/**",
-        "internal/events/**",
-        "internal/run/**",
-        "internal/record/**",
-        "internal/search/**",
-        "internal/reconcile/**",
-        "internal/workflow/**",
-        "internal/approval/**",
-        "internal/next/**",
-        "scripts/**",
-        "docs/examples/m1-devsys/**",
-        "docs/examples/workflows/**",
-        "go.mod",
-        "go.sum"
-      ]
-    },
-    {
-      "slug": "shared-app-mcp",
-      "title": "共享应用与MCP",
-      "dir": "共享应用与MCP",
-      "scope": [
-        "internal/app/**",
-        "internal/mcp/**"
-      ]
-    },
-    {
-      "slug": "execution-layer",
-      "title": "执行层",
-      "dir": "执行层",
-      "scope": [
-        "internal/harness/**",
-        "internal/workspace/**",
-        "internal/dispatch/**",
-        "internal/retry/**",
-        "internal/prompt/**"
-      ]
-    },
-    {
-      "slug": "knowledge-layer",
-      "title": "知识层",
-      "dir": "知识层",
-      "scope": [
-        "internal/knowledge/**",
-        ".devsys/knowledge/**",
-        ".repowikiignore"
-      ]
-    },
-    {
-      "slug": "view-layer",
-      "title": "视图层",
-      "dir": "视图层",
-      "scope": [
-        "internal/view/**",
-        "internal/sitestatic/**"
-      ]
-    }
-  ],
-  "articles": [
-    {
-      "slug": "overview",
-      "title": "项目总览",
-      "file": "content/项目总览.md",
-      "type": "overview",
-      "modules": [
-        "project-access",
-        "durable-storage",
-        "shared-app-mcp",
-        "execution-layer",
-        "knowledge-layer",
-        "view-layer"
-      ]
-    },
-    {
-      "slug": "getting-started",
-      "title": "快速开始",
-      "file": "content/快速开始.md",
-      "type": "getting_started",
-      "modules": [
-        "project-access",
-        "durable-storage",
-        "shared-app-mcp",
-        "execution-layer",
-        "knowledge-layer",
-        "view-layer"
-      ]
-    },
-    {
-      "slug": "developer-guide",
-      "title": "开发与故障诊断",
-      "file": "content/开发与故障诊断.md",
-      "type": "developer_guide",
-      "modules": [
-        "project-access",
-        "durable-storage",
-        "shared-app-mcp",
-        "execution-layer",
-        "knowledge-layer",
-        "view-layer"
-      ],
-      "scope": [
-        "docs/开发记录.md",
-        "docs/M6-一致性自检.md",
-        ".gitattributes"
-      ]
-    }
-  ],
-  "coverage_check": {
-    "covered_files": 228,
-    "total_files": 235,
-    "uncovered": [
-      ".gitattributes",
-      ".gitignore",
-      "AGENTS.md",
-      "docs/M6-一致性自检.md",
-      "docs/原始文档/实施计划.md",
-      "docs/原始文档/独立于Harness的Agent开发基础设施方案.md",
-      "docs/开发记录.md"
-    ]
+  {
+   "slug": "durable-storage",
+   "title": "可靠文本存储",
+   "dir": "可靠文本存储",
+   "scope": [
+    "internal/storage/**",
+    "internal/workitem/**",
+    "internal/events/**",
+    "internal/run/**",
+    "internal/record/**",
+    "internal/search/**",
+    "internal/reconcile/**",
+    "internal/workflow/**",
+    "internal/approval/**",
+    "internal/next/**",
+    "scripts/**",
+    "docs/examples/m1-devsys/**",
+    "docs/examples/workflows/**",
+    "go.mod",
+    "go.sum",
+    "internal/syncstatus/**",
+    "internal/archive/**"
+   ]
+  },
+  {
+   "slug": "shared-app-mcp",
+   "title": "共享应用与MCP",
+   "dir": "共享应用与MCP",
+   "scope": [
+    "internal/app/**",
+    "internal/mcp/**",
+    "internal/syncstatus/**",
+    "internal/archive/**"
+   ]
+  },
+  {
+   "slug": "execution-layer",
+   "title": "执行层",
+   "dir": "执行层",
+   "scope": [
+    "internal/harness/**",
+    "internal/workspace/**",
+    "internal/dispatch/**",
+    "internal/retry/**",
+    "internal/prompt/**"
+   ]
+  },
+  {
+   "slug": "knowledge-layer",
+   "title": "知识层",
+   "dir": "知识层",
+   "scope": [
+    "internal/knowledge/**",
+    ".devsys/knowledge/**",
+    ".repowikiignore",
+    "internal/knowledge/syncgit.go"
+   ]
+  },
+  {
+   "slug": "view-layer",
+   "title": "视图层",
+   "dir": "视图层",
+   "scope": [
+    "internal/view/**",
+    "internal/sitestatic/**"
+   ]
   }
+ ],
+ "articles": [
+  {
+   "slug": "overview",
+   "title": "项目总览",
+   "file": "content/项目总览.md",
+   "type": "overview",
+   "modules": [
+    "project-access",
+    "durable-storage",
+    "shared-app-mcp",
+    "execution-layer",
+    "knowledge-layer",
+    "view-layer"
+   ]
+  },
+  {
+   "slug": "getting-started",
+   "title": "快速开始",
+   "file": "content/快速开始.md",
+   "type": "getting_started",
+   "modules": [
+    "project-access",
+    "durable-storage",
+    "shared-app-mcp",
+    "execution-layer",
+    "knowledge-layer",
+    "view-layer"
+   ]
+  },
+  {
+   "slug": "developer-guide",
+   "title": "开发与故障诊断",
+   "file": "content/开发与故障诊断.md",
+   "type": "developer_guide",
+   "modules": [
+    "project-access",
+    "durable-storage",
+    "shared-app-mcp",
+    "execution-layer",
+    "knowledge-layer",
+    "view-layer"
+   ],
+   "scope": [
+    "docs/开发记录.md",
+    "docs/M6-一致性自检.md",
+    ".gitattributes"
+   ]
+  }
+ ],
+ "coverage_check": {
+  "covered_files": 248,
+  "total_files": 255,
+  "uncovered": [
+   ".gitattributes",
+   ".gitignore",
+   "AGENTS.md",
+   "docs/M6-一致性自检.md",
+   "docs/原始文档/实施计划.md",
+   "docs/原始文档/独立于Harness的Agent开发基础设施方案.md",
+   "docs/开发记录.md"
+  ]
+ }
 }
