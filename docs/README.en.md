@@ -172,17 +172,18 @@ GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys ./cmd/devsys
 > Note: release binaries are available starting from `v0.1.0` (Linux/macOS/Windows × amd64/arm64, SHA-256 verified).
 > This repository is private: downloading release artifacts requires `gh auth login` first (or downloading in a logged-in browser).
 > Without login, `install.sh` automatically falls back to `git clone --branch <tag> + go build` (requires Go + Git on your machine, and clone needs repository access too).
-> From `v0.1.1` on, the binaries and `checksums.txt` are published by CI (GNU checksum format). For the behavior described here
-> (`prime`, `--latest`, `--tier core`, the claim-aligned quality gate in `next`, `default_policy`, the installer fixes),
-> use `v0.1.1` or newer, or build from source.
+> From `v0.1.1` on, the binaries and `checksums.txt` are published by CI (GNU checksum format). From `v0.1.2` on, default MCP `--tier core`
+> is strictly the 19-tool daily subset (`run_fail` / `run_cancel` no longer leak in with `run_complete`). For the behavior described here
+> (`prime`, `--latest`, `--tier core` of 19 tools, the claim-aligned quality gate in `next`, `default_policy`, the installer fixes),
+> use `v0.1.2` or newer, or build from source.
 
 ```bash
 # Linux / macOS
-bash scripts/install.sh --tag v0.1.1
+bash scripts/install.sh --tag v0.1.2
 
 # Windows PowerShell
 powershell -NoProfile -ExecutionPolicy Bypass \
-  -File scripts/install.ps1 -Tag v0.1.1 -AddToPath
+  -File scripts/install.ps1 -Tag v0.1.2 -AddToPath
 ```
 
 Release builds target Linux, macOS, and Windows on `amd64` and `arm64`.
