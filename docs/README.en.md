@@ -303,6 +303,7 @@ The detailed project documentation is currently maintained in Chinese.
 | Document | Purpose |
 |---|---|
 | [User guide](使用手册.md) | 15-minute setup, daily operations, and complete command paths |
+| [Release runbook](发布流程.md) | Cutting a release: tag/Actions triggers, artifact verification, rollback, failure modes |
 | [Migration guide](迁移指南.md) | Schema upgrades, binary replacement, and rollback |
 | [Design specification](原始文档/独立于Harness的Agent开发基础设施方案.md) | Architecture principles, data model, and trade-offs |
 | [Implementation plan](原始文档/实施计划.md) | M0–M9 implementation steps and acceptance criteria |
