@@ -73,14 +73,15 @@ devsys wire [--dry-run]                     # [w] inject the AGENTS.md disciplin
 devsys wire --skill | --check | --print-mcp <codex|claude|opencode>
 devsys prime                                # orient: facts + recommended action (alias: session start --compact)
 devsys session start [--compact]            # same, full context payload
-devsys next                                 # readiness verdict (always exit 0)
+devsys next                                 # readiness verdict (always exit 0); judges ready items with claim's quality gate
 devsys project status                       # counts + risks + next
+devsys project blueprint                    # exit 0 when no blueprint is declared
 devsys workitem list [--jsonl]              # one JSON record per line
 devsys workitem get <id>                    # includes version: <64-hex>
 devsys workitem create --title T --actor A --reason R [--description D --acceptance a,b]  # [w] set acceptance criteria up front
 devsys workitem update --id <id> --acceptance a,b                     # [w] acceptance criteria (replaces the list)
 devsys workitem transition --id <id> --to <status> --actor A --reason R --expect <hash>   # [w]
-devsys workitem claim --id <id> --owner O --reason R [--expect <hash>]                    # [w]
+devsys workitem claim --id <id> --owner O --reason R [--expect <hash>]                    # [w] warns when no policy gates the item
 devsys workitem release/start/block/complete --id <id> --actor A --reason R [--expect <hash>]  # [w]
 devsys workflow check                       # validate policy files (read-only)
 devsys workflow list|get|start|next|step-complete|pause|resume|cancel --id <workitem>   # [w] instance writes
@@ -107,6 +108,17 @@ managed state / 10 knowledge stale / 11 knowledge missing.
 - ` + "`version mismatch … rerun workitem get`" + ` (exit 4): re-read the item
   and retry with the fresh hash. Never invent a hash. ` + "`--latest`" + ` is the
   explicit spelling of this path for single-operator work (still CAS).
+- ` + "`storage: version conflict`" + ` (exit 4): another writer moved the file
+  after your read (a dispatch child is the usual one behind ` + "`run fail`" + `);
+  re-read and retry, or pass ` + "`--latest`" + ` where the command offers it.
+- ` + "`quality gate not satisfied`" + ` (exit 4): the claim is refused. ` + "`devsys next`" + `
+  reports the same ready items as a ` + "`quality_blocked`" + ` risk and prints the
+  ` + "`workitem update`" + ` command that unblocks the claim; ` + "`claim`" + ` prints a
+  ` + "`warning:`" + ` line when no policy governs the item (no instance and no
+  ` + "`config.yaml default_policy`" + ` — the gates did not run).
+- Stage gate "an approved, unconsumed approval is required" with an
+  invalidation note: the earlier approval died when the work item left the
+  status it was requested from (§4.9); request a new one.
 - ` + "`no .devsys/ … run devsys init first`" + ` (exit 3): wrong directory or
   uninitialized project; find the project root first.
 - Illegal transition (exit 4): stderr lists the allowed next states.

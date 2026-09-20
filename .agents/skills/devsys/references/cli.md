@@ -11,14 +11,15 @@ devsys wire [--dry-run]                     # [w] inject the AGENTS.md disciplin
 devsys wire --skill | --check | --print-mcp <codex|claude|opencode>
 devsys prime                                # orient: facts + recommended action (alias: session start --compact)
 devsys session start [--compact]            # same, full context payload
-devsys next                                 # readiness verdict (always exit 0)
+devsys next                                 # readiness verdict (always exit 0); judges ready items with claim's quality gate
 devsys project status                       # counts + risks + next
+devsys project blueprint                    # exit 0 when no blueprint is declared
 devsys workitem list [--jsonl]              # one JSON record per line
 devsys workitem get <id>                    # includes version: <64-hex>
 devsys workitem create --title T --actor A --reason R [--description D --acceptance a,b]  # [w] set acceptance criteria up front
 devsys workitem update --id <id> --acceptance a,b                     # [w] acceptance criteria (replaces the list)
 devsys workitem transition --id <id> --to <status> --actor A --reason R --expect <hash>   # [w]
-devsys workitem claim --id <id> --owner O --reason R [--expect <hash>]                    # [w]
+devsys workitem claim --id <id> --owner O --reason R [--expect <hash>]                    # [w] warns when no policy gates the item
 devsys workitem release/start/block/complete --id <id> --actor A --reason R [--expect <hash>]  # [w]
 devsys workflow check                       # validate policy files (read-only)
 devsys workflow list|get|start|next|step-complete|pause|resume|cancel --id <workitem>   # [w] instance writes

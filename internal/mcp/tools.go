@@ -32,6 +32,9 @@ func allTools() []toolSpec {
 		// project (方案 §8.2 project_*)
 		{"project_list", []string{ProfileSession}, "", registerProjectList},
 		{"project_get", []string{ProfileSession}, TierCore, registerProjectGet},
+		// project_blueprint_get answers "no blueprint declared" as a result, so
+		// it sits with the other read-only project queries (standard tier).
+		{"project_blueprint_get", []string{ProfileSession}, "", registerProjectBlueprint},
 		{"project_create", []string{ProfileAdmin}, "", registerProjectCreate},
 		{"project_update", []string{ProfileAdmin}, "", registerProjectUpdate},
 		{"project_state_update", []string{ProfileAdmin}, "", registerProjectStateUpdate},

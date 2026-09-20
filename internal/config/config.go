@@ -108,6 +108,10 @@ type Config struct {
 	// (M5.3, 方案 §12.6). Empty means no page generator is installed, which the
 	// layer reports as the documented degradation rather than as a failure.
 	KnowledgeGenerator string `json:"knowledge_generator,omitempty"`
+	// DefaultPolicy is the workflow policy id governing work items that
+	// declare no instance of their own (方案 §4.7/§5.3). Empty keeps them
+	// ungated: gates then apply only where a work item bound a policy.
+	DefaultPolicy string `json:"default_policy,omitempty"`
 }
 
 // Metadata is what Load or Diagnose could read. A field is nil when its file
@@ -203,6 +207,11 @@ func parseConfig(rel string, data []byte) (*Config, Problems) {
 	if node, ok := values["knowledge_generator"]; ok {
 		if err := node.Decode(&c.KnowledgeGenerator); err != nil {
 			return nil, Problems{{File: rel, Field: "knowledge_generator", Reason: fmt.Sprintf("decode: %v", err)}}
+		}
+	}
+	if node, ok := values["default_policy"]; ok {
+		if err := node.Decode(&c.DefaultPolicy); err != nil {
+			return nil, Problems{{File: rel, Field: "default_policy", Reason: fmt.Sprintf("decode: %v", err)}}
 		}
 	}
 	return c, nil

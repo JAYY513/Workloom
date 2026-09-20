@@ -385,6 +385,32 @@ func MatchingGate(ctx context.Context, root, workItemID, stage, status string) (
 	return nil, ErrNotFound
 }
 
+// InvalidatedFor returns the most recently invalidated stage-gate approval
+// requested for (workItemID, stage), or ErrNotFound. It explains a
+// require_approval gate that an earlier approval used to satisfy: 方案 §4.9
+// voids an approval the moment the work item leaves the status it was
+// requested from, and the gate error should say so instead of only "an
+// approved, unconsumed approval is required".
+func InvalidatedFor(ctx context.Context, root, workItemID, stage string) (*domain.Approval, error) {
+	approvals, err := New(root).List(ctx, Filter{WorkItemID: workItemID})
+	if err != nil {
+		return nil, err
+	}
+	var newest *domain.Approval
+	for _, a := range approvals {
+		if a.Scope != ScopeStageGate || a.Stage != stage || a.InvalidatedAt == nil {
+			continue
+		}
+		if newest == nil || a.InvalidatedAt.After(*newest.InvalidatedAt) {
+			newest = a
+		}
+	}
+	if newest == nil {
+		return nil, ErrNotFound
+	}
+	return newest, nil
+}
+
 func approvalEvent(a *domain.Approval, eventType, actor, content string, now time.Time) *domain.Event {
 	ev := &domain.Event{
 		SchemaVersion: domain.SchemaVersion,

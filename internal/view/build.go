@@ -271,6 +271,7 @@ func (b *builder) progress() []*domain.WorkItem {
 		pr.Counts[wi.Status]++
 		pr.Items = append(pr.Items, itemFrom(wi))
 	}
+	facts := b.policyFacts(items)
 	pr.Readiness = next.Evaluate(next.Input{
 		Now:              b.now,
 		WorkItems:        items,
@@ -282,7 +283,10 @@ func (b *builder) progress() []*domain.WorkItem {
 		InspectionOK:     b.doc.InspectionOK,
 		InspectionNote:   b.doc.Note,
 		MetadataProblems: b.metadataProblems(),
-		PolicyProblems:   b.policyProblems(items),
+		PolicyProblems:   facts.problems,
+		PolicyIDs:        facts.ids,
+		DefaultPolicy:    b.defaultPolicy(),
+		QualityBlocks:    next.QualityBlocks(items, facts.policyOf(b.defaultPolicy())),
 		PendingApprovals: b.pendingApprovals(),
 		RecoverCommand:   recoverCommand,
 	})
@@ -305,10 +309,45 @@ func (b *builder) metadataProblems() []string {
 	return out
 }
 
-// policyProblems lists located policy failures and work items that reference a
-// policy file that does not exist; the last-known-good fallback keeps read
-// paths usable while dispatch stays blocked (M3.5).
-func (b *builder) policyProblems(items []*domain.WorkItem) []string {
+// policyFacts are the policy reads the readiness section consumes: the ids the
+// project declares, the parsed policy per id (nil when the file failed to
+// parse) and the located problems. The files are read by workflow.Load (plain
+// reads, no lock) — the last-known-good resolver refreshes a cache and so is
+// not available to a read-only view.
+type policyFacts struct {
+	ids      []string
+	parsed   map[string]*workflow.Policy
+	problems []string
+}
+
+// defaultPolicy is the project-level policy declared in .devsys/config.yaml,
+// or "" when none is set.
+func (b *builder) defaultPolicy() string {
+	if b.md == nil || b.md.Config == nil {
+		return ""
+	}
+	return strings.TrimSpace(b.md.Config.DefaultPolicy)
+}
+
+// policyOf resolves the policy governing one work item the way `devsys next`
+// judges it: the item's own instance first, else the project default.
+func (f policyFacts) policyOf(defaultPolicy string) next.PolicySource {
+	return func(wi *domain.WorkItem) (string, string, *workflow.Policy) {
+		id := defaultPolicy
+		if wi.Workflow != nil && wi.Workflow.ID != "" {
+			id = wi.Workflow.ID
+		}
+		if id == "" {
+			return "", "", nil
+		}
+		return id, "workflows/" + id + ".md", f.parsed[id]
+	}
+}
+
+// policyFacts lists located policy failures, the declared policy ids, and work
+// items that reference a policy file that does not exist; the last-known-good
+// fallback keeps read paths usable while dispatch stays blocked (M3.5).
+func (b *builder) policyFacts(items []*domain.WorkItem) policyFacts {
 	// The policy files are read by workflow.Load (plain reads, no lock); name
 	// them, because their problems change the readiness verdict.
 	if names, err := b.rd.list("workflows", ".md"); err != nil {
@@ -319,8 +358,8 @@ func (b *builder) policyProblems(items []*domain.WorkItem) []string {
 		}
 	}
 	results := workflow.Load(b.root)
+	facts := policyFacts{parsed: map[string]*workflow.Policy{}}
 	present := map[string]bool{}
-	var out []string
 	for _, res := range results {
 		name := res.File
 		if i := strings.LastIndex(name, "/"); i >= 0 {
@@ -329,18 +368,29 @@ func (b *builder) policyProblems(items []*domain.WorkItem) []string {
 		present[strings.TrimSuffix(name, ".md")] = true
 		for _, issue := range res.Issues {
 			if issue.Severity == workflow.SeverityError {
-				out = append(out, issue.String())
+				facts.problems = append(facts.problems, issue.String())
 			}
 		}
+		if !strings.HasSuffix(res.File, ".md") {
+			continue // the workflows/ directory itself, or a non-policy entry
+		}
+		id := strings.TrimSuffix(name, ".md")
+		facts.ids = append(facts.ids, id)
+		facts.parsed[id] = res.Policy
 	}
+	sort.Strings(facts.ids)
 	for _, wi := range items {
 		if wi.Workflow == nil || wi.Workflow.ID == "" || present[wi.Workflow.ID] {
 			continue
 		}
-		out = append(out, fmt.Sprintf("work item %s references missing policy %q", wi.ID, wi.Workflow.ID))
+		facts.problems = append(facts.problems, fmt.Sprintf("work item %s references missing policy %q", wi.ID, wi.Workflow.ID))
 	}
-	sort.Strings(out)
-	return out
+	if id := b.defaultPolicy(); id != "" && !present[id] {
+		facts.problems = append(facts.problems,
+			fmt.Sprintf("config.yaml default_policy %q has no .devsys/workflows/%s.md", id, id))
+	}
+	sort.Strings(facts.problems)
+	return facts
 }
 
 // pendingApprovals are the approvals still waiting for a decision; an approval

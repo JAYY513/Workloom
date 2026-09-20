@@ -217,3 +217,91 @@ func TestStaleReviewBoundary(t *testing.T) {
 		t.Errorf("fresh verification flagged stale: %+v", rep.Risks)
 	}
 }
+
+func TestQualityBlockedReadyTaskIsReportedAndExplained(t *testing.T) {
+	ready := wi("WLM-1", domain.StatusReady, 5, t0, t0)
+	rep := Evaluate(Input{Now: t0, InspectionOK: true, WorkItems: []*domain.WorkItem{ready},
+		QualityBlocks: []QualityBlock{{
+			WorkitemID: "WLM-1", PolicyID: "quick-fix", PolicyFile: "workflows/quick-fix.md",
+			Score: 0, MinScore: 40, Improvements: []string{"缺少验收标准：填写 acceptance_criteria"},
+		}}})
+
+	if rep.Verdict != VerdictConcerns {
+		t.Errorf("verdict = %q, want %q (a claim that must fail is a risk signal)", rep.Verdict, VerdictConcerns)
+	}
+	if len(rep.Risks) != 1 || rep.Risks[0].Kind != RiskQualityBlocked || rep.Risks[0].WorkitemID != "WLM-1" {
+		t.Fatalf("risks = %+v", rep.Risks)
+	}
+	for _, want := range []string{"score 0", "min_score 40", "quick-fix"} {
+		if !strings.Contains(rep.Risks[0].Detail, want) {
+			t.Errorf("detail = %q, want %q", rep.Risks[0].Detail, want)
+		}
+	}
+	// The ladder still points at the task, with the fix that unblocks it.
+	rec := rep.Next
+	if rec.Action != ActionStart || rec.WorkitemID != "WLM-1" {
+		t.Fatalf("recommendation = %+v", rec)
+	}
+	for _, want := range []string{"quality gate", "acceptance_criteria", "devsys workitem update --id WLM-1"} {
+		if !strings.Contains(rec.Reason, want) {
+			t.Errorf("reason = %q, want %q", rec.Reason, want)
+		}
+	}
+}
+
+func TestQueuedRetryKeepsTheProjectFromLookingIdle(t *testing.T) {
+	due := t0.Add(35 * time.Second)
+	retrying := wi("WLM-2", domain.StatusRetryQueued, 5, t0, t0)
+	retrying.NextAttemptAt = &due
+	rep := Evaluate(Input{Now: t0, InspectionOK: true, WorkItems: []*domain.WorkItem{retrying}})
+
+	if rep.Verdict != VerdictConcerns {
+		t.Errorf("verdict = %q, want %q", rep.Verdict, VerdictConcerns)
+	}
+	if len(rep.Risks) != 1 || rep.Risks[0].Kind != RiskRetryPending {
+		t.Fatalf("risks = %+v", rep.Risks)
+	}
+	if want := "next attempt at " + due.UTC().Format(time.RFC3339); !strings.Contains(rep.Risks[0].Detail, want) {
+		t.Errorf("detail = %q, want %q", rep.Risks[0].Detail, want)
+	}
+	rec := rep.Next
+	if rec.Action != ActionReportDone {
+		t.Fatalf("recommendation = %+v", rec)
+	}
+	for _, want := range []string{"1 work item(s) wait for a dispatch retry", due.UTC().Format(time.RFC3339), "devsys dispatch --once"} {
+		if !strings.Contains(rec.Reason, want) {
+			t.Errorf("reason = %q, want %q", rec.Reason, want)
+		}
+	}
+
+	// A due retry names the way to run it.
+	past := t0.Add(-time.Minute)
+	retrying.NextAttemptAt = &past
+	rep = Evaluate(Input{Now: t0, InspectionOK: true, WorkItems: []*domain.WorkItem{retrying}})
+	if !strings.Contains(rep.Risks[0].Detail, "due since") || !strings.Contains(rep.Risks[0].Detail, "devsys dispatch --once") {
+		t.Errorf("detail = %q, want the due retry to name the tick", rep.Risks[0].Detail)
+	}
+}
+
+func TestUnboundPolicyIsNamedWhenTheProjectDeclaresPolicies(t *testing.T) {
+	ready := wi("WLM-1", domain.StatusReady, 5, t0, t0)
+	in := Input{Now: t0, InspectionOK: true, WorkItems: []*domain.WorkItem{ready}, PolicyIDs: []string{"quick-fix"}}
+	rec := Evaluate(in).Next
+	if !strings.Contains(rec.Reason, "no workflow policy is bound to WLM-1") ||
+		!strings.Contains(rec.Reason, "no default_policy") {
+		t.Errorf("reason = %q, want the ungated work item named", rec.Reason)
+	}
+
+	// A project that declares no policy at all is not using gates: no noise.
+	rec = Evaluate(Input{Now: t0, InspectionOK: true, WorkItems: []*domain.WorkItem{ready}}).Next
+	if strings.Contains(rec.Reason, "default_policy") {
+		t.Errorf("reason = %q, want no policy-gap notice without policies", rec.Reason)
+	}
+
+	// A default policy governs the item, so there is nothing to report.
+	in.DefaultPolicy = "quick-fix"
+	rec = Evaluate(in).Next
+	if strings.Contains(rec.Reason, "not enforced") {
+		t.Errorf("reason = %q, want no notice under a default policy", rec.Reason)
+	}
+}

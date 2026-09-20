@@ -66,8 +66,7 @@ func projectYAML(id, name string, now time.Time) ([]byte, error) {
 }
 
 func configYAML(string, string, time.Time) ([]byte, error) {
-	return withHeader("# devsys 项目配置（方案 §14.2/§14.3）；业务键尚未定义,当前只接受 schema_version。\n",
-		configFile{SchemaVersion: 1})
+	return withHeader("# devsys 项目配置（方案 §14.2/§14.3）；可选项见 `devsys config check` 校验的白名单：\n# workspace_root、dispatch_command、knowledge_pages、knowledge_generator、default_policy。\n", configFile{SchemaVersion: 1})
 }
 
 func currentStateYAML(string, string, time.Time) ([]byte, error) {

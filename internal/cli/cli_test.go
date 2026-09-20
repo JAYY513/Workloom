@@ -603,33 +603,38 @@ func gatedProject(t *testing.T) (string, *workitem.Store) {
 	return repo, workitem.New(repo)
 }
 
+// createGatedWorkitem creates a ready work item bound to the gated policy.
 func createGatedWorkitem(t *testing.T, items *workitem.Store, title, description string) string {
 	t.Helper()
-	ctx := context.Background()
+	return createReadyWorkitem(t, items, readyItem(title, description, "gated"))
+}
+
+// readyItem is the base work item fixtures start from: draft, in the demo
+// project, optionally bound to a policy ("" leaves it under no instance, which
+// is how a project with policies still ends up with ungated work).
+func readyItem(title, description, policyID string) *domain.WorkItem {
 	now := time.Now().UTC()
 	wi := &domain.WorkItem{
 		ProjectID: "demo", Type: "task", Title: title, Description: description,
-		Status: domain.StatusDraft,
-		Workflow: &domain.WorkflowInstance{
-			ID: "gated", Step: "implement", StepEnteredAt: now,
-		},
+		Status:    domain.StatusDraft,
 		CreatedAt: now, UpdatedAt: now,
 	}
-	id, err := items.Create(ctx, wi, "WLM")
+	if policyID != "" {
+		wi.Workflow = &domain.WorkflowInstance{ID: policyID, Step: "implement", StepEnteredAt: now}
+	}
+	return wi
+}
+
+// createReadyWorkitem creates wi and drives it to status ready, where the
+// readiness evaluation and the claim path see it.
+func createReadyWorkitem(t *testing.T, items *workitem.Store, wi *domain.WorkItem) string {
+	t.Helper()
+	id, err := items.Create(context.Background(), wi, "WLM")
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	for _, target := range []string{domain.StatusBacklog, domain.StatusReady} {
-		_, raw, err := items.ReadSnapshot(ctx, id)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := items.Transition(ctx, id, workitem.TransitionRequest{
-			TargetStatus: target, Actor: "test", Reason: "fixture",
-		}, raw); err != nil {
-			t.Fatalf("transition %s: %v", target, err)
-		}
-	}
+	transitionTo(t, items, id, domain.StatusBacklog)
+	transitionTo(t, items, id, domain.StatusReady)
 	return id
 }
 
@@ -737,22 +742,7 @@ prompt body
 // createWorkitemWithPolicy creates a ready work item declaring policyID.
 func createWorkitemWithPolicy(t *testing.T, items *workitem.Store, policyID, title, description string) string {
 	t.Helper()
-	now := time.Now().UTC()
-	wi := &domain.WorkItem{
-		ProjectID: "demo", Type: "task", Title: title, Description: description,
-		Status: domain.StatusDraft,
-		Workflow: &domain.WorkflowInstance{
-			ID: policyID, Step: "implement", StepEnteredAt: now,
-		},
-		CreatedAt: now, UpdatedAt: now,
-	}
-	id, err := items.Create(context.Background(), wi, "WLM")
-	if err != nil {
-		t.Fatalf("create: %v", err)
-	}
-	transitionTo(t, items, id, domain.StatusBacklog)
-	transitionTo(t, items, id, domain.StatusReady)
-	return id
+	return createReadyWorkitem(t, items, readyItem(title, description, policyID))
 }
 
 func TestLastKnownGoodBlocksDispatchKeepsReadsWorking(t *testing.T) {

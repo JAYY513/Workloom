@@ -15,6 +15,10 @@ type GateEvidence struct {
 	// the stage. Until M3.7 wires the lookup it stays false, so a gate that
 	// requires approval fails closed (审批前不放行).
 	ApprovalReady bool
+	// ApprovalNote explains a missing approval when the application layer can
+	// (today: the previous approval was invalidated by 方案 §4.9). It is
+	// appended to the unmet-requirement text and never changes the verdict.
+	ApprovalNote string
 }
 
 // GateResult is the outcome of checking one stage gate.
@@ -66,7 +70,11 @@ func (p *Policy) CheckGate(stage string, ev GateEvidence) GateResult {
 		res.Missing = append(res.Missing, "at least one comment event is required")
 	}
 	if gate.RequireApproval && !ev.ApprovalReady {
-		res.Missing = append(res.Missing, "an approved, unconsumed approval is required")
+		msg := "an approved, unconsumed approval is required"
+		if ev.ApprovalNote != "" {
+			msg += " (" + ev.ApprovalNote + ")"
+		}
+		res.Missing = append(res.Missing, msg)
 	}
 	res.Allowed = len(res.Missing) == 0
 	return res

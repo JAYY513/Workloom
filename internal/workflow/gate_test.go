@@ -83,3 +83,18 @@ func TestCheckGateApprovalFailsClosedWithoutEvidence(t *testing.T) {
 		t.Fatalf("res = %+v", res)
 	}
 }
+
+func TestCheckGateCarriesTheApprovalInvalidationNote(t *testing.T) {
+	p := gatePolicy(t, "gates:\n  stages:\n    in_progress:\n      require_approval: true\n")
+	note := "approval-2 was invalidated at 2026-09-20T05:14:03Z when the work item left \"ready\" (方案 §4.9)"
+	res := p.CheckGate("in_progress", GateEvidence{ApprovalNote: note})
+	if res.Allowed || len(res.Missing) != 1 || !strings.Contains(res.Missing[0], note) {
+		t.Fatalf("res = %+v, want the note in the unmet requirement", res)
+	}
+
+	// With the approval in place the note is noise and stays out.
+	res = p.CheckGate("in_progress", GateEvidence{ApprovalReady: true, ApprovalNote: note})
+	if !res.Allowed || len(res.Missing) != 0 {
+		t.Fatalf("res = %+v, want the gate to pass", res)
+	}
+}

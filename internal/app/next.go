@@ -60,28 +60,59 @@ func (s *Service) Next(ctx context.Context) (next.Report, []*domain.WorkItem, er
 	if md != nil && md.Project != nil {
 		in.Milestones = md.Project.Milestones
 	}
+	if md != nil && md.Config != nil {
+		in.DefaultPolicy = strings.TrimSpace(md.Config.DefaultPolicy)
+	}
 	// Invalid or missing policy files are recorded risks; the last-known-good
 	// fallback keeps read paths usable while dispatch stays blocked.
 	policies := workflow.Load(s.Root)
 	present := map[string]bool{}
+	parsed := map[string]*workflow.Policy{}
 	for _, res := range policies {
 		name := res.File
 		if i := strings.LastIndex(name, "/"); i >= 0 {
 			name = name[i+1:]
 		}
-		present[strings.TrimSuffix(name, ".md")] = true
+		id := strings.TrimSuffix(name, ".md")
+		present[id] = true
+		if res.Policy != nil {
+			parsed[id] = res.Policy
+		}
 		for _, is := range res.Issues {
 			if is.Severity == workflow.SeverityError {
 				in.PolicyProblems = append(in.PolicyProblems, is.String())
 			}
 		}
 	}
-	for _, wi := range in.WorkItems {
-		if wi.Workflow == nil || wi.Workflow.ID == "" || present[wi.Workflow.ID] {
-			continue
-		}
+	in.PolicyIDs = policyIDs(policies)
+	if in.DefaultPolicy != "" && !present[in.DefaultPolicy] {
 		in.PolicyProblems = append(in.PolicyProblems,
-			fmt.Sprintf("work item %s references missing policy %q", wi.ID, wi.Workflow.ID))
+			fmt.Sprintf("config.yaml default_policy %q has no .devsys/workflows/%s.md", in.DefaultPolicy, in.DefaultPolicy))
 	}
+	for _, wi := range in.WorkItems {
+		if wi.Workflow != nil && wi.Workflow.ID != "" && !present[wi.Workflow.ID] {
+			in.PolicyProblems = append(in.PolicyProblems,
+				fmt.Sprintf("work item %s references missing policy %q", wi.ID, wi.Workflow.ID))
+		}
+	}
+	// Same judgement `workitem claim` applies (§4.7 领取质量门): a ready task the
+	// gate would reject is a risk signal, never a clean PASS. The policy bodies
+	// come from the plain reads above — the last-known-good resolver refreshes a
+	// cache, and `next` must not write. A file that failed to parse is already a
+	// risk, and a claim under it is refused before the quality gate runs.
+	in.QualityBlocks = next.QualityBlocks(in.WorkItems, func(wi *domain.WorkItem) (string, string, *workflow.Policy) {
+		id := in.DefaultPolicy
+		if wi.Workflow != nil && wi.Workflow.ID != "" {
+			id = wi.Workflow.ID
+		}
+		if id == "" {
+			return "", "", nil
+		}
+		policy := parsed[id]
+		if policy == nil {
+			return "", "", nil
+		}
+		return id, policy.File, policy
+	})
 	return next.Evaluate(in), items, nil
 }

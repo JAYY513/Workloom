@@ -228,7 +228,7 @@ devsys next
 devsys dispatch --once --actor alice --reason "run ready work"
 ```
 
-Quality and stage gates apply only once the work item has a workflow instance bound (the `workflow start` above); the `quick-fix` example asks for a description of at least 40 characters and acceptance criteria. `--acceptance` can be given at `create`, or added later with `workitem update --acceptance a,b`.
+Quality and stage gates apply whenever a work item has an effective policy: a bound workflow instance (the `workflow start` above) or the project-level `default_policy` in `.devsys/config.yaml`. The `quick-fix` example asks for a description of at least 40 characters and acceptance criteria. `--acceptance` can be given at `create`, or added later with `workitem update --acceptance a,b`. With neither in place, `claim` prints a `warning:` line saying the gates did not run (only when the project declares policy files); `devsys next` judges ready work items with the same quality gate `claim` applies, reports a `quality_blocked` risk, and names the command that unblocks the claim.
 
 `--latest` is intended for an operator explicitly requesting execution against the current version. Automated integrations should read the version hash first and then write with `--expect <hash>`.
 
@@ -277,7 +277,7 @@ Human approval ← Review & verify ← Record evidence ← Isolated worktree
 ```text
 .devsys/
 ├── project.yaml          # Project identity and metadata
-├── config.yaml           # Dispatch, knowledge, and workspace settings
+├── config.yaml           # Dispatch, knowledge, workspace, and default-policy settings
 ├── workitems/            # Work items and workflow instances
 ├── workflows/            # Markdown workflow policies
 ├── approvals/            # Approval requests and consumption state

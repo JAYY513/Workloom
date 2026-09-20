@@ -85,8 +85,30 @@ jobs:
           set -euo pipefail
           # The binary must report the version being published.
           ./dist/devsys-linux-amd64 --version | grep -F "$VERSION"
+          # checksums.txt must be GNU text mode: "<sha256>  <file>". macOS
+          # `shasum` writes the binary marker "<sha256> *<file>", which
+          # `sha256sum -c` happily accepts — that is how v0.1.0 shipped a file
+          # the install scripts could not parse. Fail the release instead of
+          # discovering it at install time.
+          if grep -Eq '^[0-9a-f]{64} \*' dist/checksums.txt; then
+            echo "checksums.txt uses shasum's binary marker ('<hash> *<file>'); regenerate it with sha256sum" >&2
+            exit 1
+          fi
+          bad="$(grep -Evc '^[0-9a-f]{64}  [^ ]+$' dist/checksums.txt || true)"
+          if [ "$bad" != "0" ]; then
+            echo "checksums.txt has $bad line(s) outside '<sha256>  <file>' form" >&2
+            exit 1
+          fi
           # The checksum file must match the files it names.
           (cd dist && sha256sum -c checksums.txt)
+          # And every published asset must be named in it.
+          for asset in dist/devsys-*; do
+            base="$(basename "$asset")"
+            if ! grep -qF "  $base" dist/checksums.txt; then
+              echo "checksums.txt does not list $base" >&2
+              exit 1
+            fi
+          done
           ls -l dist
 
       - name: Publish the release

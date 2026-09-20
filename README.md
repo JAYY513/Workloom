@@ -217,7 +217,7 @@ devsys next
 devsys dispatch --once --actor alice --reason "run ready work"
 ```
 
-质量门与阶段门在**工作项绑定工作流实例后**才参与判定（上面的 `workflow start`），`quick-fix` 示例要求描述 ≥40 字、有验收标准等；`--acceptance` 可在 `create` 直接给，也可事后用 `workitem update --acceptance a,b` 补。
+质量门与阶段门在**工作项有生效策略时**才参与判定：绑定实例（上面的 `workflow start`）或项目级 `default_policy`（见 `.devsys/config.yaml`）。`quick-fix` 示例要求描述 ≥40 字、有验收标准等；`--acceptance` 可在 `create` 直接给，也可事后用 `workitem update --acceptance a,b` 补。两者都没有时 `claim` 会打印一行 `warning:` 说明门禁未生效（项目里有策略文件才提示）；`devsys next` 用与 `claim` 相同的质量门判定，被拦的 ready 任务会进 `quality_blocked` 风险并给出补救命令。
 
 `--latest` 适合操作者明确要求基于最新版本执行的场景；自动化集成应先读版本哈希，再用 `--expect <hash>` 写入。
 
@@ -266,7 +266,7 @@ devsys workspace serve --port 8080
 ```text
 .devsys/
 ├── project.yaml          # 项目标识与元数据
-├── config.yaml           # 调度、知识、工作区配置
+├── config.yaml           # 调度、知识、工作区与默认策略配置
 ├── workitems/            # 工作项与工作流实例
 ├── workflows/            # Markdown 工作流策略
 ├── approvals/            # 审批请求与消费状态

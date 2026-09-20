@@ -259,3 +259,22 @@ func TestParseProfiles(t *testing.T) {
 		t.Fatal("empty profile name accepted")
 	}
 }
+
+// TestProjectBlueprintToolAnswersWithoutADeclaration pins that the project
+// blueprint query (方案 §8.2 project_*) is exposed at all, and that a project
+// declaring no blueprint gets a result with a null artifact instead of a
+// failure — the same answer the CLI gives.
+func TestProjectBlueprintToolAnswersWithoutADeclaration(t *testing.T) {
+	root, _ := runFixture(t)
+	cs := session(t, Config{Root: root, ServerVersion: "test", Tier: TierStandard})
+	res, err := cs.CallTool(context.Background(), &mcpsdk.CallToolParams{Name: "project_blueprint_get", Arguments: map[string]any{}})
+	if err != nil {
+		t.Fatalf("tools/call: %v", err)
+	}
+	if res.IsError {
+		t.Fatalf("project_blueprint_get reported an error: %+v", res)
+	}
+	if got := payload[blueprintResult](t, res); got.Artifact != nil {
+		t.Fatalf("artifact = %+v, want null", got.Artifact)
+	}
+}

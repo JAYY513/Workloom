@@ -179,6 +179,9 @@ func (s *Service) ProjectStateUpdate(ctx context.Context, req UpdateStateRequest
 }
 
 // ProjectBlueprint returns the artifact the project declares as its blueprint.
+// A project that declares none is a normal state, not a failure: the caller
+// gets (nil, nil) and reports "no blueprint declared" as a result, so a
+// read-only query exits 0 the way `project status` and `next` do.
 func (s *Service) ProjectBlueprint(ctx context.Context) (*domain.Artifact, error) {
 	md, err := s.project()
 	if err != nil {
@@ -186,7 +189,7 @@ func (s *Service) ProjectBlueprint(ctx context.Context) (*domain.Artifact, error
 	}
 	id := md.Project.BlueprintArtifactID
 	if id == "" {
-		return nil, Preconditionf("project %s declares no blueprint_artifact_id", md.Project.ID)
+		return nil, nil
 	}
 	art, err := record.New(s.Root).GetArtifact(ctx, id)
 	if err != nil {

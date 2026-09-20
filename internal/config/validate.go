@@ -70,6 +70,10 @@ var configSpec = fileSpec{fields: []fieldSpec{
 	// knowledge_generator is the page generator command a refresh runs
 	// (M5.3, 方案 §12.6); empty means no generator is installed.
 	{name: "knowledge_generator", kind: kindString},
+	// default_policy is the workflow policy that governs work items declaring
+	// no instance of their own (方案 §4.7/§5.3 project-level default); empty
+	// leaves such work items ungated, exactly as before the key existed.
+	{name: "default_policy", kind: kindString},
 }}
 
 var currentFields = []fieldSpec{

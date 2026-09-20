@@ -10,11 +10,13 @@ package next
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"workloom/internal/domain"
 	"workloom/internal/reconcile"
 	"workloom/internal/storage"
+	"workloom/internal/workflow"
 )
 
 // Verdicts (方案 §7.4): only these three outcomes exist.
@@ -41,6 +43,8 @@ const (
 	RiskUnreadableLease   = "unreadable_lease"
 	RiskStaleReview       = "stale_review"
 	RiskBlocked           = "blocked"
+	RiskQualityBlocked    = "quality_blocked"
+	RiskRetryPending      = "retry_pending"
 	RiskInvalidMetadata   = "invalid_metadata"
 	RiskInvalidPolicy     = "invalid_policy"
 	RiskPendingApproval   = "pending_approval"
@@ -70,7 +74,67 @@ type Input struct {
 	// PendingApprovals are approvals waiting for a decision; the work items
 	// behind them join the "waiting for review" priority class (§7.4 优先级 2).
 	PendingApprovals []PendingApproval
-	RecoverCommand   string
+	// QualityBlocks are the ready work items whose claim the effective policy's
+	// quality gate would refuse (§4.7 领取质量门). The application layer derives
+	// them with the same judgement claim applies, so a PASS verdict never
+	// recommends a claim that is certain to fail.
+	QualityBlocks []QualityBlock
+	// DefaultPolicy is the project-level policy (.devsys/config.yaml) governing
+	// work items that declare no instance; PolicyIDs are the policies the
+	// project declares. Together they tell whether a recommended work item
+	// would run with no gate at all.
+	DefaultPolicy  string
+	PolicyIDs      []string
+	RecoverCommand string
+}
+
+// QualityBlock is a ready work item whose claim the quality gate would refuse.
+type QualityBlock struct {
+	WorkitemID string `json:"workitem_id"`
+	PolicyID   string `json:"policy_id"`
+	PolicyFile string `json:"policy_file"`
+	Score      int    `json:"score"`
+	MinScore   int    `json:"min_score"`
+	// Improvements are the scored-zero components the caller must fix; they
+	// mirror the claim rejection's problem list.
+	Improvements []string `json:"improvements,omitempty"`
+}
+
+// PolicySource reports the policy governing one work item: its id ("" when no
+// policy governs the item), the file it was read from, and the parsed policy
+// (nil when the file could not be parsed).
+type PolicySource func(wi *domain.WorkItem) (id, file string, policy *workflow.Policy)
+
+// QualityBlocks returns the ready work items whose claim the quality gate
+// would refuse, scored with the same deterministic judgement `workitem claim`
+// applies (§4.7 领取质量门). Callers pass the effective policy per item, so an
+// item guarded by the project default_policy is judged exactly like one with
+// its own instance.
+func QualityBlocks(items []*domain.WorkItem, source PolicySource) []QualityBlock {
+	var out []QualityBlock
+	for _, wi := range sortedWorkItems(items, orderByID) {
+		if wi.Status != domain.StatusReady {
+			continue
+		}
+		id, file, policy := source(wi)
+		if policy == nil {
+			continue // no policy governs the item: nothing gates the claim
+		}
+		quality := workflow.ScoreQuality(workflow.QualityInput{
+			Title:              wi.Title,
+			Description:        wi.Description,
+			AcceptanceCriteria: wi.AcceptanceCriteria,
+		})
+		if !policy.QualityGateBlocks(quality) {
+			continue
+		}
+		out = append(out, QualityBlock{
+			WorkitemID: wi.ID, PolicyID: id, PolicyFile: file,
+			Score: quality.Score, MinScore: policy.QualityGate.MinScore,
+			Improvements: quality.Improvements,
+		})
+	}
+	return out
 }
 
 // PendingApproval names one approval waiting for a decision.
@@ -136,6 +200,19 @@ func Evaluate(in Input) Report {
 			}
 			rep.Risks = append(rep.Risks, Risk{Kind: RiskBlocked, WorkitemID: wi.ID, Detail: detail})
 		}
+	}
+	// A ready work item the quality gate would reject is a risk signal, not a
+	// silent PASS: the verdict and the recommendation must agree with what
+	// `workitem claim` will answer.
+	for _, qb := range in.QualityBlocks {
+		rep.Risks = append(rep.Risks, Risk{
+			Kind: RiskQualityBlocked, WorkitemID: qb.WorkitemID,
+			Detail: fmt.Sprintf("claim would fail the quality gate of %s: score %d is below min_score %d",
+				qb.policyName(), qb.Score, qb.MinScore),
+		})
+	}
+	for _, wi := range retryQueue(in) {
+		rep.Risks = append(rep.Risks, Risk{Kind: RiskRetryPending, WorkitemID: wi.ID, Detail: retryDetail(wi, in.Now)})
 	}
 	for _, p := range in.MetadataProblems {
 		rep.Risks = append(rep.Risks, Risk{Kind: RiskInvalidMetadata, Detail: p})
@@ -208,14 +285,21 @@ func recommend(in Input) Recommendation {
 	if wi := firstWhere(in.WorkItems, func(wi *domain.WorkItem) bool {
 		return wi.Status == domain.StatusReady
 	}, orderDispatch); wi != nil {
-		return Recommendation{Action: ActionStart, WorkitemID: wi.ID, Reason: "highest-priority ready task"}
+		reason := "highest-priority ready task"
+		if qb, ok := in.qualityBlock(wi.ID); ok {
+			// The ladder still points at the task to work on; the reason says
+			// what to do first, because claiming it as-is is a known failure.
+			reason = fmt.Sprintf("ready, but the quality gate would refuse the claim (score %d is below min_score %d): %s; fix it first with `devsys workitem update --id %s`",
+				qb.Score, qb.MinScore, strings.Join(qb.Improvements, "；"), wi.ID)
+		}
+		return Recommendation{Action: ActionStart, WorkitemID: wi.ID, Reason: reason + in.policyGap(wi)}
 	}
 	if wi := firstWhere(in.WorkItems, func(wi *domain.WorkItem) bool {
 		return wi.Status == domain.StatusBacklog
 	}, orderCreated); wi != nil {
 		return Recommendation{
 			Action: ActionStartBacklog, WorkitemID: wi.ID,
-			Reason: "oldest backlog task; promote it to ready first",
+			Reason: "oldest backlog task; promote it to ready first" + in.policyGap(wi),
 		}
 	}
 	for _, m := range in.Milestones {
@@ -226,7 +310,93 @@ func recommend(in Input) Recommendation {
 			}
 		}
 	}
-	return Recommendation{Action: ActionReportDone, Reason: "no runnable work item remains"}
+	reason := "no runnable work item remains"
+	if queue := retryQueue(in); len(queue) > 0 {
+		// Idle is wrong while a retry waits: the next scheduling tick is the
+		// work, and it will not happen on its own (§4.8).
+		reason = fmt.Sprintf("%s; %d work item(s) wait for a dispatch retry (%s) — run `devsys dispatch --once`",
+			reason, len(queue), retrySchedule(queue))
+	}
+	return Recommendation{Action: ActionReportDone, Reason: reason}
+}
+
+// qualityBlock returns the recorded quality-gate block for a work item.
+func (in Input) qualityBlock(id string) (QualityBlock, bool) {
+	for _, qb := range in.QualityBlocks {
+		if qb.WorkitemID == id {
+			return qb, true
+		}
+	}
+	return QualityBlock{}, false
+}
+
+// policyGap tells the reader that a recommended work item is under no policy
+// at all while the project declares policies and sets no default: the quality
+// gate and the stage gates did not run for it. Work items the project never
+// intended to gate (no policy files at all) stay unannotated.
+func (in Input) policyGap(wi *domain.WorkItem) string {
+	if len(in.PolicyIDs) == 0 || in.DefaultPolicy != "" {
+		return ""
+	}
+	if wi.Workflow != nil && wi.Workflow.ID != "" {
+		return ""
+	}
+	return fmt.Sprintf("; no workflow policy is bound to %s and config.yaml declares no default_policy, so quality and stage gates are not enforced", wi.ID)
+}
+
+// policyName names the policy behind a quality block for humans.
+func (qb QualityBlock) policyName() string {
+	if qb.PolicyID != "" {
+		return qb.PolicyID
+	}
+	return "the workflow policy"
+}
+
+// retryQueue lists retry_queued work items, soonest attempt first.
+func retryQueue(in Input) []*domain.WorkItem {
+	var out []*domain.WorkItem
+	for _, wi := range in.WorkItems {
+		if wi != nil && wi.Status == domain.StatusRetryQueued {
+			out = append(out, wi)
+		}
+	}
+	sort.SliceStable(out, func(i, j int) bool { return orderRetry(out[i], out[j]) })
+	return out
+}
+
+func orderRetry(a, b *domain.WorkItem) bool {
+	switch {
+	case a.NextAttemptAt == nil && b.NextAttemptAt == nil:
+		return a.ID < b.ID
+	case a.NextAttemptAt == nil:
+		return false
+	case b.NextAttemptAt == nil:
+		return true
+	case !a.NextAttemptAt.Equal(*b.NextAttemptAt):
+		return a.NextAttemptAt.Before(*b.NextAttemptAt)
+	}
+	return a.ID < b.ID
+}
+
+// retryDetail describes one queued retry. next_attempt_at is a recorded fact,
+// not an estimate, so naming it keeps §7.4's "no time estimates" rule.
+func retryDetail(wi *domain.WorkItem, now time.Time) string {
+	if wi.NextAttemptAt == nil {
+		return "retry queued; no next_attempt_at recorded"
+	}
+	at := wi.NextAttemptAt.UTC()
+	if at.After(now) {
+		return fmt.Sprintf("retry queued; next attempt at %s", at.Format(time.RFC3339))
+	}
+	return fmt.Sprintf("retry queued and due since %s; run `devsys dispatch --once`", at.Format(time.RFC3339))
+}
+
+// retrySchedule summarizes a retry queue for a recommendation reason.
+func retrySchedule(queue []*domain.WorkItem) string {
+	if queue[0].NextAttemptAt == nil {
+		return "no next_attempt_at recorded"
+	}
+	return "next attempt at " + queue[0].NextAttemptAt.UTC().Format(time.RFC3339)
 }
 
 func isReviewFamily(status string) bool {

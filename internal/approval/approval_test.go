@@ -329,3 +329,55 @@ func TestConcurrentRequestsGetUniqueIDs(t *testing.T) {
 		seen[id] = true
 	}
 }
+
+func TestInvalidatedForReturnsTheNewestOfTheStage(t *testing.T) {
+	root, s := newStore(t)
+	ctx := context.Background()
+	at := time.Now().UTC().Truncate(time.Second)
+	invalidate := func(wi, status string, when time.Time) {
+		t.Helper()
+		st, err := storage.Open(root, storage.Options{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := st.Write(ctx, func(tx *storage.Tx) error {
+			evs, ierr := InvalidateForStatusTx(tx, st.DevsysDir(), wi, status, when, "left "+status)
+			if ierr != nil {
+				return ierr
+			}
+			return events.AppendBatchTx(tx, evs)
+		}); err != nil {
+			t.Fatalf("invalidate: %v", err)
+		}
+	}
+
+	first := mustRequest(t, s, RequestOptions{
+		WorkItemID: "WLM-1", Stage: domain.StatusInProgress, RequestedStatus: domain.StatusReady,
+		ProjectID: "demo", RequestedBy: "requester", Reason: "first",
+	})
+	mustApprove(t, s, first.ID)
+	invalidate("WLM-1", domain.StatusReady, at)
+	second := mustRequest(t, s, RequestOptions{
+		WorkItemID: "WLM-1", Stage: domain.StatusInProgress, RequestedStatus: domain.StatusReady,
+		ProjectID: "demo", RequestedBy: "requester", Reason: "second",
+	})
+	mustApprove(t, s, second.ID)
+	invalidate("WLM-1", domain.StatusReady, at.Add(time.Minute))
+
+	got, err := InvalidatedFor(ctx, root, "WLM-1", domain.StatusInProgress)
+	if err != nil {
+		t.Fatalf("InvalidatedFor: %v", err)
+	}
+	if got.ID != second.ID {
+		t.Errorf("approval = %s, want the newest invalidated one %s", got.ID, second.ID)
+	}
+
+	// Another stage, another work item and approvals that are still usable are
+	// not answers to this question.
+	if _, err := InvalidatedFor(ctx, root, "WLM-1", domain.StatusReview); !errors.Is(err, ErrNotFound) {
+		t.Errorf("other stage err = %v, want ErrNotFound", err)
+	}
+	if _, err := InvalidatedFor(ctx, root, "WLM-2", domain.StatusInProgress); !errors.Is(err, ErrNotFound) {
+		t.Errorf("other work item err = %v, want ErrNotFound", err)
+	}
+}

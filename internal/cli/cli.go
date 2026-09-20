@@ -641,6 +641,14 @@ func runProject(stdout io.Writer, opts options, rest []string) error {
 				Artifact *domain.Artifact `json:"artifact"`
 			}{OK: true, Artifact: art})
 		}
+		if art == nil {
+			// A project that declares no blueprint is a normal state: report
+			// it as a result (exit 0), like `project status` and `next`.
+			if !opts.quiet {
+				fmt.Fprintln(stdout, "no blueprint declared (project.yaml blueprint_artifact_id is empty)")
+			}
+			return nil
+		}
 		if !opts.quiet {
 			fmt.Fprintf(stdout, "%s\t%s\tv%d\t%s\n", art.ID, art.Name, art.Version, art.Path)
 		}
@@ -928,13 +936,17 @@ func runWorkitem(stdout io.Writer, opts options, rest []string) error {
 		if err != nil {
 			return err
 		}
+		if res.Notice != "" && !opts.quiet {
+			fmt.Fprintf(stdout, "warning: %s\n", res.Notice)
+		}
 		if opts.json {
 			return json.NewEncoder(stdout).Encode(struct {
 				OK     bool   `json:"ok"`
 				RunID  string `json:"run_id"`
 				Token  string `json:"token"`
 				Status string `json:"status"`
-			}{true, res.RunID, res.Token, res.Status})
+				Notice string `json:"notice,omitempty"`
+			}{true, res.RunID, res.Token, res.Status, res.Notice})
 		}
 		if !opts.quiet {
 			fmt.Fprintf(stdout, "claimed %s: run=%s token=%s\n", *id, res.RunID, res.Token)

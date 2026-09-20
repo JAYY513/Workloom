@@ -40,4 +40,11 @@ darwin/amd64
 darwin/arm64
 MATRIX
 (cd "$out" && sha256sum devsys-* > checksums.txt)
+# Keep the file in GNU text mode: "<sha256>  <file>". macOS `shasum` writes
+# "<sha256> *<file>", which `sha256sum -c` accepts but the install scripts
+# (and this repo's release check) do not want — v0.1.0 shipped such a file.
+if grep -Eq '^[0-9a-f]{64} \*' "$out/checksums.txt"; then
+  echo "$out/checksums.txt is not in GNU text mode; regenerate it with sha256sum" >&2
+  exit 1
+fi
 echo "wrote $out/checksums.txt ($(wc -l < "$out/checksums.txt") files)"

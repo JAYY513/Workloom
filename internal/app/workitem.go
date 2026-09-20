@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"workloom/internal/approval"
 	"workloom/internal/config"
@@ -34,6 +35,35 @@ type ClaimView struct {
 	RunID      string `json:"run_id"`
 	Token      string `json:"token"`
 	Status     string `json:"status"`
+	// Notice carries a non-fatal warning for the caller to surface: today the
+	// "no workflow policy governs this work item" gap (gates not enforced).
+	Notice string `json:"notice,omitempty"`
+}
+
+// claimNotice explains that a claimed work item is governed by no policy at
+// all while the project declares policies: the quality gate and the stage
+// gates then never ran, which is exactly how a claim could bypass them.
+func (s *Service) claimNotice(ctx context.Context, wi *domain.WorkItem) string {
+	res, err := s.policyForWorkItem(ctx, wi)
+	if err == nil && res.Policy != nil {
+		return ""
+	}
+	id := ""
+	if wi.Workflow != nil {
+		id = wi.Workflow.ID
+	}
+	if id != "" {
+		// A bound policy that cannot be resolved already blocks the claim
+		// (checkClaimQuality runs first); nothing to add here.
+		return ""
+	}
+	if len(policyIDs(workflow.Load(s.Root))) == 0 {
+		// No policy exists in the project: nothing is being bypassed.
+		return ""
+	}
+	return fmt.Sprintf(
+		"%s has no workflow instance and .devsys/config.yaml declares no default_policy: quality and stage gates are not enforced for it; bind one with `devsys workflow start --id %s --policy <id>` or set `default_policy` in .devsys/config.yaml",
+		wi.ID, wi.ID)
 }
 
 // WorkitemFilter narrows a work item listing. Zero values mean no filter.
@@ -256,7 +286,10 @@ func (s *Service) WorkitemClaim(ctx context.Context, id, owner, reason, expect s
 	if err != nil {
 		return ClaimView{}, s.storeError(err)
 	}
-	return ClaimView{WorkitemID: id, RunID: res.RunID, Token: res.Token, Status: res.Status}, nil
+	return ClaimView{
+		WorkitemID: id, RunID: res.RunID, Token: res.Token, Status: res.Status,
+		Notice: s.claimNotice(ctx, wi),
+	}, nil
 }
 
 // WorkitemRelease releases an active lease (owner and token must match).
@@ -438,6 +471,14 @@ func (s *Service) storeError(err error) error {
 		errors.Is(err, run.ErrNotFound) {
 		return Preconditionf("%v", err)
 	}
+	if errors.Is(err, storage.ErrConflict) {
+		// 方案 §15.2 乐观并发: the record moved after the caller's snapshot.
+		// Name the way out, because "version conflict" alone leaves the
+		// operator guessing (a dispatch child writing the run is the usual
+		// cause of a failure reported by `run fail`).
+		return Invalidf(KindWorkitem, nil,
+			"%v (the file changed after your read: re-read it and retry, or repeat with --latest where the command offers it)", err)
+	}
 	return Invalidf(KindWorkitem, nil, "%v", err)
 }
 
@@ -446,23 +487,65 @@ func versionHash(raw []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// policyForWorkItem resolves the workflow policy a work item declares, or an
-// empty resolution when it declares none. The current file is re-validated on
-// every call; a failing file falls back to the last-known-good snapshot with
-// the current failure reported in Resolution.Issue (实施计划 M3.5).
+// policyForWorkItem resolves the workflow policy governing a work item: the
+// policy its instance declares, else the project-level default_policy from
+// .devsys/config.yaml (方案 §4.7/§5.3 — a project-wide fallback so claiming
+// first and binding a policy later is not a way around the gates). A work item
+// under neither resolves to an empty Resolution. The current file is
+// re-validated on every call; a failing file falls back to the last-known-good
+// snapshot with the current failure reported in Resolution.Issue (实施计划 M3.5).
 func (s *Service) policyForWorkItem(ctx context.Context, wi *domain.WorkItem) (workflow.Resolution, error) {
-	if wi.Workflow == nil {
-		return workflow.Resolution{}, nil
+	id := ""
+	if wi.Workflow != nil {
+		id = wi.Workflow.ID
+		if id == "" {
+			return workflow.Resolution{}, Internalf("work item %s has a workflow instance without an id", wi.ID)
+		}
 	}
-	id := wi.Workflow.ID
 	if id == "" {
-		return workflow.Resolution{}, Internalf("work item %s has a workflow instance without an id", wi.ID)
+		md, problems := config.Load(s.Root)
+		for _, p := range problems {
+			if p.File != config.ConfigFile {
+				continue
+			}
+			// config.yaml carries default_policy: an unreadable file would
+			// silently drop the project's gates, so refuse instead of
+			// claiming under no policy (方案 §5.3: 配置错误阻塞新任务派发).
+			return workflow.Resolution{}, fmt.Errorf(
+				"%s is invalid: %s; claims stay blocked until the file is fixed (`devsys config check`)", config.ConfigFile, p.String())
+		}
+		if md == nil || md.Config == nil {
+			return workflow.Resolution{}, nil
+		}
+		id = strings.TrimSpace(md.Config.DefaultPolicy)
+		if id == "" {
+			return workflow.Resolution{}, nil
+		}
 	}
 	res, err := workflow.Resolve(ctx, s.Root, id)
 	if err != nil {
 		return workflow.Resolution{}, err
 	}
 	return res, nil
+}
+
+// policyIDs names the workflow policies a workflow.Load result carries, by
+// file name. A file that fails to parse still counts: the project intends that
+// workflow, and Load reports the parse error separately.
+func policyIDs(policies []workflow.FileResult) []string {
+	var out []string
+	for _, res := range policies {
+		if !strings.HasSuffix(res.File, ".md") {
+			continue // the workflows/ directory itself, or a non-policy entry
+		}
+		name := res.File
+		if i := strings.LastIndex(name, "/"); i >= 0 {
+			name = name[i+1:]
+		}
+		out = append(out, strings.TrimSuffix(name, ".md"))
+	}
+	sort.Strings(out)
+	return out
 }
 
 // gateEvidence collects the evidence a stage gate consumes: artifact names,
@@ -504,10 +587,25 @@ func (s *Service) gateEvidence(ctx context.Context, wi *domain.WorkItem, stage s
 	default:
 		return workflow.GateEvidence{}, "", s.evidenceError(err)
 	}
+	note := ""
+	if approvalID == "" {
+		// The usual reason a stage that needed an approval no longer has one:
+		// 方案 §4.9 voided it when the work item left the status it was
+		// requested from. Say so, or the operator sees only "approval
+		// required" after having approved.
+		if stale, serr := approval.InvalidatedFor(ctx, s.Root, wi.ID, stage); serr == nil {
+			note = fmt.Sprintf(
+				"%s was invalidated at %s when the work item left %q (方案 §4.9); request a new approval with `devsys approval request`",
+				stale.ID, stale.InvalidatedAt.UTC().Format(time.RFC3339), stale.RequestedStatus)
+		} else if !errors.Is(serr, approval.ErrNotFound) {
+			return workflow.GateEvidence{}, "", s.evidenceError(serr)
+		}
+	}
 	return workflow.GateEvidence{
 		ArtifactNames: byName,
 		CommentCount:  len(comments),
 		ApprovalReady: approvalID != "",
+		ApprovalNote:  note,
 	}, approvalID, nil
 }
 
