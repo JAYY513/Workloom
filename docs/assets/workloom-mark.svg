@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-labelledby="title desc">
+  <title id="title">Workloom mark</title>
+  <desc id="desc">Interwoven blue and violet strands forming a W</desc>
+  <defs>
+    <linearGradient id="blue" x1="20" y1="20" x2="140" y2="140" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#38BDF8"/>
+      <stop offset="1" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="violet" x1="140" y1="20" x2="20" y2="140" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A78BFA"/>
+      <stop offset="1" stop-color="#7C3AED"/>
+    </linearGradient>
+    <filter id="shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#111827" flood-opacity=".22"/>
+    </filter>
+  </defs>
+  <rect x="12" y="12" width="136" height="136" rx="34" fill="#0B1020" filter="url(#shadow)"/>
+  <path d="M35 43v38c0 24 12 36 30 36s30-12 30-36V43" fill="none" stroke="url(#blue)" stroke-width="14" stroke-linecap="round"/>
+  <path d="M65 43v38c0 24 12 36 30 36s30-12 30-36V43" fill="none" stroke="url(#violet)" stroke-width="14" stroke-linecap="round"/>
+  <path d="M65 43v38" fill="none" stroke="#60A5FA" stroke-width="14" stroke-linecap="round"/>
+</svg>
