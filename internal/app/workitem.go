@@ -15,6 +15,7 @@ import (
 	"workloom/internal/config"
 	"workloom/internal/domain"
 	"workloom/internal/events"
+	"workloom/internal/harness"
 	"workloom/internal/record"
 	"workloom/internal/run"
 	"workloom/internal/storage"
@@ -78,6 +79,9 @@ func (s *Service) WorkitemList(ctx context.Context, filter WorkitemFilter) ([]*d
 	items, err := s.items().List(ctx)
 	if err != nil {
 		return nil, s.storeError(err)
+	}
+	if items == nil {
+		items = []*domain.WorkItem{}
 	}
 	if filter.Status == "" && filter.Type == "" && filter.Parent == "" {
 		return items, nil
@@ -217,6 +221,12 @@ func (s *Service) WorkitemUpdate(ctx context.Context, id string, req UpdateWorki
 		wi.AssignedAgent = trimmedOrNil(req.AssignedAgent)
 	}
 	if req.AssignedHarness != nil {
+		name := strings.TrimSpace(*req.AssignedHarness)
+		if name != "" {
+			if _, ok := harness.ByName(name); !ok {
+				return WorkItemView{}, Usagef("unknown harness %q (known: %s)", name, strings.Join(harness.Names(), ", "))
+			}
+		}
 		wi.AssignedHarness = trimmedOrNil(req.AssignedHarness)
 	}
 	if req.Constraints != nil {

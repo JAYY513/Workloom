@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"flag"
+	"fmt"
 	"io"
 	"strings"
 
@@ -74,6 +75,20 @@ func runMCPServe(opts options, stdin io.Reader, stdout, stderr io.Writer, rest [
 		ServerVersion: version.String(),
 		Instructions:  mcpInstructions,
 		Log:           stderr,
+	}
+	if names := mcp.VisibleTools(cfg); len(names) == 0 {
+		// Serving zero tools is a silent no-op server: the usual cause is a
+		// read-only profile paired with the core tier, so name the way out.
+		word, verb := "profile", "has"
+		if len(profiles) > 1 {
+			word, verb = "profiles", "have"
+		}
+		quoted := make([]string, 0, len(profiles))
+		for _, p := range profiles {
+			quoted = append(quoted, fmt.Sprintf("%q", p))
+		}
+		return errUsage("mcp serve: %s %s %s no tools in tier %s; use --tier standard",
+			word, strings.Join(quoted, ", "), verb, tier)
 	}
 	if err := mcp.Run(context.Background(), cfg, nopReadCloser{stdin}, nopWriteCloser{stdout}); err != nil {
 		return errInternal("mcp serve: %v", err)

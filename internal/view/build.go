@@ -272,6 +272,7 @@ func (b *builder) progress() []*domain.WorkItem {
 		pr.Items = append(pr.Items, itemFrom(wi))
 	}
 	facts := b.policyFacts(items)
+	dead, inflight := b.attemptSignals(items)
 	pr.Readiness = next.Evaluate(next.Input{
 		Now:              b.now,
 		WorkItems:        items,
@@ -286,6 +287,9 @@ func (b *builder) progress() []*domain.WorkItem {
 		PolicyProblems:   facts.problems,
 		PolicyIDs:        facts.ids,
 		DefaultPolicy:    b.defaultPolicy(),
+		HasBlueprint:     b.md != nil && b.md.Project != nil && strings.TrimSpace(b.md.Project.BlueprintArtifactID) != "",
+		DeadAttempts:     dead,
+		InFlight:         inflight,
 		QualityBlocks:    next.QualityBlocks(items, facts.policyOf(b.defaultPolicy())),
 		PendingApprovals: b.pendingApprovals(),
 		RecoverCommand:   recoverCommand,
@@ -492,9 +496,49 @@ func (b *builder) streamTorn(id string) bool {
 	return err == nil && !status.Complete
 }
 
-// records fills the decision, finding and artifact logs. Decisions and
-// artifacts carry a timestamp and are listed newest first; findings have none
-// in the domain model (M1.5), so they stay in identifier order.
+// attemptSignals is the same classification `devsys next` uses, so the view's
+// readiness section does not disagree with the CLI.
+func (b *builder) attemptSignals(items []*domain.WorkItem) (dead, inflight []next.AttemptRef) {
+	names, err := b.rd.list("runs", ".yaml")
+	if err != nil {
+		return nil, nil
+	}
+	latest := map[string]*domain.Run{}
+	for _, name := range names {
+		var run domain.Run
+		if _, err := b.rd.read("runs/"+name, &run); err != nil {
+			continue
+		}
+		cur := latest[run.WorkItemID]
+		if cur == nil || run.StartedAt.After(cur.StartedAt) || (run.StartedAt.Equal(cur.StartedAt) && run.ID > cur.ID) {
+			latest[run.WorkItemID] = &run
+		}
+	}
+	streamLines := map[string]int{}
+	for _, r := range latest {
+		streamLines[r.ID] = b.streamLineCount(r.ID)
+	}
+	return next.ClassifyAttempts(b.now, items, latest, streamLines)
+}
+
+func (b *builder) streamLineCount(id string) int {
+	rel := "runs/" + id + ".jsonl"
+	if !b.rd.exists(rel) {
+		return 0
+	}
+	data, err := os.ReadFile(filepath.Join(b.rd.devsys, filepath.FromSlash(rel)))
+	if err != nil {
+		return 0
+	}
+	n := 0
+	for _, c := range data {
+		if c == '\n' {
+			n++
+		}
+	}
+	return n
+}
+
 func (b *builder) records() {
 	mark := b.rd.mark()
 	rec := &b.m.Records

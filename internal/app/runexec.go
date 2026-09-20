@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 	"workloom/internal/run"
 	"workloom/internal/storage"
 	"workloom/internal/workflow"
+	"workloom/internal/workitem"
 	"workloom/internal/workspace"
 )
 
@@ -91,12 +93,6 @@ func (s *Service) RunExec(ctx context.Context, req RunExecRequest) (RunExecView,
 	if req.RunID == "" {
 		return RunExecView{}, Usagef("run exec requires a run id")
 	}
-	if req.Harness == "" && len(req.Argv) == 0 {
-		return RunExecView{}, Usagef("run exec requires a command (devsys run exec --id <run-id> -- <command...>) or --harness <name>")
-	}
-	if req.Harness != "" && len(req.Argv) > 0 {
-		return RunExecView{}, Usagef("run exec takes either --harness or a command, not both")
-	}
 	if req.Actor == "" || req.Reason == "" {
 		return RunExecView{}, Usagef("run exec requires actor and reason")
 	}
@@ -110,6 +106,12 @@ func (s *Service) RunExec(ctx context.Context, req RunExecRequest) (RunExecView,
 	}
 	if isTerminalRun(r.Status) {
 		return RunExecView{}, Preconditionf("run %s already ended as %s", r.ID, r.Status)
+	}
+	if req.Harness == "" && len(req.Argv) == 0 {
+		return s.execRefuse(ctx, r, req, Usagef("run exec requires a command (devsys run exec --id <run-id> -- <command...>) or --harness <name>"))
+	}
+	if req.Harness != "" && len(req.Argv) > 0 {
+		return s.execRefuse(ctx, r, req, Usagef("run exec takes either --harness or a command, not both"))
 	}
 	wi, err := s.WorkitemGet(ctx, r.WorkItemID)
 	if err != nil {
@@ -129,10 +131,10 @@ func (s *Service) RunExec(ctx context.Context, req RunExecRequest) (RunExecView,
 		}
 		root, err := workspace.Root(s.Root, configured)
 		if err != nil {
-			return RunExecView{}, Preconditionf("%v", err)
+			return s.execRefuse(ctx, r, req, Preconditionf("%v", err))
 		}
 		if err := workspace.Validate(root, dir); err != nil {
-			return RunExecView{}, Preconditionf("run workspace: %v", err)
+			return s.execRefuse(ctx, r, req, Preconditionf("run workspace: %v", err))
 		}
 	}
 
@@ -158,6 +160,9 @@ func (s *Service) RunExec(ctx context.Context, req RunExecRequest) (RunExecView,
 	// an explicit round is only accepted when it is that next one, so a
 	// session cannot replay a round or slip past the bound.
 	round := nextRound(lines)
+	// An explicit round is only accepted when it is the stream's next one:
+	// these are shape errors about one round, not start failures, so the run
+	// stays open — completion is still what ends it.
 	if req.Round > 0 && req.Round != round {
 		return RunExecView{}, Preconditionf(
 			"run %s is at round %d; --round %d would not continue the session", r.ID, round, req.Round)
@@ -173,23 +178,23 @@ func (s *Service) RunExec(ctx context.Context, req RunExecRequest) (RunExecView,
 	adapter := harness.Adapter(harness.NewShell())
 	if req.Harness != "" {
 		if strings.EqualFold(strings.TrimSpace(req.Harness), "shell") {
-			return RunExecView{}, Usagef("the shell adapter runs an explicit command: pass one after --, or set dispatch_command for dispatched attempts")
+			return s.execRefuse(ctx, r, req, Usagef("the shell adapter runs an explicit command: pass one after --, or set dispatch_command for dispatched attempts"))
 		}
 		chosen, ok := harness.ByName(req.Harness)
 		if !ok {
-			return RunExecView{}, Usagef("unknown harness %q (known: %s)", req.Harness, strings.Join(harness.Names(), ", "))
+			return s.execRefuse(ctx, r, req, Usagef("unknown harness %q (known: %s)", req.Harness, strings.Join(harness.Names(), ", ")))
 		}
 		avail, err := chosen.Probe(ctx)
 		if err != nil {
-			return RunExecView{}, Internalf("probe harness %q: %v", req.Harness, err)
+			return s.execRefuse(ctx, r, req, Internalf("probe harness %q: %v", req.Harness, err))
 		}
 		if !avail.Installed {
-			return RunExecView{}, Preconditionf("harness %q is not available: %s", req.Harness, avail.Detail)
+			return s.execRefuse(ctx, r, req, Preconditionf("harness %q is not available: %s", req.Harness, avail.Detail))
 		}
 		adapter = chosen
 	}
 	if err := adapter.Prepare(ctx, harness.Workspace{Path: dir, Branch: r.Workspace.Branch, Worktree: r.Workspace.Worktree}); err != nil {
-		return RunExecView{}, Preconditionf("%v", err)
+		return s.execRefuse(ctx, r, req, Preconditionf("%v", err))
 	}
 	promptView, err := s.RunPrompt(ctx, RunPromptRequest{RunID: r.ID, Round: round, Write: true})
 	if err != nil {
@@ -211,7 +216,7 @@ func (s *Service) RunExec(ctx context.Context, req RunExecRequest) (RunExecView,
 		cmd, err = adapter.Command(harness.Request{Command: req.Argv, Dir: dir, Env: env, Timeout: req.Timeout})
 	}
 	if err != nil {
-		return RunExecView{}, Preconditionf("%v", err)
+		return s.execRefuse(ctx, r, req, Preconditionf("%v", err))
 	}
 	commandLine := quoteArgv(cmd.Argv)
 
@@ -444,6 +449,92 @@ func (s *Service) advancePhase(ctx context.Context, stream *runStream, runID, ph
 	if err := stream.write(streamRecord{Type: "phase", Phase: phase}, false); err != nil {
 		return Internalf("write run stream: %v", err)
 	}
+	return nil
+}
+
+// execRefuse records a refusal that happened before the run stream opened,
+// then returns the original usage/precondition error so the CLI exit code
+// stays 2/3. The tick does not wait for this: the child records the failure
+// into the managed run.
+func (s *Service) execRefuse(ctx context.Context, r *domain.Run, req RunExecRequest, cause error) (RunExecView, error) {
+	if recErr := s.refuseAttempt(ctx, r, req, cause); recErr != nil {
+		return RunExecView{}, recErr
+	}
+	return RunExecView{}, cause
+}
+
+// refuseAttempt fails the managed run, emits run_failed, and queues a retry
+// while the lease still exists (the same path retrySweep uses). Ad-hoc exec
+// without a lease only records the failure.
+func (s *Service) refuseAttempt(ctx context.Context, r *domain.Run, req RunExecRequest, cause error) error {
+	if cause == nil {
+		return nil
+	}
+	note := cause.Error()
+	now := s.now()
+	fresh, raw, err := readRun(ctx, s, r.ID)
+	if err != nil {
+		return err
+	}
+	if !isTerminalRun(fresh.Status) {
+		fresh.Status = RunFailed
+		fresh.FinishedAt = &now
+		if req.Harness != "" {
+			fresh.Agent.Harness = req.Harness
+		}
+		if req.Model != "" {
+			fresh.Agent.Model = req.Model
+		}
+		fresh.Result.Errors = append(fresh.Result.Errors, note)
+		if fresh.Result.Summary == nil {
+			sum := note
+			fresh.Result.Summary = &sum
+		}
+		if err := run.New(s.Root).Update(ctx, fresh, raw); err != nil {
+			return s.storeError(err)
+		}
+	}
+	if err := events.New(s.Root).Append(ctx, &domain.Event{
+		Type:      "run_failed",
+		Subject:   domain.Reference{Type: "run", ID: r.ID},
+		ProjectID: r.ProjectID,
+		Actor:     req.Actor,
+		Related:   []domain.Reference{{Type: "workitem", ID: r.WorkItemID}},
+		Content:   note,
+		Time:      now,
+	}); err != nil {
+		return s.storeError(err)
+	}
+	wi, err := s.items().Get(ctx, r.WorkItemID)
+	if err != nil {
+		return nil
+	}
+	if wi.Status != domain.StatusInProgress {
+		return nil
+	}
+	lease, err := s.items().LeaseInspection(ctx, r.WorkItemID)
+	if err != nil {
+		if errors.Is(err, workitem.ErrNotClaimed) {
+			return nil
+		}
+		return nil
+	}
+	if lease.RunID != "" && lease.RunID != r.ID {
+		return nil
+	}
+	runs, err := run.New(s.Root).List(ctx)
+	if err != nil {
+		return nil
+	}
+	res, polErr := s.policyForWorkItem(ctx, wi)
+	if polErr != nil {
+		return nil
+	}
+	policy := (*workflow.Policy)(nil)
+	if res.Policy != nil {
+		policy = res.Policy
+	}
+	_, _ = s.queueNextAttempt(ctx, wi, lease, len(runsFor(runs, r.WorkItemID)), policy, note, DispatchRequest{Actor: req.Actor, Reason: req.Reason})
 	return nil
 }
 

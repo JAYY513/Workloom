@@ -143,6 +143,23 @@ func NewServer(cfg Config) *mcpsdk.Server {
 	return server
 }
 
+// VisibleTools lists the tool names NewServer would register for cfg — the
+// same profile∧tier conjunction — so the CLI can refuse to start a server
+// whose filter leaves nothing to serve instead of spinning a silent no-op.
+func VisibleTools(cfg Config) []string {
+	tier := cfg.Tier
+	if tier == "" {
+		tier = DefaultTier()
+	}
+	var names []string
+	for _, spec := range allTools() {
+		if visible(spec.profiles, cfg.Profiles) && visibleTier(spec.tier, tier) {
+			names = append(names, spec.name)
+		}
+	}
+	return names
+}
+
 // Run serves the protocol over the given streams until the client closes
 // them. Nil streams mean the process standard streams (stdio transport).
 func Run(ctx context.Context, cfg Config, in io.ReadCloser, out io.WriteCloser) error {

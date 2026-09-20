@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"workloom/internal/domain"
+	"workloom/internal/events"
 	"workloom/internal/harness"
 	"workloom/internal/workitem"
 )
@@ -16,10 +17,52 @@ func harnessByName(name string) (harness.Adapter, bool) { return harness.ByName(
 // workitemStore is the store the fixtures write through.
 func workitemStore(root string) *workitem.Store { return workitem.New(root) }
 
+func assertRunRefused(t *testing.T, svc *Service, workitemID, runID, wantErr string) {
+	t.Helper()
+	view, err := svc.RunGet(context.Background(), runID)
+	if err != nil {
+		t.Fatalf("run get: %v", err)
+	}
+	if view.Run.Status != RunFailed {
+		t.Fatalf("run status = %q, want failed", view.Run.Status)
+	}
+	found := false
+	for _, e := range view.Run.Result.Errors {
+		if strings.Contains(e, wantErr) {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("run errors = %v, want %q", view.Run.Result.Errors, wantErr)
+	}
+	evs, err := events.New(svc.Root).Read(context.Background(), events.Filter{Type: "run_failed"})
+	if err != nil {
+		t.Fatalf("events: %v", err)
+	}
+	ok := false
+	for _, ev := range evs {
+		if ev.Subject.ID == runID {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		t.Fatalf("no run_failed event for %s", runID)
+	}
+	wi, err := svc.items().Get(context.Background(), workitemID)
+	if err != nil {
+		t.Fatalf("work item: %v", err)
+	}
+	if wi.Status != domain.StatusRetryQueued {
+		t.Fatalf("work item status = %s, want retry_queued (the lease must not be left unclaimed in_progress)", wi.Status)
+	}
+}
+
 // A declared harness that is not installed is refused with the probe's own
 // words: devsys never quietly runs a different harness.
 func TestRunExecRefusesUnavailableHarness(t *testing.T) {
-	_, svc, _, runID := verifyFixture(t)
+	_, svc, workitemID, runID := verifyFixture(t)
 	// claude is the one harness this machine does not have; the assertion is
 	// written against the probe so the test stays honest if that changes.
 	if adapter, ok := harnessByName("claude"); ok {
@@ -36,24 +79,28 @@ func TestRunExecRefusesUnavailableHarness(t *testing.T) {
 	if !strings.Contains(err.Error(), "not available") {
 		t.Fatalf("error = %v, want the probe's explanation", err)
 	}
+	assertRunRefused(t, svc, workitemID, runID, "not available")
 }
 
 func TestRunExecRejectsUnknownOrMisusedHarness(t *testing.T) {
-	_, svc, _, runID := verifyFixture(t)
-	if _, err := svc.RunExec(context.Background(), RunExecRequest{
-		RunID: runID, Harness: "no-such-harness", Actor: "ops", Reason: "attempt",
-	}); err == nil || !strings.Contains(err.Error(), "unknown harness") {
-		t.Fatalf("error = %v, want an unknown-harness usage error", err)
+	cases := []struct {
+		name string
+		req  RunExecRequest
+		want string
+	}{
+		{"unknown", RunExecRequest{Harness: "no-such-harness", Actor: "ops", Reason: "attempt"}, "unknown harness"},
+		{"shell", RunExecRequest{Harness: "shell", Actor: "ops", Reason: "attempt"}, "explicit command"},
+		{"both", RunExecRequest{Harness: "codex", Argv: []string{"echo", "hi"}, Actor: "ops", Reason: "attempt"}, "not both"},
 	}
-	if _, err := svc.RunExec(context.Background(), RunExecRequest{
-		RunID: runID, Harness: "shell", Actor: "ops", Reason: "attempt",
-	}); err == nil || !strings.Contains(err.Error(), "explicit command") {
-		t.Fatalf("error = %v, want the shell adapter pointed at -- <command>", err)
-	}
-	if _, err := svc.RunExec(context.Background(), RunExecRequest{
-		RunID: runID, Harness: "codex", Argv: []string{"echo", "hi"}, Actor: "ops", Reason: "attempt",
-	}); err == nil || !strings.Contains(err.Error(), "not both") {
-		t.Fatalf("error = %v, want the harness/argv conflict", err)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, svc, workitemID, runID := verifyFixture(t)
+			tc.req.RunID = runID
+			if _, err := svc.RunExec(context.Background(), tc.req); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error = %v, want %q", err, tc.want)
+			}
+			assertRunRefused(t, svc, workitemID, runID, tc.want)
+		})
 	}
 }
 
@@ -88,5 +135,66 @@ func TestDispatchUsesAssignedHarness(t *testing.T) {
 	}
 	if report.Started[0].Command != "harness:codex" {
 		t.Fatalf("reported command = %q, want the harness named", report.Started[0].Command)
+	}
+	view, err := svc.RunGet(context.Background(), report.Started[0].RunID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if view.Run.Agent.Harness != "codex" {
+		t.Fatalf("run harness = %q, want it stamped after spawn", view.Run.Agent.Harness)
+	}
+}
+
+func assignHarness(t *testing.T, root, id, name string) {
+	t.Helper()
+	items := workitemStore(root)
+	wi, raw, err := items.ReadSnapshot(context.Background(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := name
+	wi.AssignedHarness = &n
+	if err := items.Update(context.Background(), wi, raw); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDispatchRefusesShellAssignedHarnessWithoutClaiming(t *testing.T) {
+	root, svc := dispatchFixture(t, "", &domain.WorkItem{Title: "shellish", Priority: 5})
+	assignHarness(t, root, "WLM-1", "shell")
+	report, err := svc.Dispatch(context.Background(), DispatchRequest{Actor: "ops", Reason: "tick", Spawn: (&recorder{}).spawn})
+	if err == nil {
+		t.Fatalf("dispatch started a shell harness: %+v", report)
+	}
+	if !strings.Contains(err.Error(), "explicit command") && !strings.Contains(err.Error(), "started nothing") {
+		t.Fatalf("error = %v, want the shell adapter refused", err)
+	}
+	wi := itemState(t, root, "WLM-1")
+	if wi.SchedulingState == domain.SchedulingClaimed || wi.SchedulingState == domain.SchedulingRunning {
+		t.Fatalf("the item was claimed anyway: %s/%s", wi.Status, wi.SchedulingState)
+	}
+}
+
+func TestDispatchRefusesUnknownAssignedHarnessWithoutClaiming(t *testing.T) {
+	root, svc := dispatchFixture(t, "", &domain.WorkItem{Title: "unknown", Priority: 5})
+	assignHarness(t, root, "WLM-1", "no-such-harness")
+	report, err := svc.Dispatch(context.Background(), DispatchRequest{Actor: "ops", Reason: "tick", Spawn: (&recorder{}).spawn})
+	if err == nil {
+		t.Fatalf("dispatch started an unknown harness: %+v", report)
+	}
+	if !strings.Contains(err.Error(), "unknown harness") && !strings.Contains(err.Error(), "started nothing") {
+		t.Fatalf("error = %v, want unknown harness refused", err)
+	}
+	wi := itemState(t, root, "WLM-1")
+	if wi.SchedulingState == domain.SchedulingClaimed || wi.SchedulingState == domain.SchedulingRunning {
+		t.Fatalf("the item was claimed anyway: %s/%s", wi.Status, wi.SchedulingState)
+	}
+}
+
+func TestWorkitemUpdateRejectsUnknownHarness(t *testing.T) {
+	_, svc := dispatchFixture(t, "", &domain.WorkItem{Title: "one", Priority: 5})
+	bad := "nope"
+	if _, err := svc.WorkitemUpdate(context.Background(), "WLM-1", UpdateWorkitemRequest{AssignedHarness: &bad}); err == nil || !strings.Contains(err.Error(), "unknown harness") {
+		t.Fatalf("error = %v, want unknown harness", err)
 	}
 }

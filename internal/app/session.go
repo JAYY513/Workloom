@@ -112,6 +112,9 @@ func (s *Service) SessionStart(ctx context.Context, req SessionRequest) (Session
 		State: md.Project.CurrentState,
 	}
 	view.CurrentWorkitems = []SessionWorkitem{}
+	// Next leaves items nil only when it did not list them (pending
+	// transactions or a limited inspection). An empty project is [] and
+	// must not be reported as "state unavailable".
 	if items == nil {
 		view.Notices = append(view.Notices, "work item state unavailable: readiness inspection is limited (see the readiness risks)")
 	} else {

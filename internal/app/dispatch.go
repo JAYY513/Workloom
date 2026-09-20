@@ -15,6 +15,7 @@ import (
 	"workloom/internal/dispatch"
 	"workloom/internal/domain"
 	"workloom/internal/events"
+	"workloom/internal/harness"
 	"workloom/internal/knowledge"
 	"workloom/internal/reconcile"
 	"workloom/internal/retry"
@@ -178,7 +179,7 @@ func (s *Service) Dispatch(ctx context.Context, req DispatchRequest) (DispatchRe
 			// failure) is reported and the queue proceeds; only a broken
 			// environment stops the tick.
 			var appErr *Error
-			if errors.As(err, &appErr) && (appErr.Class() == KindPrecondition || appErr.Class() == KindInvalid) {
+			if errors.As(err, &appErr) && (appErr.Kind == KindUsage || appErr.Class() == KindPrecondition || appErr.Class() == KindInvalid) {
 				rep.Notices = append(rep.Notices, fmt.Sprintf("%s did not start: %v", decision.WorkitemID, err))
 				refused[decision.WorkitemID] = err.Error()
 				continue
@@ -285,6 +286,13 @@ func anyHarnessAssigned(items []*domain.WorkItem) bool {
 }
 
 func (s *Service) dispatchOne(ctx context.Context, workitemID, command string, projectIDValue string, req DispatchRequest, spawn AttemptSpawner) (DispatchedAttempt, error) {
+	wi, err := s.items().Get(ctx, workitemID)
+	if err != nil {
+		return DispatchedAttempt{}, s.storeError(err)
+	}
+	if err := s.preflightAttempt(ctx, wi, command, req.Spawn == nil); err != nil {
+		return DispatchedAttempt{}, err
+	}
 	claim, err := s.WorkitemClaim(ctx, workitemID, dispatchOwner, req.Reason, "")
 	if err != nil {
 		return DispatchedAttempt{}, err
@@ -301,7 +309,7 @@ func (s *Service) dispatchOne(ctx context.Context, workitemID, command string, p
 	logRel := filepath.ToSlash(filepath.Join(".devsys", "local", "runs", claim.RunID+".exec.log"))
 	argv := []string{"run", "exec", "--id", claim.RunID, "--actor", req.Actor, "--reason", req.Reason}
 	harnessName := ""
-	if wi, err := s.items().Get(ctx, workitemID); err == nil && wi.AssignedHarness != nil {
+	if wi.AssignedHarness != nil {
 		harnessName = strings.TrimSpace(*wi.AssignedHarness)
 	}
 	if harnessName != "" {
@@ -316,6 +324,11 @@ func (s *Service) dispatchOne(ctx context.Context, workitemID, command string, p
 	if err != nil {
 		s.releaseFailedClaim(ctx, workitemID, claim.Token, req, err)
 		return DispatchedAttempt{}, Internalf("dispatch %s: start attempt: %v", workitemID, err)
+	}
+	if harnessName != "" {
+		// The attempt is already running; losing the stamp is not a start
+		// failure and must not release the claim.
+		_ = s.recordAgent(ctx, claim.RunID, harnessName, "")
 	}
 	if err := events.New(s.Root).Append(ctx, &domain.Event{
 		Type:      "run_dispatched",
@@ -332,6 +345,41 @@ func (s *Service) dispatchOne(ctx context.Context, workitemID, command string, p
 		WorkitemID: workitemID, RunID: claim.RunID, Workspace: ws.Path,
 		Command: dispatchCommandLine(harnessName, command), PID: pid, Log: logRel,
 	}, nil
+}
+
+// preflightAttempt refuses a candidate before claiming it, so a shell-without-
+// command or missing harness never occupies the concurrency cap. Probe runs
+// only for a real child process: tests inject spawners and must not require
+// the named CLI to be installed.
+func (s *Service) preflightAttempt(ctx context.Context, wi *domain.WorkItem, command string, probe bool) error {
+	name := ""
+	if wi.AssignedHarness != nil {
+		name = strings.TrimSpace(*wi.AssignedHarness)
+	}
+	if name == "" {
+		if strings.TrimSpace(command) == "" {
+			return Preconditionf("dispatch has no harness and no dispatch_command")
+		}
+		return nil
+	}
+	if strings.EqualFold(name, "shell") {
+		return Usagef("the shell adapter runs an explicit command: pass one after --, or set dispatch_command for dispatched attempts")
+	}
+	adapter, ok := harness.ByName(name)
+	if !ok {
+		return Usagef("unknown harness %q (known: %s)", name, strings.Join(harness.Names(), ", "))
+	}
+	if !probe {
+		return nil
+	}
+	avail, err := adapter.Probe(ctx)
+	if err != nil {
+		return Internalf("probe harness %q: %v", name, err)
+	}
+	if !avail.Installed {
+		return Preconditionf("harness %q is not available: %s", name, avail.Detail)
+	}
+	return nil
 }
 
 // dispatchOwner is the identity a tick claims under: claims are attributed to

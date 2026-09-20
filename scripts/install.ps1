@@ -65,14 +65,17 @@ try {
   New-Item -ItemType Directory -Force -Path $dest | Out-Null
   Copy-Item -Force (Join-Path $tmp $asset) (Join-Path $dest "devsys.exe")
   & (Join-Path $dest "devsys.exe") --version
-  $inPath = ($env:Path -split ';') -contains $dest
-  if (-not $inPath) {
-    if ($AddToPath) {
-      [Environment]::SetEnvironmentVariable("Path", "$env:Path;$dest", "User")
-      Write-Output "added $dest to user PATH (reopen terminal)"
-    } else {
-      Write-Output "add to PATH: $dest (rerun with -AddToPath to set automatically)"
-    }
+  $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+  if ($null -eq $userPath) { $userPath = "" }
+  $inPath = ($userPath -split ';' | ForEach-Object { $_.Trim() }) -contains $dest
+  if ($inPath) {
+    Write-Output "already on user PATH: $dest"
+  } elseif ($AddToPath) {
+    if ($userPath -eq "") { $newPath = $dest } else { $newPath = "$userPath;$dest" }
+    [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
+    Write-Output "added $dest to user PATH (reopen terminal)"
+  } else {
+    Write-Output "add to PATH: $dest (rerun with -AddToPath to set automatically)"
   }
 } finally {
   Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue

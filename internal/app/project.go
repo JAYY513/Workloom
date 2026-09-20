@@ -40,22 +40,38 @@ func (s *Service) ProjectGet(ctx context.Context) (ProjectView, error) {
 }
 
 // UpdateProjectRequest patches project metadata. Nil fields stay untouched;
-// Expect is the version hash from ProjectGet.
+// a pointer to an empty string clears the field; Expect is the version hash
+// from ProjectGet.
 type UpdateProjectRequest struct {
-	Name         *string
-	Description  *string
-	Status       *string
-	CurrentPhase *string
-	Expect       string
+	Name                *string
+	Description         *string
+	Status              *string
+	CurrentPhase        *string
+	BlueprintArtifactID *string
+	Expect              string
 }
 
 // ProjectUpdate applies a metadata patch under the version guard.
 func (s *Service) ProjectUpdate(ctx context.Context, req UpdateProjectRequest) (ProjectView, error) {
-	if req.Name == nil && req.Description == nil && req.Status == nil && req.CurrentPhase == nil {
+	if req.Name == nil && req.Description == nil && req.Status == nil && req.CurrentPhase == nil && req.BlueprintArtifactID == nil {
 		return ProjectView{}, Usagef("project update requires at least one field to change")
 	}
 	if req.Name != nil && strings.TrimSpace(*req.Name) == "" {
 		return ProjectView{}, Usagef("name must not be empty")
+	}
+	if req.BlueprintArtifactID != nil {
+		id := strings.TrimSpace(*req.BlueprintArtifactID)
+		if id != "" {
+			if !record.KindArtifact.ValidID(id) {
+				return ProjectView{}, Usagef("blueprint artifact id %q is not a valid artifact id", id)
+			}
+			if _, err := record.New(s.Root).GetArtifact(ctx, id); err != nil {
+				if errors.Is(err, record.ErrNotFound) {
+					return ProjectView{}, Preconditionf("artifact %q not found; register it first (`devsys artifact register --path <file> --name <name>`)", id)
+				}
+				return ProjectView{}, s.storeError(err)
+			}
+		}
 	}
 	if _, err := s.project(); err != nil {
 		return ProjectView{}, err
@@ -91,6 +107,9 @@ func (s *Service) ProjectUpdate(ctx context.Context, req UpdateProjectRequest) (
 		}
 		if req.CurrentPhase != nil {
 			proj.CurrentPhase = *req.CurrentPhase
+		}
+		if req.BlueprintArtifactID != nil {
+			proj.BlueprintArtifactID = strings.TrimSpace(*req.BlueprintArtifactID)
 		}
 		proj.UpdatedAt = now
 		return tx.PutYAML("project.yaml", &proj, storage.ExpectHash(storage.HashBytes(data)))

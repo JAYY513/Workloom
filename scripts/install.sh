@@ -38,17 +38,29 @@ download() { # download <url> <dest>
 # A private repository's release assets need authentication: an anonymous
 # curl/wget only sees a 404. `gh`, when installed and logged in, can fetch
 # them, so try it first and fall back to the anonymous download otherwise.
+# gh's own stderr is kept: when it fails, its error is the evidence the
+# operator needs (auth, network, missing tag).
 gh_download() { # gh_download <asset-name> <dest>
   command -v gh >/dev/null || return 1
   gh auth status >/dev/null 2>&1 || return 1
-  gh release download "$tag" --repo "$repo" --pattern "$1" --output "$2" --clobber >/dev/null 2>&1
+  gh release download "$tag" --repo "$repo" --pattern "$1" --output "$2" --clobber >/dev/null
 }
+# Every failure path prints exactly one actionable line. The explicit `if !`
+# guards matter: this function runs under `fallback_build || exit 1`, and
+# set -e is suspended inside functions invoked in a || context — a bare
+# failing `git clone` would otherwise fall through to the build step.
 fallback_build() {
-  command -v go >/dev/null || { echo 'download failed and no Go for fallback build' >&2; return 1; }
-  command -v git >/dev/null || { echo 'download failed and no git for fallback build' >&2; return 1; }
-  echo "download failed; falling back to git clone + go build"
-  git -c advice.detachedHead=false clone -q --branch "$tag" --depth 1 "https://github.com/${repo}.git" "$tmp/src"
-  (cd "$tmp/src" && GOPROXY=off GOFLAGS=-mod=vendor go build -o "$tmp/$asset" ./cmd/devsys)
+  command -v go >/dev/null || { echo 'install failed: download failed and go is not installed; install Go or download the release asset manually' >&2; return 1; }
+  command -v git >/dev/null || { echo 'install failed: download failed and git is not installed; install git or download the release asset manually' >&2; return 1; }
+  echo "download failed; falling back to git clone + go build" >&2
+  if ! git -c advice.detachedHead=false clone -q --branch "$tag" --depth 1 "https://github.com/${repo}.git" "$tmp/src"; then
+    echo "install failed: could not clone ${repo} (tag ${tag} missing, repo private, or network down); if the repo is private run: gh auth login" >&2
+    return 1
+  fi
+  if ! (cd "$tmp/src" && GOPROXY=off GOFLAGS=-mod=vendor go build -o "$tmp/$asset" ./cmd/devsys); then
+    echo "install failed: go build failed for ${repo}@${tag}" >&2
+    return 1
+  fi
 }
 fetched=0
 if gh_download "$asset" "$tmp/$asset" && gh_download "checksums.txt" "$tmp/checksums.txt"; then

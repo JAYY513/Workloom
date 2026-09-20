@@ -125,11 +125,12 @@ func registerProjectCreate(s *mcpsdk.Server, cfg Config) {
 // --- project_update ------------------------------------------------------
 
 type projectUpdateInput struct {
-	Name         *string `json:"name,omitempty" jsonschema:"new project name"`
-	Description  *string `json:"description,omitempty" jsonschema:"new description"`
-	Status       *string `json:"status,omitempty" jsonschema:"new project status"`
-	CurrentPhase *string `json:"current_phase,omitempty" jsonschema:"new current phase"`
-	Expect       string  `json:"expect" jsonschema:"version hash from project_get (required: read before you write)"`
+	Name                *string `json:"name,omitempty" jsonschema:"new project name"`
+	Description         *string `json:"description,omitempty" jsonschema:"new description"`
+	Status              *string `json:"status,omitempty" jsonschema:"new project status"`
+	CurrentPhase        *string `json:"current_phase,omitempty" jsonschema:"new current phase"`
+	BlueprintArtifactID *string `json:"blueprint_artifact_id,omitempty" jsonschema:"artifact id to declare as the project blueprint (empty string clears; the id must already be registered)"`
+	Expect              string  `json:"expect" jsonschema:"version hash from project_get (required: read before you write)"`
 }
 
 func registerProjectUpdate(s *mcpsdk.Server, cfg Config) {
@@ -139,7 +140,8 @@ func registerProjectUpdate(s *mcpsdk.Server, cfg Config) {
 	}, func(ctx context.Context, req *mcpsdk.CallToolRequest, in projectUpdateInput) (*mcpsdk.CallToolResult, app.ProjectView, error) {
 		view, err := cfg.service().ProjectUpdate(ctx, app.UpdateProjectRequest{
 			Name: in.Name, Description: in.Description, Status: in.Status, CurrentPhase: in.CurrentPhase,
-			Expect: in.Expect,
+			BlueprintArtifactID: in.BlueprintArtifactID,
+			Expect:              in.Expect,
 		})
 		if err != nil {
 			return fail[app.ProjectView](err)

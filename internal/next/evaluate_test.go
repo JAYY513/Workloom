@@ -25,12 +25,59 @@ func kinds(rep Report) map[string]bool {
 }
 
 func TestVerdictPassAndReportDone(t *testing.T) {
-	rep := Evaluate(Input{Now: t0, InspectionOK: true})
+	rep := Evaluate(Input{
+		Now: t0, InspectionOK: true,
+		WorkItems: []*domain.WorkItem{wi("WLM-1", domain.StatusDone, 0, t0, t0)},
+	})
 	if rep.Verdict != VerdictPass || len(rep.Risks) != 0 {
 		t.Fatalf("rep = %+v", rep)
 	}
 	if rep.Next.Action != ActionReportDone {
 		t.Errorf("next = %+v", rep.Next)
+	}
+}
+
+func TestEmptyProjectConcerns(t *testing.T) {
+	rep := Evaluate(Input{Now: t0, InspectionOK: true})
+	if rep.Verdict != VerdictConcerns {
+		t.Fatalf("verdict = %s, want CONCERNS", rep.Verdict)
+	}
+	if !kinds(rep)[RiskEmptyProject] {
+		t.Fatalf("risks = %+v, want empty_project", rep.Risks)
+	}
+	if !strings.Contains(rep.Risks[0].Detail, CreateWorkitemCommand) {
+		t.Fatalf("detail = %q, want the create command", rep.Risks[0].Detail)
+	}
+	if rep.Next.Action != ActionReportDone || !strings.Contains(rep.Next.Reason, CreateWorkitemCommand) {
+		t.Fatalf("next = %+v, want report_done naming create", rep.Next)
+	}
+}
+
+func TestDeadAttemptIsRecoverClaim(t *testing.T) {
+	rep := Evaluate(Input{
+		Now: t0, InspectionOK: true,
+		WorkItems:    []*domain.WorkItem{wi("WLM-1", domain.StatusInProgress, 0, t0, t0)},
+		DeadAttempts: []AttemptRef{{WorkitemID: "WLM-1", RunID: "run-1", Detail: "attempt run-1 produced no run evidence"}},
+	})
+	if rep.Verdict != VerdictConcerns || !kinds(rep)[RiskDeadAttempt] {
+		t.Fatalf("rep = %+v", rep)
+	}
+	if rep.Next.Action != ActionRecoverClaim || rep.Next.WorkitemID != "WLM-1" {
+		t.Fatalf("next = %+v, want recover_claim WLM-1", rep.Next)
+	}
+}
+
+func TestInFlightKeepsReportDone(t *testing.T) {
+	rep := Evaluate(Input{
+		Now: t0, InspectionOK: true,
+		WorkItems: []*domain.WorkItem{wi("WLM-1", domain.StatusInProgress, 0, t0, t0)},
+		InFlight:  []AttemptRef{{WorkitemID: "WLM-1", RunID: "run-1", Detail: "attempt run-1 is running"}},
+	})
+	if rep.Verdict != VerdictConcerns || !kinds(rep)[RiskInFlight] {
+		t.Fatalf("rep = %+v", rep)
+	}
+	if rep.Next.Action != ActionReportDone || !strings.Contains(rep.Next.Reason, "in flight") {
+		t.Fatalf("next = %+v, want report_done naming in-flight", rep.Next)
 	}
 }
 

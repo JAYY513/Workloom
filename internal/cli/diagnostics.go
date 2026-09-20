@@ -124,8 +124,16 @@ func runDoctor(stdout io.Writer, opts options, rest []string) error {
 	if err != nil {
 		return errInternal("doctor: %v", err)
 	}
+	// The report — including invalid_files — goes on stdout in both modes;
+	// the exit code alone carries "untrusted managed state" (方案 §14.1).
 	if opts.json {
-		return json.NewEncoder(stdout).Encode(rep)
+		if err := json.NewEncoder(stdout).Encode(rep); err != nil {
+			return err
+		}
+		if len(rep.InvalidFiles) > 0 {
+			return exitWithCode(CodeInvalid)
+		}
+		return nil
 	}
 	if !opts.quiet {
 		if !rep.InspectionOK {
@@ -143,6 +151,9 @@ func runDoctor(stdout io.Writer, opts options, rest []string) error {
 		for _, l := range rep.OrphanLeases {
 			fmt.Fprintf(stdout, "ORPHAN   %s  owner=%s  run=%s missing\n", l.WorkitemID, l.Owner, l.RunID)
 		}
+		for _, f := range rep.InvalidFiles {
+			fmt.Fprintf(stdout, "INVALID  %s  %s\n", f.Path, f.Err)
+		}
 		for _, p := range rep.Orphans {
 			fmt.Fprintf(stdout, "PROPOSE  %-26s %s  %s\n", p.Kind, p.WorkitemID, p.Description)
 			for _, ev := range p.Evidence {
@@ -153,6 +164,11 @@ func runDoctor(stdout io.Writer, opts options, rest []string) error {
 				}
 			}
 		}
+	}
+	if len(rep.InvalidFiles) > 0 {
+		// The report is on stdout; the code carries "untrusted managed
+		// state" (方案 §14.1) without repeating the file list on stderr.
+		return exitWithCode(CodeInvalid)
 	}
 	return nil
 }

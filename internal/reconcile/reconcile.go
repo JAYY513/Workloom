@@ -97,7 +97,21 @@ type InspectionReport struct {
 	// UnreadableLeases are scheduling files that fail strict decoding;
 	// they are reported, never silently dropped (方案 §15.4).
 	UnreadableLeases []LeaseProbe `json:"unreadable_leases,omitempty" yaml:"unreadable_leases,omitempty"`
+	// InvalidFiles are workitem files that failed to decode. Doctor keeps
+	// scanning the rest of the tree and reports each one; consumers that
+	// must not render a verdict from incomplete facts (next, prime,
+	// project status) treat the state as untrusted and exit 4.
+	InvalidFiles []InvalidFile `json:"invalid_files,omitempty" yaml:"invalid_files,omitempty"`
 }
+
+// InvalidFile names one managed file whose contents could not be decoded,
+// with the located decode error.
+type InvalidFile struct {
+	Path string `json:"path" yaml:"path"`
+	Err  string `json:"error" yaml:"error"`
+}
+
+func (f InvalidFile) String() string { return f.Path + ": " + f.Err }
 
 // LeaseProbe describes a single lease for Doctor output.
 type LeaseProbe struct {
@@ -205,11 +219,15 @@ func Doctor(ctx context.Context, root string, opts Options) (InspectionReport, e
 	}
 
 	// Step 3: synthesize proposals.
-	proposals, err := buildProposals(ctx, st, now(), probes)
+	proposals, invalid, err := buildProposals(ctx, st, now(), probes)
 	if err != nil {
 		return rep, err
 	}
+	if len(invalid) > 0 {
+		rep.Note = strings.TrimSpace(rep.Note + "; " + "one or more work item files are unreadable; the state cannot be fully trusted")
+	}
 	rep.Orphans = proposals
+	rep.InvalidFiles = invalid
 	return rep, nil
 }
 
@@ -299,9 +317,19 @@ func RepairDryRun(ctx context.Context, root string, opts Options) (Plan, error) 
 	if inspectErr != nil {
 		plan.Note = "inspection ran without shared lock: " + inspectErr.Error()
 	}
-	proposals, err := buildProposals(ctx, st, now(), probes)
+	proposals, invalid, err := buildProposals(ctx, st, now(), probes)
 	if err != nil {
 		return plan, err
+	}
+	if len(invalid) > 0 {
+		// A repair plan computed over an incomplete tree could silently
+		// "fix" a project whose real state is unknown: refuse, exactly like
+		// the pre-collection behavior, but name every unreadable file.
+		names := make([]string, 0, len(invalid))
+		for _, f := range invalid {
+			names = append(names, f.String())
+		}
+		return plan, fmt.Errorf("cannot plan repairs: %s", strings.Join(names, "; "))
 	}
 	notes, note := conflictNotes(root)
 	proposals = append(proposals, notes...)
@@ -832,8 +860,9 @@ func runFileExists(r *storage.Reader, runID string) bool {
 //     AllowRepair=true must lift the gate). When the gate is not yet
 //     lifted by core, we record an unrepairable note in the proposal's
 //     Note field rather than dropping it.
-func buildProposals(ctx context.Context, st *storage.Store, now time.Time, leases []LeaseProbe) ([]Proposal, error) {
+func buildProposals(ctx context.Context, st *storage.Store, now time.Time, leases []LeaseProbe) ([]Proposal, []InvalidFile, error) {
 	var out []Proposal
+	var invalid []InvalidFile
 	for _, lp := range leases {
 		if !workitem.ValidID(lp.WorkitemID) {
 			continue
@@ -858,10 +887,11 @@ func buildProposals(ctx context.Context, st *storage.Store, now time.Time, lease
 		}
 	}
 	// Downward repair candidates.
-	items, err := readAllWorkitems(ctx, st)
+	items, invalidFiles, err := readAllWorkitems(ctx, st)
 	if err != nil {
-		return out, err
+		return out, invalid, err
 	}
+	invalid = append(invalid, invalidFiles...)
 	for _, wi := range items {
 		if wi.Status != domain.StatusDone {
 			continue
@@ -872,7 +902,7 @@ func buildProposals(ctx context.Context, st *storage.Store, now time.Time, lease
 		}
 		missingRefs, presentRefs, err := partitionArtifactRefs(ctx, st, refs)
 		if err != nil {
-			return out, err
+			return out, invalid, err
 		}
 		if len(missingRefs) == 0 {
 			continue
@@ -883,7 +913,7 @@ func buildProposals(ctx context.Context, st *storage.Store, now time.Time, lease
 		var evidence []Evidence
 		workSnap, err := readWorkitemBytes(ctx, st, wi.ID)
 		if err != nil {
-			return out, err
+			return out, invalid, err
 		}
 		evidence = append(evidence, Evidence{
 			Kind: EvidenceFile, Path: workitemRel(wi.ID), SHA256: sha256Hex(workSnap),
@@ -910,7 +940,7 @@ func buildProposals(ctx context.Context, st *storage.Store, now time.Time, lease
 			Evidence:    evidence,
 		})
 	}
-	return out, nil
+	return out, invalid, nil
 }
 
 // leaseEvidence produces the evidence list for a lease-driven proposal.
@@ -931,9 +961,13 @@ func leaseEvidence(lp LeaseProbe, expired bool) []Evidence {
 	return out
 }
 
-// readAllWorkitems walks .devsys/workitems/ via storage.Inspect.
-func readAllWorkitems(ctx context.Context, st *storage.Store) ([]*domain.WorkItem, error) {
+// readAllWorkitems walks .devsys/workitems/ via storage.Inspect. A file that
+// fails to decode is recorded as an InvalidFile and the walk continues, so
+// one corrupt item cannot hide the rest of the tree; hard read failures
+// (the walk itself broke) still abort.
+func readAllWorkitems(ctx context.Context, st *storage.Store) ([]*domain.WorkItem, []InvalidFile, error) {
 	var items []*domain.WorkItem
+	var invalid []InvalidFile
 	err := inspectOrUnlocked(ctx, st, func(r *storage.Reader) error {
 		entries, err := listWorkitemEntries(st.DevsysDir())
 		if err != nil {
@@ -944,7 +978,8 @@ func readAllWorkitems(ctx context.Context, st *storage.Store) ([]*domain.WorkIte
 			if !workitem.ValidID(id) {
 				continue
 			}
-			data, exists, rerr := r.Read(workitemRel(id))
+			rel := workitemRel(id)
+			data, exists, rerr := r.Read(rel)
 			if rerr != nil {
 				return rerr
 			}
@@ -953,17 +988,18 @@ func readAllWorkitems(ctx context.Context, st *storage.Store) ([]*domain.WorkIte
 			}
 			wi := &domain.WorkItem{}
 			if derr := domain.DecodeYAML(data, wi); derr != nil {
-				return fmt.Errorf("%s: %w", id, derr)
+				invalid = append(invalid, InvalidFile{Path: rel, Err: derr.Error()})
+				continue
 			}
 			items = append(items, wi)
 		}
 		return nil
 	})
 	if err != nil {
-		return items, err
+		return items, invalid, err
 	}
 	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
-	return items, nil
+	return items, invalid, nil
 }
 
 // readWorkitemBytes returns the raw YAML of one workitem via Inspect.

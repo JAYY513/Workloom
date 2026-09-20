@@ -22,6 +22,7 @@ import (
 	"workloom/internal/app"
 	"workloom/internal/config"
 	"workloom/internal/domain"
+	"workloom/internal/next"
 	"workloom/internal/project"
 	"workloom/internal/version"
 	"workloom/internal/workflow"
@@ -401,6 +402,11 @@ func runInit(stdout io.Writer, opts options) error {
 			fmt.Fprintf(stdout, "created: %d paths\n", len(res.Created))
 		}
 		fmt.Fprintf(stdout, "registry: %s\n", regPath)
+		fmt.Fprintln(stdout, "next:")
+		fmt.Fprintln(stdout, "  1. install a starter workflow: devsys workflow init --template quick-fix (also: feature-development, architecture-change, reference-template), then adapt it")
+		fmt.Fprintln(stdout, "  2. devsys wire --skill")
+		fmt.Fprintln(stdout, "  3. "+next.CreateWorkitemCommand)
+		fmt.Fprintln(stdout, "  4. devsys workspace view")
 	}
 	return nil
 }
@@ -429,7 +435,7 @@ func runWire(stdout io.Writer, opts options, rest []string) error {
 			return err
 		}
 		if *printMCP != "" {
-			snippet, err := app.MCPSnippet(*printMCP, os.Args[0])
+			snippet, err := app.MCPSnippet(*printMCP, os.Args[0], svc.Root)
 			if err != nil {
 				return err
 			}
@@ -660,12 +666,14 @@ func runProject(stdout io.Writer, opts options, rest []string) error {
 		description := fs.String("description", "", "project description")
 		status := fs.String("status", "", "project status")
 		phase := fs.String("phase", "", "current phase")
+		blueprint := fs.String("blueprint-artifact", "", "artifact id to declare as the project blueprint (empty clears; id must already be registered)")
 		expect := fs.String("expect", "", "version hash from project get")
 		latest := latestFlag(fs)
+		const updateUsage = "project update [--name N] [--description D] [--status S] [--phase P] [--blueprint-artifact <id>] [--expect <hash> | --latest]"
 		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 {
-			return errUsage("project update [--name N] [--description D] [--status S] [--phase P] [--expect <hash> | --latest]")
+			return errUsage(updateUsage)
 		}
-		if err := checkLatest(*latest, *expect, "project update [--name N] [--description D] [--status S] [--phase P] [--expect <hash> | --latest]"); err != nil {
+		if err := checkLatest(*latest, *expect, updateUsage); err != nil {
 			return err
 		}
 		req := app.UpdateProjectRequest{Expect: *expect}
@@ -679,6 +687,9 @@ func runProject(stdout io.Writer, opts options, rest []string) error {
 				req.Status = status
 			case "phase":
 				req.CurrentPhase = phase
+			case "blueprint-artifact":
+				trimmed := strings.TrimSpace(*blueprint)
+				req.BlueprintArtifactID = &trimmed
 			}
 		})
 		view, err := svc.ProjectUpdate(ctx, req)
@@ -795,6 +806,9 @@ func runWorkitem(stdout io.Writer, opts options, rest []string) error {
 			return writeJSONL(stdout, items)
 		}
 		if opts.json {
+			if items == nil {
+				items = []*domain.WorkItem{}
+			}
 			return json.NewEncoder(stdout).Encode(struct {
 				OK    bool               `json:"ok"`
 				Items []*domain.WorkItem `json:"items"`
@@ -1107,15 +1121,18 @@ func outputWorkitem(stdout io.Writer, opts options, view app.WorkItemView) error
 }
 
 // runWorkflow routes the workflow family: `check` validates policy files
-// (read-only); the instance subcommands drive a work item's workflow
-// instance through the shared service (实施计划 M3.6).
+// (read-only); `init` installs an embedded example policy as a starting
+// point; the instance subcommands drive a work item's workflow instance
+// through the shared service (实施计划 M3.6).
 func runWorkflow(stdout io.Writer, opts options, rest []string) error {
 	if len(rest) == 0 {
-		return errUsage("`devsys workflow` needs a subcommand (check | list | get | start | next | step-complete | pause | resume | cancel)")
+		return errUsage("`devsys workflow` needs a subcommand (check | init | list | get | start | next | step-complete | pause | resume | cancel)")
 	}
 	switch rest[0] {
 	case "check":
 		return runWorkflowCheck(stdout, opts, rest[1:])
+	case "init":
+		return runWorkflowInit(stdout, opts, rest[1:])
 	case "list":
 		return runWorkflowList(stdout, opts, rest[1:])
 	case "get":
@@ -1131,6 +1148,41 @@ func runWorkflow(stdout io.Writer, opts options, rest []string) error {
 	default:
 		return errUsage("unknown `devsys workflow` subcommand %q", rest[0])
 	}
+}
+
+// runWorkflowInit implements `devsys workflow init --template <id>`: copy one
+// embedded example policy into .devsys/workflows/ so binary-only users start
+// from the same files the repository ships under docs/examples/workflows/.
+// An existing policy is never overwritten.
+func runWorkflowInit(stdout io.Writer, opts options, rest []string) error {
+	fs := flag.NewFlagSet("workflow init", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	template := fs.String("template", "", "example workflow to install ("+strings.Join(app.WorkflowTemplates(), "|")+")")
+	usage := "workflow init --template <id> (" + strings.Join(app.WorkflowTemplates(), "|") + ")"
+	if err := fs.Parse(rest); err != nil || fs.NArg() != 0 {
+		return errUsage("%s", usage)
+	}
+	if strings.TrimSpace(*template) == "" {
+		return errUsage("%s", usage)
+	}
+	svc, err := requireProjectRoot()
+	if err != nil {
+		return err
+	}
+	view, err := svc.WorkflowInitTemplate(context.Background(), *template)
+	if err != nil {
+		return err
+	}
+	if opts.json {
+		return json.NewEncoder(stdout).Encode(struct {
+			OK bool `json:"ok"`
+			app.WorkflowInitView
+		}{OK: true, WorkflowInitView: view})
+	}
+	if !opts.quiet {
+		fmt.Fprintf(stdout, "initialized %s from template %q — review it and adapt the steps to this project\n", view.Path, view.Template)
+	}
+	return nil
 }
 
 // runWorkflowCheck implements `devsys workflow check`: the read-only policy
@@ -1184,6 +1236,9 @@ func runWorkflowList(stdout io.Writer, opts options, rest []string) error {
 		return err
 	}
 	if opts.json {
+		if policies == nil {
+			policies = []app.PolicySummary{}
+		}
 		return json.NewEncoder(stdout).Encode(struct {
 			OK       bool                `json:"ok"`
 			Policies []app.PolicySummary `json:"policies"`

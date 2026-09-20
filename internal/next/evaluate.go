@@ -49,6 +49,9 @@ const (
 	RiskInvalidPolicy     = "invalid_policy"
 	RiskPendingApproval   = "pending_approval"
 	RiskInspectionLimited = "inspection_limited"
+	RiskEmptyProject      = "empty_project"
+	RiskDeadAttempt       = "dead_attempt"
+	RiskInFlight          = "in_flight"
 )
 
 // ReviewStaleAfter is how long a work item may wait in review/verification
@@ -57,6 +60,10 @@ const ReviewStaleAfter = 24 * time.Hour
 
 // defaultRecoverCommand is the FAIL remediation hint when Input carries none.
 const defaultRecoverCommand = `devsys recover --actor operator --reason "recover interrupted state"`
+
+// CreateWorkitemCommand is the empty-project remediation `next` and `init`
+// name, so the first-use path does not invent a second create recipe.
+const CreateWorkitemCommand = `devsys workitem create --title "…" --actor <you> --reason "first task"`
 
 // Input is the observed project stateEvaluate consumes.
 type Input struct {
@@ -86,6 +93,16 @@ type Input struct {
 	DefaultPolicy  string
 	PolicyIDs      []string
 	RecoverCommand string
+	// HasBlueprint is true when the project declares a blueprint artifact.
+	// It is only consulted for the empty-project risk, so a project with
+	// work and no blueprint can still PASS.
+	HasBlueprint bool
+	// DeadAttempts are in-progress claims whose latest run has already
+	// failed or produced no evidence; they occupy §7.4 rung 1 (recover_claim).
+	DeadAttempts []AttemptRef
+	// InFlight are healthy attempts still executing. They are a CONCERNS
+	// signal, not a new ladder rung: recommend may still land on report_done.
+	InFlight []AttemptRef
 }
 
 // QualityBlock is a ready work item whose claim the quality gate would refuse.
@@ -231,6 +248,19 @@ func Evaluate(in Input) Report {
 	if !in.InspectionOK && len(in.PendingTxns) == 0 {
 		rep.Risks = append(rep.Risks, Risk{Kind: RiskInspectionLimited, Detail: in.InspectionNote})
 	}
+	if in.emptyProject() {
+		detail := "no work items; create one with `" + CreateWorkitemCommand + "`"
+		if !in.HasBlueprint {
+			detail += "; no blueprint declared (declare one: devsys project update --blueprint-artifact <artifact-id>)"
+		}
+		rep.Risks = append(rep.Risks, Risk{Kind: RiskEmptyProject, Detail: detail})
+	}
+	for _, a := range sortedAttemptRefs(in.DeadAttempts) {
+		rep.Risks = append(rep.Risks, Risk{Kind: RiskDeadAttempt, WorkitemID: a.WorkitemID, Detail: a.Detail})
+	}
+	for _, a := range sortedAttemptRefs(in.InFlight) {
+		rep.Risks = append(rep.Risks, Risk{Kind: RiskInFlight, WorkitemID: a.WorkitemID, Detail: a.Detail})
+	}
 
 	switch {
 	case len(in.PendingTxns) > 0:
@@ -268,6 +298,13 @@ func recommend(in Input) Recommendation {
 			Reason: "claim is expired or orphaned; recover it before dispatching",
 		}
 	}
+	if dead := sortedAttemptRefs(in.DeadAttempts); len(dead) > 0 {
+		return Recommendation{
+			Action: ActionRecoverClaim, WorkitemID: dead[0].WorkitemID,
+			Reason: dead[0].Detail,
+		}
+	}
+
 	pendingByWorkitem := map[string]string{}
 	for _, p := range in.PendingApprovals {
 		pendingByWorkitem[p.WorkitemID] = p.ID
@@ -311,13 +348,24 @@ func recommend(in Input) Recommendation {
 		}
 	}
 	reason := "no runnable work item remains"
+	if in.emptyProject() {
+		reason = "no work items yet; create one with `" + CreateWorkitemCommand + "`"
+	}
 	if queue := retryQueue(in); len(queue) > 0 {
 		// Idle is wrong while a retry waits: the next scheduling tick is the
 		// work, and it will not happen on its own (§4.8).
 		reason = fmt.Sprintf("%s; %d work item(s) wait for a dispatch retry (%s) — run `devsys dispatch --once`",
 			reason, len(queue), retrySchedule(queue))
 	}
+	if inflight := sortedAttemptRefs(in.InFlight); len(inflight) > 0 {
+		reason = fmt.Sprintf("%s; %d attempt(s) still in flight (%s) — wait or inspect `devsys run get --id %s`",
+			reason, len(inflight), inflightIDs(inflight), inflight[0].RunID)
+	}
 	return Recommendation{Action: ActionReportDone, Reason: reason}
+}
+
+func (in Input) emptyProject() bool {
+	return in.InspectionOK && len(in.PendingTxns) == 0 && len(in.WorkItems) == 0
 }
 
 // qualityBlock returns the recorded quality-gate block for a work item.

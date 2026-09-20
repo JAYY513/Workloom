@@ -135,7 +135,7 @@ func (s *Store) List(ctx context.Context) ([]*domain.WorkItem, error) {
 	if err != nil {
 		return nil, err
 	}
-	var items []*domain.WorkItem
+	items := []*domain.WorkItem{}
 	err = st.Read(ctx, func(r *storage.Reader) error {
 		ids, err := listIDs(st)
 		if err != nil {

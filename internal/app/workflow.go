@@ -34,7 +34,7 @@ func (s *Service) WorkflowList(ctx context.Context) ([]PolicySummary, []workflow
 		return nil, nil, Preconditionf("no .devsys/ in %s: run `devsys init` first", s.Root)
 	}
 	results := workflow.Load(s.Root)
-	var summaries []PolicySummary
+	summaries := []PolicySummary{}
 	var warnings []workflow.Issue
 	var problems []config.Problem
 	for _, res := range results {
