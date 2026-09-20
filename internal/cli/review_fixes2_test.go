@@ -186,6 +186,32 @@ func TestDefaultPolicyGatesUnboundWorkitem(t *testing.T) {
 	}
 }
 
+func TestUnusableConfigCannotSilentlyDropGates(t *testing.T) {
+	repo, items := gatedProject(t)
+	// An unknown key makes config.yaml invalid; without the fail-closed branch
+	// the default policy would vanish and the claim would run ungated.
+	if err := os.WriteFile(filepath.Join(repo, ".devsys", "config.yaml"),
+		[]byte(fmt.Sprintf("schema_version: %d\ndefault_policy: gated\nno_such_key: 1\n", domain.SchemaVersion)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	id := createReadyWorkitem(t, items, readyItem("弱标题", "短", ""))
+	code, _, errOut := run(t, "workitem", "claim", "--id", id, "--owner", "dev", "--reason", "start")
+	if code != CodeInvalid {
+		t.Fatalf("claim under a broken config.yaml: code=%d stderr=%q, want a refusal", code, errOut)
+	}
+	if !strings.Contains(errOut, "config.yaml is invalid") || !strings.Contains(errOut, "config check") {
+		t.Errorf("stderr = %q, want the config failure and its check command", errOut)
+	}
+
+	// A default_policy that names no policy file is refused the same way.
+	setDefaultPolicy(t, repo, "missing-policy")
+	second := createReadyWorkitem(t, items, readyItem("弱标题", "短", ""))
+	code, _, errOut = run(t, "workitem", "claim", "--id", second, "--owner", "dev", "--reason", "start")
+	if code != CodeInvalid || !strings.Contains(errOut, "missing-policy") {
+		t.Fatalf("claim under a missing default policy: code=%d stderr=%q", code, errOut)
+	}
+}
+
 func TestTransitionGateNamesInvalidatedApproval(t *testing.T) {
 	repo, items := gatedProject(t)
 	writeWorkflow(t, repo, "approval-flow.md", cliApprovalPolicy)
