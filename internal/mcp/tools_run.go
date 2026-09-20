@@ -172,29 +172,39 @@ type runFinishInput struct {
 	By     string `json:"by,omitempty" jsonschema:"reviewer accepting a forced completion"`
 }
 
-// registerRunFinish wires the three terminal transitions of §4.8. They only
-// record an outcome — nothing here starts or stops a process — and each one
-// refuses a run that already ended, so two actors cannot both claim it.
-func registerRunFinish(s *mcpsdk.Server, cfg Config) {
-	register := func(name, description, outcome string) {
-		mcpsdk.AddTool(s, &mcpsdk.Tool{
-			Name:        name,
-			Description: description,
-		}, func(ctx context.Context, req *mcpsdk.CallToolRequest, in runFinishInput) (*mcpsdk.CallToolResult, app.RunView, error) {
-			view, err := cfg.service().RunFinish(ctx, app.RunFinishRequest{
-				RunID: in.ID, Expect: in.Expect, Outcome: outcome,
-				Actor: in.Actor, Reason: in.Reason, Note: in.Note,
-				Force: in.Force, By: in.By,
-			})
-			if err != nil {
-				return fail[app.RunView](err)
-			}
-			return nil, view, nil
+// The three terminal transitions of §4.8 each have their own register
+// function so NewServer's profile×tier gate cannot leak a sibling name into a
+// narrower surface. They only record an outcome — nothing here starts or
+// stops a process — and each one refuses a run that already ended, so two
+// actors cannot both claim it.
+
+func registerRunComplete(s *mcpsdk.Server, cfg Config) {
+	registerRunFinish(s, cfg, "run_complete", "Mark an attempt as succeeded. The completion check compares the claim head with the branch (§4.8): without an advance it is refused and the work item goes to review — pass force with by to accept it as a reviewer.", app.RunSucceeded)
+}
+
+func registerRunFail(s *mcpsdk.Server, cfg Config) {
+	registerRunFinish(s, cfg, "run_fail", "Mark an attempt as failed, with the reason recorded on the run.", app.RunFailed)
+}
+
+func registerRunCancel(s *mcpsdk.Server, cfg Config) {
+	registerRunFinish(s, cfg, "run_cancel", "Mark an attempt as canceled (stopped before it decided its own outcome).", app.RunCanceled)
+}
+
+func registerRunFinish(s *mcpsdk.Server, cfg Config, name, description, outcome string) {
+	mcpsdk.AddTool(s, &mcpsdk.Tool{
+		Name:        name,
+		Description: description,
+	}, func(ctx context.Context, req *mcpsdk.CallToolRequest, in runFinishInput) (*mcpsdk.CallToolResult, app.RunView, error) {
+		view, err := cfg.service().RunFinish(ctx, app.RunFinishRequest{
+			RunID: in.ID, Expect: in.Expect, Outcome: outcome,
+			Actor: in.Actor, Reason: in.Reason, Note: in.Note,
+			Force: in.Force, By: in.By,
 		})
-	}
-	register("run_complete", "Mark an attempt as succeeded. The completion check compares the claim head with the branch (§4.8): without an advance it is refused and the work item goes to review — pass force with by to accept it as a reviewer.", app.RunSucceeded)
-	register("run_fail", "Mark an attempt as failed, with the reason recorded on the run.", app.RunFailed)
-	register("run_cancel", "Mark an attempt as canceled (stopped before it decided its own outcome).", app.RunCanceled)
+		if err != nil {
+			return fail[app.RunView](err)
+		}
+		return nil, view, nil
+	})
 }
 
 type runVerifyInput struct {

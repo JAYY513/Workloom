@@ -127,11 +127,11 @@ for _, spec := range allTools() {
 说明：
 
 - `project_blueprint_get`（session + standard tier）走 `internal/mcp/tools_project.go:56 registerProjectBlueprint`；未声明蓝图时返回 `artifact: null`（`ProjectBlueprint` 在 `internal/app/project.go:185` 返回 `(nil, nil)`），CLI `project blueprint` 与 MCP 都按 exit 0 处理。
-- `workitem_update` / `workflow_step_complete` / `run_update` / `event_record` / `context_for_workitem` / `context_refresh` / `context_compact` 等「日常以外的扩展项」均为 **standard tier**（`toolSpec.tier = ""`）——core 档不暴露。
+- `workitem_update` / `workflow_step_complete` / `run_update` / `run_fail` / `run_cancel` / `workitem_block` / `context_for_workitem` / `context_refresh` / `context_compact` 等「日常以外的扩展项」均为 **standard tier**（`toolSpec.tier = ""`）——core 档不暴露。`event_record` 是 TierCore（日常子集）。
 - `health` 在两种 tier 都暴露（`TierCore`），并把当前 `tier` 字段回写到响应里（[internal/mcp/tools_health.go:54-66](file://internal/mcp/tools_health.go#L54-L66)）。
-- 工具总数：`allTools()` 共 **66 项**（含 19 项 `TierCore` + 47 项 `TierStandard`）；core 档**标定** 19 项「日常子集」，但实测默认 profile（`session + executor`）+ core 档暴露 **21 项**——`run_fail` / `run_cancel` 与 `run_complete` 共用一个注册函数（`registerRunFinish`），而 tier 门按 `toolSpec` 判定，故这两个 `""`（standard）条目随 `run_complete` 一起注册（任务 #327 跟踪；`devsys mcp serve` 实测 2026-09-20），`--tier standard` 时补齐 profile 全量（仍受 profile 维度约束）。
+- 工具总数：`allTools()` 共 **66 项**（含 19 项 `TierCore` + 47 项 `TierStandard`）；默认 profile（`session + executor`）+ core 档暴露 **恰好 19 项**。`run_complete` / `run_fail` / `run_cancel` 各有自己的 register（`registerRunComplete` / `registerRunFail` / `registerRunCancel`），共用 helper 每次只登记一个名字，因此 tier 门不会把 standard 条目带进 core（任务 #327）。`--tier standard` 时补齐当前 profile 的全量（四 profile 合计 66）。进度/失败/受阻（`run_update` / `run_fail` / `workitem_block`）留在 standard，MCP 优先路径用 CLI 或 `--tier standard`（任务 #313-B）。
 
-### Core 档（19 项 TierCore 标定；实测 21 项，见上注）
+### Core 档（19 项）
 
 | 族 | TierCore 工具 |
 |---|---|
@@ -168,7 +168,7 @@ check(std["workitem_update"], "standard tier exposes workitem_update")
 check(std["workflow_step_complete"], "standard tier exposes workflow_step_complete")
 ```
 
-`internal/mcp/server_test.go:103-147` 已新增 `TestTierStandardRestoresFullSessionExecutor` / `TestParseTier` / `TestProjectBlueprintToolAnswersWithoutADeclaration` 守住 tier / blueprint 行为。
+`internal/mcp/server_test.go` 守住：`TestToolSurfaceMatchesSpecFilter`（profile×tier 矩阵与 spec 过滤一致）、`TestDefaultCoreIsTheNamedDailySubset`（19 名冻结名单）、`TestEachToolRegistersAlone`（禁止多工具共用 register 指针）、`TestCoreHidesRunFail`、`TestTierStandardRestoresFullSessionExecutor` / `TestParseTier` / `TestProjectBlueprintToolAnswersWithoutADeclaration`。
 
 ## `ParseProfiles` 拒绝策略
 

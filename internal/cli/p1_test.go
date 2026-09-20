@@ -90,6 +90,12 @@ func TestWirePrintMCP(t *testing.T) {
 	if !strings.Contains(out, "mcp") || !strings.Contains(out, "serve") {
 		t.Fatalf("snippet = %q, want the serve command", out)
 	}
+	if !strings.Contains(out, "--tier") || !strings.Contains(out, "core") {
+		t.Fatalf("snippet = %q, want an explicit --tier core", out)
+	}
+	if !strings.Contains(out, "run_fail") || !strings.Contains(out, "standard") {
+		t.Fatalf("snippet = %q, want the core-boundary note", out)
+	}
 	if code, _, _ := run(t, "wire", "--print-mcp", "nope"); code != CodeUsage {
 		t.Fatalf("unknown harness: code=%d, want %d", code, CodeUsage)
 	}

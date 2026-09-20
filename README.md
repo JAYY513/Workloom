@@ -239,6 +239,8 @@ devsys wire --print-mcp opencode
 devsys mcp serve --profile session,executor --tier core
 ```
 
+默认 `--tier core` 是 19 项日常子集。`run_update` / `run_fail` / `workitem_block` 等进度、失败与受阻工具在 `--tier standard`；MCP 优先的 Agent 对这些步骤请用 CLI，或把 serve 改成 `--tier standard`。
+
 ### 5. 查看项目状态
 
 ```bash

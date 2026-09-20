@@ -3,6 +3,8 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
@@ -102,7 +104,7 @@ func TestToolsListFiltersByProfile(t *testing.T) {
 	if !contains(def, "health") || !contains(def, "workitem_list") || !contains(def, "agent_session_start") {
 		t.Fatalf("default tier lacks expected core tools: %v", def)
 	}
-	if contains(def, "workflow_step_complete") || contains(def, "project_update") || contains(def, "approval_decide") || contains(def, "project_create") {
+	if contains(def, "workflow_step_complete") || contains(def, "project_update") || contains(def, "approval_decide") || contains(def, "project_create") || contains(def, "run_fail") || contains(def, "run_cancel") {
 		t.Fatalf("default tier exposes non-core tools: %v", def)
 	}
 	admin := toolNames(t, session(t, Config{Root: t.TempDir(), ServerVersion: "test", Profiles: []string{ProfileAdmin}, Tier: TierStandard}))
@@ -276,5 +278,184 @@ func TestProjectBlueprintToolAnswersWithoutADeclaration(t *testing.T) {
 	}
 	if got := payload[blueprintResult](t, res); got.Artifact != nil {
 		t.Fatalf("artifact = %+v, want null", got.Artifact)
+	}
+}
+
+// coreDailySubset is the frozen 19-name daily surface. Adding or removing a
+// TierCore tool is a product change and must update this list.
+var coreDailySubset = []string{
+	"agent_session_start",
+	"approval_request",
+	"artifact_register",
+	"context_get",
+	"decision_create",
+	"event_record",
+	"finding_create",
+	"health",
+	"knowledge_status",
+	"project_get",
+	"run_complete",
+	"run_create",
+	"run_verify",
+	"workitem_claim",
+	"workitem_comment",
+	"workitem_create",
+	"workitem_get",
+	"workitem_list",
+	"workitem_transition",
+}
+
+func specNames(profiles []string, tier string) []string {
+	if tier == "" {
+		tier = DefaultTier()
+	}
+	var names []string
+	for _, spec := range allTools() {
+		if visible(spec.profiles, profiles) && visibleTier(spec.tier, tier) {
+			names = append(names, spec.name)
+		}
+	}
+	sort.Strings(names)
+	return names
+}
+
+func sortedCopy(list []string) []string {
+	out := append([]string(nil), list...)
+	sort.Strings(out)
+	return out
+}
+
+func sameNames(got, want []string) bool {
+	g, w := sortedCopy(got), sortedCopy(want)
+	if len(g) != len(w) {
+		return false
+	}
+	for i := range g {
+		if g[i] != w[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func duplicates(list []string) []string {
+	seen := map[string]int{}
+	var dups []string
+	for _, name := range list {
+		seen[name]++
+		if seen[name] == 2 {
+			dups = append(dups, name)
+		}
+	}
+	return dups
+}
+
+func TestAllToolsAreUniqueAndCounted(t *testing.T) {
+	specs := allTools()
+	if len(specs) != 66 {
+		t.Fatalf("allTools() = %d, want 66", len(specs))
+	}
+	seen := map[string]bool{}
+	core := 0
+	for _, spec := range specs {
+		if spec.name == "" || spec.register == nil {
+			t.Errorf("incomplete spec %+v", spec)
+		}
+		if seen[spec.name] {
+			t.Errorf("duplicate tool name %q", spec.name)
+		}
+		seen[spec.name] = true
+		if spec.tier == TierCore {
+			core++
+		}
+	}
+	if core != 19 {
+		t.Fatalf("TierCore count = %d, want 19", core)
+	}
+}
+
+func TestEachToolRegistersAlone(t *testing.T) {
+	byPtr := map[uintptr]string{}
+	for _, spec := range allTools() {
+		p := reflect.ValueOf(spec.register).Pointer()
+		if other, ok := byPtr[p]; ok {
+			t.Errorf("%q and %q share a register function; a multi-tool registrar leaks across the profile×tier gate", other, spec.name)
+			continue
+		}
+		byPtr[p] = spec.name
+	}
+}
+
+func TestToolSurfaceMatchesSpecFilter(t *testing.T) {
+	all := []string{ProfileSession, ProfileExecutor, ProfileReviewer, ProfileAdmin}
+	cases := []struct {
+		name     string
+		profiles []string
+		tier     string
+	}{
+		{"default", DefaultProfiles(), ""},
+		{"core session+executor", DefaultProfiles(), TierCore},
+		{"standard session+executor", DefaultProfiles(), TierStandard},
+		{"all profiles core", all, TierCore},
+		{"all profiles standard", all, TierStandard},
+		{"admin core", []string{ProfileAdmin}, TierCore},
+		{"admin standard", []string{ProfileAdmin}, TierStandard},
+		{"reviewer core", []string{ProfileReviewer}, TierCore},
+		{"reviewer standard", []string{ProfileReviewer}, TierStandard},
+		{"session core", []string{ProfileSession}, TierCore},
+		{"session standard", []string{ProfileSession}, TierStandard},
+		{"executor core", []string{ProfileExecutor}, TierCore},
+		{"executor standard", []string{ProfileExecutor}, TierStandard},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := toolNames(t, session(t, Config{Root: t.TempDir(), ServerVersion: "test", Profiles: tc.profiles, Tier: tc.tier}))
+			want := specNames(tc.profiles, tc.tier)
+			if !sameNames(got, want) {
+				t.Fatalf("tools/list = %v\nwant           = %v", sortedCopy(got), want)
+			}
+			if dups := duplicates(got); len(dups) > 0 {
+				t.Fatalf("duplicate names in tools/list: %v", dups)
+			}
+		})
+	}
+}
+
+func TestDefaultCoreIsTheNamedDailySubset(t *testing.T) {
+	got := toolNames(t, session(t, Config{Root: t.TempDir(), ServerVersion: "test"}))
+	if !sameNames(got, coreDailySubset) {
+		t.Fatalf("default core = %v\nwant          = %v", sortedCopy(got), sortedCopy(coreDailySubset))
+	}
+	for _, forbidden := range []string{"run_fail", "run_cancel", "run_update", "workitem_block", "project_blueprint_get"} {
+		if contains(got, forbidden) {
+			t.Fatalf("default core exposes %s: %v", forbidden, got)
+		}
+	}
+}
+
+func TestAllProfilesStandardExposesEveryTool(t *testing.T) {
+	got := toolNames(t, session(t, Config{
+		Root: t.TempDir(), ServerVersion: "test",
+		Profiles: []string{ProfileSession, ProfileExecutor, ProfileReviewer, ProfileAdmin},
+		Tier:     TierStandard,
+	}))
+	if len(got) != 66 {
+		t.Fatalf("all profiles + standard = %d tools, want 66: %v", len(got), sortedCopy(got))
+	}
+}
+
+func TestCoreHidesRunFail(t *testing.T) {
+	cs := session(t, Config{Root: t.TempDir(), ServerVersion: "test"})
+	_, err := cs.CallTool(context.Background(), &mcpsdk.CallToolParams{
+		Name: "run_fail",
+		Arguments: map[string]any{
+			"id": "run-1", "expect": "x", "actor": "a", "reason": "r",
+		},
+	})
+	if err == nil {
+		t.Fatal("run_fail was callable at core tier")
+	}
+	if !strings.Contains(err.Error(), "unknown tool") {
+		t.Fatalf("error = %v, want unknown tool", err)
 	}
 }

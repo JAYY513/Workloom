@@ -250,6 +250,8 @@ The underlying server command is:
 devsys mcp serve --profile session,executor --tier core
 ```
 
+Default `--tier core` is the 19-tool daily subset. Progress, failure and block tools (`run_update`, `run_fail`, `workitem_block`) live at `--tier standard`. MCP-first agents should use the CLI for those steps, or serve `--tier standard`.
+
 ### 5. Inspect Project State
 
 ```bash

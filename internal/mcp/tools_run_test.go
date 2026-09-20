@@ -62,21 +62,32 @@ func runFixture(t *testing.T) (string, string) {
 }
 
 // The three terminal transitions are executor tools: a session profile must
-// not see them, and the executor profile must.
+// not see them. Core exposes only run_complete; fail and cancel stay at
+// standard so the daily subset cannot leak sibling names.
 func TestRunLifecycleToolsAreProfileGraded(t *testing.T) {
 	root, _ := runFixture(t)
-	sessionCS := session(t, Config{Root: root, ServerVersion: "test", Profiles: []string{ProfileSession}})
+	sessionCS := session(t, Config{Root: root, ServerVersion: "test", Profiles: []string{ProfileSession}, Tier: TierStandard})
 	names := toolNames(t, sessionCS)
 	for _, tool := range []string{"run_complete", "run_fail", "run_cancel"} {
 		if contains(names, tool) {
 			t.Fatalf("session profile exposes %s: %v", tool, names)
 		}
 	}
-	executor := session(t, Config{Root: root, ServerVersion: "test", Profiles: []string{ProfileExecutor}})
+	coreExec := session(t, Config{Root: root, ServerVersion: "test", Profiles: []string{ProfileExecutor}})
+	coreNames := toolNames(t, coreExec)
+	if !contains(coreNames, "run_complete") {
+		t.Fatalf("executor core misses run_complete: %v", coreNames)
+	}
+	for _, tool := range []string{"run_fail", "run_cancel"} {
+		if contains(coreNames, tool) {
+			t.Fatalf("executor core leaks %s: %v", tool, coreNames)
+		}
+	}
+	executor := session(t, Config{Root: root, ServerVersion: "test", Profiles: []string{ProfileExecutor}, Tier: TierStandard})
 	names = toolNames(t, executor)
 	for _, tool := range []string{"run_complete", "run_fail", "run_cancel"} {
 		if !contains(names, tool) {
-			t.Fatalf("executor profile misses %s: %v", tool, names)
+			t.Fatalf("executor standard misses %s: %v", tool, names)
 		}
 	}
 }
@@ -151,7 +162,7 @@ func TestRunCompleteRequiresExpectAndEndsOnce(t *testing.T) {
 // run_fail and run_cancel record their own outcomes.
 func TestRunFailAndCancelRecordOutcomes(t *testing.T) {
 	root, runID := runFixture(t)
-	cs := session(t, Config{Root: root, ServerVersion: "test"})
+	cs := session(t, Config{Root: root, ServerVersion: "test", Tier: TierStandard})
 	view, err := app.New(root).RunGet(context.Background(), runID)
 	if err != nil {
 		t.Fatal(err)

@@ -73,7 +73,7 @@ func TestMCPServeEndToEnd(t *testing.T) {
 			t.Fatalf("default tier lacks %s: %v", want, names)
 		}
 	}
-	for _, forbidden := range []string{"project_update", "approval_decide", "project_create", "workflow_step_complete"} {
+	for _, forbidden := range []string{"project_update", "approval_decide", "project_create", "workflow_step_complete", "run_fail", "run_cancel"} {
 		if hasTool(names, forbidden) {
 			t.Fatalf("default tier exposes %s: %v", forbidden, names)
 		}
