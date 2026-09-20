@@ -26,8 +26,14 @@ triggers:
   - M6 退出码
   - run verify exit code
   - run complete exit code
+  - doctor INVALID 行
+  - exit 4 不可信受管状态
+  - InvalidFile
+  - VisibleTools
+  - WorkflowInitTemplate
+  - BlueprintArtifactID
+  - CreateWorkitemCommand
 description: devsys 受管 YAML 文件的严格 schema：每文件白名单 + schema_version 闸门 + 行号定位 + Problems 错误结构（含 SeverityWarning） + 退出码 4 的语义边界 + M1 完整 Project 模型 + 嵌套字段校验；M2 新增退出码 3/4 在 workitem 与 repair 中的扩展语义、--expect 64-hex sha256 + fail-closed、--confirm 摘要格式、写命令 --actor/--reason 必填；M3 新增 workflow/approval/next 的 kind 与 code 语义、workitem.TransitionRequest.Guard 签名、policy issue 与 LKG 报错；M4 收口到 *app.Error.Class() 四类（映射 CLI 退出码 + MCP tool error code）、--jsonl 列表流、知识层 10/11 退出码预留；M5 新增 KnowledgePages / KnowledgeGenerator 配置键、kindStrings（接受 null 与空列表）+ kindMilestones 双路径、warning severity、KindKnowledge 错误类、knowledge_pages / knowledge_generator 字段解析；M6 增 workspace_root / dispatch_command 配置键、HookEnv 注入、run exec / run complete 在执行层的扩展退出码语义；M7.1 增 workspace view 在视图域的退出码语义（沿用 0/2/3/1，10/11 仍专属 knowledge status）、workspace view 的 --limit 与子命令缺失 → 2、缺 .devsys/ → 3、view.Build 失败 → 1、advisory_unlocked 是事实标签不是失败码。；**本批**：`config.yaml` 增 `default_policy` 键（未绑定实例的工作项按其过门禁；键值非法或指向缺失策略时 claim fail closed）、`project blueprint` 未声明蓝图 exit 0、非法 workitem id 归 usage/exit 2、`storage: version conflict` 附「重新读取重试 / `--latest`」出路。
-generated: true
 source_commit: 2b8b8ce
 generator: repowiki-gen
 ---
@@ -266,13 +272,28 @@ M3 新增触发：
 - `approval` 子命令缺失或不在 `{list, request, approve, reject}` → exit 2。
 
 M7.1–M7.4 在 `CodeUsage = 2` 与 `CodePrecondition = 3` / `CodeInternal = 1` 下扩展 `devsys workspace` 子命令面（视图域只读，与 §4.8 `worktree` 子命令独立）：
-
 - `devsys workspace` 子命令缺失或不在 `{view, build, serve}` → exit 2：`errUsage("`devsys workspace` needs a subcommand: view | build | serve")` / `errUsage("unknown `devsys workspace` subcommand %q", rest[0])`（[internal/cli/workspace.go:24-38](file://internal/cli/workspace.go#L24-L38)）。
 - `devsys workspace view --limit N` 且 `N <= 0` → exit 2：`errUsage("`--limit` must be positive")`（[internal/cli/workspace.go:121-123](file://internal/cli/workspace.go#L121-L123)）。
 - `devsys workspace build` 不带 `--static`（M7.2 唯一支持的站点形态）→ exit 2：`errUsage("`devsys workspace build` needs --static (the only site form in M7.2)")`（[internal/cli/workspace.go:53-54](file://internal/cli/workspace.go#L53-L54)）；参数解析失败 / 含未知位置参数 → exit 2：`errUsage("`devsys workspace build --static [--out DIR] [--limit N]`")`（[internal/cli/workspace.go:50-51](file://internal/cli/workspace.go#L50-L51)）；非法 `--out` → exit 2：`errUsage("workspace build: %v", err)`（[internal/cli/workspace.go:62-64](file://internal/cli/workspace.go#L62-L64)）。
 - `devsys workspace serve --host <non-loopback>` 且未带 `--allow-remote` → exit 2：`errUsage("refusing non-loopback bind %q without --allow-remote ...")`（[internal/cli/workspace_serve.go:159-161](file://internal/cli/workspace_serve.go#L159-L161)）；`--port` 越界或带 `--json`/`--quiet` → exit 2（[internal/cli/workspace_serve.go:153-157](file://internal/cli/workspace_serve.go#L153-L157)）。
 
 `workspace view` / `build` / `serve` 不引入新退出码：成功（含 `trust.state = advisory_unlocked` / `pending_transaction`）→ 0；缺 `.devsys/`（`storage.ErrNotInitialized`）→ 3（precondition）；`view.Build` 其它失败 → 1（internal）；`workspace build` 写盘失败 → 1（`sitestatic.Build` 错误，[internal/cli/workspace.go:70-73](file://internal/cli/workspace.go#L70-L73)）；`workspace serve` 端口占用 → 1（`net.Listen` 失败，[internal/cli/workspace_serve.go:172-174](file://internal/cli/workspace_serve.go#L172-L174)）。**build/serve 沿用同一 0/1/2/3/4**，10/11 仍专属 `devsys knowledge status`（[internal/cli/cli.go:52-55](file://internal/cli/cli.go#L52-L55)）。
+
+## 本批（M9 #336/#337 提交 362b637 / 7e08e3d）
+
+### `CodeInvalid = 4` 新增触发点
+
+- `devsys doctor` 人类模式在 `InspectionReport.InvalidFiles` 非空时打 `INVALID  <path>  <err>` 行（[internal/cli/diagnostics.go:154-156](file://internal/cli/diagnostics.go#L154-L156)）；`--json` 模式 `rep.InvalidFiles` 嵌入信封同时 `exitWithCode(CodeInvalid)`（[internal/cli/diagnostics.go:127-136](file://internal/cli/diagnostics.go#L127-L136)、[internal/cli/diagnostics.go:168-172](file://internal/cli/diagnostics.go#L168-L172)）。健康项目（`InvalidFiles == nil`）→ exit 0。新增的 `reconcile.InvalidFile{Path, Err}`（[internal/reconcile/reconcile.go:107-114](file://internal/reconcile/reconcile.go#L107-L114)）是 doctor 的 1-based 错误载体：`String()` 返回 `path: err`，`InspectionReport.InvalidFiles` 字段 json/yaml tag `invalid_files,omitempty`。`readAllWorkitems` / `buildProposals` 在解码失败时**继续**扫其余文件，让一条坏 item 不遮蔽整棵树；doctor 的 `Note` 追加 `one or more work item files are unreadable…`。`RepairDryRun` 有 invalid 时拒绝 `cannot plan repairs: …`——保持 dry-run 的 fail-closed 承诺。
+- `devsys next` / `prime` / `session start` / `project status` 在 `len(doc.InvalidFiles) > 0` 时由 [internal/app/next.go:28-46](file://internal/app/next.go#L28-L46) 装配 `next.Report{}` + `Invalidf(KindInvalid, nil, "next: managed state unreadable: <file>: <err>…")`：消息体 ≤ 3 条 + `+N more`。`Class()` 归一 `KindInvalid` → `CodeInvalid = 4`。理由：基于不完整工作项列表出的 verdict 会推荐错误动作，按方案 §14.1 视为 untrusted state。
+
+### `CodeUsage = 2` 新增触发点
+
+- `devsys mcp serve` 在构造 cfg 后调 `mcp.VisibleTools(cfg)` 拿到 `0` 工具时走 `errUsage("mcp serve: profile %s has no tools in tier %s; use --tier standard", quoted, tier)`（[internal/cli/mcp.go:79-92](file://internal/cli/mcp.go#L79-L92)）——多 profile 时单复数与动词变 `profiles %s have`。零工具的 silent server 是最常见的隐藏陷阱（只读 profile + core tier），文案直接给出 `--tier standard` 出路。
+- `devsys workflow init --template <id>`（[internal/cli/cli.go:1153-1170](file://internal/cli/cli.go#L1153-L1170)）：usage 列四模板 `quick-fix / feature-development / architecture-change / reference-template`；未知 id / 已存在 → `Usagef`。`devsys project update --blueprint-artifact <artifact-id>`（fs.Visit 模式，[internal/cli/cli.go:672-694](file://internal/cli/cli.go#L672-L694)）：empty string clears；非空须 `record.KindArtifact.ValidID`（形态错 → `Usagef` / exit 2），未注册（`GetArtifact` ErrNotFound → `Preconditionf` / exit 3 + 出路 `devsys artifact register`）。
+
+### 新增 schema 字段
+
+- `project.yaml.blueprint_artifact_id`（已存在）：本批起 `ProjectUpdate` 把它纳入写事务；空串合法（清除），非空须指向已注册 artifact。`UpdateProjectRequest.BlueprintArtifactID *string`（nil = 不动；`&""` = 清除；`&"<id>"` = 校验 + 写）由 [internal/app/project.go](file://internal/app/project.go) 包装；MCP `project_update` 输入增 `blueprint_artifact_id`（[internal/mcp/tools_project.go](file://internal/mcp/tools_project.go)）。
 
 ## `--expect`：64-hex sha256 + fail-closed
 

@@ -24,7 +24,10 @@ triggers:
   - tier 默认
   - health tier
   - toolSpec.tier
-description: "MCP 服务端的四种 profile（session / executor / reviewer / admin）暴露规则、默认组合与 `visible` 的注册期过滤语义；本批（#301）在 profile 之上叠加 **tier 档**——`TierCore` 是默认 CLI `--tier core` / 缺省值（19 项「日常子集」工具），`TierStandard` 含 profile 全量（66 项工具面），二者与 profile 合取（visible(spec.profiles, cfg.Profiles) && visibleTier(spec.tier, tier)）。`toolSpec` 新增 `tier` 字段（空 = standard，显式 `TierCore` 才进 core 档）；`server.go` 新增 `ParseTier`（拒绝未知名）/ `tierLevel`（core=0 / 其它=1）/ `visibleTier`；`tools_health.go` 的 `health` 响应回传当前 `tier`；CLI `devsys mcp serve --tier core|standard` 直接转 `mcp.ParseTier`。`project_blueprint_get`（session 档 / standard tier）补注册入口由 `tools.go` 与 `tools_project.go:56` 共同组成，未声明蓝图时 `artifact: null`。"
+  - project_update blueprint_artifact_id
+  - empty tools refuse
+  - mcp serve 0 tools
+description: "MCP 服务端的四种 profile（session / executor / reviewer / admin）暴露规则、默认组合与 `visible` 的注册期过滤语义；本批（#301）在 profile 之上叠加 **tier 档**——`TierCore` 是默认 CLI `--tier core` / 缺省值（19 项「日常子集」工具），`TierStandard` 含 profile 全量（66 项工具面），二者与 profile 合取（visible(spec.profiles, cfg.Profiles) && visibleTier(spec.tier, tier)）。`toolSpec` 新增 `tier` 字段（空 = standard，显式 `TierCore` 才进 core 档）；`server.go` 新增 `ParseTier`（拒绝未知名）/ `tierLevel`（core=0 / 其它=1）/ `visibleTier`；`tools_health.go` 的 `health` 响应回传当前 `tier`；CLI `devsys mcp serve --tier core|standard` 直接转 `mcp.ParseTier`。`project_blueprint_get`（session 档 / standard tier）补注册入口由 `tools.go` 与 `tools_project.go:56` 共同组成，未声明蓝图时 `artifact: null`。本批（#336/#337，project_update 蓝图字段+mcp 启动前过滤）：project_update 输入增 blueprint_artifact_id（empty string clears，id must already be registered）；internal/mcp/server.go 新导出 VisibleTools(cfg) []string，让 CLI mcp serve 在 0 工具时拒绝启动（exit 2，提示 --tier standard），是注册期过滤之外的"启用前"二次检查。"
 generated: true
 source_commit: 2b8b8ce
 generator: repowiki-gen
@@ -191,6 +194,26 @@ check(std["workflow_step_complete"], "standard tier exposes workflow_step_comple
 CLI 入口：`devsys mcp serve --tier core` / `--tier standard`（[internal/cli/mcp.go:43-73](file://internal/cli/mcp.go#L43-L73)）。CLI 层只把字面量原样传给 `mcp.ParseTier`，不重复实现 tier 解析。
 
 `DefaultTier()` 与 `DefaultProfiles()` 互相独立——`DefaultProfiles()` 是 `session + executor`，`DefaultTier()` 是 `core`（最小可用子集）。CLI 不显式 `--tier` 也不显式 `--profile` 时，两层默认同时生效，结果就是「core 档 + session/executor 全暴露」的常用组合。
+
+
+### `project_update` 蓝图字段（本批新增）
+
+`internal/mcp/tools_project.go:127-150` 的 `projectUpdateInput` 增 `BlueprintArtifactID *string`（`json:"blueprint_artifact_id,omitempty"`），jsonschema 注明 `artifact id to declare as the project blueprint (empty string clears; the id must already be registered)`。handler 直接转发到 `cfg.service().ProjectUpdate`，业务校验全在 `internal/app/project.go:62-75`：
+
+- 非空字符串必须 `record.KindArtifact.ValidID(id)` 通过——形态错 `Usagef`（CLI exit 2 / MCP `code=usage`）；
+- `record.New(s.Root).GetArtifact(ctx, id)` 返回 `ErrNotFound` → `Preconditionf("artifact %q not found; register it first (...devsys artifact register --path <file> --name <name>...)", id)`（CLI exit 3 / MCP `code=precondition`）；
+- 其它错误走 `storeError`。
+
+### `VisibleTools` 与 0 工具拒绝（本批新增）
+
+`internal/mcp/server.go:146-161` 新导出 `VisibleTools(cfg Config) []string`，沿用 `NewServer` 内同一 `visible(...) && visibleTier(...)` 过滤——返回值为「当前 cfg 启动时会注册的工具名集合」。`internal/cli/mcp.go:79-92` 的 `runMCPServe` 在 `len(VisibleTools(cfg)) == 0` 时返回 `errUsage`：
+
+```text
+profile "reviewer" has no tools in tier core; use --tier standard
+profiles "a", "b" have no tools in tier core; use --tier standard
+```
+
+把"启动一个静默 no-op server"拦在 `mcp.Run` 之前——常见场景是「read-only profile + core tier」。这与注册期过滤是同一语义的 CLI 端表达：注册期过滤让 `tools/list` 不暴露；`VisibleTools` + 0 工具拒绝让 CLI 在 spawn 之前就拒绝启动。
 
 ## 与其他层的关系
 

@@ -12,7 +12,13 @@ triggers:
   - 10/11
   - knowledge status
   - 输出格式
-description: M4 CLI 的 `--json` / `--jsonl` 两种结构化输出形态与退出码/MCP 错误对应；M7.1–M7.4 workspace 子命令族 view/build/serve（信封差异 + hint 行），人类输出一行一事实；M8 sync status / repair conflict notes / archive events|runs / dispatch merge gate 的 `--json` 信封与人类输出约定
+  - workitem list []
+  - workflow list []
+  - doctor INVALID
+  - mcp serve 0 工具
+  - workflow init --template
+  - --blueprint-artifact
+description: M4 CLI 的 `--json` / `--jsonl` 两种结构化输出形态与退出码/MCP 错误对应；M7.1–M7.4 workspace 子命令族 view/build/serve（信封差异 + hint 行），人类输出一行一事实；M8 sync status / repair conflict notes / archive events|runs / dispatch merge gate 的 `--json` 信封与人类输出约定；本批（#336/#337）workitem/workflow list 空集合统一 `[]`、doctor `INVALID` 行 + exit 4、`mcp serve` 0 工具 exit 2、`workflow init --template` 与 `--blueprint-artifact` flag
 generated: true
 source_commit: 2b8b8ce
 ---
@@ -334,9 +340,11 @@ dispatch tick 在 `recover` **之前**跑 `mergeConflict(root)`（[internal/app/
 
 **`mcp serve --tier core|standard`（P1）** 未知 tier → `errUsage("`devsys mcp serve`: unknown tier %q (expected core or standard)")`（[internal/mcp/server.go:47-60](file://internal/mcp/server.go#L47-L60) `ParseTier`）→ `CodeUsage = 2`。`--json` 输出受 `tierLevel` 影响（core 是 daily 子集，standard 暴露所选 profile 下完整工具集）。
 
+
 **`wire --check` / `--skill` / `--print-mcp`（P1）** 三选一互斥（[internal/cli/cli.go:413-523](file://internal/cli/cli.go#L413-L523)）；`--check` / `--print-mcp` 是只读，exit 0；`--skill` 是写操作。`--print-mcp <harness>` 未知 → `app.Usagef("unknown harness %q (expected codex, claude or opencode)")` → `CodeUsage = 2`；`--check` 八项 `go` / `git` / `.devsys` / `schema` / `registry` / `AGENTS.md` / `skill` / `mcp` → 人类输出 `[v]/[x] <name>: <detail>`；`--skill` 重复调用 → `skill: already installed (no change)`。
 
 **`project blueprint`（b89ffae）** 未声明蓝图 → `svc.ProjectBlueprint` 返回 `(nil, nil)`；CLI 打印 `no blueprint declared (project.yaml blueprint_artifact_id is empty)` 并 `exit 0`（[internal/cli/cli.go:630-651](file://internal/cli/cli.go#L630-L651)）；`--json` 模式 `{ok: true, artifact: null}`。与 `project status` / `next` 同一族只读路径。
+
 
 **`approval list` / `approval get`（d726ed4）** 第二列由原始 `apr.Status` 改为 `approvalState(apr)`（[internal/cli/cli.go:1396-1407](file://internal/cli/cli.go#L1396-L1407)）：已 `consumed_at` → `consumed`，已 `invalidated_at` → `invalidated`，否则原 `Status`；`--json` 模式仍带原始 `consumed_at` / `invalidated_at` 字段。
 
@@ -344,4 +352,29 @@ dispatch tick 在 `recover` **之前**跑 `mergeConflict(root)`（[internal/app/
 
 **`next` / `claim` 同源质量门（b89ffae）** 风险 `quality_blocked <id>` 在 `next` 输出里挂载推荐原因（补救命令形如 `devsys workitem update --id <id> --description ...`）；`retry_pending <id>: retry queued; next attempt at <RFC3339>` 让 `next` 不再误报「无事可做」（[internal/next/evaluate.go:46-47](file://internal/next/evaluate.go#L46-L47)）。
 
-**`claim` 未绑定 + 项目无策略文件（b89ffae）** 打印 `warning: gates are not enforced`（`--json` 模式 `Notice` 字段承载），不阻断 `claim`；`claim` 在 `config.yaml` 非法或默认策略缺失时**fail-closed** → `CodeInvalid = 4` + `config.yaml is invalid: ...; run \`devsys config check\``。
+**`claim` 未绑定 + 项目无策略文件（b89ffae）** 打印 `warning: gates are not enforced`（`--json` 模式 `Notice` 字段承载），不阻断 `claim`；`claim` 在 `config.yaml` 非法或默认策略缺失时**fail-closed** → `CodeInvalid = 4` + `config.yaml is invalid: ...; run \`devsys config check``。
+
+## 本批（M9 #336/#337 提交 362b637 / 7e08e3d）
+
+### 列表命令空集合：稳定 `[]`，禁止 `null`
+
+- `workitem list --json` / `workflow list --json` 在结果为 `nil` 时显式补 `[]` 再 encode——[internal/cli/cli.go:809-815](file://internal/cli/cli.go#L809-L815) `if items == nil { items = []*domain.WorkItem{} }` 与 [internal/cli/cli.go:1239-1246](file://internal/cli/cli.go#L1239-L1246) `if policies == nil { policies = []app.PolicySummary{} }`。`internal/workitem/workitem.go` 的 `List` 也返回非 nil `[]`。调用方按行解析时不需要为「空 vs null」二态做分支；`jq '.items | length'` 永远返回数字。
+
+### `CodeInvalid = 4` 不可信路径：doctor / next / prime / session / project status
+
+- `devsys doctor` 人类模式打 `INVALID  <path>  <err>` 行（[internal/cli/diagnostics.go:154-156](file://internal/cli/diagnostics.go#L154-L156)）；`--json` 模式 `rep.InvalidFiles` 嵌入信封同时 `exitWithCode(CodeInvalid)`（[internal/cli/diagnostics.go:127-136](file://internal/cli/diagnostics.go#L127-L136)、[internal/cli/diagnostics.go:168-172](file://internal/cli/diagnostics.go#L168-L172)）。`reconcile.InvalidFile{Path, Err}`（[internal/reconcile/reconcile.go:107-114](file://internal/reconcile/reconcile.go#L107-L114)）是 `InspectionReport.InvalidFiles`（json/yaml tag `invalid_files,omitempty`）的载体；`String()` 返回 `path: err`。健康项目（`InvalidFiles == nil`）→ exit 0。
+- `devsys next` / `prime` / `session start` / `project status` 在 `len(doc.InvalidFiles) > 0` 时（[internal/app/next.go:28-46](file://internal/app/next.go#L28-L46)）不调 `next.Evaluate`——`Invalidf(KindInvalid, nil, "next: managed state unreadable: <file>: <err>…")` 装配 `next.Report{}` + 消息体（≤3 条 + `+N more`），`Class()` 归一 `KindInvalid` → `CodeInvalid = 4`。理由：基于不完整工作项列表出的 verdict 会推荐错误动作，按方案 §14.1 视为 untrusted state。调用脚本按 `code == 4` 重新 `devsys recover --actor … --reason …`。
+
+### `CodeUsage = 2` 新增：`mcp serve` 0 工具 / `workflow init --template` / `project update --blueprint-artifact`
+
+- `devsys mcp serve` 在构造 cfg 后调 `mcp.VisibleTools(cfg)` 拿到空 slice 走 `errUsage("mcp serve: profile %s has no tools in tier %s; use --tier standard", quoted, tier)`（[internal/cli/mcp.go:79-92](file://internal/cli/mcp.go#L79-L92)）——多 profile 时单复数与动词变 `profiles %s have`。零工具的 silent server 是隐藏陷阱（只读 profile + core tier），文案直接给出 `--tier standard` 出路。
+- `devsys workflow init --template <id>`（[internal/cli/cli.go:1153-1170](file://internal/cli/cli.go#L1153-L1170)）：usage 文本 `strings.Join(app.WorkflowTemplates(), "|")` 动态生成（`internal/app/workflow_init.go` + 仓库根 `templates.go`）；未知 id / 已存在 → `Usagef`（已存在：`edit it in place`，提示直接编辑已生成的策略文件）。
+- `devsys project update --blueprint-artifact <artifact-id>`（fs.Visit 模式，[internal/cli/cli.go:672-694](file://internal/cli/cli.go#L672-L694)）：empty string clears；非空须 `record.KindArtifact.ValidID`（形态错 → `Usagef` / `CodeUsage = 2`），未注册（`GetArtifact` ErrNotFound → `Preconditionf` / `CodePrecondition = 3` + 出路 `devsys artifact register`）。MCP `project_update` 输入增 `blueprint_artifact_id`（[internal/mcp/tools_project.go](file://internal/mcp/tools_project.go)）。
+
+### `devsys init` 人类输出增「next:」四步
+
+- [internal/cli/cli.go:405-409](file://internal/cli/cli.go#L405-L409) 把 init 完成的人类输出从单行路径汇总升级到「next:」四步引导：`workflow init --template quick-fix (also: feature-development, architecture-change, reference-template), then adapt it` → `devsys wire --skill` → `next.CreateWorkitemCommand` (`devsys workitem create --title "…" --actor <you> --reason "first task"`) → `devsys workspace view`。
+
+### `next` 在空项目 + 无蓝图下的双 remedy 文案
+
+
