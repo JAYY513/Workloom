@@ -162,17 +162,19 @@ GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys ./cmd/devsys
 > 本仓库为私有仓库：下载 Release 产物需要先 `gh auth login`（或在浏览器登录后下载）。
 > 未登录时 `install.sh` 会自动回退到 `git clone --branch <tag> + go build`（需本机有 Go + Git，且 clone 同样需要仓库访问权限）。
 > `v0.1.1` 起二进制与 `checksums.txt` 均由 CI 发布（GNU 校验和格式）。`v0.1.2` 起默认 MCP `--tier core`
-> 严格为 19 项日常子集（`run_fail` / `run_cancel` 不再随 `run_complete` 泄漏）。想要与本文档一致的行为
+> 严格为 19 项日常子集（`run_fail` / `run_cancel` 不再随 `run_complete` 泄漏）。`v0.1.3` 起补齐首启接入闭环
+> （蓝图写入 `project update --blueprint-artifact`、`mcp serve` 空工具集报错、损坏受管 YAML exit 4、
+> `workflow init --template` 内嵌模板）。想要与本文档一致的行为
 > （`prime`、`--latest`、`--tier core` 19 项、`next` 与 `claim` 同源的质量门判定、`default_policy`、
-> 安装链修复），请用 `v0.1.2` 或更新版本，或从源码构建。
+> 安装链修复），请用 `v0.1.3` 或更新版本，或从源码构建。
 
 ```bash
 # Linux / macOS
-bash scripts/install.sh --tag v0.1.2
+bash scripts/install.sh --tag v0.1.3
 
 # Windows PowerShell
 powershell -NoProfile -ExecutionPolicy Bypass \
-  -File scripts/install.ps1 -Tag v0.1.2 -AddToPath
+  -File scripts/install.ps1 -Tag v0.1.3 -AddToPath
 ```
 
 Release 构建覆盖 Linux、macOS 与 Windows 的 `amd64` / `arm64`。

@@ -173,17 +173,19 @@ GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys ./cmd/devsys
 > This repository is private: downloading release artifacts requires `gh auth login` first (or downloading in a logged-in browser).
 > Without login, `install.sh` automatically falls back to `git clone --branch <tag> + go build` (requires Go + Git on your machine, and clone needs repository access too).
 > From `v0.1.1` on, the binaries and `checksums.txt` are published by CI (GNU checksum format). From `v0.1.2` on, default MCP `--tier core`
-> is strictly the 19-tool daily subset (`run_fail` / `run_cancel` no longer leak in with `run_complete`). For the behavior described here
+> is strictly the 19-tool daily subset (`run_fail` / `run_cancel` no longer leak in with `run_complete`). From `v0.1.3` on, the first-run
+> loop is closed (blueprint write via `project update --blueprint-artifact`, `mcp serve` refuses an empty toolset, corrupt managed YAML
+> exits 4, `workflow init --template` ships embedded templates). For the behavior described here
 > (`prime`, `--latest`, `--tier core` of 19 tools, the claim-aligned quality gate in `next`, `default_policy`, the installer fixes),
-> use `v0.1.2` or newer, or build from source.
+> use `v0.1.3` or newer, or build from source.
 
 ```bash
 # Linux / macOS
-bash scripts/install.sh --tag v0.1.2
+bash scripts/install.sh --tag v0.1.3
 
 # Windows PowerShell
 powershell -NoProfile -ExecutionPolicy Bypass \
-  -File scripts/install.ps1 -Tag v0.1.2 -AddToPath
+  -File scripts/install.ps1 -Tag v0.1.3 -AddToPath
 ```
 
 Release builds target Linux, macOS, and Windows on `amd64` and `arm64`.
