@@ -155,7 +155,9 @@ cd Workloom
 GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys ./cmd/devsys
 ```
 
-也可以从指定 Release 安装并校验 SHA-256：
+> 说明：Release 二进制尚未发布（`m9` 及更早 tag 均无构建产物）。
+> 以下命令在 Release 上线前会回退到 `git clone + go build`（需本机有 Go）。
+> 想要与本文档一致的功能（`prime`、`--latest`、`--tier core`），请从源码构建。
 
 ```bash
 # Linux / macOS
@@ -166,7 +168,7 @@ powershell -NoProfile -ExecutionPolicy Bypass \
   -File scripts/install.ps1 -Tag m9 -AddToPath
 ```
 
-支持 Linux、macOS 与 Windows 的 `amd64` / `arm64` 构建。
+Release 构建覆盖 Linux、macOS 与 Windows 的 `amd64` / `arm64`（以上线后实际发布的产物为准）。
 
 ### 2. 初始化项目
 

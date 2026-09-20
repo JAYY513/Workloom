@@ -165,7 +165,9 @@ cd Workloom
 GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys ./cmd/devsys
 ```
 
-Alternatively, install a specific release with SHA-256 verification:
+> Note: no release binaries are published yet (tag `m9` and earlier have no build artifacts).
+> Until a release exists, the commands below fall back to `git clone + go build` (requires Go on your machine).
+> For the features described here (`prime`, `--latest`, `--tier core`), build from source.
 
 ```bash
 # Linux / macOS
@@ -176,7 +178,7 @@ powershell -NoProfile -ExecutionPolicy Bypass \
   -File scripts/install.ps1 -Tag m9 -AddToPath
 ```
 
-Release builds target Linux, macOS, and Windows on `amd64` and `arm64`.
+Release builds target Linux, macOS, and Windows on `amd64` and `arm64` (per the artifacts actually published once a release exists).
 
 ### 2. Initialize a Project
 
