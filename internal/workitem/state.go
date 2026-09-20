@@ -117,7 +117,15 @@ func (s *Store) changeStatus(ctx context.Context, id string, req TransitionReque
 				return fmt.Errorf("%w: release claim before repairing status", ErrAlreadyClaimed)
 			}
 			if req.Token == "" || req.Token != lease.Token || req.Actor != lease.Owner || (req.RunID != "" && req.RunID != lease.RunID) {
-				return ErrLeaseTokenMismatch
+				// Fail closed, but name the way out: a leased work item must
+				// be released before its status can move, and `transition` has
+				// no --token flag to supply the lease token.
+				detail := fmt.Sprintf("workitem %s is leased by %q", id, lease.Owner)
+				if lease.RunID != "" {
+					detail += fmt.Sprintf(" (run %s)", lease.RunID)
+				}
+				return fmt.Errorf("%w: %s; release the claim before leaving execution: devsys workitem release --id %s --owner %s --token <token from .devsys/scheduling/%s.yaml> --actor %s --reason <reason>",
+					ErrLeaseTokenMismatch, detail, id, lease.Owner, id, req.Actor)
 			}
 			if !now.Before(lease.LeaseUntil) {
 				return ErrLeaseExpired

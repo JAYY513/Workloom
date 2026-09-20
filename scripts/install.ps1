@@ -14,11 +14,24 @@ $asset = "devsys-windows-$arch.exe"
 $base = "https://github.com/$Repo/releases/download/$Tag"
 $tmp = Join-Path ([IO.Path]::GetTempPath()) ("devsys-install-" + [Guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+# A private repository's release assets need authentication: an anonymous
+# Invoke-WebRequest only sees a 404. `gh`, when installed and logged in, can
+# fetch them, so try it first and fall back to the anonymous download.
+function Get-ReleaseAsset([string]$Name, [string]$OutFile) {
+  if (Get-Command gh -ErrorAction SilentlyContinue) {
+    & gh auth status *> $null
+    if ($LASTEXITCODE -eq 0) {
+      & gh release download $Tag --repo $Repo --pattern $Name --output $OutFile --clobber *> $null
+      if ($LASTEXITCODE -eq 0) { return }
+    }
+  }
+  Invoke-WebRequest -Uri "$base/$Name" -OutFile $OutFile
+}
 try {
   $ok = $true
   try {
-    Invoke-WebRequest -Uri "$base/$asset" -OutFile (Join-Path $tmp $asset)
-    Invoke-WebRequest -Uri "$base/checksums.txt" -OutFile (Join-Path $tmp "checksums.txt")
+    Get-ReleaseAsset $asset (Join-Path $tmp $asset)
+    Get-ReleaseAsset "checksums.txt" (Join-Path $tmp "checksums.txt")
     # Tolerate both checksum dialects: `<hash>  <asset>` (GNU text mode) and
     # `<hash> *<asset>` (shasum / MSYS binary mode, as in the v0.1.0 release).
     $line = Select-String -Path (Join-Path $tmp "checksums.txt") -Pattern ("[ \t]\*?" + [regex]::Escape($asset) + "$") | Select-Object -First 1
@@ -34,7 +47,7 @@ try {
     if (-not (Get-Command go -ErrorAction SilentlyContinue)) { throw "download failed and no Go for fallback build" }
     if (-not (Get-Command git -ErrorAction SilentlyContinue)) { throw "download failed and no git for fallback build" }
     Write-Output "falling back to git clone + go build"
-    & git clone -q --branch $Tag --depth 1 "https://github.com/$Repo.git" (Join-Path $tmp "src")
+    & git -c advice.detachedHead=false clone -q --branch $Tag --depth 1 "https://github.com/$Repo.git" (Join-Path $tmp "src")
     if ($LASTEXITCODE -ne 0) { throw "git clone failed" }
     $src = Join-Path $tmp "src"
     Push-Location $src

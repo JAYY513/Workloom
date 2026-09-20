@@ -826,17 +826,19 @@ func runWorkitem(stdout io.Writer, opts options, rest []string) error {
 		title := fs.String("title", "", "work item title")
 		prefix := fs.String("prefix", "WLM", "ID prefix")
 		description := fs.String("description", "", "work item description")
+		acceptance := fs.String("acceptance", "", "comma-separated acceptance criteria")
 		kind := fs.String("type", "task", "work item type")
 		priority := fs.Int("priority", 0, "numeric priority (higher first)")
 		parent := fs.String("parent", "", "parent work item id")
 		actor := fs.String("actor", "", "operator")
 		reason := fs.String("reason", "", "creation reason")
 		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *title == "" || *actor == "" || *reason == "" {
-			return errUsage("workitem create --title <title> --actor <actor> --reason <reason> [--prefix WLM] [--description D] [--type T] [--priority N] [--parent <id>]")
+			return errUsage("workitem create --title <title> --actor <actor> --reason <reason> [--prefix WLM] [--description D] [--acceptance a,b] [--type T] [--priority N] [--parent <id>]")
 		}
 		view, err := svc.WorkitemCreate(ctx, app.CreateWorkitemRequest{
 			Title: *title, Description: *description, Type: *kind, Prefix: *prefix,
 			ParentID: *parent, Priority: *priority, Actor: *actor, Reason: *reason,
+			AcceptanceCriteria: splitList(*acceptance),
 		})
 		if err != nil {
 			return err
@@ -948,7 +950,7 @@ func runWorkitem(stdout io.Writer, opts options, rest []string) error {
 		reason := fs.String("reason", "", "release reason")
 		expect := fs.String("expect", "", "version hash from workitem get")
 		latest := latestFlag(fs)
-		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 {
+		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *id == "" || *owner == "" || *token == "" || *actor == "" || *reason == "" {
 			return errUsage("workitem release --id <id> --owner <owner> --token <token> --actor <a> --reason <r> [--expect <hash> | --latest]")
 		}
 		if err := checkLatest(*latest, *expect, "workitem release --id <id> --owner <owner> --token <token> --actor <a> --reason <r> [--expect <hash> | --latest]"); err != nil {
@@ -969,7 +971,7 @@ func runWorkitem(stdout io.Writer, opts options, rest []string) error {
 		reason := fs.String("reason", "", "start reason")
 		expect := fs.String("expect", "", "version hash from workitem get")
 		latest := latestFlag(fs)
-		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 {
+		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *id == "" || *owner == "" || *token == "" || *actor == "" || *reason == "" {
 			return errUsage("workitem start --id <id> --owner <owner> --token <token> --actor <a> --reason <r> [--expect <hash> | --latest]")
 		}
 		if err := checkLatest(*latest, *expect, "workitem start --id <id> --owner <owner> --token <token> --actor <a> --reason <r> [--expect <hash> | --latest]"); err != nil {
@@ -1379,6 +1381,21 @@ func runApproval(stdout io.Writer, opts options, rest []string) error {
 	}
 }
 
+// approvalState renders the effective state of an approval for humans. A
+// consumed or invalidated approval keeps its decided status on disk, but
+// neither can be used again (方案 §4.9), so the list must not show them as
+// usable; --json still carries the raw fields.
+func approvalState(a *domain.Approval) string {
+	switch {
+	case a.InvalidatedAt != nil:
+		return "invalidated"
+	case a.ConsumedAt != nil:
+		return "consumed"
+	default:
+		return a.Status
+	}
+}
+
 func outputApproval(stdout io.Writer, opts options, apr *domain.Approval) error {
 	if opts.json {
 		return json.NewEncoder(stdout).Encode(struct {
@@ -1388,7 +1405,7 @@ func outputApproval(stdout io.Writer, opts options, apr *domain.Approval) error 
 	}
 	if !opts.quiet {
 		fmt.Fprintf(stdout, "%s\t%s\t%s\t%s\tstage=%s\trequested_status=%s\n",
-			apr.ID, apr.Status, apr.Scope, apr.WorkItemID, apr.Stage, apr.RequestedStatus)
+			apr.ID, approvalState(apr), apr.Scope, apr.WorkItemID, apr.Stage, apr.RequestedStatus)
 	}
 	return nil
 }
@@ -1429,7 +1446,7 @@ func runApprovalList(stdout io.Writer, opts options, rest []string) error {
 		}
 		for _, a := range approvals {
 			fmt.Fprintf(stdout, "%s\t%s\t%s\t%s\tstage=%s\trequested_status=%s\n",
-				a.ID, a.Status, a.Scope, a.WorkItemID, a.Stage, a.RequestedStatus)
+				a.ID, approvalState(a), a.Scope, a.WorkItemID, a.Stage, a.RequestedStatus)
 		}
 	}
 	return nil

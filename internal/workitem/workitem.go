@@ -29,6 +29,10 @@ var (
 	ErrNotFound       = errors.New("workitem not found")
 	ErrConflict       = errors.New("workitem changed concurrently")
 	ErrBadPrefix      = errors.New("invalid workitem prefix")
+	// ErrBadID reports a malformed work item id before any path is built, so a
+	// caller sees "invalid workitem id" instead of the storage layer's
+	// "unsafe managed path" fallback.
+	ErrBadID = errors.New("invalid workitem id")
 )
 
 // Store binds WorkItem operations to a project root.
@@ -100,7 +104,7 @@ func (s *Store) Create(ctx context.Context, wi *domain.WorkItem, prefix string) 
 // Get decodes one work item.
 func (s *Store) Get(ctx context.Context, id string) (*domain.WorkItem, error) {
 	if !ValidID(id) {
-		return nil, fmt.Errorf("%w: %q", ErrBadPrefix, id)
+		return nil, fmt.Errorf("%w: %q", ErrBadID, id)
 	}
 	st, err := s.store()
 	if err != nil {
@@ -168,7 +172,7 @@ func (s *Store) List(ctx context.Context) ([]*domain.WorkItem, error) {
 // for status changes (§6). Other fields are written as supplied.
 func (s *Store) Update(ctx context.Context, wi *domain.WorkItem, expected []byte) error {
 	if wi == nil || !ValidID(wi.ID) {
-		return fmt.Errorf("%w: %q", ErrBadPrefix, wi.ID)
+		return fmt.Errorf("%w: %q", ErrBadID, wi.ID)
 	}
 	if !statusOnlyUnchangedAgainstSnapshot(wi, expected) {
 		return fmt.Errorf("%w: status changes must go through Transition or ApplyRepair", ErrInvalidInput)
@@ -223,6 +227,9 @@ func hasActiveLeaseInSnapshot(expected []byte) bool {
 // decoded from, for read-modify-write cycles that pass the bytes back into
 // Update as the optimistic guard.
 func (s *Store) ReadSnapshot(ctx context.Context, id string) (*domain.WorkItem, []byte, error) {
+	if !ValidID(id) {
+		return nil, nil, fmt.Errorf("%w: %q", ErrBadID, id)
+	}
 	st, err := s.store()
 	if err != nil {
 		return nil, nil, err

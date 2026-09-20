@@ -212,7 +212,9 @@ devsys workflow check                                                 # validate
 devsys workitem create \
   --title "Add OAuth login" \
   --actor alice \
-  --reason "Q4 roadmap"
+  --reason "Q4 roadmap" \
+  --description "- context: … / - scope: … / - acceptance: …" \
+  --acceptance "login redirects back,retry on failure"
 
 devsys workitem transition \
   --id WLM-1 \
@@ -221,9 +223,12 @@ devsys workitem transition \
   --reason "spec approved" \
   --latest
 
+devsys workflow start --id WLM-1 --policy quick-fix --actor alice --reason "begin" --latest
 devsys next
 devsys dispatch --once --actor alice --reason "run ready work"
 ```
+
+Quality and stage gates apply only once the work item has a workflow instance bound (the `workflow start` above); the `quick-fix` example asks for a description of at least 40 characters and acceptance criteria. `--acceptance` can be given at `create`, or added later with `workitem update --acceptance a,b`.
 
 `--latest` is intended for an operator explicitly requesting execution against the current version. Automated integrations should read the version hash first and then write with `--expect <hash>`.
 

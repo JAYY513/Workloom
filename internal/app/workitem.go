@@ -79,14 +79,15 @@ func (s *Service) WorkitemGet(ctx context.Context, id string) (WorkItemView, err
 
 // CreateWorkitemRequest is the input to WorkitemCreate.
 type CreateWorkitemRequest struct {
-	Title       string
-	Description string
-	Type        string
-	Prefix      string
-	ParentID    string
-	Priority    int
-	Actor       string
-	Reason      string
+	Title              string
+	Description        string
+	Type               string
+	Prefix             string
+	ParentID           string
+	Priority           int
+	Actor              string
+	Reason             string
+	AcceptanceCriteria []string
 }
 
 // WorkitemCreate creates a draft work item (ID assignment is CAS-guarded).
@@ -120,6 +121,11 @@ func (s *Service) WorkitemCreate(ctx context.Context, req CreateWorkitemRequest)
 	}
 	if req.Description != "" {
 		wi.Description = req.Description
+	}
+	// Acceptance criteria are set at create so a work item can satisfy a
+	// policy's quality gate without a second `workitem update` call.
+	if len(req.AcceptanceCriteria) > 0 {
+		wi.AcceptanceCriteria = req.AcceptanceCriteria
 	}
 	if req.ParentID != "" {
 		parent := req.ParentID
@@ -421,6 +427,11 @@ func trimmedOrNil(value *string) *string {
 func (s *Service) storeError(err error) error {
 	if err == nil {
 		return nil
+	}
+	// A malformed work item id is a caller error, not untrusted state: report
+	// it as a usage error (exit 2) instead of "invalid managed state".
+	if errors.Is(err, workitem.ErrBadID) {
+		return Usagef("%v", err)
 	}
 	if errors.Is(err, storage.ErrNotInitialized) || errors.Is(err, workitem.ErrNotFound) ||
 		errors.Is(err, approval.ErrNotFound) || errors.Is(err, record.ErrNotFound) ||

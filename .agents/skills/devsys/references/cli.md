@@ -15,8 +15,8 @@ devsys next                                 # readiness verdict (always exit 0)
 devsys project status                       # counts + risks + next
 devsys workitem list [--jsonl]              # one JSON record per line
 devsys workitem get <id>                    # includes version: <64-hex>
-devsys workitem create --title T --actor A --reason R                 # [w]
-devsys workitem update --id <id> --acceptance a,b                     # [w] acceptance criteria (create has no such flag)
+devsys workitem create --title T --actor A --reason R [--description D --acceptance a,b]  # [w] set acceptance criteria up front
+devsys workitem update --id <id> --acceptance a,b                     # [w] acceptance criteria (replaces the list)
 devsys workitem transition --id <id> --to <status> --actor A --reason R --expect <hash>   # [w]
 devsys workitem claim --id <id> --owner O --reason R [--expect <hash>]                    # [w]
 devsys workitem release/start/block/complete --id <id> --actor A --reason R [--expect <hash>]  # [w]

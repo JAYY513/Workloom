@@ -201,7 +201,9 @@ devsys workflow check                                          # 校验全部策
 devsys workitem create \
   --title "Add OAuth login" \
   --actor alice \
-  --reason "Q4 roadmap"
+  --reason "Q4 roadmap" \
+  --description "- 背景：… / - 范围：… / - 验收：…" \
+  --acceptance "登录成功回跳,失败可重试"
 
 devsys workitem transition \
   --id WLM-1 \
@@ -210,9 +212,12 @@ devsys workitem transition \
   --reason "spec approved" \
   --latest
 
+devsys workflow start --id WLM-1 --policy quick-fix --actor alice --reason "begin" --latest
 devsys next
 devsys dispatch --once --actor alice --reason "run ready work"
 ```
+
+质量门与阶段门在**工作项绑定工作流实例后**才参与判定（上面的 `workflow start`），`quick-fix` 示例要求描述 ≥40 字、有验收标准等；`--acceptance` 可在 `create` 直接给，也可事后用 `workitem update --acceptance a,b` 补。
 
 `--latest` 适合操作者明确要求基于最新版本执行的场景；自动化集成应先读版本哈希，再用 `--expect <hash>` 写入。
 

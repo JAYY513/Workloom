@@ -184,7 +184,7 @@ func (s *Store) Claim(ctx context.Context, id string, opts ClaimOptions) (ClaimR
 		return ClaimResult{}, err
 	}
 	if !ValidID(id) {
-		return ClaimResult{}, fmt.Errorf("%w: %q", ErrBadPrefix, id)
+		return ClaimResult{}, fmt.Errorf("%w: %q", ErrBadID, id)
 	}
 
 	now := opts.Now
@@ -336,7 +336,7 @@ func (s *Store) Heartbeat(ctx context.Context, id string, opts HeartbeatOptions)
 		return fmt.Errorf("%w: owner and token are required", ErrInvalidInput)
 	}
 	if !ValidID(id) {
-		return fmt.Errorf("%w: %q", ErrBadPrefix, id)
+		return fmt.Errorf("%w: %q", ErrBadID, id)
 	}
 	now := opts.Now
 	if now.IsZero() {
@@ -419,7 +419,7 @@ func (s *Store) Release(ctx context.Context, id string, opts ReleaseOptions) err
 		return fmt.Errorf("%w: actor and reason are required", ErrInvalidInput)
 	}
 	if !ValidID(id) {
-		return fmt.Errorf("%w: %q", ErrBadPrefix, id)
+		return fmt.Errorf("%w: %q", ErrBadID, id)
 	}
 	now := opts.Now
 	if now.IsZero() {
@@ -546,7 +546,7 @@ func (s *Store) Start(ctx context.Context, id string, opts StartOptions) (StartR
 		return StartResult{}, err
 	}
 	if !ValidID(id) {
-		return StartResult{}, fmt.Errorf("%w: %q", ErrBadPrefix, id)
+		return StartResult{}, fmt.Errorf("%w: %q", ErrBadID, id)
 	}
 	now := opts.Now
 	if now.IsZero() {
@@ -675,7 +675,7 @@ func (s *Store) QueueRetry(ctx context.Context, id string, opts RetryOptions) (R
 		return RetryResult{}, fmt.Errorf("%w: owner and token are required", ErrInvalidInput)
 	}
 	if !ValidID(id) {
-		return RetryResult{}, fmt.Errorf("%w: %q", ErrBadPrefix, id)
+		return RetryResult{}, fmt.Errorf("%w: %q", ErrBadID, id)
 	}
 	now := opts.Now
 	if now.IsZero() {
@@ -775,7 +775,7 @@ func (s *Store) QueueRetry(ctx context.Context, id string, opts RetryOptions) (R
 // non-status fields are mutable through this entry point.
 func (s *Store) UpdateClaimed(ctx context.Context, id, owner, token string, mutate func(*domain.WorkItem), expected []byte) error {
 	if !ValidID(id) {
-		return fmt.Errorf("%w: %q", ErrBadPrefix, id)
+		return fmt.Errorf("%w: %q", ErrBadID, id)
 	}
 	if strings.TrimSpace(owner) == "" || strings.TrimSpace(token) == "" {
 		return fmt.Errorf("%w: owner and token are required", ErrInvalidInput)
@@ -828,7 +828,7 @@ func (s *Store) UpdateClaimed(ctx context.Context, id, owner, token string, muta
 // ErrNotClaimed when no lease file is present.
 func (s *Store) LeaseInspection(ctx context.Context, id string) (domain.SchedulingLease, error) {
 	if !ValidID(id) {
-		return domain.SchedulingLease{}, fmt.Errorf("%w: %q", ErrBadPrefix, id)
+		return domain.SchedulingLease{}, fmt.Errorf("%w: %q", ErrBadID, id)
 	}
 	st, err := s.store()
 	if err != nil {
@@ -894,7 +894,7 @@ func (s *Store) ListLeases(ctx context.Context) ([]LeaseRef, error) {
 // to avoid stale snapshots.
 func (s *Store) FenceRunUpdate(ctx context.Context, workitemID, owner, token string, mutate func(*domain.Run), expected []byte) error {
 	if !ValidID(workitemID) {
-		return fmt.Errorf("%w: %q", ErrBadPrefix, workitemID)
+		return fmt.Errorf("%w: %q", ErrBadID, workitemID)
 	}
 	if strings.TrimSpace(owner) == "" || strings.TrimSpace(token) == "" {
 		return fmt.Errorf("%w: owner and token are required", ErrInvalidInput)

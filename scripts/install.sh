@@ -35,14 +35,28 @@ download() { # download <url> <dest>
   elif command -v wget >/dev/null; then wget -q -O "$2" "$1"
   else echo 'need curl or wget' >&2; return 1; fi
 }
+# A private repository's release assets need authentication: an anonymous
+# curl/wget only sees a 404. `gh`, when installed and logged in, can fetch
+# them, so try it first and fall back to the anonymous download otherwise.
+gh_download() { # gh_download <asset-name> <dest>
+  command -v gh >/dev/null || return 1
+  gh auth status >/dev/null 2>&1 || return 1
+  gh release download "$tag" --repo "$repo" --pattern "$1" --output "$2" --clobber >/dev/null 2>&1
+}
 fallback_build() {
   command -v go >/dev/null || { echo 'download failed and no Go for fallback build' >&2; return 1; }
   command -v git >/dev/null || { echo 'download failed and no git for fallback build' >&2; return 1; }
   echo "download failed; falling back to git clone + go build"
-  git clone -q --branch "$tag" --depth 1 "https://github.com/${repo}.git" "$tmp/src"
+  git -c advice.detachedHead=false clone -q --branch "$tag" --depth 1 "https://github.com/${repo}.git" "$tmp/src"
   (cd "$tmp/src" && GOPROXY=off GOFLAGS=-mod=vendor go build -o "$tmp/$asset" ./cmd/devsys)
 }
-if ! download "$base/$asset" "$tmp/$asset" || ! download "$base/checksums.txt" "$tmp/checksums.txt"; then
+fetched=0
+if gh_download "$asset" "$tmp/$asset" && gh_download "checksums.txt" "$tmp/checksums.txt"; then
+  fetched=1
+elif download "$base/$asset" "$tmp/$asset" && download "$base/checksums.txt" "$tmp/checksums.txt"; then
+  fetched=1
+fi
+if [ "$fetched" != "1" ]; then
   fallback_build || exit 1
 else
   # tr -d '\r': tolerate CRLF checksums.txt from older PS-built releases.
