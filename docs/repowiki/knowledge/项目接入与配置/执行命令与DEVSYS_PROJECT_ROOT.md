@@ -54,9 +54,9 @@ generator: repowiki-gen
 | `run fail` | `run_fail` | executor | `Service.RunFinish(ctx, RunFinishRequest{Outcome: RunFailed, ...})` | `internal/app.finishAttempt` |
 | `run cancel` | `run_cancel` | executor | `Service.RunFinish(ctx, RunFinishRequest{Outcome: RunCanceled, ...})` | `internal/app.finishAttempt` |
 
-| `devsys workspace view [--limit N]` | — | — | 直接调 `internal/view.Build(ctx, root, view.Options{Limit: *limit})`（不经 `internal/app`） | `internal/view.Build` + `storage.Inspect` / `storage.InspectUnlocked`（[internal/cli/workspace.go:128-134](../../../internal/cli/workspace.go#L128-L134)） |
-| `devsys workspace build --static [--out DIR] [--limit N]` | — | — | 直接调 `internal/view.Build` + `sitestatic.Build` 落盘到 `--out`（默认 `.devsys/dist/site/`，不经 `internal/app`） | `internal/view.Build` + `internal/sitestatic.Build`（[internal/cli/workspace.go:44-108](../../../internal/cli/workspace.go#L44-L108)） |
-| `devsys workspace serve [--host 127.0.0.1] [--port N] [--allow-remote] [--limit N]` | — | — | 直接调 `internal/view.Build` 每请求一次 + `sitestatic.RenderPage` 内存渲染，不写盘（不经 `internal/app`） | `internal/view.Build` + `internal/sitestatic.RenderPage`（[internal/cli/workspace_serve.go:140](../../../internal/cli/workspace_serve.go#L140)） |
+| `devsys workspace view [--limit N]` | — | — | 直接调 `internal/view.Build(ctx, root, view.Options{Limit: *limit})`（不经 `internal/app`） | `internal/view.Build` + `storage.Inspect` / `storage.InspectUnlocked`（[internal/cli/workspace.go:128-134](file://internal/cli/workspace.go#L128-L134)） |
+| `devsys workspace build --static [--out DIR] [--limit N]` | — | — | 直接调 `internal/view.Build` + `sitestatic.Build` 落盘到 `--out`（默认 `.devsys/dist/site/`，不经 `internal/app`） | `internal/view.Build` + `internal/sitestatic.Build`（[internal/cli/workspace.go:44-108](file://internal/cli/workspace.go#L44-L108)） |
+| `devsys workspace serve [--host 127.0.0.1] [--port N] [--allow-remote] [--limit N]` | — | — | 直接调 `internal/view.Build` 每请求一次 + `sitestatic.RenderPage` 内存渲染，不写盘（不经 `internal/app`） | `internal/view.Build` + `internal/sitestatic.RenderPage`（[internal/cli/workspace_serve.go:140](file://internal/cli/workspace_serve.go#L140)） |
 
 `run update --status <terminal>` 仍走 `Service.RunUpdate`（M4 引入），但 M6 起 CLI 文档推荐用 `run complete\|fail\|cancel`（语义对应 §4.8 终态）。
 ## 配置：`config.yaml` 新增键
@@ -75,7 +75,7 @@ dispatch_command: "devsys run exec --id {run_id} --actor dispatch --reason tick"
 | `dispatch_command` | `"devsys run exec --id {run_id} --actor dispatch --reason tick"`（由 `app.dispatchCommandLine` 渲染） | `app.dispatchOne` 选 `spawn` 策略时；任何 workitem 的 `assigned_harness` 为空时使用 | `internal/app.dispatchCommandLine` |
 
 ## DEVSYS_PROJECT_ROOT
-`internal/cli/cli.go:186-194` 的 `appService()` 读取顺序（**P1 起** 委托 `resolveService`，[internal/cli/roots.go:44-50](../../../internal/cli/roots.go#L44-L50)）：
+`internal/cli/cli.go:186-194` 的 `appService()` 读取顺序（**P1 起** 委托 `resolveService`，[internal/cli/roots.go:44-50](file://internal/cli/roots.go#L44-L50)）：
 
 ```text
 1. 命令行 --project-root <abs path>   (CLI 显式开关，未来扩展)
@@ -83,7 +83,7 @@ dispatch_command: "devsys run exec --id {run_id} --actor dispatch --reason tick"
 3. 从当前工作目录向上找最近的 .devsys/（P1 起；用 project.DevsysDirName 探测；找不到回退 cwd）
 ```
 
-`DEVSYS_PROJECT_ROOT` 在 agent 在 git worktree 内运行时显式指定主仓库根——避免 attempt 的报告写回 worktree 自带的 `.devsys/`。`app.HookEnv` 在 hook 与 attempt 启动前把同一变量注入子进程。**P1 起**第 3 条让「在子目录里跑 `devsys ...`」也能找到项目根（[internal/cli/roots.go:17-42](../../../internal/cli/roots.go#L17-L42) `resolveRoot`）：从当前工作目录向上递归找 `project.DevsysDirName`（`.devsys/`），找到就用；走到文件系统根仍没找到时回退 cwd，让 `requireProjectRoot()` 的前置条件错误继续指出操作者所在目录。`archive` / `search` / `config check` / `doctor` / `recover` / `repair` 等命令随之也能从子目录跑。
+`DEVSYS_PROJECT_ROOT` 在 agent 在 git worktree 内运行时显式指定主仓库根——避免 attempt 的报告写回 worktree 自带的 `.devsys/`。`app.HookEnv` 在 hook 与 attempt 启动前把同一变量注入子进程。**P1 起**第 3 条让「在子目录里跑 `devsys ...`」也能找到项目根（[internal/cli/roots.go:17-42](file://internal/cli/roots.go#L17-L42) `resolveRoot`）：从当前工作目录向上递归找 `project.DevsysDirName`（`.devsys/`），找到就用；走到文件系统根仍没找到时回退 cwd，让 `requireProjectRoot()` 的前置条件错误继续指出操作者所在目录。`archive` / `search` / `config check` / `doctor` / `recover` / `repair` 等命令随之也能从子目录跑。
 `DEVSYS_PROJECT_ROOT` 的语义：
 
 - **agent 在 worktree 内运行时**，worktree 自带一份 `.devsys/`（init 在主仓库根创建过）。如果不指定，agent 会把 attempt 的报告写回 worktree 自带的副本，主仓库 `git pull` 之后看不到任何东西。

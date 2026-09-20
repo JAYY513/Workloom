@@ -1,3 +1,11 @@
+## 2026-09-20 · ba342b0 源链接归一 + core 档 19 项同步（任务 #328 / #327）
+
+- 源码基线：`2b8b8ce` → `ba342b0`（MCP `registerRunFinish` 拆成 Complete/Fail/Cancel，core 严格 19 项；#313-B 文档边界；清理 v0.1.1-rc1 记录）。
+- 链接纪律（output-spec §5）：把 bundle 外相对源链接（`../../../internal|cmd|scripts|docs|…`）归一为 `file://<仓库相对路径>`（保留 `#L` 片段）；bundle 内互链保持相对。转换 **382** 处（含 3 处围栏内引注），剩余 out-of-bundle 相对链接 **0**。
+- 引注审计覆盖面因此从 1194 扩到 **1493** 条 `file://…#L`：顺带修 5 处此前相对形态下未扫到的越界——`archive.go:87-110`/`19-110` → 文件止于 106；`cli.go:1396-407` 倒序笔误 → `1396-1407`（`approvalState`）。
+- wiki 正文（#327 已在 `ba342b0` 提交）：`工具与Profile.md` 去掉「实测 21」、登记 1:1 register；`index.md` 同步；`快速开始.md` 更正「tier 默认 standard」为 core。
+- 本轮只改 `docs/repowiki/**` 与随后的 `.repowiki/state.json`；产品代码已在 `ba342b0`。
+
 ## 2026-09-20 · 2b8b8ce 增量刷新（P1/P2 + Release 自动化 + 外部审查两批修复）
 
 - 源码基线：`c5b5533` → `2b8b8ce`（17 提交：发布矩阵/`release.yml`/runbook、P1 `roots.go`+`wire` 三态+技能、P2 `prime`/`--latest`/MCP tier、提示词修复、安装链修复（`98adab3`/`d726ed4`）、使用修复两批（`d726ed4`/`b89ffae`）、v0.1.0/v0.1.1 发布记录）；任务 #326。

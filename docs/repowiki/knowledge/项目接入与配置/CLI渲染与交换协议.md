@@ -148,8 +148,8 @@ M7.1 起 workspace 子命令族扩成三种形态：view（M7.1）打印聚合�
 }
 ```
 
-- 形态：`json.NewEncoder(stdout).Encode(struct{OK bool; view.Model})`（[internal/cli/workspace.go:135-140](../../../internal/cli/workspace.go#L135-L140)）——`OK: true` 与 `view.Model` 字段在 JSON 顶层并列；M4 的 `{ok: true, data}` 写法在此被打破，因为视图本身就是数据。
-- 字段顺序：与 `view.Model` struct 字段序一致（[internal/view/view.go:65-80](../../../internal/view/view.go#L65-L80)），保证序列化稳定。
+- 形态：`json.NewEncoder(stdout).Encode(struct{OK bool; view.Model})`（[internal/cli/workspace.go:135-140](file://internal/cli/workspace.go#L135-L140)）——`OK: true` 与 `view.Model` 字段在 JSON 顶层并列；M4 的 `{ok: true, data}` 写法在此被打破，因为视图本身就是数据。
+- 字段顺序：与 `view.Model` struct 字段序一致（[internal/view/view.go:65-80](file://internal/view/view.go#L65-L80)），保证序列化稳定。
 - 错误：`--json` 模式下错误仍走 M4 错误信封 `{ok: false, error: {code, kind, message, problems?}}`（`render` 函数统一处理）。
 
 ### build（`--json`）—— 站点清单信封
@@ -167,7 +167,7 @@ M7.1 起 workspace 子命令族扩成三种形态：view（M7.1）打印聚合�
 }
 ```
 
-- 形态：`json.NewEncoder(stdout).Encode(struct{OK bool; Out string; Pages []string; GeneratedAt string; Baseline view.Baseline; TrustState string})`（[internal/cli/workspace.go:84-91](../../../internal/cli/workspace.go#L84-L91)）。
+- 形态：`json.NewEncoder(stdout).Encode(struct{OK bool; Out string; Pages []string; GeneratedAt string; Baseline view.Baseline; TrustState string})`（[internal/cli/workspace.go:84-91](file://internal/cli/workspace.go#L84-L91)）。
 - `out` 字段是相对仓库根的相对路径（无法相对时回退到绝对路径）；`pages` 与 `sitestatic.PageFiles` 列出的离线页一一对应（首页 + 五个二级页）。
 - `baseline` 与 `trust_state` 取自同一份 `view.Model`——脚本拿到的"站点 + 时间 + 信任态"和 view 共源，但接口不再共用，避免下游把站点清单误读成视图。
 
@@ -192,13 +192,13 @@ M7.1 起 workspace 子命令族扩成三种形态：view（M7.1）打印聚合�
 }
 ```
 
-- 形态：`json.NewEncoder(w).Encode(struct{OK bool; GeneratedAt string; view.Model})`（[internal/cli/workspace_serve.go:85-87](../../../internal/cli/workspace_serve.go#L85-L87)，嵌套在 `serveHTTP` 的 `/api/view` 分支里）。
+- 形态：`json.NewEncoder(w).Encode(struct{OK bool; GeneratedAt string; view.Model})`（[internal/cli/workspace_serve.go:85-87](file://internal/cli/workspace_serve.go#L85-L87)，嵌套在 `serveHTTP` 的 `/api/view` 分支里）。
 - 与 `view --json` 共享同一份 `view.Build` 结果——`/data/model.json` 走 `sitestatic.ModelJSON`（无 `generated_at`），`/api/view` 走这条带时间戳的信封，前端按需选。
 - 其它路由：`/` 与 `/<page>.html` 走 `servePage` 渲染离线页，`/assets/style.css` 走 `sitestatic.Stylesheet()`，`/healthz` 是 `{"ok":true}`，写方法一律 `405`。
 
 ### 人类输出（一行一事实 + 缩进）
 
-无 `--json` / 无 `--quiet` 时由 `renderWorkspaceView`（[internal/cli/workspace.go:149-228](../../../internal/cli/workspace.go#L149-L228)）生成：
+无 `--json` / 无 `--quiet` 时由 `renderWorkspaceView`（[internal/cli/workspace.go:149-228](file://internal/cli/workspace.go#L149-L228)）生成：
 
 | 行 | 触发条件 | 形态 |
 |---|---|---|
@@ -240,7 +240,7 @@ M8 把「handoff 接力 / 归档 / 冲突标注 / dispatch 门控」四条新命
 
 ### `sync status` —— `--json` 信封与人类输出（M8.1）
 
-`devsys sync status` 不接 flag（[internal/cli/sync.go:36-68](../../../internal/cli/sync.go#L36-L68)）；调用 `syncstatus.Check(ctx, svc.Root)`（[internal/syncstatus/syncstatus.go:82-199](../../../internal/syncstatus/syncstatus.go#L82-L199)），**只读判定、不写盘、不恢复事务、不 fetch 网络**。`--json` 模式下输出 `{ok: true, ...Status}`（[internal/cli/sync.go:58-63](../../../internal/cli/sync.go#L58-L63)）—— `Status` 字段（[internal/syncstatus/syncstatus.go:52-77](../../../internal/syncstatus/syncstatus.go#L52-L77)）：
+`devsys sync status` 不接 flag（[internal/cli/sync.go:36-68](file://internal/cli/sync.go#L36-L68)）；调用 `syncstatus.Check(ctx, svc.Root)`（[internal/syncstatus/syncstatus.go:82-199](file://internal/syncstatus/syncstatus.go#L82-L199)），**只读判定、不写盘、不恢复事务、不 fetch 网络**。`--json` 模式下输出 `{ok: true, ...Status}`（[internal/cli/sync.go:58-63](file://internal/cli/sync.go#L58-L63)）—— `Status` 字段（[internal/syncstatus/syncstatus.go:52-77](file://internal/syncstatus/syncstatus.go#L52-L77)）：
 
 ```json
 {
@@ -263,11 +263,11 @@ M8 把「handoff 接力 / 归档 / 冲突标注 / dispatch 门控」四条新命
 }
 ```
 
-- `Blocker.Code` 10 个稳定字符串（[internal/syncstatus/syncstatus.go:24-35](../../../internal/syncstatus/syncstatus.go#L24-L35)）：`pending-transactions` / `unmerged-paths` / `merge-in-progress` / `active-leases` / `expired-leases` / `orphan-leases` / `unreadable-leases` / `uncommitted-devsys` / `diverged-from-upstream` / `no-upstream`（脚本按 `code` 分支，不要解析 `detail`）。
-- `handoff_ready` 是布尔结论：`len(Blockers) == 0` 时为 `true`（[internal/syncstatus/syncstatus.go:197](../../../internal/syncstatus/syncstatus.go#L197)）。
-- `pending_transactions` 非空时 `leases_deferred = true`，`leases` 留空，`note` = `lease audit deferred: pending transactions make the lease snapshot partial`（[internal/syncstatus/syncstatus.go:165-171](../../../internal/syncstatus/syncstatus.go#L165-L171)）。
+- `Blocker.Code` 10 个稳定字符串（[internal/syncstatus/syncstatus.go:24-35](file://internal/syncstatus/syncstatus.go#L24-L35)）：`pending-transactions` / `unmerged-paths` / `merge-in-progress` / `active-leases` / `expired-leases` / `orphan-leases` / `unreadable-leases` / `uncommitted-devsys` / `diverged-from-upstream` / `no-upstream`（脚本按 `code` 分支，不要解析 `detail`）。
+- `handoff_ready` 是布尔结论：`len(Blockers) == 0` 时为 `true`（[internal/syncstatus/syncstatus.go:197](file://internal/syncstatus/syncstatus.go#L197)）。
+- `pending_transactions` 非空时 `leases_deferred = true`，`leases` 留空，`note` = `lease audit deferred: pending transactions make the lease snapshot partial`（[internal/syncstatus/syncstatus.go:165-171](file://internal/syncstatus/syncstatus.go#L165-L171)）。
 
-人类输出（`renderSyncStatus`，[internal/cli/sync.go:82-126](../../../internal/cli/sync.go#L82-L126)）固定顺序：
+人类输出（`renderSyncStatus`，[internal/cli/sync.go:82-126](file://internal/cli/sync.go#L82-L126)）固定顺序：
 
 | 行 | 触发条件 | 形态 |
 |---|---|---|
@@ -284,13 +284,13 @@ M8 把「handoff 接力 / 归档 / 冲突标注 / dispatch 门控」四条新命
 | `blocked [<code>]: <detail>` | 每个 Blocker | 二级 |
 | `handoff: NOT ready` | `!HandoffReady` | 顶层 |
 
-退出码：`storage.ErrNotInitialized`（`.devsys/` 缺失或非目录）→ `CodePrecondition = 3`（[internal/cli/sync.go:51-53](../../../internal/cli/sync.go#L51-L53)）；其它环境失败（git 缺失、当前不在仓库内）→ `CodePrecondition = 3` + 单行 stderr（`trimSyncErr` 截首行，[internal/cli/sync.go:54-77](../../../internal/cli/sync.go#L54-L77)）。**`handoff_ready = false` / `len(Blockers) > 0` / `leases_deferred = true` 全部 `exit 0`**——handoff 不可达是事实标签，调用脚本按 `handoff_ready` 分支而不是退出码。
+退出码：`storage.ErrNotInitialized`（`.devsys/` 缺失或非目录）→ `CodePrecondition = 3`（[internal/cli/sync.go:51-53](file://internal/cli/sync.go#L51-L53)）；其它环境失败（git 缺失、当前不在仓库内）→ `CodePrecondition = 3` + 单行 stderr（`trimSyncErr` 截首行，[internal/cli/sync.go:54-77](file://internal/cli/sync.go#L54-L77)）。**`handoff_ready = false` / `len(Blockers) > 0` / `leases_deferred = true` 全部 `exit 0`**——handoff 不可达是事实标签，调用脚本按 `handoff_ready` 分支而不是退出码。
 
 ### `repair --dry-run / --apply` —— 冲突标注与 apply rejected（M8.2）
 
-M8.2 在 `repair` 的人类输出与 `--apply` 路径里加入「git 冲突」的**人类项**与拒绝形态。`--json` 信封与 M2 协议相同：`--dry-run` 走 `{ok: true, plan: reconcile.Plan}`；`--apply` 走 `{ok: true, apply: reconcile.ApplyReport}`（[internal/cli/diagnostics.go:242-247](../../../internal/cli/diagnostics.go#L242-L247)、[internal/cli/diagnostics.go:265-270](../../../internal/cli/diagnostics.go#L265-L270)）。
+M8.2 在 `repair` 的人类输出与 `--apply` 路径里加入「git 冲突」的**人类项**与拒绝形态。`--json` 信封与 M2 协议相同：`--dry-run` 走 `{ok: true, plan: reconcile.Plan}`；`--apply` 走 `{ok: true, apply: reconcile.ApplyReport}`（[internal/cli/diagnostics.go:242-247](file://internal/cli/diagnostics.go#L242-L247)、[internal/cli/diagnostics.go:265-270](file://internal/cli/diagnostics.go#L265-L270)）。
 
-人类输出（[internal/cli/diagnostics.go:271-286](../../../internal/cli/diagnostics.go#L271-L286)）新增 / 强化：
+人类输出（[internal/cli/diagnostics.go:271-286](file://internal/cli/diagnostics.go#L271-L286)）新增 / 强化：
 
 | 行 | 触发条件 | 形态 |
 |---|---|---|
@@ -302,13 +302,13 @@ M8.2 在 `repair` 的人类输出与 `--apply` 路径里加入「git 冲突」�
 | `applied  <workitem-id>` | `--apply` 后的每条成功（`Applied`） | 二级 |
 | `rejected <workitem-id>` | `--apply` 后被拒的每条（`Rejected`） | 二级 |
 
-`Plan` 形态（M8.2 三键，[internal/reconcile/reconcile.go:82-87](../../../internal/reconcile/reconcile.go#L82-L87)）：`Proposals / Digest / Note`；`Proposal.Kind = ProposalNoteUnmerged = "note_unmerged_paths"`（[internal/reconcile/reconcile.go:45-49](../../../internal/reconcile/reconcile.go#L45-L49)）由 `conflictNotes` 注入（[internal/reconcile/reconcile.go:306-314](../../../internal/reconcile/reconcile.go#L306-L314)、[internal/reconcile/reconcile.go:327-363](../../../internal/reconcile/reconcile.go#L327-L363)），**`RepairApply` 总是将其路由到 `Rejected`，写盘为空**（[internal/reconcile/reconcile.go:501-505](../../../internal/reconcile/reconcile.go#L501-L505)）——冲突归 git，devsys 不挑边、不写注解、不删 marker。`--apply` 的 `--confirm` digest 比对失败（`ErrDigestMismatch`）→ `errPrecondition` → `CodePrecondition = 3` + 提示 `run \`devsys repair --dry-run\` again`（[internal/cli/diagnostics.go:236-239](../../../internal/cli/diagnostics.go#L236-L239)）。
+`Plan` 形态（M8.2 三键，[internal/reconcile/reconcile.go:82-87](file://internal/reconcile/reconcile.go#L82-L87)）：`Proposals / Digest / Note`；`Proposal.Kind = ProposalNoteUnmerged = "note_unmerged_paths"`（[internal/reconcile/reconcile.go:45-49](file://internal/reconcile/reconcile.go#L45-L49)）由 `conflictNotes` 注入（[internal/reconcile/reconcile.go:306-314](file://internal/reconcile/reconcile.go#L306-L314)、[internal/reconcile/reconcile.go:327-363](file://internal/reconcile/reconcile.go#L327-L363)），**`RepairApply` 总是将其路由到 `Rejected`，写盘为空**（[internal/reconcile/reconcile.go:501-505](file://internal/reconcile/reconcile.go#L501-L505)）——冲突归 git，devsys 不挑边、不写注解、不删 marker。`--apply` 的 `--confirm` digest 比对失败（`ErrDigestMismatch`）→ `errPrecondition` → `CodePrecondition = 3` + 提示 `run \`devsys repair --dry-run\` again`（[internal/cli/diagnostics.go:236-239](file://internal/cli/diagnostics.go#L236-L239)）。
 
 ### `archive events|runs` —— `--json` 信封与人类输出（M8.3）
 
-`devsys archive {events|runs}`（[internal/cli/archive.go:19-31](../../../internal/cli/archive.go#L19-L31)）不接共享 `--json` 子命令开关；走各自的 `runArchiveEvents` / `runArchiveRuns`。`--json` 输出 `{ok: true, archive: archive.Report}`（[internal/cli/archive.go:87-93](../../../internal/cli/archive.go#L87-L93)），`Report` 字段（[internal/archive/archive.go:65-74](../../../internal/archive/archive.go#L65-L74)）：`Archived / Skipped / BytesArchived / BytesBefore / BytesAfter / Manifest{schema_version, entries} / DryRun / Note`。`Spec`（[internal/archive/archive.go:77-86](../../../internal/archive/archive.go:77-L86)）：`BeforeMonth = "YYYY-MM"`、`RunIDs []string`、`Actor / Reason`、`DryRun`、`Now`（默认 `time.Now`）。
+`devsys archive {events|runs}`（[internal/cli/archive.go:19-31](file://internal/cli/archive.go#L19-L31)）不接共享 `--json` 子命令开关；走各自的 `runArchiveEvents` / `runArchiveRuns`。`--json` 输出 `{ok: true, archive: archive.Report}`（[internal/cli/archive.go:87-93](file://internal/cli/archive.go#L87-L93)），`Report` 字段（[internal/archive/archive.go:65-74](file://internal/archive/archive.go#L65-L74)）：`Archived / Skipped / BytesArchived / BytesBefore / BytesAfter / Manifest{schema_version, entries} / DryRun / Note`。`Spec`（[internal/archive/archive.go:77-86](file://internal/archive/archive.go:77-L86)）：`BeforeMonth = "YYYY-MM"`、`RunIDs []string`、`Actor / Reason`、`DryRun`、`Now`（默认 `time.Now`）。
 
-人类输出（`renderArchive`，[internal/cli/archive.go:87-110](../../../internal/cli/archive.go#L87-L110)）：
+人类输出（`renderArchive`，[internal/cli/archive.go:87-110](file://internal/cli/archive.go#L87-L106)）：
 
 | 行 | 触发条件 | 形态 |
 |---|---|---|
@@ -318,11 +318,11 @@ M8.2 在 `repair` 的人类输出与 `--apply` 路径里加入「git 冲突」�
 | `note: <text>` | `Note != ""` | 二级 |
 | `live bytes: <before> -> <after> (archived <n>)` | 恒有 | 顶层 |
 
-退出码：`--before`（events）/`--id`（runs）/ `--actor` / `--reason` 缺失或子命令缺失/未知 → `errUsage` → `CodeUsage = 2`（[internal/cli/archive.go:48-49](../../../internal/cli/archive.go#L48-L49)、[internal/cli/archive.go:71-72](../../../internal/cli/archive.go#L71-L72)、[internal/cli/archive.go:20-22](../../../internal/cli/archive.go#L20-L22)）；`archive.Apply` 内部错误（年月份格式、actor/reason 缺失、storage CAS 失败）→ `errInternal` → `CodeInternal = 1`。`--dry-run` 成功仍 exit 0（不是「待确认」信号）。
+退出码：`--before`（events）/`--id`（runs）/ `--actor` / `--reason` 缺失或子命令缺失/未知 → `errUsage` → `CodeUsage = 2`（[internal/cli/archive.go:48-49](file://internal/cli/archive.go#L48-L49)、[internal/cli/archive.go:71-72](file://internal/cli/archive.go#L71-L72)、[internal/cli/archive.go:20-22](file://internal/cli/archive.go#L20-L22)）；`archive.Apply` 内部错误（年月份格式、actor/reason 缺失、storage CAS 失败）→ `errInternal` → `CodeInternal = 1`。`--dry-run` 成功仍 exit 0（不是「待确认」信号）。
 
 ### `dispatch --dry-run / --watch` 的 merge 门控文案（M8.2）
 
-dispatch tick 在 `recover` **之前**跑 `mergeConflict(root)`（[internal/app/dispatch.go:86-95](../../../internal/app/dispatch.go#L86-L95)、[internal/app/dispatch.go:230-263](../../../internal/app/dispatch.go#L230-L263)）：发现 `knowledge.PorcelainStatus` 的 unmerged XY 或 `knowledge.MergeHeads` 报出的 merge machinery → `Preconditionf("dispatch blocked: <summary>; resolve the merge with git, then \`devsys repair --dry-run\`", blocked)` → `CodePrecondition = 3`。人类输出走 `renderDispatch`（[internal/cli/dispatch.go:66-137](../../../internal/cli/dispatch.go#L66-L137)），错误仍走 M4 stderr JSON 信封，**不在 notice 列表里**—— `Notice` 仅记录「git 探针不可用（`"git conflict probe unavailable (...)"`）」的**降级**，不是冲突本身。
+dispatch tick 在 `recover` **之前**跑 `mergeConflict(root)`（[internal/app/dispatch.go:86-95](file://internal/app/dispatch.go#L86-L95)、[internal/app/dispatch.go:230-263](file://internal/app/dispatch.go#L230-L263)）：发现 `knowledge.PorcelainStatus` 的 unmerged XY 或 `knowledge.MergeHeads` 报出的 merge machinery → `Preconditionf("dispatch blocked: <summary>; resolve the merge with git, then \`devsys repair --dry-run\`", blocked)` → `CodePrecondition = 3`。人类输出走 `renderDispatch`（[internal/cli/dispatch.go:66-137](file://internal/cli/dispatch.go#L66-L137)），错误仍走 M4 stderr JSON 信封，**不在 notice 列表里**—— `Notice` 仅记录「git 探针不可用（`"git conflict probe unavailable (...)"`）」的**降级**，不是冲突本身。
 
 成功路径的人类输出按既有约定（`dry-run: ...` / `recovered: ...` / `in flight: N (global cap N)` / `swept <wi>\t<action>\t...` / `started <wi>\t<run>[ pid=N]\tlog=...` / `planned <wi>\t(not started)` / `skipped (<reason>): N\t<ids>` / `notice: <text>`）逐行落到 stdout。
 
@@ -330,18 +330,18 @@ dispatch tick 在 `recover` **之前**跑 `mergeConflict(root)`（[internal/app/
 
 **`devsys prime`（P2）** 与 `devsys session start --compact` 输出同源：人类模式打印 `project: <name> (<id>)` / `phase` / `state:` / `workitem:` 行 + `next: <action> <id>: <reason>` + 可选 `command:`；`--json` 信封 `{ok: true, ...SessionView}` 与 `session start` 同字段名。
 
-**`--latest`（c150007）** 与 `--expect` 互斥：`checkLatest` 在 CLI 层升为 `CodeUsage = 2` + `(pass --expect or --latest, not both)`（[internal/cli/cli.go:534-539](../../../internal/cli/cli.go#L534-L539)）。所有写命令的 `usage:` 文本同步改为 `[--expect <hash> | --latest]`。
+**`--latest`（c150007）** 与 `--expect` 互斥：`checkLatest` 在 CLI 层升为 `CodeUsage = 2` + `(pass --expect or --latest, not both)`（[internal/cli/cli.go:534-539](file://internal/cli/cli.go#L534-L539)）。所有写命令的 `usage:` 文本同步改为 `[--expect <hash> | --latest]`。
 
-**`mcp serve --tier core|standard`（P1）** 未知 tier → `errUsage("`devsys mcp serve`: unknown tier %q (expected core or standard)")`（[internal/mcp/server.go:47-60](../../../internal/mcp/server.go#L47-L60) `ParseTier`）→ `CodeUsage = 2`。`--json` 输出受 `tierLevel` 影响（core 是 daily 子集，standard 暴露所选 profile 下完整工具集）。
+**`mcp serve --tier core|standard`（P1）** 未知 tier → `errUsage("`devsys mcp serve`: unknown tier %q (expected core or standard)")`（[internal/mcp/server.go:47-60](file://internal/mcp/server.go#L47-L60) `ParseTier`）→ `CodeUsage = 2`。`--json` 输出受 `tierLevel` 影响（core 是 daily 子集，standard 暴露所选 profile 下完整工具集）。
 
-**`wire --check` / `--skill` / `--print-mcp`（P1）** 三选一互斥（[internal/cli/cli.go:413-523](../../../internal/cli/cli.go#L413-L523)）；`--check` / `--print-mcp` 是只读，exit 0；`--skill` 是写操作。`--print-mcp <harness>` 未知 → `app.Usagef("unknown harness %q (expected codex, claude or opencode)")` → `CodeUsage = 2`；`--check` 八项 `go` / `git` / `.devsys` / `schema` / `registry` / `AGENTS.md` / `skill` / `mcp` → 人类输出 `[v]/[x] <name>: <detail>`；`--skill` 重复调用 → `skill: already installed (no change)`。
+**`wire --check` / `--skill` / `--print-mcp`（P1）** 三选一互斥（[internal/cli/cli.go:413-523](file://internal/cli/cli.go#L413-L523)）；`--check` / `--print-mcp` 是只读，exit 0；`--skill` 是写操作。`--print-mcp <harness>` 未知 → `app.Usagef("unknown harness %q (expected codex, claude or opencode)")` → `CodeUsage = 2`；`--check` 八项 `go` / `git` / `.devsys` / `schema` / `registry` / `AGENTS.md` / `skill` / `mcp` → 人类输出 `[v]/[x] <name>: <detail>`；`--skill` 重复调用 → `skill: already installed (no change)`。
 
-**`project blueprint`（b89ffae）** 未声明蓝图 → `svc.ProjectBlueprint` 返回 `(nil, nil)`；CLI 打印 `no blueprint declared (project.yaml blueprint_artifact_id is empty)` 并 `exit 0`（[internal/cli/cli.go:630-651](../../../internal/cli/cli.go#L630-L651)）；`--json` 模式 `{ok: true, artifact: null}`。与 `project status` / `next` 同一族只读路径。
+**`project blueprint`（b89ffae）** 未声明蓝图 → `svc.ProjectBlueprint` 返回 `(nil, nil)`；CLI 打印 `no blueprint declared (project.yaml blueprint_artifact_id is empty)` 并 `exit 0`（[internal/cli/cli.go:630-651](file://internal/cli/cli.go#L630-L651)）；`--json` 模式 `{ok: true, artifact: null}`。与 `project status` / `next` 同一族只读路径。
 
-**`approval list` / `approval get`（d726ed4）** 第二列由原始 `apr.Status` 改为 `approvalState(apr)`（[internal/cli/cli.go:1396-1407](../../../internal/cli/cli.go#L1396-L1407)）：已 `consumed_at` → `consumed`，已 `invalidated_at` → `invalidated`，否则原 `Status`；`--json` 模式仍带原始 `consumed_at` / `invalidated_at` 字段。
+**`approval list` / `approval get`（d726ed4）** 第二列由原始 `apr.Status` 改为 `approvalState(apr)`（[internal/cli/cli.go:1396-1407](file://internal/cli/cli.go#L1396-L1407)）：已 `consumed_at` → `consumed`，已 `invalidated_at` → `invalidated`，否则原 `Status`；`--json` 模式仍带原始 `consumed_at` / `invalidated_at` 字段。
 
-**`storage: version conflict`（c150007 + b89ffae）** 经 `app.storeError`（[internal/app/workitem.go:447-484](../../../internal/app/workitem.go#L447-L484)）补充出路文本：重新读取后重试，或用 `--latest` 直接基于当前版本写入。`--json` 信封走 M4 `{ok:false, error:{code:4, kind:"invalid", message:"...", problems?}}` 标准格式。
+**`storage: version conflict`（c150007 + b89ffae）** 经 `app.storeError`（[internal/app/workitem.go:447-484](file://internal/app/workitem.go#L447-L484)）补充出路文本：重新读取后重试，或用 `--latest` 直接基于当前版本写入。`--json` 信封走 M4 `{ok:false, error:{code:4, kind:"invalid", message:"...", problems?}}` 标准格式。
 
-**`next` / `claim` 同源质量门（b89ffae）** 风险 `quality_blocked <id>` 在 `next` 输出里挂载推荐原因（补救命令形如 `devsys workitem update --id <id> --description ...`）；`retry_pending <id>: retry queued; next attempt at <RFC3339>` 让 `next` 不再误报「无事可做」（[internal/next/evaluate.go:46-47](../../../internal/next/evaluate.go#L46-L47)）。
+**`next` / `claim` 同源质量门（b89ffae）** 风险 `quality_blocked <id>` 在 `next` 输出里挂载推荐原因（补救命令形如 `devsys workitem update --id <id> --description ...`）；`retry_pending <id>: retry queued; next attempt at <RFC3339>` 让 `next` 不再误报「无事可做」（[internal/next/evaluate.go:46-47](file://internal/next/evaluate.go#L46-L47)）。
 
 **`claim` 未绑定 + 项目无策略文件（b89ffae）** 打印 `warning: gates are not enforced`（`--json` 模式 `Notice` 字段承载），不阻断 `claim`；`claim` 在 `config.yaml` 非法或默认策略缺失时**fail-closed** → `CodeInvalid = 4` + `config.yaml is invalid: ...; run \`devsys config check\``。
