@@ -155,20 +155,21 @@ cd Workloom
 GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys ./cmd/devsys
 ```
 
-> 说明：Release 二进制尚未发布（`m9` 及更早 tag 均无构建产物）。
-> 以下命令在 Release 上线前会回退到 `git clone + go build`（需本机有 Go）。
-> 想要与本文档一致的功能（`prime`、`--latest`、`--tier core`），请从源码构建。
+> 说明：`v0.1.0` 起提供 Release 二进制（Linux/macOS/Windows × amd64/arm64，SHA-256 校验）。
+> 本仓库为私有仓库：下载 Release 产物需要先 `gh auth login`（或在浏览器登录后下载）。
+> 未登录时 `install.sh` 会自动回退到 `git clone --branch <tag> + go build`（需本机有 Go + Git，且 clone 同样需要仓库访问权限）。
+> 想要与本文档一致的功能（`prime`、`--latest`、`--tier core`），请用 `v0.1.0` 或更新版本，或从源码构建。
 
 ```bash
 # Linux / macOS
-bash scripts/install.sh --tag m9
+bash scripts/install.sh --tag v0.1.0
 
 # Windows PowerShell
 powershell -NoProfile -ExecutionPolicy Bypass \
-  -File scripts/install.ps1 -Tag m9 -AddToPath
+  -File scripts/install.ps1 -Tag v0.1.0 -AddToPath
 ```
 
-Release 构建覆盖 Linux、macOS 与 Windows 的 `amd64` / `arm64`（以上线后实际发布的产物为准）。
+Release 构建覆盖 Linux、macOS 与 Windows 的 `amd64` / `arm64`。
 
 ### 2. 初始化项目
 
