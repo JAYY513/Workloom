@@ -161,15 +161,17 @@ GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys ./cmd/devsys
 > 说明：`v0.1.0` 起提供 Release 二进制（Linux/macOS/Windows × amd64/arm64，SHA-256 校验）。
 > 本仓库为私有仓库：下载 Release 产物需要先 `gh auth login`（或在浏览器登录后下载）。
 > 未登录时 `install.sh` 会自动回退到 `git clone --branch <tag> + go build`（需本机有 Go + Git，且 clone 同样需要仓库访问权限）。
-> 想要与本文档一致的功能（`prime`、`--latest`、`--tier core`），请用 `v0.1.0` 或更新版本，或从源码构建。
+> `v0.1.1` 起二进制与 `checksums.txt` 均由 CI 发布（GNU 校验和格式）。想要与本文档一致的行为
+> （`prime`、`--latest`、`--tier core`、`next` 与 `claim` 同源的质量门判定、`default_policy`、
+> 安装链修复），请用 `v0.1.1` 或更新版本，或从源码构建。
 
 ```bash
 # Linux / macOS
-bash scripts/install.sh --tag v0.1.0
+bash scripts/install.sh --tag v0.1.1
 
 # Windows PowerShell
 powershell -NoProfile -ExecutionPolicy Bypass \
-  -File scripts/install.ps1 -Tag v0.1.0 -AddToPath
+  -File scripts/install.ps1 -Tag v0.1.1 -AddToPath
 ```
 
 Release 构建覆盖 Linux、macOS 与 Windows 的 `amd64` / `arm64`。
