@@ -119,15 +119,19 @@ Please complete these steps yourself:
 2. Run devsys init at the project root.
 3. Run devsys wire --skill and devsys wire so future agents can understand
    and use Workloom automatically.
-4. Identify whether you are running as codex, claude, or opencode. Run the
+4. Workflows: copy a suitable policy from docs/examples/workflows/ (quick-fix,
+   feature-development, architecture-change, or the reference template) into
+   .devsys/workflows/ and adapt it to this project. Tasks run without a
+   workflow, but the prompt handed to an agent then carries no process rules.
+5. Identify whether you are running as codex, claude, or opencode. Run the
    matching devsys wire --print-mcp <client> command and configure MCP when
    your permissions allow it.
-5. Run devsys wire --check to verify the setup, then run devsys prime to load
+6. Run devsys wire --check to verify the setup, then run devsys prime to load
    the project state.
-6. Inspect the project blueprint, goals, scope, constraints, milestones,
+7. Inspect the project blueprint, goals, scope, constraints, milestones,
    existing tasks, and workflows. If no blueprint is configured, tell me
    clearly and ask about the project goals instead of making assumptions.
-7. Summarize in plain language whether setup succeeded, the current project
+8. Summarize in plain language whether setup succeeded, the current project
    state, and the recommended next action.
 
 Do not edit managed files under .devsys directly. Perform all writes through
@@ -193,6 +197,14 @@ devsys session start
 ```
 
 `devsys init` creates `.devsys/` idempotently. `wire` adds concise collaboration rules to `AGENTS.md` while preserving hand-written content.
+
+A fresh project has an empty `.devsys/workflows/`. Tasks run without a policy, but the round prompt handed to an agent then carries no process rules. Copy an example and adapt it:
+
+```bash
+cp docs/examples/workflows/quick-fix.md .devsys/workflows/            # minimal
+cp docs/examples/workflows/reference-template.md .devsys/workflows/   # full template: posture, steps, evidence, stop conditions
+devsys workflow check                                                 # validates every policy file
+```
 
 ### 3. Create and Advance Work
 

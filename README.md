@@ -116,12 +116,15 @@ Coding Agents
    或源码构建方式安装，并先告诉我将执行什么。
 2. 在项目根目录运行 devsys init。
 3. 运行 devsys wire --skill 和 devsys wire，让后续 Agent 能自动理解 Workloom。
-4. 识别你当前属于 codex、claude 还是 opencode，运行对应的
+4. 工作流：把 docs/examples/workflows/ 里合适的示例（快修 / 功能开发 / 架构变更，
+   或参考级模板）复制一份到 .devsys/workflows/，并按本项目改写成实际流程；
+   没有工作流时任务也能推进，但派发给 Agent 的提示词里不会有流程约束。
+5. 识别你当前属于 codex、claude 还是 opencode，运行对应的
    devsys wire --print-mcp <客户端>，并在权限允许时完成 MCP 配置。
-5. 运行 devsys wire --check 检查接入结果，再运行 devsys prime 读取项目状态。
-6. 检查项目蓝图、目标、范围、约束、里程碑、现有任务和工作流。
+6. 运行 devsys wire --check 检查接入结果，再运行 devsys prime 读取项目状态。
+7. 检查项目蓝图、目标、范围、约束、里程碑、现有任务和工作流。
    如果蓝图尚未配置，请明确告诉我并先询问项目目标，不要直接假设。
-7. 最后用自然语言告诉我：接入是否成功、当前项目状态、建议的下一步。
+8. 最后用自然语言告诉我：接入是否成功、当前项目状态、建议的下一步。
 
 不要直接修改 .devsys 内的受管状态文件；所有写入都通过 devsys CLI 或 MCP 完成。
 如果某一步必须由我手动操作，只告诉我那一个明确步骤，然后继续完成剩余工作。
@@ -183,6 +186,14 @@ devsys session start
 ```
 
 `devsys init` 幂等创建 `.devsys/`；`wire` 将精简的协作纪律写入 `AGENTS.md`，且保留文件中的手写内容。
+
+新项目的 `.devsys/workflows/` 是空的：没有工作流时任务照常推进，但派发给 Agent 的轮次提示词里不会有流程约束。复制一份示例并按项目改写：
+
+```bash
+cp docs/examples/workflows/quick-fix.md .devsys/workflows/     # 最简；另有 feature-development / architecture-change
+cp docs/examples/workflows/reference-template.md .devsys/workflows/   # 参考级模板：姿态、步骤、证据、停止条件
+devsys workflow check                                          # 校验全部策略文件
+```
 
 ### 3. 创建并推进工作
 
