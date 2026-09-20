@@ -19,7 +19,9 @@ try {
   try {
     Invoke-WebRequest -Uri "$base/$asset" -OutFile (Join-Path $tmp $asset)
     Invoke-WebRequest -Uri "$base/checksums.txt" -OutFile (Join-Path $tmp "checksums.txt")
-    $line = Select-String -Path (Join-Path $tmp "checksums.txt") -Pattern ([regex]::Escape("  $asset")) | Select-Object -First 1
+    # Tolerate both checksum dialects: `<hash>  <asset>` (GNU text mode) and
+    # `<hash> *<asset>` (shasum / MSYS binary mode, as in the v0.1.0 release).
+    $line = Select-String -Path (Join-Path $tmp "checksums.txt") -Pattern ("[ \t]\*?" + [regex]::Escape($asset) + "$") | Select-Object -First 1
     if (-not $line) { throw "checksum entry missing for $asset" }
     $want = ($line.Line -split '\s+')[0].ToLower()
     $got = (Get-FileHash -Algorithm SHA256 (Join-Path $tmp $asset)).Hash.ToLower()
@@ -34,10 +36,18 @@ try {
     Write-Output "falling back to git clone + go build"
     & git clone -q --branch $Tag --depth 1 "https://github.com/$Repo.git" (Join-Path $tmp "src")
     if ($LASTEXITCODE -ne 0) { throw "git clone failed" }
-    $env:GOFLAGS = "-mod=vendor"
-    & go build -o (Join-Path $tmp $asset) "$tmp/src/cmd/devsys"
-    if ($LASTEXITCODE -ne 0) { throw "go build failed" }
-    Remove-Item Env:\GOFLAGS -ErrorAction SilentlyContinue
+    $src = Join-Path $tmp "src"
+    Push-Location $src
+    try {
+      $env:GOFLAGS = "-mod=vendor"
+      # The version ldflags match scripts/build-release.sh, so a fallback build
+      # reports the tag it was built from instead of the 0.1.0-dev default.
+      & go build -ldflags "-s -w -X workloom/internal/version.Version=$Tag" -o (Join-Path $tmp $asset) ./cmd/devsys
+      if ($LASTEXITCODE -ne 0) { throw "go build failed" }
+    } finally {
+      Pop-Location
+      Remove-Item Env:\GOFLAGS -ErrorAction SilentlyContinue
+    }
   }
   New-Item -ItemType Directory -Force -Path $dest | Out-Null
   Copy-Item -Force (Join-Path $tmp $asset) (Join-Path $dest "devsys.exe")

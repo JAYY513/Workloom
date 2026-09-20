@@ -46,11 +46,13 @@ if ! download "$base/$asset" "$tmp/$asset" || ! download "$base/checksums.txt" "
   fallback_build || exit 1
 else
   # tr -d '\r': tolerate CRLF checksums.txt from older PS-built releases.
+  # '[[:space:]]\*?' tolerates the shasum/MSYS binary marker (`<hash> *<file>`),
+  # which the v0.1.0 release used; sha256sum -c accepts both dialects.
   verified=0
   if command -v sha256sum >/dev/null; then
-    tr -d '\r' < "$tmp/checksums.txt" | grep -F "  $asset" | (cd "$tmp" && sha256sum -c -) && verified=1
+    tr -d '\r' < "$tmp/checksums.txt" | grep -E "[[:space:]]\*?$asset\$" | (cd "$tmp" && sha256sum -c -) && verified=1
   elif command -v shasum >/dev/null; then
-    tr -d '\r' < "$tmp/checksums.txt" | grep -F "  $asset" | (cd "$tmp" && shasum -a 256 -c -) && verified=1
+    tr -d '\r' < "$tmp/checksums.txt" | grep -E "[[:space:]]\*?$asset\$" | (cd "$tmp" && shasum -a 256 -c -) && verified=1
   else
     echo 'need sha256sum or shasum' >&2
   fi
