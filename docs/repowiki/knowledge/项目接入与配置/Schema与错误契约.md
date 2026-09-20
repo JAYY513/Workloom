@@ -26,9 +26,9 @@ triggers:
   - M6 退出码
   - run verify exit code
   - run complete exit code
-description: devsys 受管 YAML 文件的严格 schema：每文件白名单 + schema_version 闸门 + 行号定位 + Problems 错误结构（含 SeverityWarning） + 退出码 4 的语义边界 + M1 完整 Project 模型 + 嵌套字段校验；M2 新增退出码 3/4 在 workitem 与 repair 中的扩展语义、--expect 64-hex sha256 + fail-closed、--confirm 摘要格式、写命令 --actor/--reason 必填；M3 新增 workflow/approval/next 的 kind 与 code 语义、workitem.TransitionRequest.Guard 签名、policy issue 与 LKG 报错；M4 收口到 *app.Error.Class() 四类（映射 CLI 退出码 + MCP tool error code）、--jsonl 列表流、知识层 10/11 退出码预留；M5 新增 KnowledgePages / KnowledgeGenerator 配置键、kindStrings（接受 null 与空列表）+ kindMilestones 双路径、warning severity、KindKnowledge 错误类、knowledge_pages / knowledge_generator 字段解析；M6 增 workspace_root / dispatch_command 配置键、HookEnv 注入、run exec / run complete 在执行层的扩展退出码语义；M7.1 增 workspace view 在视图域的退出码语义（沿用 0/2/3/1，10/11 仍专属 knowledge status）、workspace view 的 --limit 与子命令缺失 → 2、缺 .devsys/ → 3、view.Build 失败 → 1、advisory_unlocked 是事实标签不是失败码。
+description: devsys 受管 YAML 文件的严格 schema：每文件白名单 + schema_version 闸门 + 行号定位 + Problems 错误结构（含 SeverityWarning） + 退出码 4 的语义边界 + M1 完整 Project 模型 + 嵌套字段校验；M2 新增退出码 3/4 在 workitem 与 repair 中的扩展语义、--expect 64-hex sha256 + fail-closed、--confirm 摘要格式、写命令 --actor/--reason 必填；M3 新增 workflow/approval/next 的 kind 与 code 语义、workitem.TransitionRequest.Guard 签名、policy issue 与 LKG 报错；M4 收口到 *app.Error.Class() 四类（映射 CLI 退出码 + MCP tool error code）、--jsonl 列表流、知识层 10/11 退出码预留；M5 新增 KnowledgePages / KnowledgeGenerator 配置键、kindStrings（接受 null 与空列表）+ kindMilestones 双路径、warning severity、KindKnowledge 错误类、knowledge_pages / knowledge_generator 字段解析；M6 增 workspace_root / dispatch_command 配置键、HookEnv 注入、run exec / run complete 在执行层的扩展退出码语义；M7.1 增 workspace view 在视图域的退出码语义（沿用 0/2/3/1，10/11 仍专属 knowledge status）、workspace view 的 --limit 与子命令缺失 → 2、缺 .devsys/ → 3、view.Build 失败 → 1、advisory_unlocked 是事实标签不是失败码。；**本批**：`config.yaml` 增 `default_policy` 键（未绑定实例的工作项按其过门禁；键值非法或指向缺失策略时 claim fail closed）、`project blueprint` 未声明蓝图 exit 0、非法 workitem id 归 usage/exit 2、`storage: version conflict` 附「重新读取重试 / `--latest`」出路。
 generated: true
-source_commit: fa2a87d
+source_commit: 2b8b8ce
 generator: repowiki-gen
 ---
 
@@ -88,15 +88,13 @@ generator: repowiki-gen
 | `schema_version` | `int` | 是 | 必须等于 `SupportedSchemaVersion` |
 | `workspace_root` | `string` | 否 | **M6** 工作区根目录；绝对路径或相对项目根；缺失回退 `<project>/.devsys/workspaces`；M6 起 `app.WorkspacePrepare` / `app.RunExec` / `internal/workspace.Root` 共同使用 |
 | `dispatch_command` | `string` | 否 | **M6** 调度 tick 默认每个 attempt 的 argv 模板；M6.4 默认 `"devsys run exec --id {run_id} --actor dispatch --reason tick"`；M6.7 起由 per-workitem `assigned_harness` 取代 |
-
+| `default_policy` | `string` | 否 | **b89ffae** 工作项未绑 Workflow 实例时按它判定质量门 / 阶段门 / 提示词 / 工作区钩子（方案 §4.7/§5.3 项目级默认）；空保持现有行为（未绑实例的工作项 ungated）；`internal/project/tree.go:68-70` 的 `configYAML` 头注释列出全部可选键 |
 ### `state/current.yaml` 与 `state/milestones.yaml`
-| `current_state` | mapping | 否 | `kindCurrent` 嵌套结构，校验 `summary/risks/blockers/next_focus` |
+
 两个 state spec 在 M1 起被显式收紧（[internal/config/validate.go:63-73](../../../internal/config/validate.go#L63-L73)）：
 
 | `schema_version` | `int` | 是 | 必须等于 `SupportedSchemaVersion` |
-| `workspace_root` | `string` | 否 | **M6** 工作区根目录；绝对路径或相对项目根；缺失回退 `<project>/.devsys/workspaces`；M6 起 `app.WorkspacePrepare` / `app.RunExec` / `internal/workspace.Root` 共同使用 |
-| `dispatch_command` | `string` | 否 | **M6** 调度 tick 默认每个 attempt 的 argv 模板；M6.4 默认 `"devsys run exec --id {run_id} --actor dispatch --reason tick"`；M6.7 起由 per-workitem `assigned_harness` 取代 |
-
+| `current_state` | mapping | 否 | `kindCurrent` 嵌套结构，校验 `summary/risks/blockers/next_focus` |
 > **结果**：M0.4 时 state 文件仅校验 schema_version；M1 起两者都被收紧到 `currentSpec` / `milestonesSpec`，并通过 `internal/domain.CurrentStateFile` / `MilestonesFile` 提供反序列化视图（[internal/project/tree.go:73-84](../../../internal/project/tree.go#L73-L84)）。
 
 ## 字段类型：`fieldKind`
@@ -574,9 +572,12 @@ M6 在 `CodePrecondition = 3` 与 `CodeInvalid = 4` 下扩展执行层错误语�
 | `devsys dispatch --once` 无候选 dispatchable | `app.Dispatch` 返回 `Report{Started: nil}` + notice | exit 0（不是错误） |
 | `devsys dispatch --watch` Ctrl-C | `signal.NotifyContext` cancel | exit 0 |
 
-## M7.1–M7.4 退出码语义扩展（视图域）
+| **P1** `mcp serve --tier <unknown>` | `mcp.ParseTier` 失败（[internal/mcp/server.go:47-60](../../../internal/mcp/server.go#L47-L60)）→ `app.Usagef` | `CodeUsage` |
+| **c150007** 写命令同时给 `--expect` 与 `--latest` | `checkLatest`（[internal/cli/cli.go:534-539](../../../internal/cli/cli.go#L534-L539)）→ `errUsage` | `CodeUsage` |
+| **d726ed4** `workitem <cmd> --id <malformed>`（路径穿越 / 多行 / 含换行） | `app.storeError`（[internal/app/workitem.go:447-484](../../../internal/app/workitem.go#L447-L484)）`workitem.ReadSnapshot` id 形状校验 → `app.Usagef("invalid workitem id <id>")` | `CodeUsage` |
+| **b89ffae** `claim` 时 `config.yaml` 非法 / 默认策略缺失 | `policyForWorkItem`（[internal/app/workitem.go:505-516](../../../internal/app/workitem.go#L505-L516)）→ `fmt.Errorf("config.yaml is invalid: ...; claims stay blocked until the file is fixed (\`devsys config check\`)")` 经 `app.Classify` 包装 | `CodeInvalid` |
 
-M7.1–M7.4 视图域只读入口（`workspace view` / `workspace build --static` / `workspace serve`）沿用既有 0/1/2/3 退出码（[internal/cli/cli.go:31-55](../../../internal/cli/cli.go#L31-L55)），**不**新设退出码、不复用 10/11：
+## M7.1–M7.4 退出码语义扩展（视图域）
 
 | 触发点 | 来源 | 错误分类 |
 |---|---|---|

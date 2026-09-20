@@ -31,8 +31,7 @@ triggers:
   - dispatch_command 解析
   - M6 接线
 description: M6 执行层（harness/workspace/dispatch/retry/prompt）到 CLI/MCP 的接线：`devsys worktree/dispatch/run exec|prompt|verify|complete|fail|cancel` 与 MCP `run_prompt/verify/complete/fail/cancel` 的对应；`DEVSYS_PROJECT_ROOT` 与 `HookEnv` 注入规则；`config.workspace_root` / `config.dispatch_command` 解析与默认；M7.1 视图域 `devsys workspace view` 的接线（不经 internal/app、调 internal/view.Build 与 storage.Inspect）与 §4.8 `worktree`（执行工作区）严格分开的边界。
-generated: true
-source_commit: fa2a87d
+source_commit: 2b8b8ce
 generator: repowiki-gen
 ---
 
@@ -76,20 +75,20 @@ dispatch_command: "devsys run exec --id {run_id} --actor dispatch --reason tick"
 | `dispatch_command` | `"devsys run exec --id {run_id} --actor dispatch --reason tick"`（由 `app.dispatchCommandLine` 渲染） | `app.dispatchOne` 选 `spawn` 策略时；任何 workitem 的 `assigned_harness` 为空时使用 | `internal/app.dispatchCommandLine` |
 
 ## DEVSYS_PROJECT_ROOT
-
-`internal/cli/cli.go:178-196` 的 `appService()` 读取顺序：
+`internal/cli/cli.go:186-194` 的 `appService()` 读取顺序（**P1 起** 委托 `resolveService`，[internal/cli/roots.go:44-50](../../../internal/cli/roots.go#L44-L50)）：
 
 ```text
 1. 命令行 --project-root <abs path>   (CLI 显式开关，未来扩展)
-2. 环境变量 DEVSYS_PROJECT_ROOT
-3. 当前工作目录
+2. 环境变量 DEVSYS_PROJECT_ROOT（绝对路径）
+3. 从当前工作目录向上找最近的 .devsys/（P1 起；用 project.DevsysDirName 探测；找不到回退 cwd）
 ```
 
+`DEVSYS_PROJECT_ROOT` 在 agent 在 git worktree 内运行时显式指定主仓库根——避免 attempt 的报告写回 worktree 自带的 `.devsys/`。`app.HookEnv` 在 hook 与 attempt 启动前把同一变量注入子进程。**P1 起**第 3 条让「在子目录里跑 `devsys ...`」也能找到项目根（[internal/cli/roots.go:17-42](../../../internal/cli/roots.go#L17-L42) `resolveRoot`）：从当前工作目录向上递归找 `project.DevsysDirName`（`.devsys/`），找到就用；走到文件系统根仍没找到时回退 cwd，让 `requireProjectRoot()` 的前置条件错误继续指出操作者所在目录。`archive` / `search` / `config check` / `doctor` / `recover` / `repair` 等命令随之也能从子目录跑。
 `DEVSYS_PROJECT_ROOT` 的语义：
 
 - **agent 在 worktree 内运行时**，worktree 自带一份 `.devsys/`（init 在主仓库根创建过）。如果不指定，agent 会把 attempt 的报告写回 worktree 自带的副本，主仓库 `git pull` 之后看不到任何东西。
 - **指定 `DEVSYS_PROJECT_ROOT=<主仓库根>`**，agent 的报告路径解析到主仓库的 `.devsys/`，与 dispatch / 主 CLI 的报告落在同一份文件。
-- **`internal/workspace.HookEnv`**（[internal/workspace/hook.go:317-334](file://internal/workspace/hook.go#L317-L334)）自动注入 `DEVSYS_PROJECT_ROOT=<主仓库根>`——agent 在 hook 脚本与 attempt 进程里看到的环境变量都是同一个值。
+- **`internal/workspace.HookEnv`**（[internal/workspace/workspace.go:319-334](file://internal/workspace/workspace.go#L319-L334)）自动注入 `DEVSYS_PROJECT_ROOT=<主仓库根>`——agent 在 hook 脚本与 attempt 进程里看到的环境变量都是同一个值。
 
 ```sh
 # 一个 worktree 内运行的 agent 想把 attempt 报告写回主仓库

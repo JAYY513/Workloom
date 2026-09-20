@@ -1,3 +1,15 @@
+## 2026-09-20 · 2b8b8ce 增量刷新（P1/P2 + Release 自动化 + 外部审查两批修复）
+
+- 源码基线：`c5b5533` → `2b8b8ce`（17 提交：发布矩阵/`release.yml`/runbook、P1 `roots.go`+`wire` 三态+技能、P2 `prime`/`--latest`/MCP tier、提示词修复、安装链修复（`98adab3`/`d726ed4`）、使用修复两批（`d726ed4`/`b89ffae`）、v0.1.0/v0.1.1 发布记录）；任务 #326。
+- 增量范围：受影响 5 模块（项目接入与配置 9、可靠文本存储 11、共享应用与MCP 6、执行层 6、视图层 7 = 39 卡）+ 3 篇文章 + 本 index；知识层无源码变更，仅 `source_commit` 未动（其卡仍属受管页面）。
+- 手段：8 个子代理并行（每模块一批 + 每篇文章一篇），主代理逐文件复核并修复（见下）。**偏离记录**：技能增量模式写「受影响模块的全部卡重生成」，本轮采用**证据驱动的外科更新**——只有 delta 真正触及的卡改写正文，未受影响的卡只更新 `source_commit` 并核对引注；理由是 17 个提交的功能增量集中在少数卡，整卡重写会把既有已验证内容重新生成一遍、风险大于收益。受影响模块的**判定口径未变**（仍按 plan scope 与 git diff 计算）。
+- 主代理复核修复（子代理产物缺陷）：2 处 frontmatter 丢 `description`（`共享应用与MCP/概述.md`、`项目接入与配置/Schema与错误契约.md`，后者并补回 `generated: true`）；1 处未闭合引注（`可靠文本存储/架构设计.md` 的 `[internal/workitem/claim.go:1-1019](…` → 补全为 `1-1025`）；2 处丢小节标题导致内容悬空（`视图层/编码规范.md` 第 6 条、`项目接入与配置/特殊配置与命令.md` 的「与其他层的关系”）并各删一处游离重复行；3 个文件被写成 CRLF（`项目接入与配置/{概述,架构设计,CLI渲染与交换协议}.md`）→ 归一 LF；4 处跨 bundle 或失效链接（`项目总览.md` 的 `../knowledge/协作层/概述.md`、`../发布流程.md`，`特殊配置与命令.md` 的 `../../发布流程.md`，`可靠文本存储/架构设计.md` 的破损表格行）；13 处行号越界/陈旧引注（`tree.go:42-94`→`42-93`、`template.go:51-313`→`54-233`、`release.yml:1-160`→`1-131`、`build-release.sh:1-66`→`1-50` 与 `59-65`→`42-49`、`install.sh:1-94`→`1-80`、`install.ps1:1-86`→`1-79`、`harness.go:1-130`→`1-126`、`record/update.go:1-200`→`1-189`、`reconcile_io.go:1-68`→`1-67`、`workspace/hook.go:317-334`→`workspace/workspace.go:319-334`（`HookEnv` 实际位置，3 页同修）。
+- 一致性发现（新）：实测 `devsys mcp serve`（默认 profile+tier core）`tools/list` 返回 **21** 项，而 `allTools()` 标定 `TierCore` 仅 19 项——`run_fail`/`run_cancel`（tier `""`）与 `run_complete`（TierCore）共用 `registerRunFinish`，tier 门按 spec 判定而注册函数一次注册三名，故二者随 `run_complete` 进入 core 档。wiki 记录偏离（`共享应用与MCP/工具与Profile.md`），产品决策另立任务 #327。
+- 文档校验：`repowiki validate` 报告 **55 files、0 errors、0 warnings**；主代理自建引注审计（`file://` + 行号）**1194 条 0 越界 / 0 缺失**。
+- 保护：D4 逐页 hash 比对 55 页，仅 `log.md` mismatch（finalize 自身重写，豁免），无人工修改跳过。
+- 收尾：`repowiki state --update` 刷新页面 hash、scope 与源码基线 `2b8b8ce`；`repowiki status` 复核。
+- 验证边界：本轮只改 `docs/repowiki/**` 与 `.repowiki/**`，未触碰产品代码；全量 `go test ./...` 结论沿用 v0.1.1 发版前跑批（27 包绿、gofmt/vet 净）。
+
 ## 2026-09-19 · c5b5533 M9 状态同步（state-only，无内容重生成）
 
 - 源码基线：`c5b5533`（相对上次 wiki 基线 `cde3320` 仅 1 提交，即前轮 `state.json` 记录提交本身；`repowiki status --json` 报 `1 new commits, 0 files changed`、`affected_pages: []`）；增量模式运行，无受影响页即跳过 4a/4b。

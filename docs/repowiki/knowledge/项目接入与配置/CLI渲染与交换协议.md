@@ -14,8 +14,7 @@ triggers:
   - 输出格式
 description: M4 CLI 的 `--json` / `--jsonl` 两种结构化输出形态与退出码/MCP 错误对应；M7.1–M7.4 workspace 子命令族 view/build/serve（信封差异 + hint 行），人类输出一行一事实；M8 sync status / repair conflict notes / archive events|runs / dispatch merge gate 的 `--json` 信封与人类输出约定
 generated: true
-source_commit: 52294b0
-generator: repowiki-gen
+source_commit: 2b8b8ce
 ---
 
 # CLI 渲染与交换协议 · 项目接入与配置
@@ -34,12 +33,10 @@ usage:
   ...
 `
 ```
-
 - `--json`：成功输出 `{"ok":true,...}` 单文档；错误输出 `{"ok":false,"error":{...}}` 到 stderr。
 - `--jsonl`：列表类命令按「一行一条 JSON 记录」输出，字段名与 `--json` 信封内的同名数组一致。
 - `--quiet`：抑制成功输出；错误/warning 仍然走 stderr。
 - 全局开关必须**前置**（解析器遇首个非选项参数即停）。
-
 ## `writeJSONL[T]` 泛型
 
 `internal/cli/cli.go:124-133`：
@@ -59,7 +56,8 @@ func writeJSONL[T any](w io.Writer, items []T) error {
 要点：
 
 - 逐行 encode，没有外层信封；每条记录**字段名**与 `--json` 模式信封内的同名数组字段一致（`workitem_list --jsonl` 输出每行一个 `WorkItem` JSON 对象；`event_list --jsonl` 每行一个 `Event`）。
-- 写入失败 → `errInternal`，exit 1。
+| `approval list`（**d726ed4 起**） | `<id>\t<effective_state>\t<scope>\t<workitem>\t<stage>\t<requested_status>`（第二列由 `approvalState(apr)` 计算：已 `consumed_at` 显示 `consumed`，已 `invalidated_at` 显示 `invalidated`，否则原始 `apr.Status`） |
+| `devsys prime`（**P2**） | `<project name/id> ... <next: action>` 与 `session start` 文本同源但 payload 较短；`--json` 信封与 `SessionView` 字段名一致 |
 - 空列表渲染为「零行」（不是空文档）——脚本按行计数时不会遇到「空行 + EOF」的歧义。
 
 ## `--jsonl` 已覆盖列表命令
@@ -327,3 +325,23 @@ M8.2 在 `repair` 的人类输出与 `--apply` 路径里加入「git 冲突」�
 dispatch tick 在 `recover` **之前**跑 `mergeConflict(root)`（[internal/app/dispatch.go:86-95](../../../internal/app/dispatch.go#L86-L95)、[internal/app/dispatch.go:230-263](../../../internal/app/dispatch.go#L230-L263)）：发现 `knowledge.PorcelainStatus` 的 unmerged XY 或 `knowledge.MergeHeads` 报出的 merge machinery → `Preconditionf("dispatch blocked: <summary>; resolve the merge with git, then \`devsys repair --dry-run\`", blocked)` → `CodePrecondition = 3`。人类输出走 `renderDispatch`（[internal/cli/dispatch.go:66-137](../../../internal/cli/dispatch.go#L66-L137)），错误仍走 M4 stderr JSON 信封，**不在 notice 列表里**—— `Notice` 仅记录「git 探针不可用（`"git conflict probe unavailable (...)"`）」的**降级**，不是冲突本身。
 
 成功路径的人类输出按既有约定（`dry-run: ...` / `recovered: ...` / `in flight: N (global cap N)` / `swept <wi>\t<action>\t...` / `started <wi>\t<run>[ pid=N]\tlog=...` / `planned <wi>\t(not started)` / `skipped (<reason>): N\t<ids>` / `notice: <text>`）逐行落到 stdout。
+
+## P1 / P2 / d726ed4 / b89ffae 命令面增量
+
+**`devsys prime`（P2）** 与 `devsys session start --compact` 输出同源：人类模式打印 `project: <name> (<id>)` / `phase` / `state:` / `workitem:` 行 + `next: <action> <id>: <reason>` + 可选 `command:`；`--json` 信封 `{ok: true, ...SessionView}` 与 `session start` 同字段名。
+
+**`--latest`（c150007）** 与 `--expect` 互斥：`checkLatest` 在 CLI 层升为 `CodeUsage = 2` + `(pass --expect or --latest, not both)`（[internal/cli/cli.go:534-539](../../../internal/cli/cli.go#L534-L539)）。所有写命令的 `usage:` 文本同步改为 `[--expect <hash> | --latest]`。
+
+**`mcp serve --tier core|standard`（P1）** 未知 tier → `errUsage("`devsys mcp serve`: unknown tier %q (expected core or standard)")`（[internal/mcp/server.go:47-60](../../../internal/mcp/server.go#L47-L60) `ParseTier`）→ `CodeUsage = 2`。`--json` 输出受 `tierLevel` 影响（core 是 daily 子集，standard 暴露所选 profile 下完整工具集）。
+
+**`wire --check` / `--skill` / `--print-mcp`（P1）** 三选一互斥（[internal/cli/cli.go:413-523](../../../internal/cli/cli.go#L413-L523)）；`--check` / `--print-mcp` 是只读，exit 0；`--skill` 是写操作。`--print-mcp <harness>` 未知 → `app.Usagef("unknown harness %q (expected codex, claude or opencode)")` → `CodeUsage = 2`；`--check` 八项 `go` / `git` / `.devsys` / `schema` / `registry` / `AGENTS.md` / `skill` / `mcp` → 人类输出 `[v]/[x] <name>: <detail>`；`--skill` 重复调用 → `skill: already installed (no change)`。
+
+**`project blueprint`（b89ffae）** 未声明蓝图 → `svc.ProjectBlueprint` 返回 `(nil, nil)`；CLI 打印 `no blueprint declared (project.yaml blueprint_artifact_id is empty)` 并 `exit 0`（[internal/cli/cli.go:630-651](../../../internal/cli/cli.go#L630-L651)）；`--json` 模式 `{ok: true, artifact: null}`。与 `project status` / `next` 同一族只读路径。
+
+**`approval list` / `approval get`（d726ed4）** 第二列由原始 `apr.Status` 改为 `approvalState(apr)`（[internal/cli/cli.go:1396-1407](../../../internal/cli/cli.go#L1396-L1407)）：已 `consumed_at` → `consumed`，已 `invalidated_at` → `invalidated`，否则原 `Status`；`--json` 模式仍带原始 `consumed_at` / `invalidated_at` 字段。
+
+**`storage: version conflict`（c150007 + b89ffae）** 经 `app.storeError`（[internal/app/workitem.go:447-484](../../../internal/app/workitem.go#L447-L484)）补充出路文本：重新读取后重试，或用 `--latest` 直接基于当前版本写入。`--json` 信封走 M4 `{ok:false, error:{code:4, kind:"invalid", message:"...", problems?}}` 标准格式。
+
+**`next` / `claim` 同源质量门（b89ffae）** 风险 `quality_blocked <id>` 在 `next` 输出里挂载推荐原因（补救命令形如 `devsys workitem update --id <id> --description ...`）；`retry_pending <id>: retry queued; next attempt at <RFC3339>` 让 `next` 不再误报「无事可做」（[internal/next/evaluate.go:46-47](../../../internal/next/evaluate.go#L46-L47)）。
+
+**`claim` 未绑定 + 项目无策略文件（b89ffae）** 打印 `warning: gates are not enforced`（`--json` 模式 `Notice` 字段承载），不阻断 `claim`；`claim` 在 `config.yaml` 非法或默认策略缺失时**fail-closed** → `CodeInvalid = 4` + `config.yaml is invalid: ...; run \`devsys config check\``。

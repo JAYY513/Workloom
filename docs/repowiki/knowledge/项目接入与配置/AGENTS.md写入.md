@@ -9,12 +9,10 @@ triggers:
   - 手写保留
   - devsys:begin
   - devsys:end
-  - 块标记
+description: M4 `devsys wire` 把 devsys 纪律块注入 AGENTS.md；`<!-- devsys:begin/end -->` 标记、幂等（三次运行字节一致）、区段外字节保留（含其它工具的管理块）、`--dry-run` 预览；P1 起 `wire --check`（只读环境报告）/ `wire --skill`（写 `.agents/skills/devsys/{SKILL.md,references/cli.md,references/troubleshooting.md}`）/ `wire --print-mcp <codex|claude|opencode>`（生成 MCP 客户端 stdio 片段）
   - --dry-run
-description: M4 `devsys wire` 把 devsys 纪律块注入 AGENTS.md；`<!-- devsys:begin/end -->` 标记、幂等（三次运行字节一致）、区段外字节保留（含其它工具的管理块）、`--dry-run` 预览
 generated: true
-source_commit: fa2a87d
-generator: repowiki-gen
+source_commit: 2b8b8ce
 ---
 
 
@@ -55,6 +53,7 @@ devsys 只拥有这两个标记**之间**的字节。其它工具的同类管理
 
 `internal/app/wire.go:44-77` 的 `Wire(dryRun bool)`：
 
+
 1. `readAgentsFile(path)` 读现有文件 + mode（保留文件权限位）。
 2. `spliceWireBlock(string(existing))` 替换 `<!-- devsys:begin/end -->` 区间：
    - 区间内：替换为 `wireBlock`。
@@ -63,6 +62,15 @@ devsys 只拥有这两个标记**之间**的字节。其它工具的同类管理
 4. `dryRun=true` → 返回 `WireView{Diff: unifiedDiff(...)}`，**不**写盘。
 5. 否则 `writeFileAtomic(path, updated, mode)` 原子写。
 
+## P1 增量：`wire --check` / `--skill` / `--print-mcp`
+
+P1（6bd253c）把 `devsys wire` 从「只写纪律块」扩展为「agent 接入三件套」：三种新形态走同一 `runWire`（[internal/cli/cli.go:413-523](../../../internal/cli/cli.go#L413-L523)），与原 `--dry-run` **互斥**。
+
+- `wire --check`（**只读**，exit 0）：调 `svc.WireCheck()`（[internal/app/wirecheck.go:22-39](../../../internal/app/wirecheck.go#L22-L39) `WireCheckView{Lines []WireCheckLine}`）报告八项环境就绪状态：`go` / `git` / `.devsys` / `schema` / `registry` / `AGENTS.md` / `skill` / `mcp`。人类输出 `[v] <name>: <detail>` 或 `[x] <name>: <detail>`；`--json` 信封 `{ok, ...WireCheckView}`。
+- `wire --skill`（**写操作**）：调 `svc.WriteSkill()`（[internal/app/skill.go](../../../internal/app/skill.go)）写 `.agents/skills/devsys/{SKILL.md, references/cli.md, references/troubleshooting.md}` 三文件，每文件带 `<!-- devsys-skill -->` 标记。**手写无 marker 的文件不覆盖**（已存在且无 marker → 跳过，报告 `hand-written`）；重复运行 → `skill: already installed (no change)`。
+- `wire --print-mcp <codex|claude|opencode>`：调 `app.MCPSnippet(name, os.Args[0])`（[internal/app/mcpsnippets.go:12-47](../../../internal/app/mcpsnippets.go#L12-L47)）stdout 打印 stdio MCP 客户端片段。codex 走 `-c mcp_servers.devsys.*` 注入；claude 走 `.mcp.json` 的 `mcpServers.devsys`；opencode 走 `opencode.json` 的 `mcp.devsys`。`--json` 信封 `{ok, harness, snippet}`。未知 harness → `app.Usagef("unknown harness %q (expected codex, claude or opencode)")` → `CodeUsage = 2`。
+
+互斥矩阵：`--check` / `--skill` / `--print-mcp` 三选一；`--check` 与 `--print-mcp` 不接受任何其它 flag（`--dry-run` / `--skill`）；`--skill` 与 `--dry-run` 互斥。互斥规则在 `runWire` 顶部集中校验（[internal/cli/cli.go:441-447](../../../internal/cli/cli.go#L441-L447)）。
 ## 幂等保证
 
 测试 `TestWireIsIdempotentAndPreservesHandwritten`（`internal/cli/wire_test.go:27-71`）：
