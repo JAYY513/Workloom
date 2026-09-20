@@ -129,7 +129,7 @@ func (s *Service) KnowledgeStatus(ctx context.Context) (KnowledgeStatusView, err
 	}
 	if view.Pages == 0 {
 		view.Status = KnowledgeMissing
-		view.Reason = "no page layer: no generator is installed or configured (方案 §12.6)"
+		view.Reason = "无知识页面层：未安装或未配置生成器（方案 §12.6）"
 		return view, nil
 	}
 	head, branch, err := knowledge.Head(s.Root)
@@ -239,7 +239,7 @@ func (s *Service) KnowledgeRefresh(ctx context.Context, req KnowledgeRefreshRequ
 	}
 	if status.Pages == 0 {
 		view.Missing = true
-		view.Reason = "no page layer: no generator is installed or configured (方案 §12.6)"
+		view.Reason = "无知识页面层：未安装或未配置生成器（方案 §12.6）"
 		return view, nil
 	}
 	report, err := knowledge.Scan(s.Root, s.pageRoots(md))

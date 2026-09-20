@@ -86,7 +86,7 @@ func TestExamplePoliciesParse(t *testing.T) {
 		}
 		count++
 	}
-	if count != 3 {
-		t.Fatalf("examples = %d, want 3", count)
+	if count != 4 {
+		t.Fatalf("examples = %d, want 4", count)
 	}
 }

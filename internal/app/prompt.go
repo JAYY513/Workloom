@@ -138,6 +138,7 @@ func (s *Service) RunPrompt(ctx context.Context, req RunPromptRequest) (RunPromp
 			KnowledgeDegraded:   wctx.Knowledge.Degraded,
 		},
 	}
+	in.Remaining = promptRemaining(res.Policy, wi.Item)
 	if round > 1 {
 		boundary := time.Time{}
 		if last, ok := lastRound(lines); ok {
@@ -148,7 +149,6 @@ func (s *Service) RunPrompt(ctx context.Context, req RunPromptRequest) (RunPromp
 			return RunPromptView{}, err
 		}
 		in.Changes = changes
-		in.Remaining = promptRemaining(res.Policy, wi.Item)
 	}
 
 	assembled, err := prompt.Assemble(in)

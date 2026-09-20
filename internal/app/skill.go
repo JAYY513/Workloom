@@ -19,7 +19,11 @@ const (
 // files without the marker are never overwritten.
 const skillMarker = "<!-- devsys-skill -->"
 
-const skillMainBody = skillMarker + `
+const skillMainBody = `---
+name: devsys
+description: Devsys/Workloom 项目状态与工作追踪纪律（.devsys/ 是唯一事实来源）。Use when working in a Devsys-tracked project — 触发词：devsys、Workloom、项目状态、领取任务、workitem、run、决策/发现记录、恢复上下文。
+---
+` + skillMarker + `
 # Devsys Skill
 
 This project uses Devsys for tracked work. Prefer Devsys MCP tools when
@@ -27,8 +31,9 @@ available; otherwise use ` + "`devsys --json`" + ` through the shell.
 
 ## Start
 
-1. Run ` + "`devsys session start`" + ` (one call: project facts, work in flight, recommended action).
+1. Run ` + "`devsys prime`" + ` (or ` + "`devsys session start`" + `) — one call: project facts, work in flight, recommended action.
 2. Read the recommended work item (` + "`workitem get`" + ` / ` + "`context get --task <id>`" + `).
+3. If the item carries a workflow, read its steps: ` + "`devsys workflow get --id <workitem>`" + `.
 
 ## Claim
 
@@ -37,8 +42,10 @@ reads after a write must re-read (expired hashes are refused, never forced).
 
 ## During work
 
-Record significant findings, decisions and blockers
-(` + "`finding/event/decision`" + `); keep the run evidence current (` + "`run update`" + `).
+- Record significant findings, decisions and blockers
+  (` + "`finding`" + ` / ` + "`decision`" + ` / ` + "`event`" + `); keep the run evidence current (` + "`run update`" + `).
+- Advance a workflow with ` + "`devsys workflow step-complete`" + ` when the policy declares steps.
+- Blocked: ` + "`devsys workitem block`" + `; a gated stage needs ` + "`devsys approval request`" + ` and a human decision.
 
 ## Complete
 
@@ -50,32 +57,44 @@ Record significant findings, decisions and blockers
 
 - Never edit ` + "`.devsys/`" + ` files directly (repair via ` + "`devsys repair`" + `).
 - See ` + "`references/cli.md`" + ` for the command table and ` + "`references/troubleshooting.md`" + ` for exit codes and retries.
+- Operator-side families (dispatch, approval, archive, workspace) are listed in ` + "`devsys --help`" + `.
 `
 
 const skillCLIRef = skillMarker + `
-# Devsys CLI reference (read-only unless noted)
+# Devsys CLI reference (daily subset)
 
-Source of truth: ` + "`devsys --help`" + ` and per-command usage. This file lists
-the daily subset only.
+Source of truth: ` + "`devsys --help`" + ` and per-command usage. A line marked
+` + "`[w]`" + ` contains write subcommands (writes carry ` + "`--actor`" + ` / ` + "`--reason`" + `, and most
+carry a version guard: ` + "`--expect <hash>`" + ` or ` + "`--latest`" + `).
 
 ` + "```sh" + `
-devsys session start [--compact]            # orient: facts + recommended action
+devsys init                                 # [w] create .devsys/ (git repository root)
+devsys wire [--dry-run]                     # [w] inject the AGENTS.md discipline block
+devsys wire --skill | --check | --print-mcp <codex|claude|opencode>
+devsys prime                                # orient: facts + recommended action (alias: session start --compact)
+devsys session start [--compact]            # same, full context payload
 devsys next                                 # readiness verdict (always exit 0)
 devsys project status                       # counts + risks + next
 devsys workitem list [--jsonl]              # one JSON record per line
 devsys workitem get <id>                    # includes version: <64-hex>
-devsys workitem create --title T --actor A --reason R
-devsys workitem transition --id <id> --to <status> --actor A --reason R --expect <hash>
-devsys workitem claim --id <id> --owner O --reason R [--expect <hash>]
-devsys workitem release/start/block/complete --id <id> --actor A --reason R [--expect <hash>]
-devsys decision/finding/event/artifact list|get|create ...
-devsys run list|get|log|create|update|heartbeat|verify|complete|fail|cancel
+devsys workitem create --title T --actor A --reason R                 # [w]
+devsys workitem update --id <id> --acceptance a,b                     # [w] acceptance criteria (create has no such flag)
+devsys workitem transition --id <id> --to <status> --actor A --reason R --expect <hash>   # [w]
+devsys workitem claim --id <id> --owner O --reason R [--expect <hash>]                    # [w]
+devsys workitem release/start/block/complete --id <id> --actor A --reason R [--expect <hash>]  # [w]
+devsys workflow check                       # validate policy files (read-only)
+devsys workflow list|get|start|next|step-complete|pause|resume|cancel --id <workitem>   # [w] instance writes
+devsys approval list|get|request|approve|reject     # [w] request/approve/reject write
+devsys decision/finding/event/artifact list|get|create ...    # [w] create writes
+devsys run list|get|log|create|update|heartbeat|verify|complete|fail|cancel   # [w] except list/get/log/verify
 devsys context get [--task <id>] [--limit N]   # read-only aggregation
 devsys knowledge status                     # 0 fresh / 10 stale / 11 missing
 devsys workspace view                       # read-only summary
 devsys doctor                               # read-only reconcile report
-devsys recover --actor A --reason R         # operator recovery (idempotent)
+devsys dispatch [--once|--dry-run|--watch] --actor A --reason R   # [w] one scheduling tick
+devsys recover --actor A --reason R         # [w] operator recovery (idempotent)
 devsys sync status                          # handoff readiness (exit 0)
+devsys archive events|runs --actor A --reason R    # [w] conservative archive (no delete)
 ` + "```" + `
 `
 

@@ -79,7 +79,8 @@ func TestRunPromptFullRound(t *testing.T) {
 	for _, want := range []string{
 		"## 任务", "实现登录限流", "### 验收标准", "超限返回 429",
 		"## 工作流策略正文", "目标：实现登录限流", "步骤 implement", // rendered template
-		"## 汇报协议", "devsys run complete",
+		"## 工作流步骤", "待完成步骤：verify", // the first round carries the step list too
+		"## 汇报协议", "devsys run complete", "--by <身份>",
 	} {
 		if !strings.Contains(view.Text, want) {
 			t.Fatalf("prompt misses %q:\n%s", want, view.Text)

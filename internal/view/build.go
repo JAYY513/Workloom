@@ -581,7 +581,7 @@ func (b *builder) knowledge(items []*domain.WorkItem) {
 	switch pages := report.Pages; {
 	case len(pages) == 0:
 		k.Status = KnowledgeMissing
-		k.Reason = "no page layer: no generator is installed or configured (方案 §12.6)"
+		k.Reason = "无知识页面层：未安装或未配置生成器（方案 §12.6）"
 	default:
 		freshness, err := knowledge.Evaluate(b.root, pages, state)
 		if err != nil {

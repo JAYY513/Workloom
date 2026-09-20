@@ -34,7 +34,7 @@ func (s *Service) WireCheck() WireCheckView {
 		checkRegistry(),
 		s.checkAgentsBlock(),
 		s.checkSkill(),
-		{"mcp", true, "printable via `devsys wire --print-mcp <codex|claude|opencode>`"},
+		s.checkMCPConfig(),
 	}
 	return WireCheckView{Lines: lines}
 }
@@ -107,6 +107,12 @@ func (s *Service) checkSkill() WireCheckLine {
 		return WireCheckLine{Name: "skill", Detail: "missing: `devsys wire --skill` writes " + skillDir + "/"}
 	}
 	if marked == total && files == total {
+		// Content, not just the marker: a committed copy drifts when the
+		// generator changes and `devsys wire --skill` is not rerun, and a
+		// green check on a stale file is worse than no check.
+		if stale := s.staleSkillFiles(); len(stale) > 0 {
+			return WireCheckLine{Name: "skill", Detail: "stale: " + strings.Join(stale, ", ") + " differ from this binary; run `devsys wire --skill`"}
+		}
 		return WireCheckLine{Name: "skill", OK: true, Detail: skillDir + "/ present"}
 	}
 	if files == total && marked < total {
@@ -119,4 +125,35 @@ func (s *Service) checkSkill() WireCheckLine {
 		}
 	}
 	return WireCheckLine{Name: "skill", Detail: "incomplete: missing " + strings.Join(missing, ", ")}
+}
+
+// staleSkillFiles lists managed skill files whose bytes differ from what this
+// binary generates. Marker presence alone cannot tell a current copy from a
+// committed one that the generator has since moved past.
+func (s *Service) staleSkillFiles() []string {
+	var stale []string
+	for _, f := range skillFiles() {
+		data, err := os.ReadFile(filepath.Join(s.Root, filepath.FromSlash(f.rel)))
+		if err != nil || string(data) != f.body {
+			stale = append(stale, f.rel)
+		}
+	}
+	return stale
+}
+
+// checkMCPConfig reports whether a known MCP client config in the project
+// already points at devsys. Configuring a client is the operator's call, so a
+// missing entry is reported with the command that prints a snippet rather than
+// treated as an environment failure.
+func (s *Service) checkMCPConfig() WireCheckLine {
+	for _, rel := range []string{".mcp.json", "opencode.json", ".codex/config.toml"} {
+		data, err := os.ReadFile(filepath.Join(s.Root, filepath.FromSlash(rel)))
+		if err != nil {
+			continue
+		}
+		if strings.Contains(string(data), "devsys") {
+			return WireCheckLine{Name: "mcp", OK: true, Detail: rel + " mentions devsys"}
+		}
+	}
+	return WireCheckLine{Name: "mcp", Detail: "no MCP client config in the project mentions devsys; `devsys wire --print-mcp <codex|claude|opencode>` prints a pasteable snippet"}
 }

@@ -32,6 +32,31 @@ func fullInput() Input {
 	}
 }
 
+// A work item without a policy says so instead of rendering an empty template
+// section, and the full round carries the workflow step list.
+func TestAssembleFullRoundWithoutPolicyStatesIt(t *testing.T) {
+	in := fullInput()
+	in.Policy = Policy{}
+	in.Remaining = []string{"当前步骤：implement", "待完成步骤：verify"}
+	p, err := Assemble(in)
+	if err != nil {
+		t.Fatalf("assemble: %v", err)
+	}
+	for _, want := range []string{"## 工作流策略正文", noPolicyBody, "## 工作流步骤", "待完成步骤：verify"} {
+		if !strings.Contains(p.Text, want) {
+			t.Fatalf("full prompt misses %q:\n%s", want, p.Text)
+		}
+	}
+	// With a policy attached the fallback never appears.
+	withPolicy, err := Assemble(fullInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(withPolicy.Text, noPolicyBody) {
+		t.Fatalf("attached policy rendered the fallback text:\n%s", withPolicy.Text)
+	}
+}
+
 // The same input must assemble the same text and hash: the stored hash is the
 // only proof of what the agent received.
 func TestAssembleIsDeterministic(t *testing.T) {

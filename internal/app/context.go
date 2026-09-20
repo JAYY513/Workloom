@@ -293,7 +293,7 @@ func (s *Service) knowledgeContext(ctx context.Context, item *domain.WorkItem, p
 		return KnowledgeContext{
 			Degraded: true,
 			Pages:    []KnowledgePageRef{},
-			Notice:   "no page layer: no generator is installed or configured (方案 §12.6); knowledge queries degrade to records and events",
+			Notice:   "无知识页面层：未安装或未配置生成器（方案 §12.6）；知识查询降级为记录与事件",
 		}, nil
 	}
 	state, _, err := s.knowledgeState(md)

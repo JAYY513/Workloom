@@ -1,3 +1,7 @@
+---
+name: devsys
+description: Devsys/Workloom 项目状态与工作追踪纪律（.devsys/ 是唯一事实来源）。Use when working in a Devsys-tracked project — 触发词：devsys、Workloom、项目状态、领取任务、workitem、run、决策/发现记录、恢复上下文。
+---
 <!-- devsys-skill -->
 # Devsys Skill
 
@@ -6,8 +10,9 @@ available; otherwise use `devsys --json` through the shell.
 
 ## Start
 
-1. Run `devsys session start` (one call: project facts, work in flight, recommended action).
+1. Run `devsys prime` (or `devsys session start`) — one call: project facts, work in flight, recommended action.
 2. Read the recommended work item (`workitem get` / `context get --task <id>`).
+3. If the item carries a workflow, read its steps: `devsys workflow get --id <workitem>`.
 
 ## Claim
 
@@ -16,8 +21,10 @@ reads after a write must re-read (expired hashes are refused, never forced).
 
 ## During work
 
-Record significant findings, decisions and blockers
-(`finding/event/decision`); keep the run evidence current (`run update`).
+- Record significant findings, decisions and blockers
+  (`finding` / `decision` / `event`); keep the run evidence current (`run update`).
+- Advance a workflow with `devsys workflow step-complete` when the policy declares steps.
+- Blocked: `devsys workitem block`; a gated stage needs `devsys approval request` and a human decision.
 
 ## Complete
 
@@ -29,3 +36,4 @@ Record significant findings, decisions and blockers
 
 - Never edit `.devsys/` files directly (repair via `devsys repair`).
 - See `references/cli.md` for the command table and `references/troubleshooting.md` for exit codes and retries.
+- Operator-side families (dispatch, approval, archive, workspace) are listed in `devsys --help`.

@@ -304,7 +304,7 @@ func TestKnowledgeStatusDegrades(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &view); err != nil {
 		t.Fatal(err)
 	}
-	if !view.OK || view.Status != "missing" || view.Pages != 0 || !strings.Contains(view.Reason, "generator") {
+	if !view.OK || view.Status != "missing" || view.Pages != 0 || !strings.Contains(view.Reason, "生成器") {
 		t.Fatalf("view = %s", out)
 	}
 	if strings.Contains(errOut, "devsys:") {

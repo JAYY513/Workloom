@@ -198,7 +198,7 @@ func TestKnowledgeStatusFreshStaleMissing(t *testing.T) {
 	if code != CodeMissing {
 		t.Fatalf("missing: code=%d stdout=%q stderr=%q", code, out, errOut)
 	}
-	if !strings.Contains(out, "no page layer") {
+	if !strings.Contains(out, "无知识页面层") {
 		t.Fatalf("stdout = %q", out)
 	}
 	if strings.Contains(errOut, "devsys:") {
@@ -997,7 +997,7 @@ func TestContextGetTaskDegrades(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &view); err != nil {
 		t.Fatal(err)
 	}
-	if !view.Task.Knowledge.Degraded || len(view.Task.Knowledge.Pages) != 0 || !strings.Contains(view.Task.Knowledge.Notice, "generator") {
+	if !view.Task.Knowledge.Degraded || len(view.Task.Knowledge.Pages) != 0 || !strings.Contains(view.Task.Knowledge.Notice, "生成器") {
 		t.Fatalf("degradation = %s", out)
 	}
 }

@@ -143,13 +143,19 @@ type Input struct {
 	Remaining []string
 }
 
+// noPolicyBody is what a full round states when its work item carries no
+// workflow policy: the task brief is then the whole template, and saying so is
+// more useful than an empty section.
+const noPolicyBody = "（未挂工作流策略：按任务简报、验收标准与约束执行；流程约束由操作者以 `.devsys/workflows/<id>.md` 声明。）"
+
 // protocol is the reporting contract every round carries: agents report
 // through the same surfaces humans use, so evidence never lives only in the
 // harness's own transcript (方案 §8/§9.2).
 const protocol = `- 通过 CLI 或 MCP 汇报（两者同一实现）：` + "`devsys ...`" + ` 与同名 MCP 工具等价。
 - 进度：` + "`devsys run update --id $DEVSYS_RUN_ID --log <一行说明>`" + `（可多次）。
 - 产物：` + "`devsys artifact register --name <名称> --path <路径> --run $DEVSYS_RUN_ID --related $DEVSYS_WORKITEM`" + `。
-- 决策：` + "`devsys decision create --title <标题> --decision <结论>`" + `；发现：` + "`devsys finding create --title <标题> --description <说明>`" + `。
+- 决策：` + "`devsys decision create --title <标题> --decision <结论> --by <身份>`" + `；发现：` + "`devsys finding create --title <标题> --description <说明>`" + `。
+- 受阻：` + "`devsys workitem block --id $DEVSYS_WORKITEM --actor <身份> --reason <原因>`" + `；需要人工放行时按策略请求审批（` + "`devsys approval request --id $DEVSYS_WORKITEM --stage <阶段> --actor <身份> --reason <原因>`" + `）。
 - 完成：` + "`devsys run complete --id $DEVSYS_RUN_ID --actor <身份> --reason <原因>`" + `；失败：` + "`devsys run fail ...`" + `。
 - 退出码 0 表示本轮成功，非零表示失败（失败原因写 stderr）。`
 
@@ -176,13 +182,26 @@ func Assemble(in Input) (Prompt, error) {
 				return Prompt{}, fmt.Errorf("render policy %s body: %w", in.Policy.ID, err)
 			}
 			body = rendered
+		} else {
+			// An unattached policy is a fact the round should state: the body
+			// is the round's template (方案 §5.3), and with none the task brief
+			// is the whole template. An empty heading would leave the agent
+			// guessing whether the policy failed to load.
+			body = noPolicyBody
 		}
 		sections = []Section{
 			{Title: "任务", Body: taskSection(in.Task)},
 			{Title: "工作流策略正文", Body: strings.TrimRight(body, "\n")},
-			{Title: "当前状态", Body: stateSection(in.State)},
-			{Title: "上下文引用", Body: contextSection(in.Context)},
 		}
+		if len(in.Remaining) > 0 {
+			// The full round carries the step list too: a first-round agent
+			// should see where the workflow is going, not only where it stands.
+			sections = append(sections, Section{Title: "工作流步骤", Body: bullets(in.Remaining)})
+		}
+		sections = append(sections,
+			Section{Title: "当前状态", Body: stateSection(in.State)},
+			Section{Title: "上下文引用", Body: contextSection(in.Context)},
+		)
 		if knowledgeNotice := knowledgeSection(in.Snapshot); knowledgeNotice != "" {
 			sections = append(sections, Section{Title: "知识基线", Body: knowledgeNotice})
 		}

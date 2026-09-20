@@ -51,6 +51,34 @@ func TestWireCheck(t *testing.T) {
 	}
 }
 
+// A managed skill file that drifted from the generator is reported as stale
+// instead of passing on marker presence alone.
+func TestWireCheckReportsStaleSkill(t *testing.T) {
+	repo, _ := gatedProject(t)
+	t.Chdir(repo)
+	if code, _, errOut := run(t, "wire", "--skill"); code != CodeOK {
+		t.Fatalf("wire --skill: code=%d stderr=%q", code, errOut)
+	}
+	p := filepath.Join(repo, ".agents", "skills", "devsys", "references", "cli.md")
+	data, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(p, append(data, []byte("\ndrift\n")...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	code, out, _ := run(t, "wire", "--check")
+	if code != CodeOK || !strings.Contains(out, "stale") {
+		t.Fatalf("check over a drifted skill: code=%d out=%q", code, out)
+	}
+	if code, _, errOut := run(t, "wire", "--skill"); code != CodeOK {
+		t.Fatalf("refresh: code=%d stderr=%q", code, errOut)
+	}
+	if code, out, _ := run(t, "wire", "--check"); code != CodeOK || !strings.Contains(out, "[v] skill") {
+		t.Fatalf("check after refresh: code=%d out=%q", code, out)
+	}
+}
+
 // wire --print-mcp prints the stdio command; unknown harness is usage.
 func TestWirePrintMCP(t *testing.T) {
 	repo, _ := gatedProject(t)
