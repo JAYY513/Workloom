@@ -1,3 +1,8 @@
+## 2026-09-20 · 2742dd9 state 吸收（v0.1.2 发版记录）
+
+- 源码基线：`ba342b0` → `2742dd9`（`c90acd0` 源链接归一、`2f7befd` README 改指 v0.1.2、`2742dd9` 发布实跑记录）。wiki 正文无新 delta，本轮只 `state --update` 把基线推到 `2742dd9`，避免 status 把已提交的链接归一页误报为受影响。
+- 产品事实：正式 tag `v0.1.2`（CI run 35499758724），默认 MCP core=19。
+
 ## 2026-09-20 · ba342b0 源链接归一 + core 档 19 项同步（任务 #328 / #327）
 
 - 源码基线：`2b8b8ce` → `ba342b0`（MCP `registerRunFinish` 拆成 Complete/Fail/Cancel，core 严格 19 项；#313-B 文档边界；清理 v0.1.1-rc1 记录）。
