@@ -168,7 +168,35 @@ The agent learns the operating rules from `AGENTS.md` and `.agents/skills/devsys
 
 ### 1. Install
 
-Build from source. The repository includes `vendor/`, so the build can run offline:
+**① Release scripts (recommended, ~10 seconds)**. Open the
+[Releases page](https://github.com/JAYY513/Workloom/releases/latest), download
+`install.sh` (on Windows PowerShell use `install.ps1`), verify it against
+`checksums.txt` from the same page, then run:
+
+```bash
+# Linux / macOS (Git Bash)
+bash install.sh --tag v0.1.7
+
+# Windows PowerShell
+powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1 -Tag v0.1.7 -AddToPath
+```
+
+Confirm with `devsys --version` (expect `devsys v0.1.7 (…)`). This repository
+is private: the scripts download through `gh` when authenticated (run
+`gh auth login` first), and otherwise fall back to `git clone --branch <tag> +
+go build` (requires Go + Git). `install.ps1` installs to
+`%LOCALAPPDATA%\devsys\` and only edits the User PATH.
+
+**② With Go installed**: one-line install (a private repository needs Go to
+reach it directly, bypassing the checksum database):
+
+```bash
+go env -w GOPRIVATE=github.com/JAYY513/Workloom
+go install github.com/JAYY513/Workloom/cmd/devsys@v0.1.7
+```
+
+**③ Build from source** (fallback; the repository includes `vendor/`, so the
+build runs offline):
 
 ```bash
 git clone https://github.com/JAYY513/Workloom.git
@@ -180,49 +208,14 @@ GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys ./cmd/devsys
 GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys.exe ./cmd/devsys
 ```
 
-> On Windows run `install.sh` and the build above from **Git Bash**. If
-> `bash.exe` resolves to WSL, the script takes the Linux branch and fails with
-> "go is not installed" (WSL usually has neither Go nor Git) — a shell routing
-> issue, not a script bug.
-
-With Go already installed you can also skip the download entirely (a private
-repository needs Go to reach it directly, bypassing the checksum database):
-
-```bash
-go env -w GOPRIVATE=github.com/JAYY513/Workloom
-go install github.com/JAYY513/Workloom/cmd/devsys@v0.1.7
-```
-
-A binary installed this way still reports its version (`devsys --version` →
-`devsys v0.1.7`; zip modules carry no VCS stamping, so there is no commit suffix).
-
-> Note: release binaries are available starting from `v0.1.0` (Linux/macOS/Windows × amd64/arm64, SHA-256 verified).
-> This repository is private: downloading release artifacts requires `gh auth login` first (or downloading in a logged-in browser).
-> Without login, `install.sh` automatically falls back to `git clone --branch <tag> + go build` (requires Go + Git on your machine, and clone needs repository access too).
-> From `v0.1.1` on, the binaries and `checksums.txt` are published by CI (GNU checksum format). From `v0.1.2` on, default MCP `--tier core`
-> is strictly the 19-tool daily subset (`run_fail` / `run_cancel` no longer leak in with `run_complete`); from `v0.1.4` on,
-> core also includes `workitem_release` (paired with claim), making it 20. `v0.1.4` also brings: lease-token sidecars
-> (scheduling/ stays in git, credentials do not), CJK-aware quality scoring, `run complete` releasing the claim on success,
-> mandatory `--actor`/`--reason` on `workitem update` / `artifact register`, family `--help` exiting 0, and `wire` writing
-> the skill by default. From `v0.1.3` on, the first-run
-> loop is closed (blueprint write via `project update --blueprint-artifact`, `mcp serve` refuses an empty toolset, corrupt managed YAML
-> exits 4, `workflow init --template` ships embedded templates). `v0.1.5` fixes the retest leftovers: the
-> `run complete` refusal message now matches the real state (blocked by the review gate it names the comment
-> remedy), and `init` writes a project-level `.gitattributes` (`.devsys/`/`.agents/` pinned to LF, silencing
-> Windows line-ending warnings). From `v0.1.6` on the install scripts themselves ship as release
-> assets, so the "paste this prompt to your agent" flow downloads them straight from the release page —
-> no clone needed, and `go install` works since v0.1.7 (canonical module path). For the behavior described here
-> (`prime`, `--latest`, `--tier core` of 20 tools, the claim-aligned quality gate in `next`, `default_policy`, the installer fixes),
-> use `v0.1.7` or newer, or build from source.
-
-```bash
-# Linux / macOS
-bash scripts/install.sh --tag v0.1.7
-
-# Windows PowerShell
-powershell -NoProfile -ExecutionPolicy Bypass \
-  -File scripts/install.ps1 -Tag v0.1.7 -AddToPath
-```
+> Note: release binaries are available starting from `v0.1.0` (Linux/macOS/Windows
+> × amd64/arm64, SHA-256 verified, GNU-format `checksums.txt` published by CI).
+> On Windows run `install.sh` and the build above from **Git Bash**; if `bash.exe`
+> resolves to WSL the script takes the Linux branch (WSL usually has neither Go
+> nor Git) — a shell routing issue, not a script bug. The version history (20-tool
+> core tier, token sidecars, CJK-aware quality gate, `workflow init --template`,
+> …) lives in each Release's notes; for the behavior described here, use
+> `v0.1.7` or newer.
 
 Release builds target Linux, macOS, and Windows on `amd64` and `arm64`.
 

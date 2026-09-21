@@ -157,7 +157,26 @@ Agent 会从仓库中的 `AGENTS.md` 和 `.agents/skills/devsys/` 获得操作�
 
 ### 1. 安装
 
-从源码构建，仓库已提交 `vendor/`，可离线完成：
+**① Release 脚本（推荐，约 10 秒）**。打开 [Releases 页](https://github.com/JAYY513/Workloom/releases/latest)，下载 `install.sh`（Windows PowerShell 用 `install.ps1`），用同页 `checksums.txt` 校验后执行：
+
+```bash
+# Linux / macOS（Git Bash）
+bash install.sh --tag v0.1.7
+
+# Windows PowerShell
+powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1 -Tag v0.1.7 -AddToPath
+```
+
+装完用 `devsys --version` 自证（应输出 `devsys v0.1.7 (…)`）。本仓库为私有仓库：脚本优先用 `gh` 鉴权下载（需 `gh auth login`），未登录自动回退 `git clone --branch <tag> + go build`（本机需 Go + Git）。`install.ps1` 装到 `%LOCALAPPDATA%\devsys\` 并只改 User PATH。
+
+**② 已装 Go**：一行直装（私有仓库需先让 Go 直连仓库，跳过校验和数据库）：
+
+```bash
+go env -w GOPRIVATE=github.com/JAYY513/Workloom
+go install github.com/JAYY513/Workloom/cmd/devsys@v0.1.7
+```
+
+**③ 源码构建**（兜底，仓库已提交 `vendor/`，可离线）：
 
 ```bash
 git clone https://github.com/JAYY513/Workloom.git
@@ -168,45 +187,11 @@ GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys ./cmd/devsys
 GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys.exe ./cmd/devsys
 ```
 
-> Windows 注意：`install.sh` 与上面的构建命令请在 **Git Bash** 中运行；若
-> `bash.exe` 解析到 WSL，脚本会按 Linux 分支处理（WSL 内通常没有 Go/Git，
-> 报 “go is not installed” 之类错误），不是脚本故障。
-
-已装 Go 的用户也可以跳过下载直装（私有仓库需先让 Go 直连仓库，跳过校验和数据库）：
-
-```bash
-go env -w GOPRIVATE=github.com/JAYY513/Workloom
-go install github.com/JAYY513/Workloom/cmd/devsys@v0.1.7
-```
-
-这样装的二进制同样能自报版本（`devsys --version` → `devsys v0.1.7`；
-zip 模块无 VCS stamping，故无 commit 后缀）。
-
-> 说明：`v0.1.0` 起提供 Release 二进制（Linux/macOS/Windows × amd64/arm64，SHA-256 校验）。
-> 本仓库为私有仓库：下载 Release 产物需要先 `gh auth login`（或在浏览器登录后下载）。
-> 未登录时 `install.sh` 会自动回退到 `git clone --branch <tag> + go build`（需本机有 Go + Git，且 clone 同样需要仓库访问权限）。
-> `v0.1.1` 起二进制与 `checksums.txt` 均由 CI 发布（GNU 校验和格式）。`v0.1.2` 起默认 MCP `--tier core`
-> 严格为 19 项日常子集（`run_fail` / `run_cancel` 不再随 `run_complete` 泄漏）；`v0.1.4` 起
-> core 档补入 `workitem_release`（与 claim 配对），严格为 20 项。`v0.1.4` 还带来：租约 token
-> 侧车脱敏（scheduling/ 随 git 但无凭证）、质量门中日韩文字加权、run complete 成功即释租约、
-> `workitem update` / `artifact register` 强制 `--actor/--reason` 审计、族级 `--help` exit 0、
-> `wire` 默认含 skill。`v0.1.3` 起补齐首启接入闭环
-> （蓝图写入 `project update --blueprint-artifact`、`mcp serve` 空工具集报错、损坏受管 YAML exit 4、
-> `workflow init --template` 内嵌模板）。`v0.1.5` 修复复测遗留：run complete 拒绝文案与实际
-> 状态一致（被 review 门拦时提示先补 comment）、`init` 生成项目级 .gitattributes（.devsys/
-> .agents 固定 LF，消除 Windows 换行噪音）。`v0.1.6` 起 install 脚本本身随 release 发布，`v0.1.7` 起支持 `go install`（模块路径规范化），
-> 「复制给 Agent」提示词可直接从 release 页下载脚本，无需克隆仓库。想要与本文档一致的行为
-> （`prime`、`--latest`、`--tier core` 20 项、`next` 与 `claim` 同源的质量门判定、`default_policy`、
-> 安装链修复），请用 `v0.1.7` 或更新版本，或从源码构建。
-
-```bash
-# Linux / macOS
-bash scripts/install.sh --tag v0.1.7
-
-# Windows PowerShell
-powershell -NoProfile -ExecutionPolicy Bypass \
-  -File scripts/install.ps1 -Tag v0.1.7 -AddToPath
-```
+> 说明：`v0.1.0` 起提供 Release 二进制（Linux/macOS/Windows × amd64/arm64，SHA-256 校验，GNU
+> 格式 `checksums.txt` 由 CI 发布）。Windows 上跑 `install.sh` 与上面的构建命令请用 **Git Bash**；
+> 若 `bash.exe` 解析到 WSL 会按 Linux 分支处理（WSL 内通常没有 Go/Git），不是脚本故障。版本
+> 沿革（core 档 20 项、token 侧车、CJK 质量门、`workflow init --template` 等）见各 Release
+> 说明；想要与本文档一致的行为，请用 `v0.1.7` 或更新版本。
 
 Release 构建覆盖 Linux、macOS 与 Windows 的 `amd64` / `arm64`。
 
