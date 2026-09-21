@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"workloom/internal/prompt"
-	"workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/prompt"
+	"github.com/JAYY513/Workloom/internal/storage"
 )
 
 // A run's stream (.devsys/runs/<run-id>.jsonl, 方案 §14.2) is both its evidence

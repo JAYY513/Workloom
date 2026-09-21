@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"workloom/internal/sitestatic"
-	"workloom/internal/view"
+	"github.com/JAYY513/Workloom/internal/sitestatic"
+	"github.com/JAYY513/Workloom/internal/view"
 )
 
 // TestWorkspaceBuildStaticWritesSite: the M7.2 happy path lays out the full

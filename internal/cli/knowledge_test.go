@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"workloom/internal/knowledge"
+	"github.com/JAYY513/Workloom/internal/knowledge"
 )
 
 // knowledgeHash mirrors the layer's content hash (whole file, sha256).

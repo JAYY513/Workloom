@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"strings"
 
-	"workloom/internal/approval"
-	"workloom/internal/domain"
-	"workloom/internal/storage"
-	"workloom/internal/workitem"
+	"github.com/JAYY513/Workloom/internal/approval"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/workitem"
 )
 
 // ApprovalFilter narrows an approval listing.

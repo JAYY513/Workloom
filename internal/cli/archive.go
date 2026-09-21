@@ -8,7 +8,7 @@ import (
 	"io"
 	"strings"
 
-	"workloom/internal/archive"
+	"github.com/JAYY513/Workloom/internal/archive"
 )
 
 // runArchive routes the archive family (M8.3, 方案 §14.2): conservative,

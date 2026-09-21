@@ -16,7 +16,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/storage"
 )
 
 // Resolution sources.

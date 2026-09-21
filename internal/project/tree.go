@@ -3,8 +3,8 @@ package project
 import (
 	"time"
 
-	"workloom/internal/domain"
-	"workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/storage"
 )
 
 // DevsysDirName is the per-project state directory (方案 §14.3).

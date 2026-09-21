@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"strings"
 
-	"workloom/internal/approval"
-	"workloom/internal/config"
-	"workloom/internal/domain"
-	"workloom/internal/next"
-	"workloom/internal/reconcile"
-	"workloom/internal/run"
-	"workloom/internal/workflow"
+	"github.com/JAYY513/Workloom/internal/approval"
+	"github.com/JAYY513/Workloom/internal/config"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/next"
+	"github.com/JAYY513/Workloom/internal/reconcile"
+	"github.com/JAYY513/Workloom/internal/run"
+	"github.com/JAYY513/Workloom/internal/workflow"
 )
 
 // Next evaluates the readiness verdict and the single recommended next

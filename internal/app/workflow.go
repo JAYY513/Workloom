@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"workloom/internal/config"
-	"workloom/internal/domain"
-	"workloom/internal/workflow"
-	"workloom/internal/workitem"
+	"github.com/JAYY513/Workloom/internal/config"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/workflow"
+	"github.com/JAYY513/Workloom/internal/workitem"
 )
 
 // WorkflowView is one work item's workflow instance plus, for read

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/domain"
 )
 
 func item(id string, status string, priority int, created time.Time) *domain.WorkItem {

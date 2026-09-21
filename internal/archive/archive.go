@@ -27,9 +27,9 @@ import (
 	"strings"
 	"time"
 
-	"workloom/internal/domain"
-	"workloom/internal/run"
-	"workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/run"
+	"github.com/JAYY513/Workloom/internal/storage"
 )
 
 const schemaVersion = 1

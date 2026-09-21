@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"io"
 
-	"workloom/internal/app"
-	"workloom/internal/workspace"
+	"github.com/JAYY513/Workloom/internal/app"
+	"github.com/JAYY513/Workloom/internal/workspace"
 )
 
 // runWorktree routes the worktree family (方案 §4.8): the execution workspace

@@ -7,8 +7,8 @@ import (
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"workloom/internal/app"
-	"workloom/internal/config"
+	"github.com/JAYY513/Workloom/internal/app"
+	"github.com/JAYY513/Workloom/internal/config"
 )
 
 // toolSpec is one registrable tool: its name, the profiles that expose it,

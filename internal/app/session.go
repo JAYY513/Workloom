@@ -5,9 +5,9 @@ import (
 	"sort"
 	"time"
 
-	"workloom/internal/domain"
-	"workloom/internal/next"
-	"workloom/internal/record"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/next"
+	"github.com/JAYY513/Workloom/internal/record"
 )
 
 // SessionRequest is the input to SessionStart (方案 §8.3): who is starting,

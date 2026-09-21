@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 
-	"workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/storage"
 )
 
 // tokenSidecarRel maps a work item id to its local-only fencing token

@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"workloom/internal/domain"
-	"workloom/internal/reconcile"
-	"workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/reconcile"
+	"github.com/JAYY513/Workloom/internal/storage"
 )
 
 var t0 = time.Date(2026, 9, 18, 12, 0, 0, 0, time.UTC)

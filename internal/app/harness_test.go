@@ -5,10 +5,10 @@ import (
 	"strings"
 	"testing"
 
-	"workloom/internal/domain"
-	"workloom/internal/events"
-	"workloom/internal/harness"
-	"workloom/internal/workitem"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/events"
+	"github.com/JAYY513/Workloom/internal/harness"
+	"github.com/JAYY513/Workloom/internal/workitem"
 )
 
 // harnessByName keeps the test honest about what this machine has installed.

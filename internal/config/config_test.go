@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/storage"
 )
 
 const (

@@ -185,6 +185,17 @@ GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys.exe ./cmd/devsys
 > "go is not installed" (WSL usually has neither Go nor Git) — a shell routing
 > issue, not a script bug.
 
+With Go already installed you can also skip the download entirely (a private
+repository needs Go to reach it directly, bypassing the checksum database):
+
+```bash
+go env -w GOPRIVATE=github.com/JAYY513/Workloom
+go install github.com/JAYY513/Workloom/cmd/devsys@v0.1.7
+```
+
+A binary installed this way still reports its version (`devsys --version` →
+`devsys v0.1.7 (…)`).
+
 > Note: release binaries are available starting from `v0.1.0` (Linux/macOS/Windows × amd64/arm64, SHA-256 verified).
 > This repository is private: downloading release artifacts requires `gh auth login` first (or downloading in a logged-in browser).
 > Without login, `install.sh` automatically falls back to `git clone --branch <tag> + go build` (requires Go + Git on your machine, and clone needs repository access too).
@@ -200,17 +211,17 @@ GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys.exe ./cmd/devsys
 > remedy), and `init` writes a project-level `.gitattributes` (`.devsys/`/`.agents/` pinned to LF, silencing
 > Windows line-ending warnings). From `v0.1.6` on the install scripts themselves ship as release
 > assets, so the "paste this prompt to your agent" flow downloads them straight from the release page —
-> no clone needed. For the behavior described here
+> no clone needed, and `go install` works since v0.1.7 (canonical module path). For the behavior described here
 > (`prime`, `--latest`, `--tier core` of 20 tools, the claim-aligned quality gate in `next`, `default_policy`, the installer fixes),
-> use `v0.1.6` or newer, or build from source.
+> use `v0.1.7` or newer, or build from source.
 
 ```bash
 # Linux / macOS
-bash scripts/install.sh --tag v0.1.6
+bash scripts/install.sh --tag v0.1.7
 
 # Windows PowerShell
 powershell -NoProfile -ExecutionPolicy Bypass \
-  -File scripts/install.ps1 -Tag v0.1.6 -AddToPath
+  -File scripts/install.ps1 -Tag v0.1.7 -AddToPath
 ```
 
 Release builds target Linux, macOS, and Windows on `amd64` and `arm64`.

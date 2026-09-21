@@ -58,8 +58,8 @@ fallback_build() {
     return 1
   fi
   if ! (cd "$tmp/src" && GOPROXY=off GOFLAGS=-mod=vendor go build \
-      -ldflags "-X workloom/internal/version.Version=${tag} \
-                -X workloom/internal/version.Commit=$(git -C "$tmp/src" rev-parse --short HEAD 2>/dev/null || true)" \
+      -ldflags "-X github.com/JAYY513/Workloom/internal/version.Version=${tag} \
+                -X github.com/JAYY513/Workloom/internal/version.Commit=$(git -C "$tmp/src" rev-parse --short HEAD 2>/dev/null || true)" \
       -o "$tmp/$asset" ./cmd/devsys); then
     echo "install failed: go build failed for ${repo}@${tag}" >&2
     return 1

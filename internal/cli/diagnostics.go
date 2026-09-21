@@ -17,11 +17,11 @@ import (
 	"strings"
 	"time"
 
-	"workloom/internal/config"
-	"workloom/internal/domain"
-	"workloom/internal/project"
-	"workloom/internal/reconcile"
-	"workloom/internal/search"
+	"github.com/JAYY513/Workloom/internal/config"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/project"
+	"github.com/JAYY513/Workloom/internal/reconcile"
+	"github.com/JAYY513/Workloom/internal/search"
 )
 
 func runSearch(stdout io.Writer, opts options, rest []string) error {

@@ -5,8 +5,8 @@ import (
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"workloom/internal/app"
-	"workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/app"
+	"github.com/JAYY513/Workloom/internal/domain"
 )
 
 // --- project_get ---------------------------------------------------------

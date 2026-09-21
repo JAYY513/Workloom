@@ -8,8 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"workloom/internal/domain"
-	"workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/storage"
 )
 
 // ReadDecision reads one decision with its raw bytes: the version hash the

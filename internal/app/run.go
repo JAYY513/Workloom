@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"workloom/internal/domain"
-	"workloom/internal/events"
-	"workloom/internal/run"
-	"workloom/internal/workitem"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/events"
+	"github.com/JAYY513/Workloom/internal/run"
+	"github.com/JAYY513/Workloom/internal/workitem"
 )
 
 // RunView is one run record plus its version hash.

@@ -5,7 +5,7 @@ import (
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"workloom/internal/app"
+	"github.com/JAYY513/Workloom/internal/app"
 )
 
 // --- context_get / for_workitem / refresh / compact ----------------------

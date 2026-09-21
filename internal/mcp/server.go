@@ -18,7 +18,7 @@ import (
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"workloom/internal/app"
+	"github.com/JAYY513/Workloom/internal/app"
 )
 
 // ServerName is the fixed identity every devsys MCP surface reports.

@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"workloom/internal/config"
-	"workloom/internal/registry"
+	"github.com/JAYY513/Workloom/internal/config"
+	"github.com/JAYY513/Workloom/internal/registry"
 )
 
 // WireCheckLine is one environment line of `devsys wire --check`.

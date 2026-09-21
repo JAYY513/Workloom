@@ -29,10 +29,10 @@ import (
 	"strings"
 	"time"
 
-	"workloom/internal/domain"
-	"workloom/internal/knowledge"
-	"workloom/internal/storage"
-	"workloom/internal/workitem"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/knowledge"
+	"github.com/JAYY513/Workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/workitem"
 )
 
 // ProposalKind enumerates the operations reconcile may propose.

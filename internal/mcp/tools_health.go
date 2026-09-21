@@ -7,7 +7,7 @@ import (
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"workloom/internal/config"
+	"github.com/JAYY513/Workloom/internal/config"
 )
 
 // healthResult is the introspection payload of the health tool.

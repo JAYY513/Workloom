@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/storage"
 )
 
 func TestStoreErrorNamesTheConcurrentWriteEscape(t *testing.T) {

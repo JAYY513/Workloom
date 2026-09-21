@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"workloom/internal/config"
+	"github.com/JAYY513/Workloom/internal/config"
 )
 
 // Report is the outcome of validating a set of page roots.

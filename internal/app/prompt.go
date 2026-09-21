@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"workloom/internal/config"
-	"workloom/internal/domain"
-	"workloom/internal/next"
-	"workloom/internal/prompt"
-	"workloom/internal/storage"
-	"workloom/internal/workflow"
+	"github.com/JAYY513/Workloom/internal/config"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/next"
+	"github.com/JAYY513/Workloom/internal/prompt"
+	"github.com/JAYY513/Workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/workflow"
 )
 
 // promptVarNames are the template variables a workflow body may reference

@@ -10,7 +10,7 @@ import (
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"workloom/internal/config"
+	"github.com/JAYY513/Workloom/internal/config"
 )
 
 // newWorkitem creates a work item through the CLI and returns its id.

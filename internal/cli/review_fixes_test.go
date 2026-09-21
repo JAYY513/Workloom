@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/domain"
 )
 
 func TestCreateAcceptsAcceptanceCriteria(t *testing.T) {

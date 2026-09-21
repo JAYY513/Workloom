@@ -11,13 +11,13 @@ import (
 	"runtime"
 	"strings"
 
-	"workloom/internal/config"
-	"workloom/internal/domain"
-	"workloom/internal/next"
-	"workloom/internal/project"
-	"workloom/internal/record"
-	"workloom/internal/registry"
-	"workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/config"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/next"
+	"github.com/JAYY513/Workloom/internal/project"
+	"github.com/JAYY513/Workloom/internal/record"
+	"github.com/JAYY513/Workloom/internal/registry"
+	"github.com/JAYY513/Workloom/internal/storage"
 )
 
 // ProjectView is the project metadata plus the version hash of its file.

@@ -11,11 +11,11 @@ import (
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"workloom/internal/app"
-	"workloom/internal/domain"
-	"workloom/internal/project"
-	"workloom/internal/run"
-	"workloom/internal/workitem"
+	"github.com/JAYY513/Workloom/internal/app"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/project"
+	"github.com/JAYY513/Workloom/internal/run"
+	"github.com/JAYY513/Workloom/internal/workitem"
 )
 
 // fixedNow keeps the fixture deterministic.

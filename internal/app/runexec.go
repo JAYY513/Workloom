@@ -9,14 +9,14 @@ import (
 	"strings"
 	"time"
 
-	"workloom/internal/domain"
-	"workloom/internal/events"
-	"workloom/internal/harness"
-	"workloom/internal/run"
-	"workloom/internal/storage"
-	"workloom/internal/workflow"
-	"workloom/internal/workitem"
-	"workloom/internal/workspace"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/events"
+	"github.com/JAYY513/Workloom/internal/harness"
+	"github.com/JAYY513/Workloom/internal/run"
+	"github.com/JAYY513/Workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/workflow"
+	"github.com/JAYY513/Workloom/internal/workitem"
+	"github.com/JAYY513/Workloom/internal/workspace"
 )
 
 // syncEvery bounds how much of the output stream can be lost in a crash: the

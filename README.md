@@ -172,6 +172,15 @@ GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys.exe ./cmd/devsys
 > `bash.exe` 解析到 WSL，脚本会按 Linux 分支处理（WSL 内通常没有 Go/Git，
 > 报 “go is not installed” 之类错误），不是脚本故障。
 
+已装 Go 的用户也可以跳过下载直装（私有仓库需先让 Go 直连仓库，跳过校验和数据库）：
+
+```bash
+go env -w GOPRIVATE=github.com/JAYY513/Workloom
+go install github.com/JAYY513/Workloom/cmd/devsys@v0.1.7
+```
+
+这样装的二进制同样能自报版本（`devsys --version` → `devsys v0.1.7 (…)`）。
+
 > 说明：`v0.1.0` 起提供 Release 二进制（Linux/macOS/Windows × amd64/arm64，SHA-256 校验）。
 > 本仓库为私有仓库：下载 Release 产物需要先 `gh auth login`（或在浏览器登录后下载）。
 > 未登录时 `install.sh` 会自动回退到 `git clone --branch <tag> + go build`（需本机有 Go + Git，且 clone 同样需要仓库访问权限）。
@@ -184,18 +193,18 @@ GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys.exe ./cmd/devsys
 > （蓝图写入 `project update --blueprint-artifact`、`mcp serve` 空工具集报错、损坏受管 YAML exit 4、
 > `workflow init --template` 内嵌模板）。`v0.1.5` 修复复测遗留：run complete 拒绝文案与实际
 > 状态一致（被 review 门拦时提示先补 comment）、`init` 生成项目级 .gitattributes（.devsys/
-> .agents 固定 LF，消除 Windows 换行噪音）。`v0.1.6` 起 install 脚本本身随 release 发布，
+> .agents 固定 LF，消除 Windows 换行噪音）。`v0.1.6` 起 install 脚本本身随 release 发布，`v0.1.7` 起支持 `go install`（模块路径规范化），
 > 「复制给 Agent」提示词可直接从 release 页下载脚本，无需克隆仓库。想要与本文档一致的行为
 > （`prime`、`--latest`、`--tier core` 20 项、`next` 与 `claim` 同源的质量门判定、`default_policy`、
-> 安装链修复），请用 `v0.1.6` 或更新版本，或从源码构建。
+> 安装链修复），请用 `v0.1.7` 或更新版本，或从源码构建。
 
 ```bash
 # Linux / macOS
-bash scripts/install.sh --tag v0.1.6
+bash scripts/install.sh --tag v0.1.7
 
 # Windows PowerShell
 powershell -NoProfile -ExecutionPolicy Bypass \
-  -File scripts/install.ps1 -Tag v0.1.6 -AddToPath
+  -File scripts/install.ps1 -Tag v0.1.7 -AddToPath
 ```
 
 Release 构建覆盖 Linux、macOS 与 Windows 的 `amd64` / `arm64`。

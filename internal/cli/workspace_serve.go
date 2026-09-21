@@ -16,9 +16,9 @@ import (
 	"syscall"
 	"time"
 
-	"workloom/internal/sitestatic"
-	"workloom/internal/storage"
-	"workloom/internal/view"
+	"github.com/JAYY513/Workloom/internal/sitestatic"
+	"github.com/JAYY513/Workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/view"
 )
 
 // serveDefaults pin the M7.3 bind posture (方案 §17): loopback only.

@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"workloom/internal/app"
-	"workloom/internal/config"
-	"workloom/internal/domain"
-	"workloom/internal/harness"
+	"github.com/JAYY513/Workloom/internal/app"
+	"github.com/JAYY513/Workloom/internal/config"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/harness"
 )
 
 // runDecision routes the decision family (方案 §8.2 decision_*).

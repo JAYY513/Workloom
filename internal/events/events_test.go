@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/domain"
 )
 
 func newStore(t *testing.T) *Store {

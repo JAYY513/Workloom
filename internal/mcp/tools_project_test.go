@@ -10,9 +10,9 @@ import (
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"workloom/internal/app"
-	"workloom/internal/domain"
-	"workloom/internal/record"
+	"github.com/JAYY513/Workloom/internal/app"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/record"
 )
 
 func TestProjectUpdateBlueprintArtifactField(t *testing.T) {

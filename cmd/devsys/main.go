@@ -6,7 +6,7 @@ package main
 import (
 	"os"
 
-	"workloom/internal/cli"
+	"github.com/JAYY513/Workloom/internal/cli"
 )
 
 func main() {

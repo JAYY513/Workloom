@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"workloom/internal/view"
+	"github.com/JAYY513/Workloom/internal/view"
 )
 
 // TestFreshnessBannerStale: a stale model gets the banner on every page,

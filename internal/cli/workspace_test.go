@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"workloom/internal/view"
+	"github.com/JAYY513/Workloom/internal/view"
 )
 
 // TestWorkspaceViewJSON: the M7.1 model comes out through the documented

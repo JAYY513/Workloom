@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"workloom/internal/config"
-	"workloom/internal/domain"
-	"workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/config"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/storage"
 )
 
 var fixedNow = time.Date(2026, 9, 17, 9, 0, 0, 0, time.UTC)

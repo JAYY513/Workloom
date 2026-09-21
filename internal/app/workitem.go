@@ -11,16 +11,16 @@ import (
 	"strings"
 	"time"
 
-	"workloom/internal/approval"
-	"workloom/internal/config"
-	"workloom/internal/domain"
-	"workloom/internal/events"
-	"workloom/internal/harness"
-	"workloom/internal/record"
-	"workloom/internal/run"
-	"workloom/internal/storage"
-	"workloom/internal/workflow"
-	"workloom/internal/workitem"
+	"github.com/JAYY513/Workloom/internal/approval"
+	"github.com/JAYY513/Workloom/internal/config"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/events"
+	"github.com/JAYY513/Workloom/internal/harness"
+	"github.com/JAYY513/Workloom/internal/record"
+	"github.com/JAYY513/Workloom/internal/run"
+	"github.com/JAYY513/Workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/workflow"
+	"github.com/JAYY513/Workloom/internal/workitem"
 )
 
 // WorkItemView is one work item plus the version hash every mutation

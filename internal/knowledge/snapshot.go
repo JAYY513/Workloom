@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/storage"
 )
 
 // ErrNoGit reports that .gitignore matching could not be applied because git

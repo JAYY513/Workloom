@@ -6,9 +6,9 @@ import (
 	"sort"
 	"strings"
 
-	"workloom"
-	"workloom/internal/project"
-	"workloom/internal/storage"
+	"github.com/JAYY513/Workloom"
+	"github.com/JAYY513/Workloom/internal/project"
+	"github.com/JAYY513/Workloom/internal/storage"
 )
 
 // workflowTemplatesDir is the embed path (inside package workloom) of the

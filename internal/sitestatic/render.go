@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"workloom/internal/view"
+	"github.com/JAYY513/Workloom/internal/view"
 )
 
 // RenderPage renders one site page (a member of PageFiles) to a string, the

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"workloom/internal/app"
+	"github.com/JAYY513/Workloom/internal/app"
 )
 
 // execProject initializes a project with one work item and one run and returns

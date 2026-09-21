@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/domain"
 )
 
 func TestClassifyAttemptsGraceAndDead(t *testing.T) {

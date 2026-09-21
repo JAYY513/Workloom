@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"workloom/internal/config"
+	"github.com/JAYY513/Workloom/internal/config"
 )
 
 // page assembles a page with the given front matter lines and body.

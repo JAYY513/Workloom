@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"workloom/internal/domain"
-	"workloom/internal/run"
-	"workloom/internal/workitem"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/run"
+	"github.com/JAYY513/Workloom/internal/workitem"
 )
 
 // TestRunFinishReleasesClaimOnSuccess: run complete 成功后，该 run 绑定的

@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"workloom/internal/config"
-	"workloom/internal/domain"
-	"workloom/internal/events"
-	"workloom/internal/run"
-	"workloom/internal/workflow"
-	"workloom/internal/workspace"
+	"github.com/JAYY513/Workloom/internal/config"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/events"
+	"github.com/JAYY513/Workloom/internal/run"
+	"github.com/JAYY513/Workloom/internal/workflow"
+	"github.com/JAYY513/Workloom/internal/workspace"
 )
 
 // WorkspacePrepareRequest asks for the execution workspace of a work item

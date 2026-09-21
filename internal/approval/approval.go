@@ -22,9 +22,9 @@ import (
 	"strings"
 	"time"
 
-	"workloom/internal/domain"
-	"workloom/internal/events"
-	"workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/events"
+	"github.com/JAYY513/Workloom/internal/storage"
 )
 
 const dirRel = "approvals"

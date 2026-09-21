@@ -10,8 +10,8 @@ import (
 	"sort"
 	"strings"
 
-	"workloom/internal/domain"
-	"workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/storage"
 )
 
 // inspectSnapshot runs fn under the project's shared lock. When no lock file

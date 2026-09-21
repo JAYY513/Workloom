@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"workloom/internal/domain"
-	"workloom/internal/project"
-	"workloom/internal/record"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/project"
+	"github.com/JAYY513/Workloom/internal/record"
 )
 
 func blueprintFixture(t *testing.T) (*Service, string) {

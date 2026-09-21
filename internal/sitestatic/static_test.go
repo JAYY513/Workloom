@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"workloom/internal/view"
+	"github.com/JAYY513/Workloom/internal/view"
 )
 
 var fixedGen = time.Date(2026, 9, 19, 12, 0, 0, 0, time.UTC)

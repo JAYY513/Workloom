@@ -59,7 +59,7 @@ try {
       $env:GOFLAGS = "-mod=vendor"
       # The version ldflags match scripts/build-release.sh, so a fallback build
       # reports the tag it was built from instead of the 0.1.0-dev default.
-      & go build -ldflags "-s -w -X workloom/internal/version.Version=$Tag" -o (Join-Path $tmp $asset) ./cmd/devsys
+      & go build -ldflags "-s -w -X github.com/JAYY513/Workloom/internal/version.Version=$Tag" -o (Join-Path $tmp $asset) ./cmd/devsys
       if ($LASTEXITCODE -ne 0) { throw "go build failed" }
     } finally {
       Pop-Location

@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 
-	"workloom/internal/domain"
-	"workloom/internal/events"
-	"workloom/internal/run"
-	"workloom/internal/workitem"
-	"workloom/internal/workspace"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/events"
+	"github.com/JAYY513/Workloom/internal/run"
+	"github.com/JAYY513/Workloom/internal/workitem"
+	"github.com/JAYY513/Workloom/internal/workspace"
 )
 
 // CompletionCheck is the evidence behind a completion: the head the attempt

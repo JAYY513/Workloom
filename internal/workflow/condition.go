@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/domain"
 )
 
 // Condition operators.

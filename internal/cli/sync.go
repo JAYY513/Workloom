@@ -9,8 +9,8 @@ import (
 	"io"
 	"strings"
 
-	"workloom/internal/storage"
-	"workloom/internal/syncstatus"
+	"github.com/JAYY513/Workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/syncstatus"
 )
 
 // runSync routes the sync family (方案 §14.4): M8.1 ships the read-only

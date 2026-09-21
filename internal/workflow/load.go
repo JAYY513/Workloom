@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/storage"
 )
 
 // FileResult is the outcome for one entry below .devsys/workflows/.

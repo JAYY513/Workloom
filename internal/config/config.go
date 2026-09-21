@@ -17,8 +17,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"workloom/internal/domain"
-	"workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/storage"
 )
 
 // SupportedSchemaVersion is the only schema_version this build understands.

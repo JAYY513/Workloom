@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"workloom/internal/harness"
+	"github.com/JAYY513/Workloom/internal/harness"
 )
 
 // Hook names and semantics (方案 §4.8, Symphony SPEC §4.4):

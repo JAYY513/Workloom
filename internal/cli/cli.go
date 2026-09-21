@@ -19,13 +19,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"workloom/internal/app"
-	"workloom/internal/config"
-	"workloom/internal/domain"
-	"workloom/internal/next"
-	"workloom/internal/project"
-	"workloom/internal/version"
-	"workloom/internal/workflow"
+	"github.com/JAYY513/Workloom/internal/app"
+	"github.com/JAYY513/Workloom/internal/config"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/next"
+	"github.com/JAYY513/Workloom/internal/project"
+	"github.com/JAYY513/Workloom/internal/version"
+	"github.com/JAYY513/Workloom/internal/workflow"
 )
 
 // Exit codes, pinned by tests so scripts may rely on them:

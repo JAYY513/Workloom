@@ -11,7 +11,7 @@ import (
 	"sort"
 	"time"
 
-	"workloom/internal/app"
+	"github.com/JAYY513/Workloom/internal/app"
 )
 
 // runDispatch implements `devsys dispatch`: one scheduling tick (方案 §4.8).

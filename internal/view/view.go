@@ -17,8 +17,8 @@ package view
 import (
 	"time"
 
-	"workloom/internal/domain"
-	"workloom/internal/next"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/next"
 )
 
 // SchemaVersion is the model version this build produces.

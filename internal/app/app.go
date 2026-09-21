@@ -14,8 +14,8 @@ import (
 	"fmt"
 	"time"
 
-	"workloom/internal/config"
-	"workloom/internal/workitem"
+	"github.com/JAYY513/Workloom/internal/config"
+	"github.com/JAYY513/Workloom/internal/workitem"
 )
 
 // Error kinds. The first four are the shared classes; the rest are display

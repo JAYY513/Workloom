@@ -6,8 +6,8 @@ import (
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"workloom/internal/app"
-	"workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/app"
+	"github.com/JAYY513/Workloom/internal/domain"
 )
 
 // --- decision_list / get / create / approve ------------------------------

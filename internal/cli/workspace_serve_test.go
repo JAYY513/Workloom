@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"workloom/internal/sitestatic"
-	"workloom/internal/view"
+	"github.com/JAYY513/Workloom/internal/sitestatic"
+	"github.com/JAYY513/Workloom/internal/view"
 )
 
 // serveFixture returns a project with one work item committed, so the served

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"workloom/internal/next"
+	"github.com/JAYY513/Workloom/internal/next"
 )
 
 func TestInitPrintsNextSteps(t *testing.T) {

@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"workloom/internal/domain"
-	"workloom/internal/project"
-	"workloom/internal/run"
-	"workloom/internal/workitem"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/project"
+	"github.com/JAYY513/Workloom/internal/run"
+	"github.com/JAYY513/Workloom/internal/workitem"
 )
 
 // promptFixture initializes a real project with a policy, a work item and a

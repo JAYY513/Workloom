@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"workloom/internal/config"
-	"workloom/internal/knowledge"
-	"workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/config"
+	"github.com/JAYY513/Workloom/internal/knowledge"
+	"github.com/JAYY513/Workloom/internal/storage"
 )
 
 // KnowledgePageView summarizes one page for the validate report.

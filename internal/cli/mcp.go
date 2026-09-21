@@ -7,8 +7,8 @@ import (
 	"io"
 	"strings"
 
-	"workloom/internal/mcp"
-	"workloom/internal/version"
+	"github.com/JAYY513/Workloom/internal/mcp"
+	"github.com/JAYY513/Workloom/internal/version"
 )
 
 // mcpInstructions is the optional `instructions` field of the initialize

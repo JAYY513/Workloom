@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"workloom/internal/app"
+	"github.com/JAYY513/Workloom/internal/app"
 )
 
 // P1: resolveRoot lets commands run from a subdirectory of the project.

@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"workloom/internal/app"
-	"workloom/internal/project"
+	"github.com/JAYY513/Workloom/internal/app"
+	"github.com/JAYY513/Workloom/internal/project"
 )
 
 // resolveRoot finds the project root the command works on:

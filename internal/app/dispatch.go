@@ -12,16 +12,16 @@ import (
 	"testing"
 	"time"
 
-	"workloom/internal/dispatch"
-	"workloom/internal/domain"
-	"workloom/internal/events"
-	"workloom/internal/harness"
-	"workloom/internal/knowledge"
-	"workloom/internal/reconcile"
-	"workloom/internal/retry"
-	"workloom/internal/run"
-	"workloom/internal/workflow"
-	"workloom/internal/workitem"
+	"github.com/JAYY513/Workloom/internal/dispatch"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/events"
+	"github.com/JAYY513/Workloom/internal/harness"
+	"github.com/JAYY513/Workloom/internal/knowledge"
+	"github.com/JAYY513/Workloom/internal/reconcile"
+	"github.com/JAYY513/Workloom/internal/retry"
+	"github.com/JAYY513/Workloom/internal/run"
+	"github.com/JAYY513/Workloom/internal/workflow"
+	"github.com/JAYY513/Workloom/internal/workitem"
 )
 
 // DispatchRequest is one scheduling tick (方案 §4.8): recover, reconcile, then

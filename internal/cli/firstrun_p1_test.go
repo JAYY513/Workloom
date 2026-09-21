@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/domain"
 )
 
 // registerArtifact creates one artifact through the CLI and returns its id.

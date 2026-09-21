@@ -19,8 +19,8 @@ import (
 	"testing"
 	"time"
 
-	"workloom/internal/config"
-	"workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/config"
+	"github.com/JAYY513/Workloom/internal/domain"
 )
 
 // setDefaultPolicy rewrites .devsys/config.yaml with a project-level policy.

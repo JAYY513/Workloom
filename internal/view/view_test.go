@@ -16,13 +16,13 @@ import (
 	"testing"
 	"time"
 
-	"workloom/internal/domain"
-	"workloom/internal/knowledge"
-	"workloom/internal/next"
-	"workloom/internal/project"
-	"workloom/internal/record"
-	"workloom/internal/run"
-	"workloom/internal/workitem"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/knowledge"
+	"github.com/JAYY513/Workloom/internal/next"
+	"github.com/JAYY513/Workloom/internal/project"
+	"github.com/JAYY513/Workloom/internal/record"
+	"github.com/JAYY513/Workloom/internal/run"
+	"github.com/JAYY513/Workloom/internal/workitem"
 )
 
 // testNow is the fixed clock every test builds with. The model must never

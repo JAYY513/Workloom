@@ -13,9 +13,9 @@ import (
 	"strings"
 	"testing"
 
-	"workloom/internal/domain"
-	"workloom/internal/events"
-	"workloom/internal/workflow"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/events"
+	"github.com/JAYY513/Workloom/internal/workflow"
 )
 
 func flowPolicy(t *testing.T, source string) *workflow.Policy {

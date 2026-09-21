@@ -22,7 +22,7 @@ if [[ -z "$version" ]]; then
   version="$(git -C "$repo_root" describe --tags --always --dirty)"
 fi
 commit="$(git -C "$repo_root" rev-parse --short HEAD)"
-ldflags="-s -w -X workloom/internal/version.Version=${version} -X workloom/internal/version.Commit=${commit}"
+ldflags="-s -w -X github.com/JAYY513/Workloom/internal/version.Version=${version} -X github.com/JAYY513/Workloom/internal/version.Commit=${commit}"
 mkdir -p -- "$out"
 # The unstripped build trips some endpoint protection (see smoke-m8.sh); -s -w stays.
 while IFS=/ read -r goos goarch; do

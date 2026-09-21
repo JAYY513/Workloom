@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"workloom/internal/sitestatic"
-	"workloom/internal/storage"
-	"workloom/internal/view"
+	"github.com/JAYY513/Workloom/internal/sitestatic"
+	"github.com/JAYY513/Workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/view"
 )
 
 // runWorkspace routes the workspace view family (方案 §17): the read-only

@@ -15,7 +15,7 @@ import (
 	"fmt"
 	"strings"
 
-	"workloom/internal/workflow"
+	"github.com/JAYY513/Workloom/internal/workflow"
 )
 
 // Mode is the kind of round a prompt belongs to.

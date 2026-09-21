@@ -12,7 +12,7 @@ import (
 	"sort"
 	"time"
 
-	"workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/domain"
 )
 
 // Skip reasons, in the order the planner checks them.

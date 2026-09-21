@@ -3,7 +3,7 @@ package knowledge
 import (
 	"strings"
 
-	"workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/domain"
 )
 
 // TriggerHit reports the first trigger that occurs in lowerText, the relevance

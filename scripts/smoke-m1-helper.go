@@ -24,12 +24,12 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"workloom/internal/config"
-	"workloom/internal/domain"
-	"workloom/internal/events"
-	"workloom/internal/record"
-	"workloom/internal/run"
-	"workloom/internal/workitem"
+	"github.com/JAYY513/Workloom/internal/config"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/events"
+	"github.com/JAYY513/Workloom/internal/record"
+	"github.com/JAYY513/Workloom/internal/run"
+	"github.com/JAYY513/Workloom/internal/workitem"
 )
 
 const workitemPrefix = "WLM"

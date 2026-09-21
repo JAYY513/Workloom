@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"workloom/internal/config"
-	"workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/config"
+	"github.com/JAYY513/Workloom/internal/storage"
 )
 
 // PreconditionError marks failures the user can fix in the environment

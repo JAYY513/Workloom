@@ -15,9 +15,9 @@ import (
 	"sort"
 	"strings"
 
-	"workloom/internal/knowledge"
-	"workloom/internal/reconcile"
-	"workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/knowledge"
+	"github.com/JAYY513/Workloom/internal/reconcile"
+	"github.com/JAYY513/Workloom/internal/storage"
 )
 
 // Blocker codes are stable for script consumption.

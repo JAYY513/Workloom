@@ -6,10 +6,10 @@ import (
 	"sort"
 	"time"
 
-	"workloom/internal/domain"
-	"workloom/internal/events"
-	"workloom/internal/knowledge"
-	"workloom/internal/record"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/events"
+	"github.com/JAYY513/Workloom/internal/knowledge"
+	"github.com/JAYY513/Workloom/internal/record"
 )
 
 // ContextView is the working context an agent needs to orient without

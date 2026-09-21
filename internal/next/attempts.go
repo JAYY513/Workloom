@@ -5,7 +5,7 @@ import (
 	"sort"
 	"time"
 
-	"workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/domain"
 )
 
 // SpawnGrace is how long a just-dispatched attempt may exist without a run

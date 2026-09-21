@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"workloom/internal/domain"
-	"workloom/internal/events"
-	"workloom/internal/record"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/events"
+	"github.com/JAYY513/Workloom/internal/record"
 )
 
 // RecordView is one record plus the version hash the surfaces report and the

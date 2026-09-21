@@ -36,10 +36,10 @@ import (
 	"strings"
 	"time"
 
-	"workloom/internal/domain"
-	"workloom/internal/events"
-	runpkg "workloom/internal/run"
-	"workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/events"
+	runpkg "github.com/JAYY513/Workloom/internal/run"
+	"github.com/JAYY513/Workloom/internal/storage"
 )
 
 // SchedulingDirName mirrors storage.SchedulingDirName; both sides agree

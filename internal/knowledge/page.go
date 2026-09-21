@@ -21,7 +21,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"workloom/internal/config"
+	"github.com/JAYY513/Workloom/internal/config"
 )
 
 // Layout constants. The page layer is wherever a generator writes it; these

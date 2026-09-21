@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"workloom/internal/domain"
-	"workloom/internal/reconcile"
-	"workloom/internal/storage"
-	"workloom/internal/workflow"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/reconcile"
+	"github.com/JAYY513/Workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/workflow"
 )
 
 // Verdicts (方案 §7.4): only these three outcomes exist.

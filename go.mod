@@ -1,4 +1,4 @@
-module workloom
+module github.com/JAYY513/Workloom
 
 go 1.26
 

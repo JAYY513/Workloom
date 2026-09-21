@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"workloom/internal/domain"
-	"workloom/internal/events"
-	"workloom/internal/record"
-	"workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/events"
+	"github.com/JAYY513/Workloom/internal/record"
+	"github.com/JAYY513/Workloom/internal/storage"
 )
 
 func m3Root(t *testing.T) (string, *Store) {

@@ -10,7 +10,7 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
   $Version = (git -C $repoRoot describe --tags --always --dirty).Trim()
 }
 $commit = (git -C $repoRoot rev-parse --short HEAD).Trim()
-$ldflags = "-s -w -X workloom/internal/version.Version=$Version -X workloom/internal/version.Commit=$commit"
+$ldflags = "-s -w -X github.com/JAYY513/Workloom/internal/version.Version=$Version -X github.com/JAYY513/Workloom/internal/version.Commit=$commit"
 New-Item -ItemType Directory -Force -Path (Join-Path $repoRoot $Out) | Out-Null
 $matrix = @(
   @("windows", "amd64"), @("windows", "arm64"),

@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/domain"
 )
 
 func marshal(t *testing.T, st Status) string {

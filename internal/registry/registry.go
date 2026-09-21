@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/storage"
 )
 
 // EnvDir overrides the config directory; used by tests and portable installs.

@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"workloom/internal/approval"
-	"workloom/internal/domain"
-	"workloom/internal/events"
-	"workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/approval"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/events"
+	"github.com/JAYY513/Workloom/internal/storage"
 )
 
 // TransitionRequest carries mutation authority; repair additionally requires a

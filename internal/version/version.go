@@ -1,18 +1,30 @@
 // Package version carries the build identity of the devsys CLI.
 //
-// Both variables are overridable at build time, so a released binary can state
-// exactly which source revision it came from:
+// The identity comes from, in priority order:
 //
-//	go build -ldflags "-X workloom/internal/version.Version=0.1.0 \
-//	                   -X workloom/internal/version.Commit=$(git rev-parse --short HEAD)" \
-//	         -o bin/devsys ./cmd/devsys
+//  1. -ldflags -X overrides (release pipeline), then
+//
+//  2. the module version recorded by `go install …@vX.Y.Z`
+//     (debug.ReadBuildInfo().Main.Version), then
+//
+//  3. the development marker, with the VCS revision appended when known.
+//
+//     go build -ldflags "-X github.com/JAYY513/Workloom/internal/version.Version=0.1.0 \
+//     -X github.com/JAYY513/Workloom/internal/version.Commit=$(git rev-parse --short HEAD)" \
+//     -o bin/devsys ./cmd/devsys
 package version
 
-import "runtime/debug"
+import (
+	"runtime/debug"
+	"strings"
+)
 
-// Version is the semantic version of this build. Local builds that do not pass
-// -ldflags keep the development marker instead of pretending to be a release.
-var Version = "0.1.0-dev"
+// devMarker is what local builds without -ldflags answer, instead of
+// pretending to be a release.
+const devMarker = "0.1.0-dev"
+
+// Version is the semantic version of this build, when injected at build time.
+var Version = devMarker
 
 // Commit is the source revision this binary was built from, when known.
 var Commit = "unknown"
@@ -38,8 +50,36 @@ func init() {
 
 // String renders the single-line identity printed by `devsys --version`.
 func String() string {
+	version := effectiveVersion()
 	if Commit == "" || Commit == "unknown" {
+		return version
+	}
+	return version + " (" + Commit + ")"
+}
+
+// effectiveVersion resolves the dev marker to the module version recorded by
+// `go install github.com/JAYY513/Workloom/cmd/devsys@vX.Y.Z`, so that binary
+// states its release without ldflags. A plain repository `go build` reports
+// "(devel)" there — not a version — and keeps the marker.
+func effectiveVersion() string {
+	if Version != devMarker {
 		return Version
 	}
-	return Version + " (" + Commit + ")"
+	bi, ok := debug.ReadBuildInfo()
+	if !ok {
+		return Version
+	}
+	return resolveVersion(Version, bi.Main.Version)
+}
+
+// resolveVersion is the pure decision behind effectiveVersion, kept
+// side-effect free for testing.
+func resolveVersion(binaryVersion, mainVersion string) string {
+	if binaryVersion != devMarker {
+		return binaryVersion
+	}
+	if strings.HasPrefix(mainVersion, "v") {
+		return mainVersion
+	}
+	return binaryVersion
 }

@@ -17,8 +17,8 @@ import (
 	"strings"
 	"time"
 
-	"workloom/internal/next"
-	"workloom/internal/view"
+	"github.com/JAYY513/Workloom/internal/next"
+	"github.com/JAYY513/Workloom/internal/view"
 )
 
 // PageFiles are the site pages in navigation order.

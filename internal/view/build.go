@@ -10,14 +10,14 @@ import (
 	"strings"
 	"time"
 
-	"workloom/internal/approval"
-	"workloom/internal/config"
-	"workloom/internal/domain"
-	"workloom/internal/knowledge"
-	"workloom/internal/next"
-	"workloom/internal/reconcile"
-	"workloom/internal/storage"
-	"workloom/internal/workflow"
+	"github.com/JAYY513/Workloom/internal/approval"
+	"github.com/JAYY513/Workloom/internal/config"
+	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/knowledge"
+	"github.com/JAYY513/Workloom/internal/next"
+	"github.com/JAYY513/Workloom/internal/reconcile"
+	"github.com/JAYY513/Workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/workflow"
 )
 
 // recoverCommand is the remediation the readiness section names while pending
