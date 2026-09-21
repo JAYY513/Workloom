@@ -323,7 +323,7 @@ func TestInitRefusesUnknownSchemaVersion(t *testing.T) {
 	if code != CodeInvalid {
 		t.Fatalf("init: code=%d stderr=%s", code, errOut)
 	}
-	if !strings.Contains(errOut, "unsupported version 99") || !strings.Contains(errOut, "M9.2") {
+	if !strings.Contains(errOut, "unsupported version 99") || !strings.Contains(errOut, "migration must be explicit") {
 		t.Errorf("stderr = %q", errOut)
 	}
 	after, err := os.ReadFile(projectPath)

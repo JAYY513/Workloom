@@ -11,9 +11,7 @@
     ·
     <a href="使用手册.md">User guide (Chinese)</a>
     ·
-    <a href="原始文档/独立于Harness的Agent开发基础设施方案.md">Design spec (Chinese)</a>
-    ·
-    <a href="M9-验收报告.md">Acceptance report (Chinese)</a>
+    <a href="design.md">Design doc (Chinese)</a>
   </p>
 
   <p>
@@ -146,7 +144,7 @@ The agent learns the operating rules from `AGENTS.md` and `.agents/skills/devsys
 ### 1. Install
 
 The full install-and-onboard flow (verification, fallback, troubleshooting) lives
-in [INSTALL.md](INSTALL.md); the essentials are below.
+in [INSTALL.md](../INSTALL.md); the essentials are below.
 
 **① Release scripts (recommended, ~10 seconds)**. Open the
 [Releases page](https://github.com/JAYY513/Workloom/releases/latest), download
@@ -285,11 +283,9 @@ The detailed project documentation is currently maintained in Chinese.
 | [User guide](使用手册.md) | 15-minute setup, daily operations, and complete command paths |
 | [Release runbook](发布流程.md) | Cutting a release: tag/Actions triggers, artifact verification, rollback, failure modes |
 | [Migration guide](迁移指南.md) | Schema upgrades, binary replacement, and rollback |
-| [Design specification](原始文档/独立于Harness的Agent开发基础设施方案.md) | Architecture principles, data model, and trade-offs |
-| [Implementation plan](原始文档/实施计划.md) | M0–M9 implementation steps and acceptance criteria |
-| [M9 acceptance report](M9-验收报告.md) | Reproducible evidence for all 17 success criteria |
-| [M6 consistency review](M6-一致性自检.md) | Point-by-point comparison with the Symphony SPEC |
-| [Development log](开发记录.md) | Decisions, deviations, issues, and evolution history |
+| [Design doc](design.md) | Architecture principles, data model, and trade-offs (living doc, in Chinese) |
+| [Contributing](../CONTRIBUTING.md) | Environment, commit conventions, documentation discipline |
+| [Changelog](../CHANGELOG.md) | Version history and user-visible changes |
 | [RepoWiki](repowiki/index.md) | Generated module-level project knowledge |
 
 ## Development
@@ -311,13 +307,13 @@ Workloom has completed milestones M0–M9 and passed all 17 documented success c
 - Core operation is local-first through the CLI, stdio MCP, and Git; no remote coordination service is provided.
 - Cross-device collaboration uses a single-writer handoff. Concurrent writes are resolved manually through Git.
 - The Contrabass fixture loop is verified, while fields from a real deployment remain marked `[UNVERIFIED]`.
-- The repository does not yet include an open-source license. A `LICENSE` must be selected and committed before the public release; standard copyright restrictions apply until then.
+- Licensed under MIT (see [../LICENSE](../LICENSE)); contribution conventions in [../CONTRIBUTING.md](../CONTRIBUTING.md), version history in [../CHANGELOG.md](../CHANGELOG.md).
 
 ## Contributing
 
-Workloom is being prepared for a public open-source release. Before submitting a change:
+The full guide is [../CONTRIBUTING.md](../CONTRIBUTING.md). Before submitting a change:
 
-1. Read the principles in the [design specification](原始文档/独立于Harness的Agent开发基础设施方案.md).
+1. Read the principles in the [design doc](design.md).
 2. Add high-value tests for behavior changes, then run `go test ./...` and `go vet ./...`.
 3. Keep `.devsys/` as the only source of truth; do not add write paths that bypass the application service.
 4. Explain the motivation, compatibility impact, verification, and rollback path in the pull request.

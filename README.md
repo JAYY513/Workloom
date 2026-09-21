@@ -11,9 +11,7 @@
     ·
     <a href="docs/使用手册.md">使用手册</a>
     ·
-    <a href="docs/原始文档/独立于Harness的Agent开发基础设施方案.md">设计方案</a>
-    ·
-    <a href="docs/M9-验收报告.md">验收报告</a>
+    <a href="docs/design.md">设计文档</a>
   </p>
 
   <p>
@@ -265,11 +263,9 @@ devsys workitem create # 新任务入口
 | [使用手册](docs/使用手册.md) | 15 分钟上手、日常操作与完整命令路径 |
 | [发布流程](docs/发布流程.md) | 发版 runbook：tag/Actions 触发、产物校验、回退与故障处理 |
 | [迁移指南](docs/迁移指南.md) | Schema 升级、二进制替换与回退 |
-| [设计方案](docs/原始文档/独立于Harness的Agent开发基础设施方案.md) | 架构原则、数据模型与设计取舍 |
-| [实施计划](docs/原始文档/实施计划.md) | M0–M9 的实施步骤与验收条件 |
-| [M9 验收报告](docs/M9-验收报告.md) | 17 项成功标准及复现证据 |
-| [M6 一致性自检](docs/M6-一致性自检.md) | 与 Symphony SPEC 的逐项对照 |
-| [开发记录](docs/开发记录.md) | 关键决策、偏差、问题与演进历史 |
+| [设计文档](docs/design.md) | 架构原则、数据模型与设计取舍（活文档） |
+| [贡献指南](CONTRIBUTING.md) | 环境要求、提交规范与文档纪律 |
+| [更新日志](CHANGELOG.md) | 版本历史与用户可感知的变更 |
 | [RepoWiki](docs/repowiki/index.md) | 自动生成的模块级项目知识 |
 
 ## 开发
@@ -291,13 +287,13 @@ Workloom 已完成 M0–M9 实施与 17 项成功标准验收，当前仍处于 
 - 核心路径以本地 CLI、stdio MCP 与 Git 为主，不提供远程中心协调服务。
 - 跨设备协作采用单写者接力；同时写入由 Git 合并流程人工处理。
 - Contrabass 集成已通过 fixture 闭环，真实环境字段仍标记为 `[UNVERIFIED]`。
-- 仓库尚未加入开源许可证。在正式公开发布前必须选择并提交 `LICENSE`；在此之前，默认版权规则仍然适用。
+- 采用 MIT 许可证（[LICENSE](LICENSE)）；贡献约定见 [CONTRIBUTING.md](CONTRIBUTING.md)，版本历史见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 参与贡献
 
-项目正在为公开开源做准备。提交改动前，请：
+提交改动前，请阅读以下步骤（完整约定见 [CONTRIBUTING.md](CONTRIBUTING.md)）：
 
-1. 先阅读 [设计方案](docs/原始文档/独立于Harness的Agent开发基础设施方案.md) 中的设计原则。
+1. 先阅读 [设计文档](docs/design.md) 中的设计原则。
 2. 为行为变化补充高价值测试，并运行 `go test ./...` 与 `go vet ./...`。
 3. 保持 `.devsys/` 为唯一事实来源，不引入绕过应用服务的写路径。
 4. 在 Pull Request 中说明动机、兼容性影响、验证方式和回退路径。

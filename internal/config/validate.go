@@ -125,7 +125,7 @@ func validate(rel string, data []byte, spec fileSpec) (map[string]*yaml.Node, Pr
 	}
 	if version != SupportedSchemaVersion {
 		return nil, Problems{{File: rel, Line: versionNode.Line, Field: "schema_version",
-			Reason: fmt.Sprintf("unsupported version %d (this build supports %d); refusing to write, migration must be explicit (实施计划 M9.2)",
+			Reason: fmt.Sprintf("unsupported version %d (this build supports %d); refusing to write, migration must be explicit",
 				version, SupportedSchemaVersion)}}
 	}
 

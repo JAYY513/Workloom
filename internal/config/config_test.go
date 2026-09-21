@@ -119,7 +119,7 @@ func TestValidateProblems(t *testing.T) {
 		{
 			name:  "unsupported version reports only the version problem",
 			files: map[string]string{ProjectFile: "# c\nschema_version: 99\nid: demo\nname: demo\nbogus: 1\n"},
-			want:  []string{"project.yaml:2: schema_version: unsupported version 99 (this build supports 1); refusing to write, migration must be explicit (实施计划 M9.2)"},
+			want:  []string{"project.yaml:2: schema_version: unsupported version 99 (this build supports 1); refusing to write, migration must be explicit"},
 		},
 		{
 			name:  "missing version",
@@ -174,7 +174,7 @@ func TestValidateProblems(t *testing.T) {
 		{
 			name:  "state file with unsupported version",
 			files: map[string]string{MilestonesFile: "schema_version: 2\nmilestones: []\n"},
-			want:  []string{"state/milestones.yaml:1: schema_version: unsupported version 2 (this build supports 1); refusing to write, migration must be explicit (实施计划 M9.2)"},
+			want:  []string{"state/milestones.yaml:1: schema_version: unsupported version 2 (this build supports 1); refusing to write, migration must be explicit"},
 		},
 		{
 			name:  "state file rejects unknown keys",

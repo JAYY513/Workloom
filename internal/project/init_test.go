@@ -270,7 +270,7 @@ func TestInitRefusesInvalidMetadata(t *testing.T) {
 	}
 	problem := problems.Error()
 	if len(problems) != 1 || !strings.Contains(problem, "unsupported version 99") ||
-		!strings.Contains(problem, "M9.2") {
+		!strings.Contains(problem, "migration must be explicit") {
 		t.Errorf("problems = %s", problem)
 	}
 	if _, statErr := os.Stat(filepath.Join(devsys, "knowledge")); !errors.Is(statErr, fs.ErrNotExist) {
