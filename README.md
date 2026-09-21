@@ -182,17 +182,18 @@ GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys.exe ./cmd/devsys
 > （蓝图写入 `project update --blueprint-artifact`、`mcp serve` 空工具集报错、损坏受管 YAML exit 4、
 > `workflow init --template` 内嵌模板）。`v0.1.5` 修复复测遗留：run complete 拒绝文案与实际
 > 状态一致（被 review 门拦时提示先补 comment）、`init` 生成项目级 .gitattributes（.devsys/
-> .agents 固定 LF，消除 Windows 换行噪音）。想要与本文档一致的行为
+> .agents 固定 LF，消除 Windows 换行噪音）。`v0.1.6` 起 install 脚本本身随 release 发布，
+> 「复制给 Agent」提示词可直接从 release 页下载脚本，无需克隆仓库。想要与本文档一致的行为
 > （`prime`、`--latest`、`--tier core` 20 项、`next` 与 `claim` 同源的质量门判定、`default_policy`、
-> 安装链修复），请用 `v0.1.5` 或更新版本，或从源码构建。
+> 安装链修复），请用 `v0.1.6` 或更新版本，或从源码构建。
 
 ```bash
 # Linux / macOS
-bash scripts/install.sh --tag v0.1.5
+bash scripts/install.sh --tag v0.1.6
 
 # Windows PowerShell
 powershell -NoProfile -ExecutionPolicy Bypass \
-  -File scripts/install.ps1 -Tag v0.1.5 -AddToPath
+  -File scripts/install.ps1 -Tag v0.1.6 -AddToPath
 ```
 
 Release 构建覆盖 Linux、macOS 与 Windows 的 `amd64` / `arm64`。

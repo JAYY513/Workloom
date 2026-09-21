@@ -197,17 +197,19 @@ GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys.exe ./cmd/devsys
 > exits 4, `workflow init --template` ships embedded templates). `v0.1.5` fixes the retest leftovers: the
 > `run complete` refusal message now matches the real state (blocked by the review gate it names the comment
 > remedy), and `init` writes a project-level `.gitattributes` (`.devsys/`/`.agents/` pinned to LF, silencing
-> Windows line-ending warnings). For the behavior described here
+> Windows line-ending warnings). From `v0.1.6` on the install scripts themselves ship as release
+> assets, so the "paste this prompt to your agent" flow downloads them straight from the release page —
+> no clone needed. For the behavior described here
 > (`prime`, `--latest`, `--tier core` of 20 tools, the claim-aligned quality gate in `next`, `default_policy`, the installer fixes),
-> use `v0.1.5` or newer, or build from source.
+> use `v0.1.6` or newer, or build from source.
 
 ```bash
 # Linux / macOS
-bash scripts/install.sh --tag v0.1.5
+bash scripts/install.sh --tag v0.1.6
 
 # Windows PowerShell
 powershell -NoProfile -ExecutionPolicy Bypass \
-  -File scripts/install.ps1 -Tag v0.1.5 -AddToPath
+  -File scripts/install.ps1 -Tag v0.1.6 -AddToPath
 ```
 
 Release builds target Linux, macOS, and Windows on `amd64` and `arm64`.
