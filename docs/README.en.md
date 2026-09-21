@@ -109,41 +109,18 @@ Coding Agents
 You do not need to learn the Workloom commands first. Open Codex, Claude Code, OpenCode, or another coding agent that can run terminal commands, then paste this prompt:
 
 ```text
-Help me set up Workloom (https://github.com/JAYY513/Workloom) in the current
-Git project.
+Help me set up Workloom (https://github.com/JAYY513/Workloom) in the current project:
 
-Please complete these steps yourself:
-1. Check whether devsys is installed (`devsys --version` printing a version
-   means yes). If it is not:
-   a. Open https://github.com/JAYY513/Workloom/releases/latest and download
-      install.sh (on Windows PowerShell use install.ps1);
-   b. Verify the script against checksums.txt from the same page (Linux/macOS/Git Bash:
-      sha256sum install.sh; Windows PowerShell:
-      (Get-FileHash install.ps1 -Algorithm SHA256).Hash.ToLower()). Stop and report if it does not match;
-   c. Install: bash install.sh --tag <that release> (PowerShell:
-      powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1 -Tag <that release> -AddToPath);
-   d. Confirm `devsys --version` matches the installed release. Downloads from
-      this private repository need `gh auth login`; without it the script
-      falls back to a source build (requires Go + Git).
-2. Run devsys init at the project root.
-3. Run devsys workflow init --template quick-fix to install a starter policy
-   (feature-development / architecture-change / reference-template are also
-   available; adapt it to this project afterwards). Tasks run without a
-   workflow, but the prompt handed to an agent then carries no process rules.
-4. Run devsys wire (it writes the AGENTS.md block and the .agents skill files
-   by default), then configure MCP with the matching
-   devsys wire --print-mcp codex|claude|opencode output.
-5. Run devsys wire --check to verify the setup, then run devsys prime to load
-   the project state.
-6. Inspect the project blueprint, goals, scope, constraints, milestones,
-   existing tasks, and workflows. If no blueprint is configured, tell me
-   clearly and ask about the project goals instead of making assumptions.
-7. Summarize in plain language whether setup succeeded, the current project
-   state, and the recommended next action.
+1. If devsys is not installed (`devsys --version` prints nothing): install it per
+   §1 of the repository's INSTALL.md (download the script from releases/latest,
+   verify it against checksums.txt, run it), then confirm the version.
+2. Confirm the current directory is the root of the target git repository; if it
+   is not, stop and ask me. Then complete the project onboarding per §2 of
+   INSTALL.md (init → starter workflow → wire → wire --check → prime → blueprint check).
 
-Do not edit managed files under .devsys directly. Perform all writes through
-the devsys CLI or MCP. If one step requires manual action from me, give me that
-single exact step, then continue with everything else you can complete.
+Stop and report on any failure; never skip the hash verification; never edit managed
+files under .devsys/ directly (all writes go through the devsys CLI or MCP). If one
+step genuinely needs me, name that step and continue with the rest.
 ```
 
 After setup, you can work with your agent in plain language:
@@ -167,6 +144,9 @@ The agent learns the operating rules from `AGENTS.md` and `.agents/skills/devsys
 ### Option B: Manual Setup
 
 ### 1. Install
+
+The full install-and-onboard flow (verification, fallback, troubleshooting) lives
+in [INSTALL.md](INSTALL.md); the essentials are below.
 
 **① Release scripts (recommended, ~10 seconds)**. Open the
 [Releases page](https://github.com/JAYY513/Workloom/releases/latest), download

@@ -109,32 +109,17 @@ Coding Agents
 你不需要先学会 Workloom 的命令。打开 Codex、Claude Code、OpenCode 或其他可执行终端命令的编码 Agent，把下面这段话直接发给它：
 
 ```text
-请帮我在当前 Git 项目中接入 Workloom（https://github.com/JAYY513/Workloom）。
+帮我在当前项目接入 Workloom（https://github.com/JAYY513/Workloom）：
 
-请你自行完成：
-1. 检查 devsys 是否已安装（devsys --version 能输出版本号即算）。如果没有：
-   a. 打开 https://github.com/JAYY513/Workloom/releases/latest ，下载 install.sh
-      （Windows PowerShell 用 install.ps1）；
-   b. 用同页的 checksums.txt 校验脚本哈希（Linux/macOS/Git Bash：
-      sha256sum install.sh；Windows PowerShell：
-      (Get-FileHash install.ps1 -Algorithm SHA256).Hash.ToLower()），不匹配就停下报告；
-   c. 执行安装：bash install.sh --tag <该版本>（PowerShell：
-      powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1 -Tag <该版本> -AddToPath）；
-   d. 确认 devsys --version 输出与所装版本一致。私有仓库下载需要 gh auth login，
-      未登录时会自动回退源码构建（需本机有 Go + Git）。
-2. 在项目根目录运行 devsys init。
-3. 运行 devsys workflow init --template quick-fix 安装一份起步工作流
-   （另有 feature-development / architecture-change / reference-template 可选，
-   装好后按本项目实际改写；没有工作流任务也能推进，但提示词里没有流程约束）。
-4. 运行 devsys wire（默认写入 AGENTS.md 纪律块与 .agents 技能文件），
-   再按你的客户端运行 devsys wire --print-mcp codex|claude|opencode 完成 MCP 配置。
-5. 运行 devsys wire --check 检查接入结果，再运行 devsys prime 读取项目状态。
-6. 检查项目蓝图、目标、范围、约束、里程碑、现有任务和工作流。
-   如果蓝图尚未配置，请明确告诉我并先询问项目目标，不要直接假设。
-7. 最后用自然语言告诉我：接入是否成功、当前项目状态、建议的下一步。
+1. 若 devsys 未安装（devsys --version 无输出）：按该仓库 INSTALL.md 的
+   §1 安装（releases/latest 下载脚本，校验 checksums.txt 后执行），装完自证版本。
+2. 确认当前目录就是目标 git 仓库的根目录；不是就先停下问我。
+   然后按 INSTALL.md 的 §2 完成项目接入（init → 工作流模板 → wire →
+   wire --check → prime → 蓝图检查）。
 
-不要直接修改 .devsys 内的受管状态文件；所有写入都通过 devsys CLI 或 MCP 完成。
-如果某一步必须由我手动操作，只告诉我那一个明确步骤，然后继续完成剩余工作。
+任一步失败就停下报告，不要跳过哈希校验；不要直接修改 .devsys/ 内的
+受管文件（所有写入走 devsys CLI 或 MCP）；若某一步必须我手动操作，
+只告诉我那一步，然后继续完成剩余工作。
 ```
 
 接入完成后，你可以直接这样和 Agent 沟通：
@@ -156,6 +141,8 @@ Agent 会从仓库中的 `AGENTS.md` 和 `.agents/skills/devsys/` 获得操作�
 ### 方式 B：手动接入
 
 ### 1. 安装
+
+完整安装与接入流程（含校验、回退与排障）见 [INSTALL.md](INSTALL.md)；下面是要点速查。
 
 **① Release 脚本（推荐，约 10 秒）**。打开 [Releases 页](https://github.com/JAYY513/Workloom/releases/latest)，下载 `install.sh`（Windows PowerShell 用 `install.ps1`），用同页 `checksums.txt` 校验后执行：
 
