@@ -113,25 +113,31 @@ Help me set up Workloom (https://github.com/JAYY513/Workloom) in the current
 Git project.
 
 Please complete these steps yourself:
-1. Check whether devsys is installed. If it is not, follow the Workloom README
-   to install the latest release or build it from source. Tell me what you will
-   run before installing it.
+1. Check whether devsys is installed (`devsys --version` printing a version
+   means yes). If it is not:
+   a. Open https://github.com/JAYY513/Workloom/releases/latest and download
+      install.sh (on Windows PowerShell use install.ps1);
+   b. Verify the script against checksums.txt from the same page
+      (sha256sum install.sh). Stop and report if it does not match;
+   c. Install: bash install.sh --tag <that release> (PowerShell:
+      powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1 -Tag <that release> -AddToPath);
+   d. Confirm `devsys --version` matches the installed release. Downloads from
+      this private repository need `gh auth login`; without it the script
+      falls back to a source build (requires Go + Git).
 2. Run devsys init at the project root.
-3. Run devsys wire --skill and devsys wire so future agents can understand
-   and use Workloom automatically.
-4. Workflows: copy a suitable policy from docs/examples/workflows/ (quick-fix,
-   feature-development, architecture-change, or the reference template) into
-   .devsys/workflows/ and adapt it to this project. Tasks run without a
+3. Run devsys workflow init --template quick-fix to install a starter policy
+   (feature-development / architecture-change / reference-template are also
+   available; adapt it to this project afterwards). Tasks run without a
    workflow, but the prompt handed to an agent then carries no process rules.
-5. Identify whether you are running as codex, claude, or opencode. Run the
-   matching devsys wire --print-mcp <client> command and configure MCP when
-   your permissions allow it.
-6. Run devsys wire --check to verify the setup, then run devsys prime to load
+4. Run devsys wire (it writes the AGENTS.md block and the .agents skill files
+   by default), then configure MCP with the matching
+   devsys wire --print-mcp codex|claude|opencode output.
+5. Run devsys wire --check to verify the setup, then run devsys prime to load
    the project state.
-7. Inspect the project blueprint, goals, scope, constraints, milestones,
+6. Inspect the project blueprint, goals, scope, constraints, milestones,
    existing tasks, and workflows. If no blueprint is configured, tell me
    clearly and ask about the project goals instead of making assumptions.
-8. Summarize in plain language whether setup succeeded, the current project
+7. Summarize in plain language whether setup succeeded, the current project
    state, and the recommended next action.
 
 Do not edit managed files under .devsys directly. Perform all writes through

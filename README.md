@@ -112,19 +112,24 @@ Coding Agents
 请帮我在当前 Git 项目中接入 Workloom（https://github.com/JAYY513/Workloom）。
 
 请你自行完成：
-1. 检查 devsys 是否已安装；如果没有，按照 Workloom README 使用最新 Release
-   或源码构建方式安装，并先告诉我将执行什么。
+1. 检查 devsys 是否已安装（devsys --version 能输出版本号即算）。如果没有：
+   a. 打开 https://github.com/JAYY513/Workloom/releases/latest ，下载 install.sh
+      （Windows PowerShell 用 install.ps1）；
+   b. 用同页的 checksums.txt 校验脚本哈希（sha256sum install.sh），不匹配就停下报告；
+   c. 执行安装：bash install.sh --tag <该版本>（PowerShell：
+      powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1 -Tag <该版本> -AddToPath）；
+   d. 确认 devsys --version 输出与所装版本一致。私有仓库下载需要 gh auth login，
+      未登录时会自动回退源码构建（需本机有 Go + Git）。
 2. 在项目根目录运行 devsys init。
-3. 运行 devsys wire --skill 和 devsys wire，让后续 Agent 能自动理解 Workloom。
-4. 工作流：把 docs/examples/workflows/ 里合适的示例（快修 / 功能开发 / 架构变更，
-   或参考级模板）复制一份到 .devsys/workflows/，并按本项目改写成实际流程；
-   没有工作流时任务也能推进，但派发给 Agent 的提示词里不会有流程约束。
-5. 识别你当前属于 codex、claude 还是 opencode，运行对应的
-   devsys wire --print-mcp <客户端>，并在权限允许时完成 MCP 配置。
-6. 运行 devsys wire --check 检查接入结果，再运行 devsys prime 读取项目状态。
-7. 检查项目蓝图、目标、范围、约束、里程碑、现有任务和工作流。
+3. 运行 devsys workflow init --template quick-fix 安装一份起步工作流
+   （另有 feature-development / architecture-change / reference-template 可选，
+   装好后按本项目实际改写；没有工作流任务也能推进，但提示词里没有流程约束）。
+4. 运行 devsys wire（默认写入 AGENTS.md 纪律块与 .agents 技能文件），
+   再按你的客户端运行 devsys wire --print-mcp codex|claude|opencode 完成 MCP 配置。
+5. 运行 devsys wire --check 检查接入结果，再运行 devsys prime 读取项目状态。
+6. 检查项目蓝图、目标、范围、约束、里程碑、现有任务和工作流。
    如果蓝图尚未配置，请明确告诉我并先询问项目目标，不要直接假设。
-8. 最后用自然语言告诉我：接入是否成功、当前项目状态、建议的下一步。
+7. 最后用自然语言告诉我：接入是否成功、当前项目状态、建议的下一步。
 
 不要直接修改 .devsys 内的受管状态文件；所有写入都通过 devsys CLI 或 MCP 完成。
 如果某一步必须由我手动操作，只告诉我那一个明确步骤，然后继续完成剩余工作。
