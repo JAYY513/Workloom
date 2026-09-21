@@ -9,8 +9,8 @@ import (
 	"strings"
 )
 
-// ErrGitMissing reports that the git executable is not on PATH; the CLI maps
-// it to its precondition exit code (D6: a project is always a git repository).
+// ErrGitMissing reports that the git executable is not on PATH. Git is an
+// optional capability: worktree operations need it, directory workspaces do not.
 var ErrGitMissing = errors.New("git is not available on PATH")
 
 // GitError is a failed git invocation, carrying what git printed.
@@ -33,6 +33,16 @@ func requireGit() error {
 		return ErrGitMissing
 	}
 	return nil
+}
+
+// GitProject reports whether dir is inside a git work tree and git is on PATH.
+// Directory workspaces are used when this is false.
+func GitProject(dir string) bool {
+	if requireGit() != nil {
+		return false
+	}
+	out, err := gitOutput(dir, "rev-parse", "--is-inside-work-tree")
+	return err == nil && strings.EqualFold(out, "true")
 }
 
 // gitOutput runs one git command in dir and returns its trimmed combined

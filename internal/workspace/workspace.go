@@ -1,6 +1,7 @@
-// Package workspace manages execution workspaces for runs (方案 §4.8): one git
-// worktree per work item below a configured root, its lifecycle hooks, and the
-// path invariants that keep an agent inside its workspace.
+// Package workspace manages execution workspaces for runs (方案 §4.8): one
+// workspace per work item below a configured root, its lifecycle hooks, and
+// the path invariants that keep an agent inside its workspace. A git project
+// uses a linked worktree; a directory without git uses a plain directory.
 //
 // The package is pure filesystem and git: it knows nothing about .devsys
 // state, runs or events. The application service binds it to the project and
@@ -22,9 +23,9 @@ import (
 // are recognizable next to human ones.
 const branchPrefix = "devsys/"
 
-// Workspace is one execution workspace: a git worktree of the project
-// repository, addressed by a sanitized key, reused across runs while it
-// exists (方案 §4.8).
+// Workspace is one execution workspace, addressed by a sanitized key and
+// reused across runs while it exists (方案 §4.8). Branch is set for git
+// worktrees and empty for directory workspaces.
 type Workspace struct {
 	Key     string      `json:"key"`
 	Path    string      `json:"path"`
@@ -47,21 +48,18 @@ type EnsureOptions struct {
 
 // Ensure creates the workspace for an identifier or reuses the existing one.
 //
-// A workspace that already exists is reused as it stands: it must be a
-// worktree of this project on the expected branch, and its after_create hook
-// is not run again (the hook gates on creation, 方案 §4.8). A newly created
-// workspace whose after_create hook fails is taken back down — the worktree,
-// its registration and the branch this call created — so a failed bootstrap
-// leaves no half-made workspace behind.
+// Git projects get a worktree of the repository on the expected branch; a
+// workspace that already exists is reused as it stands and after_create is
+// not run again. Non-git projects get a plain directory under the workspace
+// root, with no branch. A newly created workspace whose after_create hook
+// fails is taken back down so a failed bootstrap leaves no half-made
+// workspace behind.
 func Ensure(ctx context.Context, opts EnsureOptions) (Workspace, error) {
 	if strings.TrimSpace(opts.ProjectRoot) == "" {
 		return Workspace{}, errors.New("workspace needs a project root")
 	}
 	if strings.TrimSpace(opts.Identifier) == "" {
 		return Workspace{}, errors.New("workspace needs an identifier")
-	}
-	if err := requireGit(); err != nil {
-		return Workspace{}, err
 	}
 	root, err := Root(opts.ProjectRoot, opts.Root)
 	if err != nil {
@@ -72,6 +70,13 @@ func Ensure(ctx context.Context, opts EnsureOptions) (Workspace, error) {
 	if err := Validate(root, path); err != nil {
 		return Workspace{}, err
 	}
+	if GitProject(opts.ProjectRoot) {
+		return ensureWorktree(ctx, opts, key, path)
+	}
+	return ensureDirectory(ctx, opts, key, path)
+}
+
+func ensureWorktree(ctx context.Context, opts EnsureOptions, key, path string) (Workspace, error) {
 	branch := strings.TrimSpace(opts.Branch)
 	if branch == "" {
 		branch = branchPrefix + key
@@ -100,8 +105,8 @@ func Ensure(ctx context.Context, opts EnsureOptions) (Workspace, error) {
 		return Workspace{}, err
 	}
 
-	if err := os.MkdirAll(root, 0o755); err != nil {
-		return Workspace{}, fmt.Errorf("create workspace root %s: %w", root, err)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return Workspace{}, fmt.Errorf("create workspace root %s: %w", filepath.Dir(path), err)
 	}
 	existing, err := branchExists(opts.ProjectRoot, branch)
 	if err != nil {
@@ -133,6 +138,38 @@ func Ensure(ctx context.Context, opts EnsureOptions) (Workspace, error) {
 		return Workspace{}, herr
 	}
 	out := Workspace{Key: key, Path: path, Branch: branch, Created: true}
+	if rep.Ran {
+		out.Hook = &rep
+	}
+	return out, nil
+}
+
+func ensureDirectory(ctx context.Context, opts EnsureOptions, key, path string) (Workspace, error) {
+	if info, err := os.Stat(path); err == nil {
+		if !info.IsDir() {
+			return Workspace{}, fmt.Errorf("workspace %s exists and is not a directory", path)
+		}
+		return Workspace{Key: key, Path: path}, nil
+	} else if !errors.Is(err, fs.ErrNotExist) {
+		return Workspace{}, err
+	}
+	if err := os.MkdirAll(path, 0o755); err != nil {
+		return Workspace{}, fmt.Errorf("create workspace %s: %w", path, err)
+	}
+	hook := opts.Hooks[HookAfterCreate]
+	rep, herr := RunHook(ctx, RunHookOptions{
+		Name: HookAfterCreate,
+		Hook: hook,
+		Dir:  path,
+		Env:  HookEnv(opts.ProjectRoot, path, "", opts.Identifier, HookAfterCreate),
+	})
+	if herr != nil {
+		if remErr := os.RemoveAll(path); remErr != nil {
+			return Workspace{}, fmt.Errorf("%w; cleanup left residue: %v", herr, remErr)
+		}
+		return Workspace{}, herr
+	}
+	out := Workspace{Key: key, Path: path, Created: true}
 	if rep.Ran {
 		out.Hook = &rep
 	}
@@ -198,17 +235,14 @@ type RemoveReport struct {
 }
 
 // Remove takes a workspace down: the before_remove hook first (its failure is
-// recorded, never fatal — 方案 §4.8), then the worktree registration and the
-// directory. A workspace that is already gone is a no-op, not an error. The
-// branch is kept: it may hold the run's commits, and removing it is a
-// deliberate act, not a cleanup side effect.
+// recorded, never fatal — 方案 §4.8), then the worktree registration (git
+// projects) and the directory. A workspace that is already gone is a no-op,
+// not an error. The branch is kept: it may hold the run's commits, and
+// removing it is a deliberate act, not a cleanup side effect.
 func Remove(ctx context.Context, opts RemoveOptions) (RemoveReport, error) {
 	rep := RemoveReport{}
 	if strings.TrimSpace(opts.ProjectRoot) == "" {
 		return rep, errors.New("workspace removal needs a project root")
-	}
-	if err := requireGit(); err != nil {
-		return rep, err
 	}
 	root, err := Root(opts.ProjectRoot, opts.Root)
 	if err != nil {
@@ -251,14 +285,16 @@ func Remove(ctx context.Context, opts RemoveOptions) (RemoveReport, error) {
 			rep.Warnings = append(rep.Warnings, herr.Error())
 		}
 	}
-	if err := removeWorktree(opts.ProjectRoot, path, opts.Force); err != nil {
-		if !opts.Force {
-			return rep, fmt.Errorf("%w (use --force to discard local changes)", err)
+	if GitProject(opts.ProjectRoot) {
+		if err := removeWorktree(opts.ProjectRoot, path, opts.Force); err != nil {
+			if !opts.Force {
+				return rep, fmt.Errorf("%w (use --force to discard local changes)", err)
+			}
+			return rep, err
 		}
-		return rep, err
-	}
-	if err := pruneWorktrees(opts.ProjectRoot); err != nil {
-		rep.Warnings = append(rep.Warnings, err.Error())
+		if err := pruneWorktrees(opts.ProjectRoot); err != nil {
+			rep.Warnings = append(rep.Warnings, err.Error())
+		}
 	}
 	if _, err := os.Stat(path); err == nil {
 		if err := os.RemoveAll(path); err != nil {
@@ -280,9 +316,6 @@ type Listing struct {
 // List reports the workspaces below the root, ordered by key. It is read-only:
 // nothing is created, repaired or removed.
 func List(projectRoot, configuredRoot string) ([]Listing, error) {
-	if err := requireGit(); err != nil {
-		return nil, err
-	}
 	root, err := Root(projectRoot, configuredRoot)
 	if err != nil {
 		return nil, err
@@ -293,9 +326,13 @@ func List(projectRoot, configuredRoot string) ([]Listing, error) {
 	} else if err != nil {
 		return nil, err
 	}
-	branches, err := worktreeBranches(projectRoot)
-	if err != nil {
-		return nil, err
+	branches := map[string]string{}
+	if GitProject(projectRoot) {
+		var err error
+		branches, err = worktreeBranches(projectRoot)
+		if err != nil {
+			return nil, err
+		}
 	}
 	out := make([]Listing, 0, len(entries))
 	for _, entry := range entries {

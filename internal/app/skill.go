@@ -69,7 +69,7 @@ Source of truth: ` + "`devsys --help`" + ` and per-command usage. A line marked
 carry a version guard: ` + "`--expect <hash>`" + ` or ` + "`--latest`" + `).
 
 ` + "```sh" + `
-devsys init                                 # [w] create .devsys/ (git repository root)
+devsys init                                 # [w] create .devsys/ in the current directory
 devsys wire [--dry-run]                     # [w] inject the AGENTS.md discipline block
 devsys wire --skill | --check | --print-mcp <codex|claude|opencode>
 devsys prime                                # orient: facts + recommended action (alias: session start --compact)

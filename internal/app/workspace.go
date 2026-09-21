@@ -110,13 +110,18 @@ func (s *Service) WorkspacePrepare(ctx context.Context, req WorkspacePrepareRequ
 
 // bindWorkspaceToRun records the workspace on the run under the version guard,
 // so the attempt's own record says where it ran, and records the head it starts
-// from — the claim head the completion check compares against (§4.8). A head
-// that cannot be read is an error: without it the attempt could never be
-// verified, and silently binding a run nobody can verify is worse.
+// from — the claim head the completion check compares against (§4.8). Directory
+// workspaces have no branch and no HEAD: an empty claim head is recorded
+// rather than invented. A git worktree whose head cannot be read is an error:
+// without it the attempt could never be verified.
 func (s *Service) bindWorkspaceToRun(ctx context.Context, runID string, ws workspace.Workspace) error {
-	head, err := workspace.HeadSHA(ws.Path)
-	if err != nil {
-		return Preconditionf("read the workspace head of %s: %v", ws.Path, err)
+	head := ""
+	if ws.Branch != "" {
+		var err error
+		head, err = workspace.HeadSHA(ws.Path)
+		if err != nil {
+			return Preconditionf("read the workspace head of %s: %v", ws.Path, err)
+		}
 	}
 	r, raw, err := readRun(ctx, s, runID)
 	if err != nil {

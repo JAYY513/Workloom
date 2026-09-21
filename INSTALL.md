@@ -2,7 +2,7 @@
 
 本文即安装器：可以直接按序自己执行，也可以整体发给编码 Agent
 （Codex / Claude Code / OpenCode 等）。装的是 **devsys 二进制**（每
-台机器一次），接的是**当前 git 仓库项目**（每个项目一次）——两步
+台机器一次），接的是**当前项目目录**（每个项目一次）——两步
 作用域不同，不要混在一起。
 
 版本号有意不写在本文里：涉及 release 的步骤一律以
@@ -56,8 +56,10 @@ GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys.exe ./cmd/devsys
 
 ## §2 接入项目（每个项目一次）
 
-**前置门禁：当前目录必须就是目标 git 仓库的根目录**（`devsys init`
-要求 git 仓库根）。不满足就停下来确认，不要在上级目录或子目录里初始化。
+**接入目录：在目标项目目录执行 `devsys init`。** 若该目录已是 git
+仓库，建议在仓库根初始化；非 Git 原型可直接 init。不要在已经含
+`.devsys/` 的目录里面再套一层。正式代码项目默认仍应使用 Git（人的
+纪律，不是 CLI 门禁）。RepoWiki 仍要求目标仓有 Git。
 
 ```bash
 devsys init                                   # 创建 .devsys/ + 项目级 .gitattributes（幂等）
@@ -79,8 +81,8 @@ README「方式 A」与此处同款的稳定指针（不随版本变化）：
 
 1. 若 devsys 未安装（devsys --version 无输出）：按该仓库 INSTALL.md 的
    §1 安装（releases/latest 取脚本，校验 checksums.txt 后执行），装完自证版本。
-2. 确认当前目录就是目标 git 仓库的根目录；不是就先停下问我。
-   然后按 INSTALL.md 的 §2 完成项目接入。
+2. 在目标项目目录执行 init（该目录已是 git 仓则建议在仓库根；
+   非 Git 原型可直接 init）。然后按 INSTALL.md 的 §2 完成项目接入。
 任一步失败就停下报告，不要跳过哈希校验，不要直接修改 .devsys/ 内的受管文件
 （所有写入走 devsys CLI 或 MCP）。
 ```

@@ -193,26 +193,30 @@ func TestInitPreservesUserEdits(t *testing.T) {
 	}
 }
 
-func TestInitRejectsNonRepository(t *testing.T) {
-	requireGit(t)
+func TestInitCreatesLayoutWithoutRepository(t *testing.T) {
 	dir := t.TempDir()
-	if insideRepo(t, dir) {
-		t.Skipf("temp dir %s is inside a repository", dir)
+	if parent, ok := nestedUnderDevsys(dir); ok {
+		t.Skipf("temp dir nested under project %s", parent)
 	}
-	_, err := Init(dir, Options{})
-	var pe *PreconditionError
-	if !errors.As(err, &pe) {
-		t.Fatalf("err = %v, want PreconditionError", err)
+	res, err := Init(dir, Options{Now: fixedNow})
+	if err != nil {
+		t.Fatalf("init without git: %v", err)
 	}
-	if !strings.Contains(pe.Msg, "git init") {
-		t.Errorf("message should mention git init: %s", pe.Msg)
+	if _, err := os.Stat(filepath.Join(dir, DevsysDirName, "project.yaml")); err != nil {
+		t.Fatalf("layout missing: %v", err)
 	}
-	if _, statErr := os.Stat(filepath.Join(dir, DevsysDirName)); !errors.Is(statErr, fs.ErrNotExist) {
-		t.Fatal("precondition failure must not create state")
+	if _, err := os.Stat(filepath.Join(dir, ".git")); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatal("init must not run git init")
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".gitattributes")); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatal("non-git init must not write .gitattributes")
+	}
+	if res.Root == "" || res.ID == "" {
+		t.Fatalf("result = %+v", res)
 	}
 }
 
-func TestInitRejectsRepositorySubdirectory(t *testing.T) {
+func TestInitAllowsRepositorySubdirectory(t *testing.T) {
 	requireGit(t)
 	repo := filepath.Join(t.TempDir(), "repo")
 	if err := os.MkdirAll(repo, 0o755); err != nil {
@@ -224,19 +228,73 @@ func TestInitRejectsRepositorySubdirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := Init(sub, Options{})
+	res, err := Init(sub, Options{Now: fixedNow})
+	if err != nil {
+		t.Fatalf("init in git subdirectory: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(sub, DevsysDirName, "project.yaml")); err != nil {
+		t.Fatalf("subdirectory layout missing: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(repo, DevsysDirName)); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatal("parent git root must not receive .devsys/")
+	}
+	if _, err := os.Stat(filepath.Join(repo, ".gitattributes")); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatal("parent git root must not receive .gitattributes")
+	}
+	if _, err := os.Stat(filepath.Join(sub, ".gitattributes")); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatal("git subdirectory must not write .gitattributes")
+	}
+	if res.Name != "sub" {
+		t.Errorf("name = %q, want sub", res.Name)
+	}
+}
+
+func TestInitRejectsNestedDevsys(t *testing.T) {
+	parent := filepath.Join(t.TempDir(), "parent")
+	if err := os.MkdirAll(parent, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if parentRoot, ok := nestedUnderDevsys(parent); ok {
+		t.Skipf("temp dir nested under project %s", parentRoot)
+	}
+	if _, err := Init(parent, Options{Now: fixedNow}); err != nil {
+		t.Fatalf("parent init: %v", err)
+	}
+	child := filepath.Join(parent, "child")
+	if err := os.MkdirAll(child, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	before := snapshot(t, child)
+	parentBefore := snapshot(t, filepath.Join(parent, DevsysDirName))
+	_, err := Init(child, Options{})
 	var pe *PreconditionError
 	if !errors.As(err, &pe) {
 		t.Fatalf("err = %v, want PreconditionError", err)
 	}
-	if !strings.Contains(pe.Msg, "repository root") {
+	if !strings.Contains(pe.Msg, parent) || !strings.Contains(pe.Msg, DevsysDirName) {
 		t.Errorf("message = %s", pe.Msg)
 	}
-	if _, statErr := os.Stat(filepath.Join(sub, DevsysDirName)); !errors.Is(statErr, fs.ErrNotExist) {
-		t.Fatal("precondition failure must not create state in the subdirectory")
+	assertSameSnapshot(t, before, snapshot(t, child))
+	assertSameSnapshot(t, parentBefore, snapshot(t, filepath.Join(parent, DevsysDirName)))
+	if _, err := os.Stat(filepath.Join(child, DevsysDirName)); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatal("nested init must not create .devsys/")
 	}
-	if _, statErr := os.Stat(filepath.Join(repo, DevsysDirName)); !errors.Is(statErr, fs.ErrNotExist) {
-		t.Fatal("precondition failure must not create state in the repository root either")
+}
+
+func TestInitSucceedsWithoutGitOnPATH(t *testing.T) {
+	dir := t.TempDir()
+	if parent, ok := nestedUnderDevsys(dir); ok {
+		t.Skipf("temp dir nested under project %s", parent)
+	}
+	t.Setenv("PATH", filepath.Join(t.TempDir(), "empty-bin"))
+	if _, err := Init(dir, Options{Now: fixedNow}); err != nil {
+		t.Fatalf("init with empty PATH: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, DevsysDirName, "project.yaml")); err != nil {
+		t.Fatalf("layout missing: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".git")); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatal("init must not run git init")
 	}
 }
 

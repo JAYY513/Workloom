@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+## v0.1.8 — 2026-09-21
+
 ### Added
 
 - 开源许可证（MIT）、贡献指南与本更新日志。
@@ -11,6 +13,9 @@
 
 ### Changed
 
+- Git 从入场券改为可选能力：项目身份是含 `.devsys/` 的目录，不是 git 根。`devsys init` 允许非 Git 目录与 git 子目录，禁止自动 `git init`；祖先已有 `.devsys/` 仍拒绝嵌套。
+- 非 Git 项目使用目录工作区（非 worktree）；`run complete` 对该路径跳过 Git 证据（不把 `Advanced` 标 true）。Git + 已绑定 worktree 的完成门禁不变。
+- `wire --check`：git 不在 PATH 时记为能力缺失，不把整次检查打成失败。
 - 仓库裁剪：里程碑验收报告、一致性自检、开发记录与原始设计稿移出 HEAD（保留在 Git 历史中可溯源）；公开文档中的引用同步清理。
 - `devsys config check` 对未知 `schema_version` 的错误文案不再内指内部实施计划文档。
 
@@ -18,6 +23,7 @@
 
 - 生成的技能参考（`devsys wire --skill`）与 MCP core 档现状同步：计数 19→20，排除清单补 `run_cancel`。
 - `workitem transition` 租约 fencing 报错的 token 出路改指本机侧车 `.devsys/local/leases/<id>.token`（scheduling yaml 自 v0.1.5 起不含 token）。
+
 
 ## v0.1.7 — 2026-09-21
 

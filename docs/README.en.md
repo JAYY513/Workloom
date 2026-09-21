@@ -112,9 +112,10 @@ Help me set up Workloom (https://github.com/JAYY513/Workloom) in the current pro
 1. If devsys is not installed (`devsys --version` prints nothing): install it per
    §1 of the repository's INSTALL.md (download the script from releases/latest,
    verify it against checksums.txt, run it), then confirm the version.
-2. Confirm the current directory is the root of the target git repository; if it
-   is not, stop and ask me. Then complete the project onboarding per §2 of
-   INSTALL.md (init → starter workflow → wire → wire --check → prime → blueprint check).
+2. Run init in the target project directory (if it is already a git
+   repository, prefer the repository root; a non-git prototype may init
+   directly). Then complete onboarding per §2 of INSTALL.md (init →
+   starter workflow → wire → wire --check → prime → blueprint check).
 
 Stop and report on any failure; never skip the hash verification; never edit managed
 files under .devsys/ directly (all writes go through the devsys CLI or MCP). If one

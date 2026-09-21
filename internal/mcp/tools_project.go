@@ -92,7 +92,7 @@ func registerProjectList(s *mcpsdk.Server, cfg Config) {
 // --- project_create ------------------------------------------------------
 
 type projectCreateInput struct {
-	Path string `json:"path,omitempty" jsonschema:"absolute path to an existing git repository (default: the current project root)"`
+	Path string `json:"path,omitempty" jsonschema:"absolute path to an existing directory (default: the current project root)"`
 }
 
 type projectCreateResult struct {
@@ -106,7 +106,7 @@ type projectCreateResult struct {
 func registerProjectCreate(s *mcpsdk.Server, cfg Config) {
 	mcpsdk.AddTool(s, &mcpsdk.Tool{
 		Name:        "project_create",
-		Description: "Initialize .devsys/ in a git repository (default: the server's project root) and register it. Admin operation.",
+		Description: "Initialize .devsys/ in an existing directory (default: the server's project root) and register it. Admin operation.",
 	}, func(ctx context.Context, req *mcpsdk.CallToolRequest, in projectCreateInput) (*mcpsdk.CallToolResult, projectCreateResult, error) {
 		res, regPath, err := cfg.service().ProjectCreate(ctx, in.Path)
 		if err != nil {

@@ -28,7 +28,7 @@ type WireCheckView struct {
 func (s *Service) WireCheck() WireCheckView {
 	lines := []WireCheckLine{
 		checkTool("go", "Go toolchain"),
-		checkTool("git", "Git"),
+		checkGit(),
 		s.checkDevsys(),
 		s.checkSchema(),
 		checkRegistry(),
@@ -44,6 +44,13 @@ func checkTool(bin, label string) WireCheckLine {
 		return WireCheckLine{Name: label, Detail: bin + " not on PATH"}
 	}
 	return WireCheckLine{Name: label, OK: true, Detail: bin + " on PATH"}
+}
+
+func checkGit() WireCheckLine {
+	if _, err := exec.LookPath("git"); err != nil {
+		return WireCheckLine{Name: "Git", OK: true, Detail: "not on PATH (optional: worktree, sync, knowledge freshness unavailable)"}
+	}
+	return WireCheckLine{Name: "Git", OK: true, Detail: "git on PATH"}
 }
 
 func (s *Service) checkDevsys() WireCheckLine {

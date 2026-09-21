@@ -111,8 +111,8 @@ Coding Agents
 
 1. 若 devsys 未安装（devsys --version 无输出）：按该仓库 INSTALL.md 的
    §1 安装（releases/latest 下载脚本，校验 checksums.txt 后执行），装完自证版本。
-2. 确认当前目录就是目标 git 仓库的根目录；不是就先停下问我。
-   然后按 INSTALL.md 的 §2 完成项目接入（init → 工作流模板 → wire →
+2. 在目标项目目录执行 init（该目录已是 git 仓则建议在仓库根；
+   非 Git 原型可直接 init）。然后按 INSTALL.md 的 §2 完成项目接入（init → 工作流模板 → wire →
    wire --check → prime → 蓝图检查）。
 
 任一步失败就停下报告，不要跳过哈希校验；不要直接修改 .devsys/ 内的

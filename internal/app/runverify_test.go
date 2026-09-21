@@ -7,8 +7,12 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/project"
+	"github.com/JAYY513/Workloom/internal/workitem"
+	"github.com/JAYY513/Workloom/internal/workspace"
 )
 
 // verifyFixture is a project with one claimed attempt bound to a workspace:
@@ -329,5 +333,70 @@ func TestForcedCompletionOnAdvancedBranchIsAttributed(t *testing.T) {
 	}
 	if done.Run.Verification.VerifiedBy == nil || *done.Run.Verification.VerifiedBy != "alice" {
 		t.Fatalf("verification = %+v, want the reviewer recorded", done.Run.Verification)
+	}
+}
+
+func TestCompletionSucceedsWithoutGit(t *testing.T) {
+	root := t.TempDir()
+	if workspace.GitProject(root) {
+		t.Skipf("temp dir %s is inside a git repository", root)
+	}
+	t.Setenv("DEVSYS_CONFIG_DIR", t.TempDir())
+	now := time.Now().UTC()
+	if _, err := project.Init(root, project.Options{Now: now}); err != nil {
+		t.Fatalf("init: %v", err)
+	}
+	svc := New(root)
+	item := &domain.WorkItem{
+		Title: "no-git", Type: "task", Status: domain.StatusReady,
+		CreatedAt: now, UpdatedAt: now,
+	}
+	id, err := workitem.New(root).Create(context.Background(), item, "WLM")
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	view, err := svc.RunCreate(context.Background(), CreateRunRequest{
+		WorkItemID: id, Actor: "test", Reason: "fixture",
+	})
+	if err != nil {
+		t.Fatalf("run create: %v", err)
+	}
+	ws, err := svc.WorkspacePrepare(context.Background(), WorkspacePrepareRequest{
+		WorkItemID: id, RunID: view.Run.ID, Actor: "test", Reason: "bind",
+	})
+	if err != nil {
+		t.Fatalf("prepare: %v", err)
+	}
+	if ws.Branch != "" {
+		t.Fatalf("directory workspace branch = %q, want empty", ws.Branch)
+	}
+	bound, err := svc.RunGet(context.Background(), view.Run.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bound.Run.Claim.HeadSHA != "" {
+		t.Fatalf("claim head = %q, want empty", bound.Run.Claim.HeadSHA)
+	}
+	check, err := svc.RunVerify(context.Background(), view.Run.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !check.Skipped || check.Advanced {
+		t.Fatalf("check = %+v, want skipped and not advanced", check)
+	}
+	done, err := svc.RunFinish(context.Background(), RunFinishRequest{
+		RunID: view.Run.ID, Expect: bound.Version, Outcome: RunSucceeded, Actor: "agent", Reason: "done",
+	})
+	if err != nil {
+		t.Fatalf("complete: %v", err)
+	}
+	if done.Run.Status != RunSucceeded {
+		t.Fatalf("status = %s", done.Run.Status)
+	}
+	if done.Run.Verification.Advanced != nil && *done.Run.Verification.Advanced {
+		t.Fatal("must not mark Advanced true")
+	}
+	if got := itemState(t, root, id).Status; got == domain.StatusReview {
+		t.Fatalf("work item went to review: %s", got)
 	}
 }

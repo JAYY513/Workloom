@@ -17,11 +17,12 @@ func TestReadmeKeepsDecisionPageShape(t *testing.T) {
 	}
 	zh := string(readme)
 
-	// 方式 A：提示词块指向 INSTALL.md 的两段式流程。
+	// 方式 A：提示词块指向 INSTALL.md 的两段式流程；init 身份是项目目录。
 	for _, want := range []string{
 		"帮我在当前项目接入 Workloom",
 		"INSTALL.md 的",
-		"git 仓库的根目录",
+		"目标项目目录执行 init",
+		"非 Git 原型可直接 init",
 	} {
 		if !strings.Contains(zh, want) {
 			t.Errorf("README.md (zh) lacks %q (option A prompt broken)", want)

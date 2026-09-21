@@ -13,7 +13,9 @@ import (
 )
 
 // CompletionCheck is the evidence behind a completion: the head the attempt
-// started from and the head its branch points at now (方案 §4.8).
+// started from and the head its branch points at now (方案 §4.8). Skipped is
+// set when git evidence does not apply (non-git project or directory
+// workspace); Advanced stays false — skip is not a verified advance.
 type CompletionCheck struct {
 	RunID       string `json:"run_id"`
 	Workspace   string `json:"workspace,omitempty"`
@@ -21,6 +23,7 @@ type CompletionCheck struct {
 	ClaimHead   string `json:"claim_head,omitempty"`
 	CurrentHead string `json:"current_head,omitempty"`
 	Advanced    bool   `json:"advanced"`
+	Skipped     bool   `json:"skipped,omitempty"`
 	Reason      string `json:"reason,omitempty"`
 }
 
@@ -37,20 +40,24 @@ func (s *Service) RunVerify(ctx context.Context, runID string) (CompletionCheck,
 // verifyCompletion compares the claim head with the branch the attempt worked
 // on. "No evidence" is never "verified": a missing claim head, a missing
 // workspace or a git failure all report Advanced=false with the reason.
+// Non-git projects and directory workspaces skip the git check instead of
+// refusing; Advanced stays false.
 func (s *Service) verifyCompletion(ctx context.Context, r *domain.Run) CompletionCheck {
 	check := CompletionCheck{
 		RunID: r.ID, Workspace: r.Workspace.Path, Branch: r.Workspace.Branch,
 		ClaimHead: r.Claim.HeadSHA,
+	}
+	directoryWorkspace := r.Workspace.Path != "" && r.Workspace.Branch == ""
+	if directoryWorkspace || !workspace.GitProject(s.Root) {
+		check.Skipped = true
+		check.Reason = "git completion check is not applicable"
+		return check
 	}
 	// Without a workspace there is nothing to compare against: falling back to
 	// the project root would "verify" an attempt against a branch it never
 	// worked on.
 	if r.Workspace.Path == "" {
 		check.Reason = "the attempt has no workspace, so there is no evidence it advanced anything"
-		return check
-	}
-	if r.Workspace.Branch == "" {
-		check.Reason = "the attempt has no workspace branch"
 		return check
 	}
 	current, err := workspace.BranchSHA(r.Workspace.Path, r.Workspace.Branch)

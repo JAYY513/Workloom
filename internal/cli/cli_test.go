@@ -154,8 +154,7 @@ func TestInitQuiet(t *testing.T) {
 	}
 }
 
-func TestInitNotGitRepo(t *testing.T) {
-	requireGit(t)
+func TestInitNonGitDirectory(t *testing.T) {
 	dir := t.TempDir()
 	if insideRepo(t, dir) {
 		t.Skipf("temp dir %s is inside a repository", dir)
@@ -164,30 +163,29 @@ func TestInitNotGitRepo(t *testing.T) {
 	t.Chdir(dir)
 
 	code, _, errOut := run(t, "init")
-	if code != CodePrecondition {
+	if code != CodeOK {
 		t.Fatalf("code=%d stderr=%s", code, errOut)
 	}
-	if !strings.Contains(errOut, "git init") {
-		t.Errorf("stderr = %q", errOut)
+	if _, err := os.Stat(filepath.Join(dir, ".devsys", "project.yaml")); err != nil {
+		t.Fatalf("layout missing: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".git")); !os.IsNotExist(err) {
+		t.Fatal("init must not run git init")
 	}
 
-	code, _, errOut = run(t, "--json", "init")
-	if code != CodePrecondition {
+	code, out, errOut := run(t, "--json", "init")
+	if code != CodeOK {
 		t.Fatalf("json code=%d stderr=%s", code, errOut)
 	}
 	var payload struct {
-		OK    bool `json:"ok"`
-		Error struct {
-			Code    int    `json:"code"`
-			Kind    string `json:"kind"`
-			Message string `json:"message"`
-		} `json:"error"`
+		OK      bool     `json:"ok"`
+		Created []string `json:"created"`
 	}
-	if err := json.Unmarshal([]byte(errOut), &payload); err != nil {
-		t.Fatalf("json error: %v stderr=%s", err, errOut)
+	if err := json.Unmarshal([]byte(out), &payload); err != nil {
+		t.Fatalf("json: %v out=%s", err, out)
 	}
-	if payload.OK || payload.Error.Code != CodePrecondition || payload.Error.Kind != "precondition" {
-		t.Errorf("payload = %+v", payload)
+	if !payload.OK || len(payload.Created) != 0 {
+		t.Errorf("second init payload = %+v", payload)
 	}
 }
 

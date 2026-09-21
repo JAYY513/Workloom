@@ -62,7 +62,7 @@ usage:
   devsys [--json | --jsonl] [--quiet] <command>
 
 commands:
-  init          create .devsys/ in the current git repository root
+  init          create .devsys/ in the current directory
   config check  validate the managed metadata files (read-only)
   search <text> search project-local text records
   project       list | get | status | blueprint | update | state-update
@@ -100,7 +100,7 @@ exit codes:
   0  success
   1  internal error
   2  usage error
-  3  precondition error (not a git repository, wrong directory, permissions, digest mismatch)
+  3  precondition error (nested project, wrong directory, permissions, digest mismatch)
   4  invalid managed state (parse, field or schema_version problems)
 `
 

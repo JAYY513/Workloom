@@ -7,12 +7,12 @@
 
 Workloom（二进制名 `devsys`）是独立于具体编码 Harness 的 Agent 开发基础设施：把任务、工作流、审批、运行记录、决策、发现、事件与知识上下文保存为项目内 `.devsys/` 下的可读文本，由同一套 CLI 与 MCP 应用服务实施校验、并发控制和恢复。
 
-更换 Codex、Claude Code、OpenCode 或其他 Agent 时，项目状态不丢失；状态随 Git clone/pull/checkout 一起迁移；没有跨项目数据库，也没有常驻服务。
+更换 Codex、Claude Code、OpenCode 或其他 Agent 时，项目状态不丢失；有 Git 时状态随 clone/pull/checkout 迁移，无 Git 时仅本机目录；没有跨项目数据库，也没有常驻服务。
 
 ## 2. 设计原则
 
 1. **项目自治**：状态属于项目，而不是某台机器、某个 Agent 或某个 SaaS。
-2. **先证据，后状态**：没有可验证证据，就不能把任务标记为完成；完成校验比对工作区 HEAD，证据不足时转入人工复核。
+2. **先证据，后状态**：没有可验证证据，就不能把任务标记为完成；Git 工作区完成校验比对 HEAD，证据不足时转入人工复核。非 Git / 目录工作区跳过该证据，不把无 commit 伪装成已验证。
 3. **默认拒绝**：版本冲突、策略损坏、审批缺失和恢复未完成时 fail closed。
 4. **文本优先**：数据可以被人阅读、Git 审查，并由简单工具交换。
 5. **投影不是事实**：Dashboard、静态站、看板与 Contrabass 只是执行或观察后端，`.devsys/` 始终是唯一事实来源。
@@ -58,7 +58,7 @@ Workloom（二进制名 `devsys`）是独立于具体编码 Harness 的 Agent �
 │ 执行层   harness（Shell / Codex / OpenCode /         │
 │          ClaudeCode 适配器：流式输出、64KiB 行缓冲、  │
 │          进程树终止）                                 │
-│          workspace（git worktree 隔离执行环境）       │
+│          workspace（git worktree 或目录工作区）       │
 │          dispatch（纯函数计划）+ retry（确定性退避）  │
 │          + prompt（轮次模板）                         │
 ├──────────────────────────────────────────────────────┤
@@ -69,7 +69,7 @@ Workloom（二进制名 `devsys`）是独立于具体编码 Harness 的 Agent �
 └──────────────────────────────────────────────────────┘
         │
         ▼
-  .devsys/（YAML / Markdown / JSONL，随 Git 同步）
+  .devsys/（YAML / Markdown / JSONL；有 Git 则随仓库同步）
 ```
 
 代码级细节与逐条引注见 [RepoWiki](repowiki/index.md)（自动生成、按页可算新鲜度）。

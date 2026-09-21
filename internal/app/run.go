@@ -314,10 +314,11 @@ func (s *Service) RunFinish(ctx context.Context, req RunFinishRequest) (RunView,
 	}
 	// Completing an attempt is the one transition that claims success, so it
 	// is the one the completion check guards (方案 §4.8).
+	var check CompletionCheck
 	if req.Outcome == RunSucceeded {
-		check := s.verifyCompletion(ctx, r)
+		check = s.verifyCompletion(ctx, r)
 		switch {
-		case check.Advanced, req.Force:
+		case check.Advanced, req.Force, check.Skipped:
 			advanced := check.Advanced
 			r.Verification.Advanced = &advanced
 			r.Verification.HeadSHAAtComplete = check.CurrentHead
@@ -358,13 +359,18 @@ func (s *Service) RunFinish(ctx context.Context, req RunFinishRequest) (RunView,
 	switch {
 	case req.Outcome == RunSucceeded && req.Force:
 		eventType = "completion_overridden"
+	case req.Outcome == RunSucceeded && check.Skipped:
+		eventType = "run_finished"
 	case req.Outcome == RunSucceeded:
 		eventType = "completion_verified"
 	}
 	content := fmt.Sprintf("%s: %s", req.Outcome, req.Reason)
 	if req.Outcome == RunSucceeded {
 		verdict := "advanced"
-		if r.Verification.Advanced != nil && !*r.Verification.Advanced {
+		switch {
+		case check.Skipped:
+			verdict = "git check not applicable"
+		case r.Verification.Advanced != nil && !*r.Verification.Advanced:
 			verdict = "not advanced"
 		}
 		content = fmt.Sprintf("%s (%s, head %s)", content, verdict, orNone(r.Verification.HeadSHAAtComplete))

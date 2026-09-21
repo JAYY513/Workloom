@@ -36,9 +36,10 @@ func TestInstallDocCoversTheFlow(t *testing.T) {
 		}
 	}
 
-	// §2 接入（项目级）：cwd 门禁 + 接入链 + 蓝图纪律。
+	// §2 接入（项目级）：目录身份 + 接入链 + 蓝图纪律。Git 是可选能力。
 	for _, want := range []string{
-		"git 仓库的根目录",
+		"目标项目目录",
+		"非 Git 原型可直接 init",
 		"devsys init",
 		"workflow init --template",
 		"devsys wire",

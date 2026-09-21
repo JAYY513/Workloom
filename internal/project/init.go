@@ -18,8 +18,8 @@ import (
 )
 
 // PreconditionError marks failures the user can fix in the environment
-// (no git repository, wrong directory, missing git). The CLI maps it to its
-// dedicated exit code so scripts can branch without parsing messages.
+// (nested .devsys/, missing directory). The CLI maps it to its dedicated
+// exit code so scripts can branch without parsing messages.
 type PreconditionError struct{ Msg string }
 
 func (e *PreconditionError) Error() string { return e.Msg }
@@ -32,16 +32,18 @@ type Options struct {
 
 // Result reports what Init created.
 type Result struct {
-	Root    string   // absolute repository root
+	Root    string   // absolute project directory
 	ID      string   // project identifier (Slug of the root directory name)
 	Name    string   // root directory name
 	Created []string // paths created by this run, relative to Root, slash-separated, sorted
 }
 
-// Init creates the .devsys/ layout (方案 §14.3) inside the git repository root
-// dir and returns what it created. It is idempotent: existing files and
-// directories are never modified or overwritten; only missing entries are
-// added. Precondition failures happen before any filesystem change.
+// Init creates the .devsys/ layout (方案 §14.3) in dir — the operator's
+// directory after Abs — and returns what it created. Git is optional: the
+// project identity is the directory that holds .devsys/, not a git toplevel.
+// It is idempotent: existing files and directories are never modified or
+// overwritten; only missing entries are added. Precondition failures happen
+// before any filesystem change. Init never runs `git init`.
 func Init(dir string, opts Options) (*Result, error) {
 	now := opts.Now
 	if now.IsZero() {
@@ -52,13 +54,18 @@ func Init(dir string, opts Options) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	root, err := gitRoot(abs)
+	info, err := os.Stat(abs)
 	if err != nil {
 		return nil, err
 	}
-	if err := requireSameDir(abs, root); err != nil {
-		return nil, err
+	if !info.IsDir() {
+		return nil, &PreconditionError{Msg: fmt.Sprintf("%s is not a directory", abs)}
 	}
+	if parent, ok := nestedUnderDevsys(abs); ok {
+		return nil, &PreconditionError{Msg: fmt.Sprintf(
+			".devsys/ already exists at %s; refusing to nest another project", parent)}
+	}
+	root := abs
 
 	// A write command must not touch a project whose managed files are already
 	// invalid (方案 §14.1: 读到未知版本时拒绝写入). Missing files are not problems
@@ -119,57 +126,65 @@ func Init(dir string, opts Options) (*Result, error) {
 		res.Created = append(res.Created, DevsysDirName+"/.gitignore")
 	}
 
-	// Root .gitattributes: devsys writes LF files (.devsys/ state and the
-	// .agents skill); without these rules Windows Git warns about CRLF
-	// conversion on every status/diff (#345 N2). Missing entries are
-	// appended to an existing file — hand-written rules are never touched.
-	attrs := filepath.Join(dir, ".gitattributes")
-	_, attrsErr := os.Stat(attrs)
-	newAttrs := errors.Is(attrsErr, fs.ErrNotExist)
-	if err := ensureAttrsEntries(attrs, attrsEntries); err != nil {
-		return nil, err
-	}
-	if newAttrs {
-		res.Created = append(res.Created, ".gitattributes")
+	// Root .gitattributes only when this directory itself is a git toplevel.
+	// A subdirectory init (monorepo package) must not rewrite the parent
+	// repo; a non-git directory has nothing to attribute.
+	if isGitToplevel(root) {
+		attrs := filepath.Join(root, ".gitattributes")
+		_, attrsErr := os.Stat(attrs)
+		newAttrs := errors.Is(attrsErr, fs.ErrNotExist)
+		if err := ensureAttrsEntries(attrs, attrsEntries); err != nil {
+			return nil, err
+		}
+		if newAttrs {
+			res.Created = append(res.Created, ".gitattributes")
+		}
 	}
 
 	sort.Strings(res.Created)
 	return res, nil
 }
 
-// gitRoot resolves the repository root containing dir, or returns a
-// PreconditionError explaining how to fix the environment.
-func gitRoot(dir string) (string, error) {
-	out, err := exec.Command("git", "-C", dir, "rev-parse", "--show-toplevel").Output()
-	if err != nil {
-		if errors.Is(err, exec.ErrNotFound) {
-			return "", &PreconditionError{Msg: "git executable not found in PATH: install git first"}
+// nestedUnderDevsys reports the nearest ancestor of dir that already holds
+// .devsys/, so Init can refuse to nest a project. dir itself is not checked:
+// re-running init in an existing project is idempotent.
+func nestedUnderDevsys(dir string) (string, bool) {
+	parent := filepath.Dir(dir)
+	for parent != dir {
+		info, err := os.Stat(filepath.Join(parent, DevsysDirName))
+		if err == nil && info.IsDir() {
+			return parent, true
 		}
-		return "", &PreconditionError{Msg: fmt.Sprintf(
-			"%s is not inside a git repository: run `git init` in the project root first", dir)}
+		next := filepath.Dir(parent)
+		if next == parent {
+			break
+		}
+		parent = next
 	}
-	root := filepath.FromSlash(strings.TrimSpace(string(out)))
-	if root == "" {
-		return "", &PreconditionError{Msg: fmt.Sprintf("git returned an empty repository root for %s", dir)}
-	}
-	return filepath.Clean(root), nil
+	return "", false
 }
 
-// requireSameDir insists that the working directory is the repository root, so
-// .devsys/ always lands at the top of the project (方案 §14.3).
-func requireSameDir(dir, root string) error {
+// isGitToplevel reports whether dir itself is a git repository root. Missing
+// git, a non-repository, or a subdirectory of a repository are all false —
+// Init must not write .gitattributes into a parent repo.
+func isGitToplevel(dir string) bool {
+	out, err := exec.Command("git", "-C", dir, "rev-parse", "--show-toplevel").Output()
+	if err != nil {
+		return false
+	}
+	top := filepath.Clean(filepath.FromSlash(strings.TrimSpace(string(out))))
+	if top == "" {
+		return false
+	}
 	a, err := os.Stat(dir)
 	if err != nil {
-		return err
+		return false
 	}
-	b, err := os.Stat(root)
+	b, err := os.Stat(top)
 	if err != nil {
-		return &PreconditionError{Msg: fmt.Sprintf("cannot stat repository root %s: %v", root, err)}
+		return false
 	}
-	if !os.SameFile(a, b) {
-		return &PreconditionError{Msg: fmt.Sprintf("run `devsys init` from the repository root (%s)", root)}
-	}
-	return nil
+	return os.SameFile(a, b)
 }
 
 // ensureIgnoreEntries creates path with the given entries when missing, or

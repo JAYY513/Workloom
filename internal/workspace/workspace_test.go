@@ -274,6 +274,47 @@ func TestEnsureUsesConfiguredRoot(t *testing.T) {
 	}
 }
 
+func isolatedDir(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	if GitProject(dir) {
+		t.Skipf("temp dir %s is inside a git repository", dir)
+	}
+	return dir
+}
+
+func TestEnsureDirectoryModeWithoutGit(t *testing.T) {
+	root := isolatedDir(t)
+	ctx := context.Background()
+	first, err := Ensure(ctx, EnsureOptions{ProjectRoot: root, Identifier: "WLM-9"})
+	if err != nil {
+		t.Fatalf("ensure: %v", err)
+	}
+	if !first.Created || first.Branch != "" {
+		t.Fatalf("workspace = %+v, want created directory with no branch", first)
+	}
+	if info, err := os.Stat(first.Path); err != nil || !info.IsDir() {
+		t.Fatalf("directory: %v", err)
+	}
+	second, err := Ensure(ctx, EnsureOptions{ProjectRoot: root, Identifier: "WLM-9"})
+	if err != nil {
+		t.Fatalf("reuse: %v", err)
+	}
+	if second.Created || second.Path != first.Path || second.Branch != "" {
+		t.Fatalf("reuse = %+v", second)
+	}
+	rep, err := Remove(ctx, RemoveOptions{ProjectRoot: root, Identifier: "WLM-9"})
+	if err != nil {
+		t.Fatalf("remove: %v", err)
+	}
+	if !rep.Removed {
+		t.Fatalf("remove report = %+v", rep)
+	}
+	if _, err := os.Stat(first.Path); !os.IsNotExist(err) {
+		t.Fatalf("directory still present: %v", err)
+	}
+}
+
 func readCount(t *testing.T, path string) int {
 	t.Helper()
 	data, err := os.ReadFile(path)
