@@ -198,63 +198,21 @@ devsys session start
 新项目的 `.devsys/workflows/` 是空的：没有工作流时任务照常推进，但派发给 Agent 的轮次提示词里不会有流程约束。用内嵌模板装一份起手并按项目改写：
 
 ```bash
-devsys workflow init --template quick-fix            # 最简；另有 feature-development / architecture-change
+devsys workflow init --template quick-fix            # 最简起手；完整模板列表见该命令的用法输出（内嵌于二进制，随版本更新）
 devsys workflow init --template reference-template   # 参考级模板：姿态、步骤、证据、停止条件
 devsys workflow check                                # 校验全部策略文件
 ```
 
-### 3. 创建并推进工作
+### 3. 接着用它
+
+装好之后的日常使用——创建并推进工作、质量门与阶段门、连接 MCP 客户端、
+查看项目状态——见《使用手册》（`docs/使用手册.md`）。最常用的三个命令：
 
 ```bash
-devsys workitem create \
-  --title "Add OAuth login" \
-  --actor alice \
-  --reason "Q4 roadmap" \
-  --description "- 背景：… / - 范围：… / - 验收：…" \
-  --acceptance "登录成功回跳,失败可重试"
-
-devsys workitem transition \
-  --id WLM-1 \
-  --to ready \
-  --actor alice \
-  --reason "spec approved" \
-  --latest
-
-devsys workflow start --id WLM-1 --policy quick-fix --actor alice --reason "begin" --latest
-devsys next
-devsys dispatch --once --actor alice --reason "run ready work"
+devsys next            # 现在该做什么（只读）
+devsys prime           # 会话起手：项目事实 + 在飞工作 + 推荐下一步
+devsys workitem create # 新任务入口
 ```
-
-质量门与阶段门在**工作项有生效策略时**才参与判定：绑定实例（上面的 `workflow start`）或项目级 `default_policy`（见 `.devsys/config.yaml`）。`quick-fix` 示例要求描述 ≥40 字、有验收标准等；`--acceptance` 可在 `create` 直接给，也可事后用 `workitem update --acceptance a,b` 补。两者都没有时 `claim` 会打印一行 `warning:` 说明门禁未生效（项目里有策略文件才提示）；`devsys next` 用与 `claim` 相同的质量门判定，被拦的 ready 任务会进 `quality_blocked` 风险并给出补救命令。
-
-`--latest` 适合操作者明确要求基于最新版本执行的场景；自动化集成应先读版本哈希，再用 `--expect <hash>` 写入。
-
-### 4. 连接 MCP 客户端
-
-让 Workloom 为你的客户端生成 stdio 配置：
-
-```bash
-devsys wire --print-mcp codex
-devsys wire --print-mcp claude
-devsys wire --print-mcp opencode
-```
-
-底层服务命令为：
-
-```bash
-devsys mcp serve --profile session,executor --tier core
-```
-
-默认 `--tier core` 是 20 项日常子集（含 `workitem_release`，与 claim 配对）。`run_update` / `run_fail` / `workitem_block` 等进度、失败与受阻工具在 `--tier standard`；MCP 优先的 Agent 对这些步骤请用 CLI，或把 serve 改成 `--tier standard`。
-
-### 5. 查看项目状态
-
-```bash
-devsys workspace view
-devsys workspace serve --port 8080
-```
-
-本地服务默认只监听 `127.0.0.1`，页面与 `/api/view` 均为只读。
 
 ## 一个典型闭环
 

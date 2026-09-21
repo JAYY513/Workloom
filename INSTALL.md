@@ -61,8 +61,7 @@ GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys.exe ./cmd/devsys
 
 ```bash
 devsys init                                   # 创建 .devsys/ + 项目级 .gitattributes（幂等）
-devsys workflow init --template quick-fix     # 起步工作流；另有 feature-development /
-                                              # architecture-change / reference-template
+devsys workflow init --template quick-fix     # 起步工作流；完整模板列表见该命令的用法输出
 devsys wire                                   # AGENTS.md 纪律块 + .agents 技能文件（默认含 skill）
 devsys wire --check                           # 接入检查，预期全绿
 devsys prime                                  # 读取项目状态：事实 + 在飞工作 + 推荐下一步

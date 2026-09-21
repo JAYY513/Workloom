@@ -215,63 +215,22 @@ devsys session start
 A fresh project has an empty `.devsys/workflows/`. Tasks run without a policy, but the round prompt handed to an agent then carries no process rules. Install a starter template and adapt it:
 
 ```bash
-devsys workflow init --template quick-fix            # minimal; also: feature-development / architecture-change
+devsys workflow init --template quick-fix            # minimal starter; full list: the command's own usage output (embedded in the binary)
 devsys workflow init --template reference-template   # full template: posture, steps, evidence, stop conditions
 devsys workflow check                                # validates every policy file
 ```
 
-### 3. Create and Advance Work
+### 3. Use It
+
+Day-to-day usage — creating and advancing work, quality and stage gates,
+connecting an MCP client, inspecting project state — lives in the handbook
+(`docs/使用手册.md`). The three most used commands:
 
 ```bash
-devsys workitem create \
-  --title "Add OAuth login" \
-  --actor alice \
-  --reason "Q4 roadmap" \
-  --description "- context: … / - scope: … / - acceptance: …" \
-  --acceptance "login redirects back,retry on failure"
-
-devsys workitem transition \
-  --id WLM-1 \
-  --to ready \
-  --actor alice \
-  --reason "spec approved" \
-  --latest
-
-devsys workflow start --id WLM-1 --policy quick-fix --actor alice --reason "begin" --latest
-devsys next
-devsys dispatch --once --actor alice --reason "run ready work"
+devsys next            # what to do now (read-only)
+devsys prime           # session starter: project facts, in-flight work, next action
+devsys workitem create # entry point for new work
 ```
-
-Quality and stage gates apply whenever a work item has an effective policy: a bound workflow instance (the `workflow start` above) or the project-level `default_policy` in `.devsys/config.yaml`. The `quick-fix` example asks for a description of at least 40 characters and acceptance criteria. `--acceptance` can be given at `create`, or added later with `workitem update --acceptance a,b`. With neither in place, `claim` prints a `warning:` line saying the gates did not run (only when the project declares policy files); `devsys next` judges ready work items with the same quality gate `claim` applies, reports a `quality_blocked` risk, and names the command that unblocks the claim.
-
-`--latest` is intended for an operator explicitly requesting execution against the current version. Automated integrations should read the version hash first and then write with `--expect <hash>`.
-
-### 4. Connect an MCP Client
-
-Ask Workloom to print a stdio configuration for your client:
-
-```bash
-devsys wire --print-mcp codex
-devsys wire --print-mcp claude
-devsys wire --print-mcp opencode
-```
-
-The underlying server command is:
-
-```bash
-devsys mcp serve --profile session,executor --tier core
-```
-
-Default `--tier core` is the 20-tool daily subset (including `workitem_release`, paired with claim). Progress, failure and block tools (`run_update`, `run_fail`, `workitem_block`) live at `--tier standard`. MCP-first agents should use the CLI for those steps, or serve `--tier standard`.
-
-### 5. Inspect Project State
-
-```bash
-devsys workspace view
-devsys workspace serve --port 8080
-```
-
-The local server binds to `127.0.0.1` by default. Both its pages and `/api/view` are read-only.
 
 ## A Typical Loop
 
