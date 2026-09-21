@@ -10,7 +10,7 @@ import (
 	"github.com/JAYY513/Workloom/internal/harness"
 )
 
-// Hook names and semantics (方案 §4.8, Symphony SPEC §4.4):
+// Hook names and semantics (方案 §4.8):
 //
 //	after_create  workspace newly created      fatal: abort creation
 //	before_run    before each attempt          fatal: abort the attempt
@@ -24,7 +24,7 @@ const (
 )
 
 // defaultHookTimeout is the unified timeout used when the policy declares
-// none (Symphony SPEC §4.4 default hooks.timeout_ms = 60000).
+// none: 60s unless the policy declares hooks.timeout_ms.
 const defaultHookTimeout = 60 * time.Second
 
 // hookOutputTail bounds the output kept for one hook run: enough to explain a

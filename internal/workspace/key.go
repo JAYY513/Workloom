@@ -11,8 +11,8 @@ const (
 	// filesystem limit so a nested workspace path stays usable on Windows.
 	keyMax = 64
 	// keyHash is how many hex characters of the identifier hash a
-	// disambiguated key carries: 16 hex = 64 bits of entropy, the floor
-	// Symphony SPEC §9.5 (Invariant 3) sets for collision resistance.
+	// disambiguated key carries: 16 hex = 64 bits of entropy,
+	// the floor kept for collision resistance.
 	keyHash = 16
 	// keySeparator joins the sanitized identifier and its hash suffix.
 	keySeparator = "--"
@@ -33,8 +33,7 @@ var reservedKeyNames = func() map[string]bool {
 	return out
 }()
 
-// Key derives the workspace directory name for an identifier (方案 §4.8,
-// Symphony SPEC §9.5 Invariant 3).
+// Key derives the workspace directory name for an identifier (方案 §4.8).
 //
 // Every character outside [A-Za-z0-9._-] becomes '_'. When sanitization
 // changes the identifier — or when the result would not be a usable directory
