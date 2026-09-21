@@ -1,3 +1,13 @@
+## 2026-09-21 · 690b294 增量刷新（v0.1.2–v0.1.7 发布链 + 文档体系 + 开源前整理）
+
+- 源码基线：`2b8b8ce` → `690b294`（21 提交：v0.1.2 core 档严格 19 项（ba342b0）、v0.1.3 首启失败可见性与接入闭环（#336/#337）、v0.1.4 批次 D（#338/#342）、v0.1.5 复测遗留（#345）、v0.1.6 install 脚本随 release（#347）、v0.1.7 go install（#350）、文档体系 #356-359、开源前整理 3acafde+690b294）；任务 #367。
+- 增量范围：53 页 = 6 模块 50 卡 + 3 篇文章；D4 保护检查 55 页零人工修改；coverage 262/281 → 280/300（uncovered 20 项 = bundle 外用户文档/资产/仓库配置；developer_guide scope 收窄去掉已移出过程文档）。
+- 手段：9 个子代理并行（6 模块 + 3 文章），沿用 #326 的证据驱动外科更新口径；主代理机械审计（file:// 引注越界 / 死引用链接 / 围栏配平 / CRLF / 连续重复行 / frontmatter 完整性）三轮迭代归零 + `repowiki validate` 收口。
+- 死引用清理（本轮重点）：docs/开发记录.md、docs/M6-一致性自检.md、docs/M9-验收报告.md、docs/原始文档/**（过程文档已移出 HEAD，本地私有目录留档）→ 内联化为事实陈述 +「原始依据见 git 历史」纯文本，全 bundle 零残留链接 / 引注。
+- 主代理复核修复：`visibleTier` 引注 196-201 → 196-198（server.go 止于 199 行）×2；`Schema与错误契约.md` 的 fail 族纯文本行号 108-156 → 120-172（toolError:120 / fail:133 / failNotice:153 / usageFail:170 现码）；`快速开始.md` 冒烟剧本 glob 引注改指 `file://scripts/`；`Schema与错误契约.md`、`执行命令与DEVSYS_PROJECT_ROOT.md` 补 `generated: true`；`开发与故障诊断.md` 与 2 卡 CRLF → LF。
+- 同轮源码文案修复（任务 #361 线）：生成技能参考的 MCP core 档计数 19→20 且排除清单补 `run_cancel`（`internal/app/skill.go:61`，仓库内技能副本随 `devsys wire --skill` 重生成）；`workitem transition` 租约 fencing 报错 token 出路改本机侧车 `local/leases/<id>.token`（`internal/workitem/state.go:127`）——相关 wiki 引述已同步。
+- 校验：`repowiki validate` **55 files / 0 errors / 0 warnings**；自建审计 0 问题；`repowiki state --update` 基线 = 690b294；`repowiki status` = up to date。
+
 ## 2026-09-20 · 2742dd9 state 吸收（v0.1.2 发版记录）
 
 - 源码基线：`ba342b0` → `2742dd9`（`c90acd0` 源链接归一、`2f7befd` README 改指 v0.1.2、`2742dd9` 发布实跑记录）。wiki 正文无新 delta，本轮只 `state --update` 把基线推到 `2742dd9`，避免 status 把已提交的链接归一页误报为受影响。

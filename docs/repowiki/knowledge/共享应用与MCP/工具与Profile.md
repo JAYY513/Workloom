@@ -27,9 +27,9 @@ triggers:
   - project_update blueprint_artifact_id
   - empty tools refuse
   - mcp serve 0 tools
-description: "MCP 服务端的四种 profile（session / executor / reviewer / admin）暴露规则、默认组合与 `visible` 的注册期过滤语义；本批（#301）在 profile 之上叠加 **tier 档**——`TierCore` 是默认 CLI `--tier core` / 缺省值（19 项「日常子集」工具），`TierStandard` 含 profile 全量（66 项工具面），二者与 profile 合取（visible(spec.profiles, cfg.Profiles) && visibleTier(spec.tier, tier)）。`toolSpec` 新增 `tier` 字段（空 = standard，显式 `TierCore` 才进 core 档）；`server.go` 新增 `ParseTier`（拒绝未知名）/ `tierLevel`（core=0 / 其它=1）/ `visibleTier`；`tools_health.go` 的 `health` 响应回传当前 `tier`；CLI `devsys mcp serve --tier core|standard` 直接转 `mcp.ParseTier`。`project_blueprint_get`（session 档 / standard tier）补注册入口由 `tools.go` 与 `tools_project.go:56` 共同组成，未声明蓝图时 `artifact: null`。本批（#336/#337，project_update 蓝图字段+mcp 启动前过滤）：project_update 输入增 blueprint_artifact_id（empty string clears，id must already be registered）；internal/mcp/server.go 新导出 VisibleTools(cfg) []string，让 CLI mcp serve 在 0 工具时拒绝启动（exit 2，提示 --tier standard），是注册期过滤之外的"启用前"二次检查。"
+description: "MCP 服务端的四种 profile（session / executor / reviewer / admin）暴露规则、默认组合与 `visible` 的注册期过滤语义；本批（#301）在 profile 之上叠加 **tier 档**——`TierCore` 是默认 CLI `--tier core` / 缺省值（20 项「日常子集」工具），`TierStandard` 含 profile 全量（66 项工具面），二者与 profile 合取（visible(spec.profiles, cfg.Profiles) && visibleTier(spec.tier, tier)）。`toolSpec` 新增 `tier` 字段（空 = standard，显式 `TierCore` 才进 core 档）；`server.go` 新增 `ParseTier`（拒绝未知名）/ `tierLevel`（core=0 / 其它=1）/ `visibleTier`；`tools_health.go` 的 `health` 响应回传当前 `tier`；CLI `devsys mcp serve --tier core|standard` 直接转 `mcp.ParseTier`。`project_blueprint_get`（session 档 / standard tier）补注册入口由 `tools.go` 与 `tools_project.go:56` 共同组成，未声明蓝图时 `artifact: null`。本批（#336/#337，project_update 蓝图字段+mcp 启动前过滤）：project_update 输入增 blueprint_artifact_id（empty string clears，id must already be registered）；internal/mcp/server.go 新导出 VisibleTools(cfg) []string，让 CLI mcp serve 在 0 工具时拒绝启动（exit 2，提示 --tier standard），是注册期过滤之外的"启用前"二次检查。"
 generated: true
-source_commit: 2b8b8ce
+source_commit: 690b294
 generator: repowiki-gen
 
 # 工具与 Profile · 共享应用与 MCP
@@ -38,7 +38,7 @@ M4 把 MCP 工具的暴露面拆成四种 profile。`DefaultProfiles = [session,
 
 ## Profile 默认组合
 
-`internal/mcp/server.go:33-38`：
+`internal/mcp/server.go:32-37`：
 
 ```go
 const (
@@ -62,7 +62,7 @@ func DefaultProfiles() []string { return []string{ProfileSession, ProfileExecuto
 
 ## `toolSpec` 注册表
 
-`internal/mcp/tools.go:24-111` 的 `allTools()` 是唯一的工具清单；每一个工具的 `profiles` 字段决定它在哪些 profile 下被注册，本批新增的 `tier` 字段决定它出现在哪个 tier 档里（**显式 `TierCore` 才进 core 档**，空 = standard）。
+`internal/mcp/tools.go:28-115` 的 `allTools()` 是唯一的工具清单；每一个工具的 `profiles` 字段决定它在哪些 profile 下被注册，本批新增的 `tier` 字段决定它出现在哪个 tier 档里（**显式 `TierCore` 才进 core 档**，空 = standard）。
 
 ```go
 type toolSpec struct {
@@ -76,7 +76,7 @@ type toolSpec struct {
 
 `tier` 字段值域：`""`（= standard）或 `mcp.TierCore`；`mcp.TierStandard` 仅作 CLI `--tier standard` 字面量（不在 `toolSpec` 里出现，空字符串已隐式等价）。
 
-注册逻辑（`internal/mcp/server.go:130-142`，本批把 tier 维度的过滤也并入同一循环）：
+注册逻辑（`internal/mcp/server.go:137-145`，本批把 tier 维度的过滤也并入同一循环）：
 
 ```go
 tier := cfg.Tier
@@ -97,7 +97,7 @@ for _, spec := range allTools() {
 - `spec.profiles ∩ cfg.Profiles` 非空 → `true`。
 - 否则 `false`。
 
-`visibleTier(toolTier, selected)`（[internal/mcp/server.go:176-181](file://internal/mcp/server.go#L176-L181)）的语义：
+`visibleTier(toolTier, selected)`（[internal/mcp/server.go:196-198](file://internal/mcp/server.go#L196-L198)）的语义：
 
 - 通过 `tierLevel` 把 tier 排序成整数：`TierCore = 0`，其它（含 `""`、`standard`）= `1`。
 - `tierLevel(toolTier) <= tierLevel(selected)` 才暴露——core 在 core+standard 都暴露，standard 仅在 standard 暴露。
@@ -129,18 +129,18 @@ for _, spec := range allTools() {
 
 说明：
 
-- `project_blueprint_get`（session + standard tier）走 `internal/mcp/tools_project.go:56 registerProjectBlueprint`；未声明蓝图时返回 `artifact: null`（`ProjectBlueprint` 在 `internal/app/project.go:185` 返回 `(nil, nil)`），CLI `project blueprint` 与 MCP 都按 exit 0 处理。
+- `project_blueprint_get`（session + standard tier）走 `internal/mcp/tools_project.go:56 registerProjectBlueprint`；未声明蓝图时返回 `artifact: null`（`ProjectBlueprint` 在 `internal/app/project.go:204` 返回 `(nil, nil)`），CLI `project blueprint` 与 MCP 都按 exit 0 处理。
 - `workitem_update` / `workflow_step_complete` / `run_update` / `run_fail` / `run_cancel` / `workitem_block` / `context_for_workitem` / `context_refresh` / `context_compact` 等「日常以外的扩展项」均为 **standard tier**（`toolSpec.tier = ""`）——core 档不暴露。`event_record` 是 TierCore（日常子集）。
-- `health` 在两种 tier 都暴露（`TierCore`），并把当前 `tier` 字段回写到响应里（[internal/mcp/tools_health.go:54-66](file://internal/mcp/tools_health.go#L54-L66)）。
-- 工具总数：`allTools()` 共 **66 项**（含 19 项 `TierCore` + 47 项 `TierStandard`）；默认 profile（`session + executor`）+ core 档暴露 **恰好 19 项**。`run_complete` / `run_fail` / `run_cancel` 各有自己的 register（`registerRunComplete` / `registerRunFail` / `registerRunCancel`），共用 helper 每次只登记一个名字，因此 tier 门不会把 standard 条目带进 core（任务 #327）。`--tier standard` 时补齐当前 profile 的全量（四 profile 合计 66）。进度/失败/受阻（`run_update` / `run_fail` / `workitem_block`）留在 standard，MCP 优先路径用 CLI 或 `--tier standard`（任务 #313-B）。
+- `health` 在两种 tier 都暴露（`TierCore`），并把当前 `tier` 字段回写到响应里（[internal/mcp/tools_health.go:52-72](file://internal/mcp/tools_health.go#L52-L72)）。
+- 工具总数：`allTools()` 共 **66 项**（含 20 项 `TierCore` + 46 项 `TierStandard`）；默认 profile（`session + executor`）+ core 档暴露 **恰好 20 项**。`run_complete` / `run_fail` / `run_cancel` 各有自己的 register（`registerRunComplete` / `registerRunFail` / `registerRunCancel`；后两者共用 `registerRunFinish` helper，每次只登记一个名字），因此 tier 门不会把 standard 条目带进 core（v0.1.2 / ba342b0 拆 `registerRunFinish` 的修复；v0.1.4 / 9aab68f 把 `workitem_release` 补进 core 档，19→20——claim 与 release 成对，agent 能 claim 就必须能在 core 档 let go）。`--tier standard` 时补齐当前 profile 的全量（四 profile 合计 66）。进度/失败/受阻（`run_update` / `run_fail` / `run_cancel` / `workitem_block`）留在 standard，MCP 优先路径用 CLI 或 `--tier standard`。
 
-### Core 档（19 项）
+### Core 档（20 项）
 
 | 族 | TierCore 工具 |
 |---|---|
 | health | `health` |
 | project | `project_get` |
-| workitem | `workitem_list` / `workitem_get` / `workitem_create` / `workitem_transition` / `workitem_claim` / `workitem_comment` |
+| workitem | `workitem_list` / `workitem_get` / `workitem_create` / `workitem_transition` / `workitem_claim` / `workitem_release` / `workitem_comment` |
 | approval | `approval_request` |
 | decision | `decision_create` |
 | finding | `finding_create` |
@@ -151,31 +151,26 @@ for _, spec := range allTools() {
 | session | `agent_session_start` |
 | knowledge | `knowledge_status` |
 
-冒烟覆盖（`scripts/m4helper/main.go:69-82` 适配本批 tier 默认值；测试名也从「default profile」改为「default tier」）：
+冒烟覆盖（`scripts/m4helper/main.go:69-82`；脚本以 `--tier standard` 起服务，因此 want 名单里可以含 standard 档的 `run_heartbeat`，断言文案仍为 "default profile …"）：
 
 ```go
+// --- M4.1/M4.2: profile-filtered tool surface -------------------------
+list, err := session.ListTools(ctx, nil)
+...
 for _, want := range []string{"health", "workitem_list", "workitem_get", "decision_get",
     "agent_session_start", "knowledge_status", "run_heartbeat"} {
-    check(names[want], "default tier exposes %s", want)
+    check(names[want], "default profile exposes %s", want)
 }
 for _, forbidden := range []string{"project_update", "project_create", "approval_decide"} {
-    check(!names[forbidden], "default tier hides %s", forbidden)
+    check(!names[forbidden], "default profile hides %s", forbidden)
 }
-// core 档额外不暴露 workitem_update / workflow_step_complete（仅 standard）
-for _, standardOnly := range []string{"workitem_update", "workflow_step_complete"} {
-    check(!names[standardOnly], "core tier hides %s", standardOnly)
-}
-// standard 档把它们再暴露出来
-std := toolNames(t, session(t, Config{..., Tier: TierStandard}))
-check(std["workitem_update"], "standard tier exposes workitem_update")
-check(std["workflow_step_complete"], "standard tier exposes workflow_step_complete")
 ```
 
-`internal/mcp/server_test.go` 守住：`TestToolSurfaceMatchesSpecFilter`（profile×tier 矩阵与 spec 过滤一致）、`TestDefaultCoreIsTheNamedDailySubset`（19 名冻结名单）、`TestEachToolRegistersAlone`（禁止多工具共用 register 指针）、`TestCoreHidesRunFail`、`TestTierStandardRestoresFullSessionExecutor` / `TestParseTier` / `TestProjectBlueprintToolAnswersWithoutADeclaration`。
+tier 维度的矩阵（core 藏 `workitem_update` / `workflow_step_complete` / `run_fail`，standard 全量恢复）由 `internal/mcp/server_test.go` 守住：`TestToolSurfaceMatchesSpecFilter`（profile×tier 矩阵与 spec 过滤一致）、`TestDefaultCoreIsTheNamedDailySubset`（20 名冻结名单，`coreDailySubset`）、`TestEachToolRegistersAlone`（禁止多工具共用 register 指针）、`TestCoreHidesRunFail`、`TestTierStandardRestoresFullSessionExecutor` / `TestParseTier` / `TestProjectBlueprintToolAnswersWithoutADeclaration`。
 
 ## `ParseProfiles` 拒绝策略
 
-`internal/mcp/server.go:43-72`：
+`internal/mcp/server.go:76-121`：
 
 - 空字符串 → `DefaultProfiles()`。
 - 拆分 `,` → 逐项 `TrimSpace`、空项报错、未知名字报错、去重后返回。
@@ -185,7 +180,7 @@ check(std["workflow_step_complete"], "standard tier exposes workflow_step_comple
 
 ## `ParseTier` 拒绝策略（本批新增）
 
-`internal/mcp/server.go:47-60`：
+`internal/mcp/server.go:49-61`：
 
 - 空字符串 → `DefaultTier()`（即 `TierCore`）。
 - 字面量只接受 `core` / `standard`，未知名直接报错。
@@ -206,7 +201,7 @@ CLI 入口：`devsys mcp serve --tier core` / `--tier standard`（[internal/cli/
 
 ### `VisibleTools` 与 0 工具拒绝（本批新增）
 
-`internal/mcp/server.go:146-161` 新导出 `VisibleTools(cfg Config) []string`，沿用 `NewServer` 内同一 `visible(...) && visibleTier(...)` 过滤——返回值为「当前 cfg 启动时会注册的工具名集合」。`internal/cli/mcp.go:79-92` 的 `runMCPServe` 在 `len(VisibleTools(cfg)) == 0` 时返回 `errUsage`：
+`internal/mcp/server.go:149-163` 新导出 `VisibleTools(cfg Config) []string`，沿用 `NewServer` 内同一 `visible(...) && visibleTier(...)` 过滤——返回值为「当前 cfg 启动时会注册的工具名集合」。`internal/cli/mcp.go:79-92` 的 `runMCPServe` 在 `len(VisibleTools(cfg)) == 0` 时返回 `errUsage`：
 
 ```text
 profile "reviewer" has no tools in tier core; use --tier standard

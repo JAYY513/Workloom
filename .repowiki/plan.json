@@ -2,7 +2,7 @@
  "schema": 2,
  "budget": {
   "tier": "模块树",
-  "reason": "235 个扫描文件（go:196、yaml:11、markdown:9、shell:7、other:6、powershell:6），多层目录，沿用模块树档位；M7.2 落地 internal/sitestatic 静态构建（view 模型→6 离线页+本地样式+data/model.json，html/template，缺省 out .devsys/dist/site/ git 忽略，ResolveOut 拒绝状态目录/根/.git），M7.3 落地 serve（render.go RenderPage/ModelJSON 与 Build 落盘逐字节一致 + workspace_serve.go 每请求现装 view.Build，缺省 127.0.0.1:8080，非环回须 --allow-remote，405+Allow: GET, HEAD）；M7.4 落地新鲜度提示（CLI 文本脸 hint 行 + sitestatic freshnessHint 纯函数与全站第二横幅+knowledge 内联提示，JSON/退出码不动，判定复用 knowledge.Evaluate）。view-layer scope 补 internal/sitestatic/**（M7.1 时已预告此归属）；`项目接入与配置` 模块补 build/serve 命令族与退出码；三篇文章目录与文件路径保持不变；模块数仍 6。 2026-09-20 增量（P1/P2 + Release 自动化 + 外部审查两批修复，c5b5533→2b8b8ce）：模块划分与文章路径不变，scope 不变；coverage 按新快照重算（262/281）。",
+  "reason": "235 个扫描文件（go:196、yaml:11、markdown:9、shell:7、other:6、powershell:6），多层目录，沿用模块树档位；M7.2 落地 internal/sitestatic 静态构建（view 模型→6 离线页+本地样式+data/model.json，html/template，缺省 out .devsys/dist/site/ git 忽略，ResolveOut 拒绝状态目录/根/.git），M7.3 落地 serve（render.go RenderPage/ModelJSON 与 Build 落盘逐字节一致 + workspace_serve.go 每请求现装 view.Build，缺省 127.0.0.1:8080，非环回须 --allow-remote，405+Allow: GET, HEAD）；M7.4 落地新鲜度提示（CLI 文本脸 hint 行 + sitestatic freshnessHint 纯函数与全站第二横幅+knowledge 内联提示，JSON/退出码不动，判定复用 knowledge.Evaluate）。view-layer scope 补 internal/sitestatic/**（M7.1 时已预告此归属）；`项目接入与配置` 模块补 build/serve 命令族与退出码；三篇文章目录与文件路径保持不变；模块数仍 6。 2026-09-20 增量（P1/P2 + Release 自动化 + 外部审查两批修复，c5b5533→2b8b8ce）：模块划分与文章路径不变，scope 不变；coverage 按新快照重算（262/281）。 2026-09-21 增量（v0.1.2–v0.1.7 发布链 + 文档体系 #356-359 + 开源前整理 3acafde/690b294）：大纲、slug、路径不变；developer_guide scope 去掉已移出的 docs/开发记录.md 与 docs/M6-一致性自检.md（过程文档已出 HEAD）；coverage 按新快照重算（262/281 → 本轮值）。",
   "max_total_modules": 8,
   "max_depth": 2,
   "max_total_articles": 30,
@@ -156,35 +156,35 @@
     "view-layer"
    ],
    "scope": [
-    "docs/开发记录.md",
-    "docs/M6-一致性自检.md",
-    ".gitattributes"
+    ".gitattributes",
+    "CONTRIBUTING.md"
    ]
   }
  ],
  "coverage_check": {
-  "covered_files": 262,
-  "total_files": 281,
+  "covered_files": 280,
+  "total_files": 300,
   "uncovered": [
+   ".agents/skills/devsys/SKILL.md",
    ".agents/skills/devsys/references/cli.md",
    ".agents/skills/devsys/references/troubleshooting.md",
-   ".agents/skills/devsys/SKILL.md",
-   ".gitattributes",
    ".github/workflows/release.yml",
    ".gitignore",
    "AGENTS.md",
-   "docs/发布流程.md",
-   "docs/开发记录.md",
-   "docs/迁移指南.md",
-   "docs/使用手册.md",
-   "docs/原始文档/独立于Harness的Agent开发基础设施方案.md",
-   "docs/原始文档/实施计划.md",
+   "CHANGELOG.md",
+   "INSTALL.md",
+   "LICENSE",
+   "Makefile",
+   "docs/README.en.md",
    "docs/assets/workloom-architecture.svg",
    "docs/assets/workloom-mark.svg",
-   "docs/M6-一致性自检.md",
-   "docs/M9-验收报告.md",
-   "docs/README.en.md",
-   "Makefile"
+   "docs/design.md",
+   "docs/使用手册.md",
+   "docs/发布流程.md",
+   "docs/迁移指南.md",
+   "installmd_test.go",
+   "readmemd_test.go",
+   "templates.go"
   ]
  }
 }

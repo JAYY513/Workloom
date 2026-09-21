@@ -35,7 +35,8 @@ triggers:
   - BlueprintArtifactID
   - CreateWorkitemCommand
 description: M6 执行层（harness/workspace/dispatch/retry/prompt）到 CLI/MCP 的接线：`devsys worktree/dispatch/run exec|prompt|verify|complete|fail|cancel` 与 MCP `run_prompt/verify/complete/fail/cancel` 的对应；`DEVSYS_PROJECT_ROOT` 与 `HookEnv` 注入规则；`config.workspace_root` / `config.dispatch_command` 解析与默认；M7.1 视图域 `devsys workspace view` 的接线（不经 internal/app、调 internal/view.Build 与 storage.Inspect）与 §4.8 `worktree`（执行工作区）严格分开的边界。
-source_commit: 2b8b8ce
+source_commit: 690b294
+generated: true
 generator: repowiki-gen
 ---
 
@@ -58,9 +59,9 @@ generator: repowiki-gen
 | `run fail` | `run_fail` | executor | `Service.RunFinish(ctx, RunFinishRequest{Outcome: RunFailed, ...})` | `internal/app.finishAttempt` |
 | `run cancel` | `run_cancel` | executor | `Service.RunFinish(ctx, RunFinishRequest{Outcome: RunCanceled, ...})` | `internal/app.finishAttempt` |
 
-| `devsys workspace view [--limit N]` | — | — | 直接调 `internal/view.Build(ctx, root, view.Options{Limit: *limit})`（不经 `internal/app`） | `internal/view.Build` + `storage.Inspect` / `storage.InspectUnlocked`（[internal/cli/workspace.go:128-134](file://internal/cli/workspace.go#L128-L134)） |
+| `devsys workspace view [--limit N]` | — | — | 直接调 `internal/view.Build(ctx, root, view.Options{Limit: *limit})`（不经 `internal/app`） | `internal/view.Build` + `storage.Inspect` / `storage.InspectUnlocked`（[internal/cli/workspace.go:129-132](file://internal/cli/workspace.go#L129-L132)） |
 | `devsys workspace build --static [--out DIR] [--limit N]` | — | — | 直接调 `internal/view.Build` + `sitestatic.Build` 落盘到 `--out`（默认 `.devsys/dist/site/`，不经 `internal/app`） | `internal/view.Build` + `internal/sitestatic.Build`（[internal/cli/workspace.go:44-108](file://internal/cli/workspace.go#L44-L108)） |
-| `devsys workspace serve [--host 127.0.0.1] [--port N] [--allow-remote] [--limit N]` | — | — | 直接调 `internal/view.Build` 每请求一次 + `sitestatic.RenderPage` 内存渲染，不写盘（不经 `internal/app`） | `internal/view.Build` + `internal/sitestatic.RenderPage`（[internal/cli/workspace_serve.go:140](file://internal/cli/workspace_serve.go#L140)） |
+| `devsys workspace serve [--host 127.0.0.1] [--port N] [--allow-remote] [--limit N]` | — | — | 直接调 `internal/view.Build` 每请求一次 + `sitestatic.RenderPage` 内存渲染，不写盘（不经 `internal/app`） | `internal/view.Build` + `internal/sitestatic.RenderPage`（[internal/cli/workspace_serve.go:151](file://internal/cli/workspace_serve.go#L151)） |
 
 `run update --status <terminal>` 仍走 `Service.RunUpdate`（M4 引入），但 M6 起 CLI 文档推荐用 `run complete\|fail\|cancel`（语义对应 §4.8 终态）。
 ## 配置：`config.yaml` 新增键
@@ -79,7 +80,7 @@ dispatch_command: "devsys run exec --id {run_id} --actor dispatch --reason tick"
 | `dispatch_command` | `"devsys run exec --id {run_id} --actor dispatch --reason tick"`（由 `app.dispatchCommandLine` 渲染） | `app.dispatchOne` 选 `spawn` 策略时；任何 workitem 的 `assigned_harness` 为空时使用 | `internal/app.dispatchCommandLine` |
 
 ## DEVSYS_PROJECT_ROOT
-`internal/cli/cli.go:186-194` 的 `appService()` 读取顺序（**P1 起** 委托 `resolveService`，[internal/cli/roots.go:44-50](file://internal/cli/roots.go#L44-L50)）：
+`internal/cli/cli.go:187-195` 的 `appService()` 读取顺序（**P1 起** 委托 `resolveService`，[internal/cli/roots.go:44-50](file://internal/cli/roots.go#L44-L50)）：
 
 ```text
 1. 命令行 --project-root <abs path>   (CLI 显式开关，未来扩展)
@@ -176,9 +177,9 @@ M7.1 把方案 §17「视图域」落在 `internal/view` 包 + `internal/cli/wor
 
 ## 本批（M9 #336/#337 提交 362b637 / 7e08e3d）
 
-- `devsys workflow init --template <id>`（[internal/cli/cli.go:1153-1170](file://internal/cli/cli.go#L1153-L1170)）：usage 文本由 `strings.Join(app.WorkflowTemplates(), "|")` 动态生成（`internal/app/workflow_init.go` + 仓库根 `templates.go`）；CLI 路由调用 `svc.WorkflowInitTemplate(ctx, id)`——存储 `Write` 的 `ExpectAbsent` 保证不覆盖已有策略文件；返回值 `WorkflowInitView{Template, Path}` 暴露写到的相对路径。
-- `devsys project update --blueprint-artifact <artifact-id>`（[internal/cli/cli.go:672-694](file://internal/cli/cli.go#L672-L694)）fs.Visit 模式 flag：empty string clears；非空须 `record.KindArtifact.ValidID`（形态错 → `Usagef` / `CodeUsage = 2`），未注册（`GetArtifact` ErrNotFound → `Preconditionf` / `CodePrecondition = 3` + 出路 `devsys artifact register`）。MCP `project_update` 输入增 `blueprint_artifact_id`（[internal/mcp/tools_project.go](file://internal/mcp/tools_project.go)）。接线链：CLI flag → `app.ProjectUpdate` → `UpdateProjectRequest.BlueprintArtifactID *string` → storage 写事务。
-- `devsys mcp serve` 0 工具分支（[internal/cli/mcp.go:79-92](file://internal/cli/mcp.go#L79-L92)）：构造 cfg 后调 `mcp.VisibleTools(cfg)`，拿到空 slice 走 `errUsage("mcp serve: profile %s has no tools in tier %s; use --tier standard", quoted, tier)` → `CodeUsage = 2`。多 profile 时单复数与动词变 `profiles %s have`。避免 silent server 的隐藏陷阱。
+- `devsys workflow init --template <id>`（[internal/cli/cli.go:1207-1235](file://internal/cli/cli.go#L1207-L1235)）：usage 文本由 `strings.Join(app.WorkflowTemplates(), "|")` 动态生成（`internal/app/workflow_init.go` + 仓库根 `templates.go`）；CLI 路由调用 `svc.WorkflowInitTemplate(ctx, id)`——存储 `Write` 的 `ExpectAbsent` 保证不覆盖已有策略文件；返回值 `WorkflowInitView{Template, Path}` 暴露写到的相对路径。
+- `devsys project update --blueprint-artifact <artifact-id>`（[internal/cli/cli.go:709-752](file://internal/cli/cli.go#L709-L752)）fs.Visit 模式 flag：empty string clears；非空须 `record.KindArtifact.ValidID`（形态错 → `Usagef` / `CodeUsage = 2`），未注册（`GetArtifact` ErrNotFound → `Preconditionf` / `CodePrecondition = 3` + 出路 `devsys artifact register`）。MCP `project_update` 输入增 `blueprint_artifact_id`（[internal/mcp/tools_project.go](file://internal/mcp/tools_project.go)）。接线链：CLI flag → `app.ProjectUpdate` → `UpdateProjectRequest.BlueprintArtifactID *string` → storage 写事务。
+- `devsys mcp serve` 0 工具分支（[internal/cli/mcp.go:79-91](file://internal/cli/mcp.go#L79-L91)）：构造 cfg 后调 `mcp.VisibleTools(cfg)`，拿到空 slice 走 `errUsage("mcp serve: %s %s %s no tools in tier %s; use --tier standard", word, strings.Join(quoted, ", "), verb, tier)`（单 profile 渲染为 `mcp serve: profile "session" has no tools in tier core; use --tier standard`） → `CodeUsage = 2`。多 profile 时单复数与动词变 `profiles %s have`。避免 silent server 的隐藏陷阱。
 - `app.MCPSnippet` 三参签名（[internal/app/mcpsnippets.go:19](file://internal/app/mcpsnippets.go#L19)）：`MCPSnippet(name, devsysBin, projectRoot)`；`bin` 与 `cwd` 都 `filepath.ToSlash(strings.TrimSpace(…))`；`jsonString` 走 `encoding/json` 编字符串。`internal/cli/cli.go` 旧 `MCPSnippet(name, os.Args[0])` 替换为 `(name, os.Args[0], svc.Root)`。
-- `devsys next` / `prime` / `session start` / `project status` 在 `len(doc.InvalidFiles) > 0` 时（[internal/app/next.go:28-46](file://internal/app/next.go#L28-L46)）→ `Invalidf(KindInvalid, nil, "next: managed state unreadable: <file>: <err>…")`，调用 `next.Evaluate` 之前短路。`next` 调度入口（`runNext` [internal/cli/cli.go:1332-1447](file://internal/cli/cli.go#L1332-L1447)）的 `verdict` / `reasons` / `risks` 在不可信路径下整体被替换为 untrusted state 消息，调用脚本按 `code == 4` 分支触发 `devsys recover --actor … --reason …`。
-- `RiskEmptyProject = "empty_project"`（[internal/next/evaluate.go:52](file://internal/next/evaluate.go#L52)）+ `CreateWorkitemCommand` 常量（[internal/next/evaluate.go:64-66](file://internal/next/evaluate.go#L64-L66)）：空项目 + `!HasBlueprint` 时 `next` 推荐两条 remedy——先 `devsys workitem create --title "…" --actor <you> --reason "first task"`，再 `devsys project update --blueprint-artifact <artifact-id>`。同一文案被 `devsys init` 在 `runInit` 人类输出的「next:」四步里复用（[internal/cli/cli.go:405-409](file://internal/cli/cli.go#L405-L409)）。
+- `devsys next` / `prime` / `session start` / `project status` 在 `len(doc.InvalidFiles) > 0` 时（[internal/app/next.go:28-46](file://internal/app/next.go#L28-L46)）→ `Invalidf(KindInvalid, nil, "next: managed state unreadable: <file>: <err>…")`，调用 `next.Evaluate` 之前短路。`next` 调度入口（`runNext` [internal/cli/cli.go:1674-1723](file://internal/cli/cli.go#L1674-L1723)）的 `verdict` / `reasons` / `risks` 在不可信路径下整体被替换为 untrusted state 消息，调用脚本按 `code == 4` 分支触发 `devsys recover --actor … --reason …`。
+- `RiskEmptyProject = "empty_project"`（[internal/next/evaluate.go:52](file://internal/next/evaluate.go#L52)）+ `CreateWorkitemCommand` 常量（[internal/next/evaluate.go:64-66](file://internal/next/evaluate.go#L64-L66)）：空项目 + `!HasBlueprint` 时 `next` 推荐两条 remedy——先 `devsys workitem create --title "…" --actor <you> --reason "first task"`，再 `devsys project update --blueprint-artifact <artifact-id>`。同一文案被 `devsys init` 在 `runInit` 人类输出的「next:」四步里复用（[internal/cli/cli.go:417-431](file://internal/cli/cli.go#L417-L431)）。
