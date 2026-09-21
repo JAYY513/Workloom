@@ -117,8 +117,9 @@ Please complete these steps yourself:
    means yes). If it is not:
    a. Open https://github.com/JAYY513/Workloom/releases/latest and download
       install.sh (on Windows PowerShell use install.ps1);
-   b. Verify the script against checksums.txt from the same page
-      (sha256sum install.sh). Stop and report if it does not match;
+   b. Verify the script against checksums.txt from the same page (Linux/macOS/Git Bash:
+      sha256sum install.sh; Windows PowerShell:
+      (Get-FileHash install.ps1 -Algorithm SHA256).Hash.ToLower()). Stop and report if it does not match;
    c. Install: bash install.sh --tag <that release> (PowerShell:
       powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1 -Tag <that release> -AddToPath);
    d. Confirm `devsys --version` matches the installed release. Downloads from
@@ -227,12 +228,12 @@ devsys session start
 
 `devsys init` creates `.devsys/` idempotently. `wire` adds concise collaboration rules to `AGENTS.md` while preserving hand-written content.
 
-A fresh project has an empty `.devsys/workflows/`. Tasks run without a policy, but the round prompt handed to an agent then carries no process rules. Copy an example and adapt it:
+A fresh project has an empty `.devsys/workflows/`. Tasks run without a policy, but the round prompt handed to an agent then carries no process rules. Install a starter template and adapt it:
 
 ```bash
-cp docs/examples/workflows/quick-fix.md .devsys/workflows/            # minimal
-cp docs/examples/workflows/reference-template.md .devsys/workflows/   # full template: posture, steps, evidence, stop conditions
-devsys workflow check                                                 # validates every policy file
+devsys workflow init --template quick-fix            # minimal; also: feature-development / architecture-change
+devsys workflow init --template reference-template   # full template: posture, steps, evidence, stop conditions
+devsys workflow check                                # validates every policy file
 ```
 
 ### 3. Create and Advance Work

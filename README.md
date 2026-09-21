@@ -115,7 +115,9 @@ Coding Agents
 1. 检查 devsys 是否已安装（devsys --version 能输出版本号即算）。如果没有：
    a. 打开 https://github.com/JAYY513/Workloom/releases/latest ，下载 install.sh
       （Windows PowerShell 用 install.ps1）；
-   b. 用同页的 checksums.txt 校验脚本哈希（sha256sum install.sh），不匹配就停下报告；
+   b. 用同页的 checksums.txt 校验脚本哈希（Linux/macOS/Git Bash：
+      sha256sum install.sh；Windows PowerShell：
+      (Get-FileHash install.ps1 -Algorithm SHA256).Hash.ToLower()），不匹配就停下报告；
    c. 执行安装：bash install.sh --tag <该版本>（PowerShell：
       powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1 -Tag <该版本> -AddToPath）；
    d. 确认 devsys --version 输出与所装版本一致。私有仓库下载需要 gh auth login，
@@ -211,12 +213,12 @@ devsys session start
 
 `devsys init` 幂等创建 `.devsys/`；`wire` 将精简的协作纪律写入 `AGENTS.md`，且保留文件中的手写内容。
 
-新项目的 `.devsys/workflows/` 是空的：没有工作流时任务照常推进，但派发给 Agent 的轮次提示词里不会有流程约束。复制一份示例并按项目改写：
+新项目的 `.devsys/workflows/` 是空的：没有工作流时任务照常推进，但派发给 Agent 的轮次提示词里不会有流程约束。用内嵌模板装一份起手并按项目改写：
 
 ```bash
-cp docs/examples/workflows/quick-fix.md .devsys/workflows/     # 最简；另有 feature-development / architecture-change
-cp docs/examples/workflows/reference-template.md .devsys/workflows/   # 参考级模板：姿态、步骤、证据、停止条件
-devsys workflow check                                          # 校验全部策略文件
+devsys workflow init --template quick-fix            # 最简；另有 feature-development / architecture-change
+devsys workflow init --template reference-template   # 参考级模板：姿态、步骤、证据、停止条件
+devsys workflow check                                # 校验全部策略文件
 ```
 
 ### 3. 创建并推进工作
