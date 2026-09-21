@@ -58,7 +58,7 @@ reads after a write must re-read (expired hashes are refused, never forced).
 - Never edit ` + "`.devsys/`" + ` files directly (repair via ` + "`devsys repair`" + `).
 - See ` + "`references/cli.md`" + ` for the command table and ` + "`references/troubleshooting.md`" + ` for exit codes and retries.
 - Operator-side families (dispatch, approval, archive, workspace) are listed in ` + "`devsys --help`" + `.
-- Default MCP ` + "`--tier core`" + ` (19 tools) does not expose ` + "`run_update`" + ` / ` + "`run_fail`" + ` / ` + "`workitem_block`" + `. Use the CLI, or serve ` + "`--tier standard`" + `.
+- Default MCP ` + "`--tier core`" + ` (20 tools) does not expose ` + "`run_update`" + ` / ` + "`run_fail`" + ` / ` + "`run_cancel`" + ` / ` + "`workitem_block`" + `. Use the CLI, or serve ` + "`--tier standard`" + `.
 `
 
 const skillCLIRef = skillMarker + `

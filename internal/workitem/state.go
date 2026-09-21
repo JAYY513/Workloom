@@ -124,7 +124,7 @@ func (s *Store) changeStatus(ctx context.Context, id string, req TransitionReque
 				if lease.RunID != "" {
 					detail += fmt.Sprintf(" (run %s)", lease.RunID)
 				}
-				return fmt.Errorf("%w: %s; release the claim before leaving execution: devsys workitem release --id %s --owner %s --token <token from .devsys/scheduling/%s.yaml> --actor %s --reason <reason>",
+				return fmt.Errorf("%w: %s; release the claim before leaving execution: devsys workitem release --id %s --owner %s --token <token from .devsys/local/leases/%s.token> --actor %s --reason <reason>",
 					ErrLeaseTokenMismatch, detail, id, lease.Owner, id, req.Actor)
 			}
 			if !now.Before(lease.LeaseUntil) {

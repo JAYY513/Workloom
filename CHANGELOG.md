@@ -14,6 +14,11 @@
 - 仓库裁剪：里程碑验收报告、一致性自检、开发记录与原始设计稿移出 HEAD（保留在 Git 历史中可溯源）；公开文档中的引用同步清理。
 - `devsys config check` 对未知 `schema_version` 的错误文案不再内指内部实施计划文档。
 
+### Fixed
+
+- 生成的技能参考（`devsys wire --skill`）与 MCP core 档现状同步：计数 19→20，排除清单补 `run_cancel`。
+- `workitem transition` 租约 fencing 报错的 token 出路改指本机侧车 `.devsys/local/leases/<id>.token`（scheduling yaml 自 v0.1.5 起不含 token）。
+
 ## v0.1.7 — 2026-09-21
 
 ### Added
