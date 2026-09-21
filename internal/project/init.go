@@ -119,6 +119,20 @@ func Init(dir string, opts Options) (*Result, error) {
 		res.Created = append(res.Created, DevsysDirName+"/.gitignore")
 	}
 
+	// Root .gitattributes: devsys writes LF files (.devsys/ state and the
+	// .agents skill); without these rules Windows Git warns about CRLF
+	// conversion on every status/diff (#345 N2). Missing entries are
+	// appended to an existing file — hand-written rules are never touched.
+	attrs := filepath.Join(dir, ".gitattributes")
+	_, attrsErr := os.Stat(attrs)
+	newAttrs := errors.Is(attrsErr, fs.ErrNotExist)
+	if err := ensureAttrsEntries(attrs, attrsEntries); err != nil {
+		return nil, err
+	}
+	if newAttrs {
+		res.Created = append(res.Created, ".gitattributes")
+	}
+
 	sort.Strings(res.Created)
 	return res, nil
 }
@@ -188,6 +202,43 @@ func ensureIgnoreEntries(path string, entries []string) error {
 	if !strings.HasSuffix(out, "\n") {
 		out += "\n"
 	}
-	out += strings.Join(missing, "\n") + "\n"
+	out += "# devsys 本地文件（方案 §14.2）：不提交，可删除。\n" + strings.Join(missing, "\n") + "\n"
+	return storage.AtomicWrite(path, []byte(out), 0o644)
+}
+
+// attrsEntries pins devsys-written trees to LF so Windows Git stops
+// warning about CRLF conversion on every status/diff (#345 N2).
+var attrsEntries = []string{".devsys/** text eol=lf", ".agents/** text eol=lf"}
+
+// ensureAttrsEntries mirrors ensureIgnoreEntries for the repository-root
+// .gitattributes.
+func ensureAttrsEntries(path string, entries []string) error {
+	data, err := os.ReadFile(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		content := "# devsys 写的文件保持 LF：消除 Windows 换行噪音。\n" + strings.Join(entries, "\n") + "\n"
+		return storage.AtomicWrite(path, []byte(content), 0o644)
+	}
+	if err != nil {
+		return err
+	}
+	have := map[string]bool{}
+	for _, l := range strings.Split(string(data), "\n") {
+		have[strings.TrimSpace(strings.TrimRight(l, "\r"))] = true
+	}
+	var missing []string
+	for _, e := range entries {
+		if have[e] {
+			continue
+		}
+		missing = append(missing, e)
+	}
+	if len(missing) == 0 {
+		return nil
+	}
+	out := string(data)
+	if !strings.HasSuffix(out, "\n") {
+		out += "\n"
+	}
+	out += "# devsys 写的文件保持 LF：消除 Windows 换行噪音。\n" + strings.Join(missing, "\n") + "\n"
 	return storage.AtomicWrite(path, []byte(out), 0o644)
 }

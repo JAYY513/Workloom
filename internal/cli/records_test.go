@@ -513,7 +513,9 @@ func TestKnowledgeScanExcludesSecretsAndLargeFiles(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &view); err != nil {
 		t.Fatal(err)
 	}
-	if !view.OK || view.File != ".devsys/knowledge/snapshot.json" || view.Files != 1 {
+	// The scanned tree contains a.go plus the repository-root
+	// .gitattributes that `devsys init` now writes (#345 N2).
+	if !view.OK || view.File != ".devsys/knowledge/snapshot.json" || view.Files != 2 {
 		t.Fatalf("view = %s", out)
 	}
 	reasons := map[string]string{}

@@ -75,17 +75,18 @@ func (s *Service) verifyCompletion(ctx context.Context, r *domain.Run) Completio
 // refuseCompletion records a completion the check refused: the run keeps its
 // evidence (advanced=false and the head it stopped at), the work item goes to
 // human review, and the event says why. The run stays non-terminal so the
-// attempt can still be finished by whoever reviews it.
-func (s *Service) refuseCompletion(ctx context.Context, r *domain.Run, actor, reason string, check CompletionCheck) error {
+// attempt can still be finished by whoever reviews it. It reports whether the
+// item actually entered review (a stage gate can keep it in place).
+func (s *Service) refuseCompletion(ctx context.Context, r *domain.Run, actor, reason string, check CompletionCheck) (bool, error) {
 	fresh, raw, err := readRun(ctx, s, r.ID)
 	if err != nil {
-		return err
+		return false, err
 	}
 	advanced := false
 	fresh.Verification.Advanced = &advanced
 	fresh.Verification.HeadSHAAtComplete = check.CurrentHead
 	if err := run.New(s.Root).Update(ctx, fresh, raw); err != nil {
-		return s.storeError(err)
+		return false, s.storeError(err)
 	}
 	if err := events.New(s.Root).Append(ctx, &domain.Event{
 		Type:      "completion_refused",
@@ -96,17 +97,19 @@ func (s *Service) refuseCompletion(ctx context.Context, r *domain.Run, actor, re
 		Content:   fmt.Sprintf("claim head %s, current head %s: %s", orNone(check.ClaimHead), orNone(check.CurrentHead), reason),
 		Time:      s.now(),
 	}); err != nil {
-		return s.storeError(err)
+		return false, s.storeError(err)
 	}
 	return s.routeToReview(ctx, r, actor, reason)
 }
 
 // routeToReview moves the work item into human review: the queue is the review
-// status itself, which next and workitem list already surface.
-func (s *Service) routeToReview(ctx context.Context, r *domain.Run, actor, reason string) error {
+// status itself, which next and workitem list already surface. It reports
+// whether the item actually entered review — a stage gate can keep it in
+// place, and the caller's message must match the real state (#345 N1).
+func (s *Service) routeToReview(ctx context.Context, r *domain.Run, actor, reason string) (bool, error) {
 	wi, raw, err := s.readSnapshot(ctx, r.WorkItemID, "")
 	if err != nil {
-		return err
+		return false, err
 	}
 	// The attempt asked to complete, so it is over: give the claim back
 	// first, whatever the item's status is — a claimed item refuses
@@ -123,21 +126,21 @@ func (s *Service) routeToReview(ctx context.Context, r *domain.Run, actor, reaso
 			Reason:     "completion refused; claim released for review",
 			Now:        s.now(),
 		}); err != nil {
-			return err
+			return false, err
 		}
 		if wi, raw, err = s.readSnapshot(ctx, r.WorkItemID, ""); err != nil {
-			return err
+			return false, err
 		}
 	case err != nil && !errors.Is(err, workitem.ErrNotClaimed):
-		return s.storeError(err)
+		return false, s.storeError(err)
 	}
 	if wi.Status == domain.StatusReview {
-		return nil
+		return true, nil
 	}
 	if !domain.IsTransitionLegal(wi.Status, domain.StatusReview) {
 		// A work item that cannot enter review (already closed, say) keeps its
 		// state: the refusal is still recorded on the run and in the event log.
-		return nil
+		return false, nil
 	}
 	// The automatic route goes through the same stage gate as a manual
 	// transition: a refuse-to-review must not become a way around
@@ -147,7 +150,7 @@ func (s *Service) routeToReview(ctx context.Context, r *domain.Run, actor, reaso
 	if _, _, gerr := s.checkTransitionGate(ctx, wi, domain.StatusReview); gerr != nil {
 		var ae *Error
 		if errors.As(gerr, &ae) && ae.Kind == KindGate {
-			return events.New(s.Root).Append(ctx, &domain.Event{
+			return false, events.New(s.Root).Append(ctx, &domain.Event{
 				Type:      "review_gate_blocked",
 				Subject:   domain.Reference{Type: "workitem", ID: wi.ID},
 				ProjectID: wi.ProjectID,
@@ -157,16 +160,16 @@ func (s *Service) routeToReview(ctx context.Context, r *domain.Run, actor, reaso
 				Time:      s.now(),
 			})
 		}
-		return gerr
+		return false, gerr
 	}
 	if _, err := s.items().Transition(ctx, wi.ID, workitem.TransitionRequest{
 		TargetStatus: domain.StatusReview,
 		Actor:        actor,
 		Reason:       "completion refused: " + reason,
 	}, raw); err != nil {
-		return s.storeError(err)
+		return false, s.storeError(err)
 	}
-	return nil
+	return true, nil
 }
 
 func orNone(sha string) string {

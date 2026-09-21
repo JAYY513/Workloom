@@ -3,6 +3,7 @@ package cli
 // #342（安装报告批次 D）CLI 回归：token 侧车脱敏 + 围栏仍生效。
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -57,5 +58,70 @@ func TestLeaseTokenNotCommitted(t *testing.T) {
 	}
 	if rest, _ := os.ReadFile(filepath.Join(repo, ".devsys", "scheduling", "WLM-1.yaml")); len(rest) != 0 {
 		t.Fatalf("lease file not removed after release: %q", rest)
+	}
+}
+
+// TestRunCompleteRefusalNamesGateWhenReviewBlocked (#345 N1): 无证据且
+// review 门未满足时，拒绝文案必须说出真实状态（未进 review + 先补
+// comment），而不是谎称 "in review"。
+func TestRunCompleteRefusalNamesGateWhenReviewBlocked(t *testing.T) {
+	repo, items := gatedProject(t)
+	writeWorkflow(t, repo, "review-gated.md", `---
+id: review-gated
+name: review 门策略
+version: 1
+steps:
+  - id: implement
+    type: execute
+    required: true
+gates:
+  stages:
+    review:
+      require_comment: true
+quality_gate:
+  min_score: 10
+limits:
+  max_attempts: 3
+---
+prompt body
+`)
+	createReadyWorkitem(t, items, readyItem("完成校验回归任务", "描述足够长以满足质量门的最低要求。", "review-gated"))
+	code, out, errOut := run(t, "--json", "workitem", "claim", "--id", "WLM-1", "--owner", "agent", "--reason", "attempt")
+	if code != CodeOK {
+		t.Fatalf("claim: code=%d stderr=%q", code, errOut)
+	}
+	var claim struct {
+		RunID string `json:"run_id"`
+	}
+	if err := json.Unmarshal([]byte(out), &claim); err != nil || claim.RunID == "" {
+		t.Fatalf("claim payload = %q (%v)", out, err)
+	}
+	// No evidence on the branch: the completion must be refused.
+	code, _, errOut = run(t, "run", "complete", "--id", claim.RunID, "--actor", "agent", "--reason", "done")
+	if code != CodePrecondition {
+		t.Fatalf("run complete: code=%d stderr=%q, want %d", code, errOut, CodePrecondition)
+	}
+	if strings.Contains(errOut, "is in review") {
+		t.Fatalf("stderr lies about the state: %q", errOut)
+	}
+	for _, want := range []string{"did not enter review", "workitem comment"} {
+		if !strings.Contains(errOut, want) {
+			t.Fatalf("stderr = %q, want %q", errOut, want)
+		}
+	}
+	code, out, _ = run(t, "--json", "workitem", "get", "WLM-1")
+	if code != CodeOK {
+		t.Fatal("workitem get failed")
+	}
+	var view struct {
+		Item struct {
+			Status string `json:"status"`
+		} `json:"item"`
+	}
+	if err := json.Unmarshal([]byte(out), &view); err != nil {
+		t.Fatal(err)
+	}
+	if view.Item.Status != "in_progress" {
+		t.Fatalf("status = %q, want in_progress (gate blocked the review route)", view.Item.Status)
 	}
 }

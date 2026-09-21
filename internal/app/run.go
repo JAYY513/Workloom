@@ -332,12 +332,17 @@ func (s *Service) RunFinish(ctx context.Context, req RunFinishRequest) (RunView,
 			if reason == "" {
 				reason = "the completion check found no advance"
 			}
-			if err := s.refuseCompletion(ctx, r, req.Actor, reason, check); err != nil {
+			routed, err := s.refuseCompletion(ctx, r, req.Actor, reason, check)
+			if err != nil {
 				return RunView{}, err
 			}
+			where := "the work item is in review — review it and pass --force --by <reviewer> to accept, or fix the branch and retry"
+			if !routed {
+				where = fmt.Sprintf("the work item did not enter review (its review gate is unmet — add a comment first: `devsys workitem comment --id %s --text \"...\" --actor <you>`), then transition or pass --force --by <reviewer> to accept anyway", r.WorkItemID)
+			}
 			return RunView{}, Preconditionf(
-				"run %s cannot be marked succeeded: %s (claim head %s, current head %s); the work item is in review — review it and pass --force --by <reviewer> to accept, or fix the branch and retry",
-				r.ID, reason, orNone(check.ClaimHead), orNone(check.CurrentHead))
+				"run %s cannot be marked succeeded: %s (claim head %s, current head %s); %s",
+				r.ID, reason, orNone(check.ClaimHead), orNone(check.CurrentHead), where)
 		}
 	}
 	now := s.now()
