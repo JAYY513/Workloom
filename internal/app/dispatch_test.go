@@ -97,7 +97,13 @@ func releaseClaim(t *testing.T, svc *Service, workitemID string) {
 	if err != nil {
 		t.Fatalf("lease inspection: %v", err)
 	}
-	if _, err := svc.WorkitemRelease(context.Background(), workitemID, lease.Owner, lease.Token, "ops", "attempt finished", ""); err != nil {
+	// The persisted lease carries no token (#342): the test acts locally, so
+	// it reads the sidecar like the sweep does.
+	token, err := workitem.New(svc.Root).LeaseToken(context.Background(), workitemID)
+	if err != nil {
+		t.Fatalf("lease token: %v", err)
+	}
+	if _, err := svc.WorkitemRelease(context.Background(), workitemID, lease.Owner, token, "ops", "attempt finished", ""); err != nil {
 		t.Fatalf("release: %v", err)
 	}
 }

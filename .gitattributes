@@ -1,11 +1,4 @@
-# 状态文件要在多台机器之间合并，行尾必须稳定：一律 LF，禁止平台自动转换。
-* text=auto eol=lf
-
-# 二进制资源不做文本转换
-*.png binary
-*.jpg binary
-*.jpeg binary
-*.gif binary
-*.ico binary
-*.exe binary
-*.zip binary
+# Keep line endings stable across Windows/macOS/Linux checkouts: devsys
+# writes LF files (.devsys/, skill files), and without this rule Windows
+# Git warns about CRLF conversion on every status/diff (#342).
+* text=auto

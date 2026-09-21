@@ -386,8 +386,10 @@ func TestWorkflowInstanceWritesRequireLeaseHolder(t *testing.T) {
 	if updated.Workflow.Step != "implement" {
 		t.Errorf("step = %s", updated.Workflow.Step)
 	}
-	if updated.LeaseOwner != "holder" || updated.LeaseToken != claim.Token || updated.SchedulingState != domain.SchedulingClaimed {
-		t.Errorf("lease fields changed: owner=%q token=%q scheduling=%q", updated.LeaseOwner, updated.LeaseToken, updated.SchedulingState)
+	// The persisted token is always empty since #342; the sidecar still
+	// fences non-holders (the wrong-token call above was refused).
+	if updated.LeaseOwner != "holder" || updated.LeaseUntil == nil || updated.SchedulingState != domain.SchedulingClaimed {
+		t.Errorf("lease fields changed: owner=%q until=%v scheduling=%q", updated.LeaseOwner, updated.LeaseUntil, updated.SchedulingState)
 	}
 }
 

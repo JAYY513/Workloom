@@ -91,7 +91,7 @@ func TestWirePrintMCPClaudeJSON(t *testing.T) {
 
 func TestWorkitemUpdateRejectsUnknownHarness(t *testing.T) {
 	dispatchProject(t, "", "one")
-	code, _, errOut := run(t, "workitem", "update", "--id", "WLM-1", "--assigned-harness", "nope")
+	code, _, errOut := run(t, "workitem", "update", "--id", "WLM-1", "--assigned-harness", "nope", "--actor", "tester", "--reason", "coverage")
 	if code != CodeUsage {
 		t.Fatalf("code=%d stderr=%q, want usage", code, errOut)
 	}

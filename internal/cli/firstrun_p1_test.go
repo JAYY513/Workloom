@@ -17,7 +17,7 @@ import (
 // registerArtifact creates one artifact through the CLI and returns its id.
 func registerArtifact(t *testing.T, name, path string) string {
 	t.Helper()
-	if code, _, errOut := run(t, "artifact", "register", "--name", name, "--path", path); code != CodeOK {
+	if code, _, errOut := run(t, "artifact", "register", "--name", name, "--path", path, "--actor", "tester", "--reason", "blueprint"); code != CodeOK {
 		t.Fatalf("artifact register: %d %s", code, errOut)
 	}
 	code, out, errOut := run(t, "--json", "artifact", "list")

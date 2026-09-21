@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -178,6 +179,25 @@ func TestServeUsageErrors(t *testing.T) {
 	}
 	if code, _, errOut := run(t, "workspace", "serve", "--host", "::1", "--port", "0", "extra"); code != CodeUsage {
 		t.Errorf("extra arg: code = %d (stderr=%q), want %d", code, errOut, CodeUsage)
+	}
+}
+
+// TestServePortInUse reports a bind conflict as a friendly precondition
+// error naming the way out (#342), not a raw OS message.
+func TestServePortInUse(t *testing.T) {
+	gatedProject(t)
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	port := ln.Addr().(*net.TCPAddr).Port
+	code, _, errOut := run(t, "workspace", "serve", "--port", fmt.Sprintf("%d", port))
+	if code != CodePrecondition {
+		t.Fatalf("code = %d (stderr=%q), want %d", code, errOut, CodePrecondition)
+	}
+	if !strings.Contains(errOut, "already in use") || !strings.Contains(errOut, "--port") {
+		t.Fatalf("stderr = %q, want the friendly port-in-use message", errOut)
 	}
 }
 

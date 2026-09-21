@@ -23,8 +23,8 @@ const mcpInstructions = `devsys — 项目本地开发基础设施的 MCP 服务
 // runMCP routes the mcp command family (实施计划 M4.1): the stdio server.
 // Business tool families attach to the same registry in M4.2/M4.3.
 func runMCP(opts options, stdin io.Reader, stdout, stderr io.Writer, rest []string) error {
-	if len(rest) == 0 {
-		return errUsage("`devsys mcp` requires a subcommand (serve)")
+	if familyUsage(stdout, rest, "`devsys mcp` requires a subcommand (serve)") {
+		return nil
 	}
 	switch rest[0] {
 	case "serve":

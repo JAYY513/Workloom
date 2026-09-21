@@ -14,8 +14,8 @@ import (
 // runWorktree routes the worktree family (方案 §4.8): the execution workspace
 // of a work item, its lifecycle hooks and its invariants.
 func runWorktree(stdout io.Writer, opts options, rest []string) error {
-	if len(rest) == 0 {
-		return errUsage("`devsys worktree` needs a subcommand (prepare | remove | list)")
+	if familyUsage(stdout, rest, "`devsys worktree` needs a subcommand (prepare | remove | list)") {
+		return nil
 	}
 	svc, err := requireProjectRoot()
 	if err != nil {

@@ -49,8 +49,19 @@ func TestCheckGateMissingEvidenceInOrder(t *testing.T) {
 		"at least one comment event is required",
 		"an approved, unconsumed approval is required",
 	}
-	if strings.Join(res.Missing, "\n") != strings.Join(want, "\n") {
+	if len(res.Missing) != len(want) {
 		t.Fatalf("missing = %q", res.Missing)
+	}
+	for i, w := range want {
+		if !strings.HasPrefix(res.Missing[i], w) {
+			t.Fatalf("missing[%d] = %q, want prefix %q", i, res.Missing[i], w)
+		}
+	}
+	// Every remediation names the executable command (#342).
+	for _, m := range res.Missing[:3] {
+		if !strings.Contains(m, "devsys ") {
+			t.Fatalf("missing line lacks a remedy command: %q", m)
+		}
 	}
 }
 

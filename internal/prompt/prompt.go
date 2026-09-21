@@ -153,7 +153,7 @@ const noPolicyBody = "（未挂工作流策略：按任务简报、验收标准�
 // harness's own transcript (方案 §8/§9.2).
 const protocol = `- 通过 CLI 或 MCP 汇报（两者同一实现）：` + "`devsys ...`" + ` 与同名 MCP 工具等价。
 - 进度：` + "`devsys run update --id $DEVSYS_RUN_ID --log <一行说明>`" + `（可多次）。
-- 产物：` + "`devsys artifact register --name <名称> --path <路径> --run $DEVSYS_RUN_ID --related $DEVSYS_WORKITEM`" + `。
+- 产物：` + "`devsys artifact register --name <名称> --path <路径> --run $DEVSYS_RUN_ID --related $DEVSYS_WORKITEM --actor <身份> --reason <原因>`" + `。
 - 决策：` + "`devsys decision create --title <标题> --decision <结论> --by <身份>`" + `；发现：` + "`devsys finding create --title <标题> --description <说明>`" + `。
 - 受阻：` + "`devsys workitem block --id $DEVSYS_WORKITEM --actor <身份> --reason <原因>`" + `；需要人工放行时按策略请求审批（` + "`devsys approval request --id $DEVSYS_WORKITEM --stage <阶段> --actor <身份> --reason <原因>`" + `）。
 - 完成：` + "`devsys run complete --id $DEVSYS_RUN_ID --actor <身份> --reason <原因>`" + `；失败：` + "`devsys run fail ...`" + `。

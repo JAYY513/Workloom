@@ -6,19 +6,43 @@ import (
 )
 
 func TestScoreQualityTitleBoundaries(t *testing.T) {
-	for _, tc := range []struct{ n, want int }{{0, 0}, {7, 0}, {8, 10}, {15, 10}, {16, 20}} {
-		res := ScoreQuality(QualityInput{Title: strings.Repeat("题", tc.n)})
+	// CJK glyphs weigh double (#342): 7 Chinese characters already clear the
+	// 8-char bar. ASCII rows pin the unweighted behavior.
+	for _, tc := range []struct {
+		title string
+		want  int
+	}{
+		{strings.Repeat("题", 0), 0},
+		{strings.Repeat("题", 7), 10},
+		{strings.Repeat("题", 8), 20},
+		{strings.Repeat("题", 15), 20},
+		{strings.Repeat("题", 16), 20},
+		{strings.Repeat("t", 7), 0},
+		{strings.Repeat("t", 8), 10},
+		{strings.Repeat("t", 16), 20},
+	} {
+		res := ScoreQuality(QualityInput{Title: tc.title})
 		if res.Score != tc.want {
-			t.Errorf("title %d runes: score=%d want %d", tc.n, res.Score, tc.want)
+			t.Errorf("title %q: score=%d want %d", tc.title, res.Score, tc.want)
 		}
 	}
 }
 
 func TestScoreQualityDescriptionBoundaries(t *testing.T) {
-	for _, tc := range []struct{ n, want int }{{0, 0}, {39, 0}, {40, 15}, {119, 15}, {120, 30}} {
-		res := ScoreQuality(QualityInput{Description: strings.Repeat("述", tc.n)})
+	for _, tc := range []struct {
+		desc string
+		want int
+	}{
+		{strings.Repeat("述", 0), 0},
+		{strings.Repeat("述", 20), 15},
+		{strings.Repeat("述", 60), 30},
+		{strings.Repeat("d", 39), 0},
+		{strings.Repeat("d", 40), 15},
+		{strings.Repeat("d", 120), 30},
+	} {
+		res := ScoreQuality(QualityInput{Description: tc.desc})
 		if res.Score != tc.want {
-			t.Errorf("description %d runes: score=%d want %d", tc.n, res.Score, tc.want)
+			t.Errorf("description len %d: score=%d want %d", len(tc.desc), res.Score, tc.want)
 		}
 	}
 }
@@ -28,17 +52,18 @@ func TestScoreQualityComponents(t *testing.T) {
 	if res := ScoreQuality(QualityInput{Description: "one\ntwo"}); res.Score != 15 {
 		t.Errorf("structure: %+v", res)
 	}
-	// Acceptance criteria: 15 (text without acceptance language so only the
-	// criteria component scores).
-	if res := ScoreQuality(QualityInput{AcceptanceCriteria: []string{"passes go test"}}); res.Score != 15 {
+	// Acceptance criteria: 15 for the criteria component plus 10 because
+	// structured criteria satisfy the acceptance-language component (#342).
+	if res := ScoreQuality(QualityInput{AcceptanceCriteria: []string{"passes go test"}}); res.Score != 25 {
 		t.Errorf("criteria: %+v", res)
 	}
 	// Concrete reference: 10 on top of the title component.
 	if res := ScoreQuality(QualityInput{Title: "see internal/cli/cli.go"}); res.Score != 30 {
 		t.Errorf("reference: %+v", res)
 	}
-	// Acceptance language: 10 on its own.
-	if res := ScoreQuality(QualityInput{Title: "验收怎么做"}); res.Score != 10 {
+	// Acceptance language via keyword: 10 on its own; a 5-glyph Chinese
+	// title now also clears the (weighted) title bar.
+	if res := ScoreQuality(QualityInput{Title: "验收怎么做"}); res.Score != 20 {
 		t.Errorf("acceptance language: %+v", res)
 	}
 }

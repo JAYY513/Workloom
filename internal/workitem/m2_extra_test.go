@@ -51,8 +51,16 @@ func TestClaimAlwaysIssuesFreshToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if lease.Token != res.Token {
-		t.Fatalf("on-disk lease token %q != result token %q", lease.Token, res.Token)
+	// The committed lease carries no token (#342); the local sidecar does.
+	if lease.Token != "" {
+		t.Fatalf("persisted lease token = %q; want redacted", lease.Token)
+	}
+	tok, err := s.LeaseToken(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tok != res.Token {
+		t.Fatalf("sidecar token %q != result token %q", tok, res.Token)
 	}
 }
 
@@ -248,7 +256,7 @@ func TestForOrphanReleaseRequiresMissingRun(t *testing.T) {
 		Now:       now,
 	}); err == nil {
 		t.Fatal("expected ForOrphan refusal while run exists")
-	} else if !strings.Contains(err.Error(), "ForOrphan release requires run") {
+	} else if !strings.Contains(err.Error(), "orphan release requires run") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -306,7 +314,7 @@ func TestPlainUpdateBlockedWhenLeaseActive(t *testing.T) {
 	cur.Title = "should not take"
 	if err := s.Update(ctx, cur, raw); err == nil {
 		t.Fatal("expected Update to be rejected while a lease is active")
-	} else if !strings.Contains(err.Error(), "use UpdateClaimed") {
+	} else if !strings.Contains(err.Error(), "workitem release") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -349,8 +357,11 @@ func TestUpdateClaimedFencesSchedulingFields(t *testing.T) {
 	if cur.Status != domain.StatusInProgress {
 		t.Fatalf("status regressed to %q", cur.Status)
 	}
-	if cur.LeaseOwner != "owner-F" || cur.LeaseToken != res.Token {
-		t.Fatalf("lease fields stripped: owner=%q token=%q", cur.LeaseOwner, cur.LeaseToken)
+	// The fence restores the lease identity. The persisted token is always
+	// empty since #342 (the sidecar holds it); ownership and schedule are
+	// the observable contract here.
+	if cur.LeaseOwner != "owner-F" || cur.LeaseUntil == nil {
+		t.Fatalf("lease fields stripped: owner=%q until=%v", cur.LeaseOwner, cur.LeaseUntil)
 	}
 	if cur.SchedulingState != domain.SchedulingClaimed {
 		t.Fatalf("scheduling_state lost: %q", cur.SchedulingState)

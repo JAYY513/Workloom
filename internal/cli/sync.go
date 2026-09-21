@@ -17,8 +17,8 @@ import (
 // `status` inspection only. Handoff execution (push/pull/merge) stays with
 // git itself; devsys only judges readiness.
 func runSync(stdout io.Writer, opts options, rest []string) error {
-	if len(rest) == 0 {
-		return errUsage("`devsys sync` needs a subcommand: status")
+	if familyUsage(stdout, rest, "`devsys sync` needs a subcommand: status") {
+		return nil
 	}
 	switch rest[0] {
 	case "status":

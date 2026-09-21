@@ -102,9 +102,19 @@ type ReleaseOptions struct {
 	Expected   []byte
 	ForExpired bool // require verified lease_until < now; skip owner/token
 	ForOrphan  bool // require lease exists AND its run file is missing
-	Actor      string
-	Reason     string
-	Now        time.Time
+	// ForCompleted releases the claim whose bound run just succeeded; the
+	// symmetric counterpart of refuseAttempt's release on the failed path
+	// (#342). ForRefused is that failure-path release, used when a
+	// completion is refused and the item goes to human review. BoundRunID
+	// must equal the lease's run and the run record must carry the matching
+	// outcome proof, so neither can kill an active claim. Owner/token are
+	// not required; the run record is the proof.
+	ForCompleted bool
+	ForRefused   bool
+	BoundRunID   string
+	Actor        string
+	Reason       string
+	Now          time.Time
 }
 
 // HeartbeatOptions is the input to Heartbeat.
@@ -274,11 +284,13 @@ func (s *Store) Claim(ctx context.Context, id string, opts ClaimOptions) (ClaimR
 		if err := runpkg.New(s.root).CreateTx(tx, run); err != nil {
 			return fmt.Errorf("create run: %w", err)
 		}
+		// The persisted files carry no token (#342): the fence reads the
+		// local sidecar instead. The in-memory result still hands the token
+		// to the claimer.
 		lease := domain.SchedulingLease{
 			SchemaVersion: domain.SchemaVersion,
 			WorkItemID:    id,
 			Owner:         opts.Owner,
-			Token:         token,
 			ClaimedAt:     now,
 			LeaseUntil:    now.Add(dur),
 			HeartbeatAt:   now,
@@ -288,13 +300,15 @@ func (s *Store) Claim(ctx context.Context, id string, opts ClaimOptions) (ClaimR
 			AgentHarness:  opts.Agent.Harness,
 		}
 		cur.LeaseOwner = opts.Owner
-		cur.LeaseToken = token
 		cur.LeaseClaimedAt = &lease.ClaimedAt
 		cur.LeaseUntil = &lease.LeaseUntil
 		cur.HeartbeatAt = &lease.HeartbeatAt
 		cur.ActiveRunID = run.ID
 		ev.Related = []domain.Reference{{Type: "run", ID: run.ID}}
 		if err := tx.PutYAML(leaseRel(id), lease, storage.ExpectAbsent()); err != nil {
+			return err
+		}
+		if err := stageToken(tx, id, token); err != nil {
 			return err
 		}
 		if err := tx.PutYAML(workitemRel(id), cur, storage.ExpectHash(storage.HashBytes(snap))); err != nil {
@@ -353,15 +367,28 @@ func (s *Store) Heartbeat(ctx context.Context, id string, opts HeartbeatOptions)
 	if len(opts.Expected) > 0 && !bytesEqual(opts.Expected, snap) {
 		return fmt.Errorf("%w: workitem %s changed concurrently", storage.ErrConflict, id)
 	}
-	if cur.LeaseOwner == "" || cur.LeaseToken == "" {
+	if cur.LeaseOwner == "" || cur.LeaseUntil == nil {
 		return ErrNotClaimed
 	}
-	if cur.LeaseOwner != opts.Owner || cur.LeaseToken != opts.Token {
+	if cur.LeaseOwner != opts.Owner {
 		return ErrLeaseTokenMismatch
 	}
-
 	st, err := s.store()
 	if err != nil {
+		return err
+	}
+	if err := st.Read(ctx, func(r *storage.Reader) error {
+		// The persisted snapshot carries no token (#342): validate against
+		// the local sidecar before the write tx opens.
+		tok, terr := tokenFromReader(r, id, cur.LeaseToken)
+		if terr != nil {
+			return terr
+		}
+		if tok == "" || tok != opts.Token {
+			return ErrLeaseTokenMismatch
+		}
+		return nil
+	}); err != nil {
 		return err
 	}
 	if err := ensureEventsDir(st.DevsysDir()); err != nil {
@@ -379,7 +406,11 @@ func (s *Store) Heartbeat(ctx context.Context, id string, opts HeartbeatOptions)
 		if err := domain.DecodeYAML(leaseBytes, &lease); err != nil {
 			return fmt.Errorf("decode lease file: %w", err)
 		}
-		if lease.Owner != opts.Owner || lease.Token != opts.Token {
+		tok, err := tokenFromTx(tx, id, lease.Token)
+		if err != nil {
+			return err
+		}
+		if lease.Owner != opts.Owner || tok != opts.Token {
 			return ErrLeaseTokenMismatch
 		}
 		if !lease.LeaseUntil.After(now) {
@@ -453,11 +484,15 @@ func (s *Store) Release(ctx context.Context, id string, opts ReleaseOptions) err
 			return fmt.Errorf("decode lease file: %w", err)
 		}
 
-		if !opts.ForExpired && !opts.ForOrphan {
+		if !opts.ForExpired && !opts.ForOrphan && !opts.ForCompleted && !opts.ForRefused {
 			if opts.Owner == "" || opts.Token == "" {
-				return fmt.Errorf("%w: owner and token are required for non-recovery release", ErrInvalidInput)
+				return fmt.Errorf("%w: owner and token are required (expired or orphaned leases are recovered with `devsys recover` instead)", ErrInvalidInput)
 			}
-			if lease.Owner != opts.Owner || lease.Token != opts.Token {
+			tok, err := tokenFromTx(tx, id, lease.Token)
+			if err != nil {
+				return err
+			}
+			if lease.Owner != opts.Owner || tok != opts.Token {
 				return ErrLeaseTokenMismatch
 			}
 		} else {
@@ -470,7 +505,43 @@ func (s *Store) Release(ctx context.Context, id string, opts ReleaseOptions) err
 					return err
 				}
 				if runExists && len(runBytes) > 0 {
-					return fmt.Errorf("%w: ForOrphan release requires run %s to be missing", ErrInvalidInput, lease.RunID)
+					return fmt.Errorf("%w: orphan release requires run %s to be missing", ErrInvalidInput, lease.RunID)
+				}
+			}
+			if opts.ForCompleted || opts.ForRefused {
+				if opts.BoundRunID == "" {
+					return fmt.Errorf("%w: run-bound release requires the run id", ErrInvalidInput)
+				}
+				runBytes, runExists, err := tx.ReadForExpect("runs/" + opts.BoundRunID + ".yaml")
+				if err != nil {
+					return err
+				}
+				if !runExists || len(runBytes) == 0 {
+					return fmt.Errorf("%w: run-bound release requires run %s to exist", ErrInvalidInput, opts.BoundRunID)
+				}
+				var bound domain.Run
+				if err := domain.DecodeYAML(runBytes, &bound); err != nil {
+					return err
+				}
+				switch {
+				case opts.ForCompleted:
+					// Completion frees exactly the claim the run bound: a
+					// stale run must never drain a newer attempt's claim.
+					if lease.RunID != opts.BoundRunID {
+						return fmt.Errorf("%w: completion release requires the lease to belong to the finished run", ErrInvalidInput)
+					}
+					if bound.Status != "succeeded" {
+						return fmt.Errorf("%w: completion release requires run %s to be succeeded, not %q", ErrInvalidInput, lease.RunID, bound.Status)
+					}
+				case opts.ForRefused:
+					// The refused run need not be the lease's bound run: a
+					// stale attempt can be refused while a newer claim holds
+					// the item, and the refusal still questions the work.
+					// The recorded refusal is the proof that authorizes the
+					// release.
+					if bound.Verification.Advanced == nil || *bound.Verification.Advanced {
+						return fmt.Errorf("%w: refusal release requires run %s to carry a recorded refusal", ErrInvalidInput, opts.BoundRunID)
+					}
 				}
 			}
 		}
@@ -480,6 +551,9 @@ func (s *Store) Release(ctx context.Context, id string, opts ReleaseOptions) err
 		cur.LeaseClaimedAt = nil
 		cur.LeaseUntil = nil
 		cur.HeartbeatAt = nil
+		if err := dropToken(tx, id); err != nil {
+			return err
+		}
 		// Map scheduling_state according to status (§6.4). Never demotes
 		// the work item's status.
 		next := SchedulingStateMapping[cur.Status]
@@ -509,7 +583,10 @@ func (s *Store) Release(ctx context.Context, id string, opts ReleaseOptions) err
 		}
 
 		// Close the associated Run atomically: status=finished, finished_at=now.
-		if lease.RunID != "" {
+		// A run-bound release must NOT touch the run: RunFinish already wrote
+		// its terminal status (or the refusal left it non-terminal on
+		// purpose), and overwriting it here would corrupt that record.
+		if lease.RunID != "" && !opts.ForCompleted && !opts.ForRefused {
 			runBytes, runExists, err := tx.ReadForExpect("runs/" + lease.RunID + ".yaml")
 			if err != nil {
 				return err
@@ -614,11 +691,11 @@ func (s *Store) Start(ctx context.Context, id string, opts StartOptions) (StartR
 		if err := runpkg.New(s.root).CreateTx(tx, run); err != nil {
 			return fmt.Errorf("create run: %w", err)
 		}
+		// Persisted files carry no token (#342); see Claim.
 		lease := domain.SchedulingLease{
 			SchemaVersion: domain.SchemaVersion,
 			WorkItemID:    id,
 			Owner:         opts.Owner,
-			Token:         token,
 			ClaimedAt:     now,
 			LeaseUntil:    now.Add(dur),
 			HeartbeatAt:   now,
@@ -628,13 +705,15 @@ func (s *Store) Start(ctx context.Context, id string, opts StartOptions) (StartR
 			AgentHarness:  opts.Agent.Harness,
 		}
 		cur.LeaseOwner = opts.Owner
-		cur.LeaseToken = token
 		cur.LeaseClaimedAt = &lease.ClaimedAt
 		cur.LeaseUntil = &lease.LeaseUntil
 		cur.HeartbeatAt = &lease.HeartbeatAt
 		cur.ActiveRunID = run.ID
 		ev.Related = []domain.Reference{{Type: "run", ID: run.ID}}
 		if err := tx.PutYAML(leaseRel(id), lease, storage.ExpectAbsent()); err != nil {
+			return err
+		}
+		if err := stageToken(tx, id, token); err != nil {
 			return err
 		}
 		if err := tx.PutYAML(workitemRel(id), cur, storage.ExpectHash(storage.HashBytes(snap))); err != nil {
@@ -692,11 +771,14 @@ func (s *Store) QueueRetry(ctx context.Context, id string, opts RetryOptions) (R
 	if len(opts.Expected) > 0 && !bytesEqual(opts.Expected, snap) {
 		return RetryResult{}, fmt.Errorf("%w: workitem %s changed concurrently", storage.ErrConflict, id)
 	}
-	if cur.LeaseOwner == "" || cur.LeaseToken == "" {
+	if cur.LeaseOwner == "" || cur.LeaseUntil == nil {
 		return RetryResult{}, ErrNotClaimed
 	}
-	if cur.LeaseOwner != opts.Owner || cur.LeaseToken != opts.Token {
+	if cur.LeaseOwner != opts.Owner {
 		return RetryResult{}, ErrLeaseTokenMismatch
+	}
+	if err := s.validateToken(ctx, id, cur.LeaseToken, opts.Token); err != nil {
+		return RetryResult{}, err
 	}
 	if cur.Status != domain.StatusInProgress {
 		return RetryResult{}, &domain.TransitionError{
@@ -761,6 +843,11 @@ func (s *Store) QueueRetry(ctx context.Context, id string, opts RetryOptions) (R
 		if err := tx.Delete(leaseRel(id), storage.ExpectHash(storage.HashBytes(leaseBytes))); err != nil {
 			return err
 		}
+		// The queued attempt invalidates the old fence: drop the sidecar with
+		// the lease file so the next claim starts clean (#342).
+		if err := dropToken(tx, id); err != nil {
+			return err
+		}
 		return events.AppendTx(tx, ev)
 	})
 	if err != nil {
@@ -787,11 +874,14 @@ func (s *Store) UpdateClaimed(ctx context.Context, id, owner, token string, muta
 	if len(expected) > 0 && !bytesEqual(expected, snap) {
 		return fmt.Errorf("%w: workitem %s changed concurrently", storage.ErrConflict, id)
 	}
-	if cur.LeaseOwner == "" || cur.LeaseToken == "" {
+	if cur.LeaseOwner == "" || cur.LeaseUntil == nil {
 		return ErrNotClaimed
 	}
-	if cur.LeaseOwner != owner || cur.LeaseToken != token {
+	if cur.LeaseOwner != owner {
 		return ErrLeaseTokenMismatch
+	}
+	if err := s.validateToken(ctx, id, cur.LeaseToken, token); err != nil {
+		return err
 	}
 	prevStatus := cur.Status
 	prevState := cur.SchedulingState
@@ -915,7 +1005,11 @@ func (s *Store) FenceRunUpdate(ctx context.Context, workitemID, owner, token str
 		if err := domain.DecodeYAML(leaseBytes, &lease); err != nil {
 			return fmt.Errorf("decode lease: %w", err)
 		}
-		if lease.Owner != owner || lease.Token != token {
+		tok, err := tokenFromTx(tx, workitemID, lease.Token)
+		if err != nil {
+			return err
+		}
+		if lease.Owner != owner || tok != token {
 			return ErrLeaseTokenMismatch
 		}
 		runBytes, runExists, err := tx.ReadForExpect("runs/" + lease.RunID + ".yaml")

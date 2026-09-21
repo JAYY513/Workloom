@@ -182,7 +182,7 @@ func TestReadOnlyCommandsDoNotDispatch(t *testing.T) {
 // assignment would only be settable by hand-editing managed state.
 func TestWorkitemAssignedHarnessRoundTrip(t *testing.T) {
 	dispatchProject(t, "", "one")
-	if code, _, errOut := run(t, "workitem", "update", "--id", "WLM-1", "--assigned-harness", "codex", "--assigned-agent", "agent-7"); code != CodeOK {
+	if code, _, errOut := run(t, "workitem", "update", "--id", "WLM-1", "--assigned-harness", "codex", "--assigned-agent", "agent-7", "--actor", "op", "--reason", "assign"); code != CodeOK {
 		t.Fatalf("workitem update: code=%d stderr=%q", code, errOut)
 	}
 	code, out, errOut := run(t, "--json", "workitem", "get", "WLM-1")
@@ -198,7 +198,7 @@ func TestWorkitemAssignedHarnessRoundTrip(t *testing.T) {
 		t.Fatalf("item = %v, want the assignment recorded", item)
 	}
 	// An empty value clears it, so "no harness" has one representation.
-	if code, _, errOut := run(t, "workitem", "update", "--id", "WLM-1", "--assigned-harness", ""); code != CodeOK {
+	if code, _, errOut := run(t, "workitem", "update", "--id", "WLM-1", "--assigned-harness", "", "--actor", "op", "--reason", "clear"); code != CodeOK {
 		t.Fatalf("clearing: code=%d stderr=%q", code, errOut)
 	}
 	code, out, _ = run(t, "--json", "workitem", "get", "WLM-1")

@@ -59,15 +59,15 @@ func (p *Policy) CheckGate(stage string, ev GateEvidence) GateResult {
 	}
 	for _, want := range gate.RequireArtifacts {
 		if !names[want] {
-			res.Missing = append(res.Missing, fmt.Sprintf("artifact %q is required", want))
+			res.Missing = append(res.Missing, fmt.Sprintf("artifact %q is required — register one: `devsys artifact register --name %s --path <file> --actor <you> --reason <why>`", want, want))
 		}
 	}
 	if gate.RequireMinArtifacts > 0 && len(names) < gate.RequireMinArtifacts {
 		res.Missing = append(res.Missing,
-			fmt.Sprintf("at least %d artifacts are required (found %d)", gate.RequireMinArtifacts, len(names)))
+			fmt.Sprintf("at least %d artifacts are required (found %d) — register one: `devsys artifact register --name <name> --path <file> --actor <you> --reason <why>`", gate.RequireMinArtifacts, len(names)))
 	}
 	if gate.RequireComment && ev.CommentCount < 1 {
-		res.Missing = append(res.Missing, "at least one comment event is required")
+		res.Missing = append(res.Missing, "at least one comment event is required — add one: `devsys workitem comment --id <id> --text \"...\" --actor <you>`")
 	}
 	if gate.RequireApproval && !ev.ApprovalReady {
 		msg := "an approved, unconsumed approval is required"

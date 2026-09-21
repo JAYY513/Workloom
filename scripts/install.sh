@@ -57,7 +57,10 @@ fallback_build() {
     echo "install failed: could not clone ${repo} (tag ${tag} missing, repo private, or network down); if the repo is private run: gh auth login" >&2
     return 1
   fi
-  if ! (cd "$tmp/src" && GOPROXY=off GOFLAGS=-mod=vendor go build -o "$tmp/$asset" ./cmd/devsys); then
+  if ! (cd "$tmp/src" && GOPROXY=off GOFLAGS=-mod=vendor go build \
+      -ldflags "-X workloom/internal/version.Version=${tag} \
+                -X workloom/internal/version.Commit=$(git -C "$tmp/src" rev-parse --short HEAD 2>/dev/null || true)" \
+      -o "$tmp/$asset" ./cmd/devsys); then
     echo "install failed: go build failed for ${repo}@${tag}" >&2
     return 1
   fi

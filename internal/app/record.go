@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -239,12 +240,18 @@ type RegisterArtifactRequest struct {
 	CreatedByRunID   string
 	Status           string
 	RelatedWorkItems []string
+	// Actor and Reason are the mandatory audit trail for the write.
+	Actor  string
+	Reason string
 }
 
 // ArtifactRegister stores a new artifact record (version 1).
 func (s *Service) ArtifactRegister(ctx context.Context, req RegisterArtifactRequest) (RecordView, error) {
 	if strings.TrimSpace(req.Name) == "" {
 		return RecordView{}, Usagef("artifact register requires a name")
+	}
+	if strings.TrimSpace(req.Actor) == "" || strings.TrimSpace(req.Reason) == "" {
+		return RecordView{}, Usagef("artifact register requires --actor and --reason (audit trail)")
 	}
 	md, err := s.project()
 	if err != nil {
@@ -274,6 +281,17 @@ func (s *Service) ArtifactRegister(ctx context.Context, req RegisterArtifactRequ
 	}
 	id, err := record.New(s.Root).CreateArtifact(ctx, a)
 	if err != nil {
+		return RecordView{}, s.storeError(err)
+	}
+	ev := &domain.Event{
+		Type:      "artifact_registered",
+		Subject:   domain.Reference{Type: "artifact", ID: id},
+		ProjectID: md.Project.ID,
+		Actor:     req.Actor,
+		Content:   fmt.Sprintf("artifact registered: %s — %s", req.Name, req.Reason),
+		Time:      s.now(),
+	}
+	if err := events.New(s.Root).Append(ctx, ev); err != nil {
 		return RecordView{}, s.storeError(err)
 	}
 	return s.ArtifactGet(ctx, id)

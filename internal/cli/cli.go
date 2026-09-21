@@ -252,6 +252,15 @@ func RunWithIO(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	}
 
 	cmd, rest := args[i], args[i+1:]
+	if len(rest) > 0 && (rest[0] == "--help" || rest[0] == "-h") {
+		// Leaf commands answer --help with the top-level usage (families
+		// print their own usage inside their routers).
+		switch cmd {
+		case "init", "search", "next", "doctor", "recover", "repair", "prime", "dispatch", "wire":
+			fmt.Fprint(stdout, usage)
+			return CodeOK
+		}
+	}
 	switch cmd {
 	case "init":
 		if len(rest) > 0 {
@@ -325,6 +334,18 @@ func (e *codedExit) Error() string { return fmt.Sprintf("exit code %d", e.code) 
 
 // exitWithCode returns an exit-code-only error.
 func exitWithCode(code int) error { return &codedExit{code: code} }
+
+// familyUsage prints the family usage and reports whether the router should
+// stop with exit 0: either no subcommand was given or the first argument is
+// a help request. 族级无参/--help 打 usage、exit 0（#338 m15），不再把
+// `devsys config --help` 当成未知子命令。
+func familyUsage(stdout io.Writer, rest []string, text string) bool {
+	if len(rest) == 0 || rest[0] == "--help" || rest[0] == "-h" {
+		fmt.Fprintln(stdout, text)
+		return true
+	}
+	return false
+}
 
 // render prints an error (if any) and returns the exit code; nil means success
 // with output already written by the command.
@@ -421,10 +442,14 @@ func runWire(stdout io.Writer, opts options, rest []string) error {
 	fs.SetOutput(io.Discard)
 	dryRun := fs.Bool("dry-run", false, "preview the change without writing")
 	check := fs.Bool("check", false, "environment report (read-only, exit 0)")
-	skill := fs.Bool("skill", false, "write .agents/skills/devsys/ files (idempotent)")
+	strict := fs.Bool("strict", false, "with --check: exit 3 when any check fails")
+	skill := fs.Bool("skill", false, "write .agents/skills/devsys/ files (idempotent; default wire already does)")
 	printMCP := fs.String("print-mcp", "", "print MCP client snippet (codex|claude|opencode)")
 	if err := fs.Parse(rest); err != nil || fs.NArg() != 0 {
-		return errUsage("`devsys wire` [--dry-run] [--check] [--skill] [--print-mcp codex|claude|opencode]")
+		return errUsage("`devsys wire` [--dry-run] [--check [--strict]] [--skill] [--print-mcp codex|claude|opencode]")
+	}
+	if *strict && !*check {
+		return errUsage("`devsys wire --strict` requires --check")
 	}
 	if *check || *printMCP != "" {
 		if *dryRun || *skill {
@@ -453,18 +478,26 @@ func runWire(stdout io.Writer, opts options, rest []string) error {
 		}
 		view := svc.WireCheck()
 		if opts.json {
-			return json.NewEncoder(stdout).Encode(struct {
+			if err := json.NewEncoder(stdout).Encode(struct {
 				OK bool `json:"ok"`
 				app.WireCheckView
-			}{OK: true, WireCheckView: view})
-		}
-		if !opts.quiet {
+			}{OK: true, WireCheckView: view}); err != nil {
+				return err
+			}
+		} else if !opts.quiet {
 			for _, l := range view.Lines {
 				mark := "x"
 				if l.OK {
 					mark = "v"
 				}
 				fmt.Fprintf(stdout, "[%s] %s: %s\n", mark, l.Name, l.Detail)
+			}
+		}
+		if *strict {
+			for _, l := range view.Lines {
+				if !l.OK {
+					return exitWithCode(CodePrecondition)
+				}
 			}
 		}
 		return nil
@@ -506,12 +539,23 @@ func runWire(stdout io.Writer, opts options, rest []string) error {
 	if err != nil {
 		return err
 	}
+	// The default wiring includes the skill files: an AGENTS.md block that
+	// points at a missing SKILL.md is a broken installation (#338 C1), so
+	// `devsys wire` alone must leave the tree in the state the block claims.
+	var skillChanged []string
+	if !*dryRun {
+		skillChanged, err = svc.WriteSkill()
+		if err != nil {
+			return err
+		}
+	}
 	if opts.json {
 		return json.NewEncoder(stdout).Encode(struct {
-			OK     bool `json:"ok"`
-			DryRun bool `json:"dry_run,omitempty"`
+			OK           bool     `json:"ok"`
+			DryRun       bool     `json:"dry_run,omitempty"`
+			SkillChanged []string `json:"skill_changed,omitempty"`
 			app.WireView
-		}{OK: true, DryRun: *dryRun, WireView: view})
+		}{OK: true, DryRun: *dryRun, SkillChanged: skillChanged, WireView: view})
 	}
 	if !opts.quiet {
 		switch {
@@ -523,6 +567,9 @@ func runWire(stdout io.Writer, opts options, rest []string) error {
 			fmt.Fprintf(stdout, "created %s\n", view.Path)
 		default:
 			fmt.Fprintf(stdout, "updated %s\n", view.Path)
+		}
+		for _, p := range skillChanged {
+			fmt.Fprintf(stdout, "skill: wrote %s\n", p)
 		}
 	}
 	return nil
@@ -546,8 +593,8 @@ func checkLatest(latest bool, expect, usage string) error {
 
 // runProject routes the project family (方案 §8.2 project_*).
 func runProject(stdout io.Writer, opts options, rest []string) error {
-	if len(rest) == 0 {
-		return errUsage("`devsys project` needs a subcommand (list | get | status | blueprint | update | state-update)")
+	if familyUsage(stdout, rest, "`devsys project` needs a subcommand (list | get | status | blueprint | update | state-update)") {
+		return nil
 	}
 	svc, err := requireProjectRoot()
 	if err != nil {
@@ -780,8 +827,8 @@ func sortStrings(list []string) {
 
 // runWorkitem exposes the work item family through the shared service.
 func runWorkitem(stdout io.Writer, opts options, rest []string) error {
-	if len(rest) == 0 {
-		return errUsage("workitem needs a subcommand (list | get | create | update | transition | claim | release | start | block | complete | comment | dep)")
+	if familyUsage(stdout, rest, "workitem needs a subcommand (list | get | create | update | transition | claim | release | start | block | complete | comment | dep)") {
+		return nil
 	}
 	svc, err := requireProjectRoot()
 	if err != nil {
@@ -877,14 +924,17 @@ func runWorkitem(stdout io.Writer, opts options, rest []string) error {
 		assignedAgent := fs.String("assigned-agent", "", "agent identity to assign (empty clears)")
 		assignedHarness := fs.String("assigned-harness", "", "harness adapter dispatch should drive (empty clears)")
 		expect := fs.String("expect", "", "version hash from workitem get")
+		actor := fs.String("actor", "", "operator (audit trail)")
+		reason := fs.String("reason", "", "update reason (audit trail)")
 		latest := latestFlag(fs)
+		const updateUsage = "workitem update --id <id> --actor <a> --reason <r> [--title T] [--description D] [--priority N] [--acceptance a,b] [--assigned-agent A] [--assigned-harness H] [--expect <hash> | --latest]"
 		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *id == "" {
-			return errUsage("workitem update --id <id> [--title T] [--description D] [--priority N] [--acceptance a,b] [--assigned-agent A] [--assigned-harness H] [--expect <hash> | --latest]")
+			return errUsage("%s", updateUsage)
 		}
-		if err := checkLatest(*latest, *expect, "workitem update --id <id> [--expect <hash> | --latest]"); err != nil {
+		if err := checkLatest(*latest, *expect, updateUsage); err != nil {
 			return err
 		}
-		req := app.UpdateWorkitemRequest{Expect: *expect}
+		req := app.UpdateWorkitemRequest{Expect: *expect, Actor: *actor, Reason: *reason}
 		fs.Visit(func(f *flag.Flag) {
 			switch f.Name {
 			case "title":
@@ -1125,8 +1175,8 @@ func outputWorkitem(stdout io.Writer, opts options, view app.WorkItemView) error
 // point; the instance subcommands drive a work item's workflow instance
 // through the shared service (实施计划 M3.6).
 func runWorkflow(stdout io.Writer, opts options, rest []string) error {
-	if len(rest) == 0 {
-		return errUsage("`devsys workflow` needs a subcommand (check | init | list | get | start | next | step-complete | pause | resume | cancel)")
+	if familyUsage(stdout, rest, "`devsys workflow` needs a subcommand (check | init | list | get | start | next | step-complete | pause | resume | cancel)") {
+		return nil
 	}
 	switch rest[0] {
 	case "check":
@@ -1429,8 +1479,8 @@ func runWorkflowSignal(stdout io.Writer, opts options, action string, rest []str
 // gate-checked transition, never as a standalone command, so no caller can
 // consume without advancing.
 func runApproval(stdout io.Writer, opts options, rest []string) error {
-	if len(rest) == 0 {
-		return errUsage("`devsys approval` needs a subcommand (list | get | request | approve | reject)")
+	if familyUsage(stdout, rest, "`devsys approval` needs a subcommand (list | get | request | approve | reject)") {
+		return nil
 	}
 	switch rest[0] {
 	case "list":

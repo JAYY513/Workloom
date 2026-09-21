@@ -133,6 +133,17 @@ func isLoopbackHost(host string) bool {
 	return h == "127.0.0.1" || h == "::1" || h == "localhost"
 }
 
+// wsaeaddrinuse is the Winsock address-in-use error (WSABASEERR+48). On
+// Windows, Go's syscall.EADDRINUSE is an invented placeholder constant that
+// never matches the runtime's bind errors, so the real Winsock value is
+// checked too (#342).
+const wsaeaddrinuse = syscall.Errno(10048)
+
+// addrInUse reports whether err is an EADDRINUSE-class bind failure.
+func addrInUse(err error) bool {
+	return errors.Is(err, syscall.EADDRINUSE) || errors.Is(err, wsaeaddrinuse)
+}
+
 // runWorkspaceServe runs the local read-only service (M7.3, 方案 §17 两种形态
 // 之二). It is a foreground process like `dispatch --watch`: Ctrl+C stops it.
 // The only data entry is view.Build — the shared lock is never created,
@@ -171,6 +182,9 @@ func runWorkspaceServe(stdout io.Writer, opts options, rest []string) error {
 	}
 	ln, err := net.Listen("tcp", net.JoinHostPort(*host, strconv.Itoa(*port)))
 	if err != nil {
+		if addrInUse(err) {
+			return errPrecondition("workspace serve: port %d is already in use — free it or pass --port <n>", *port)
+		}
 		return errInternal("workspace serve: listen %s:%d: %v", *host, *port, err)
 	}
 	addr := ln.Addr().String()

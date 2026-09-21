@@ -19,8 +19,8 @@ import (
 
 // runDecision routes the decision family (方案 §8.2 decision_*).
 func runDecision(stdout io.Writer, opts options, rest []string) error {
-	if len(rest) == 0 {
-		return errUsage("`devsys decision` needs a subcommand (list | get | create | approve)")
+	if familyUsage(stdout, rest, "`devsys decision` needs a subcommand (list | get | create | approve)") {
+		return nil
 	}
 	svc, err := requireProjectRoot()
 	if err != nil {
@@ -111,8 +111,8 @@ func runDecision(stdout io.Writer, opts options, rest []string) error {
 
 // runFinding routes the finding family (方案 §8.2 finding_*).
 func runFinding(stdout io.Writer, opts options, rest []string) error {
-	if len(rest) == 0 {
-		return errUsage("`devsys finding` needs a subcommand (list | get | create | resolve)")
+	if familyUsage(stdout, rest, "`devsys finding` needs a subcommand (list | get | create | resolve)") {
+		return nil
 	}
 	svc, err := requireProjectRoot()
 	if err != nil {
@@ -201,8 +201,8 @@ func runFinding(stdout io.Writer, opts options, rest []string) error {
 
 // runEvent routes the event family (方案 §8.2 event_*).
 func runEvent(stdout io.Writer, opts options, rest []string) error {
-	if len(rest) == 0 {
-		return errUsage("`devsys event` needs a subcommand (list | record)")
+	if familyUsage(stdout, rest, "`devsys event` needs a subcommand (list | record)") {
+		return nil
 	}
 	svc, err := requireProjectRoot()
 	if err != nil {
@@ -280,8 +280,8 @@ func runEvent(stdout io.Writer, opts options, rest []string) error {
 
 // runArtifact routes the artifact family (方案 §8.2 artifact_*).
 func runArtifact(stdout io.Writer, opts options, rest []string) error {
-	if len(rest) == 0 {
-		return errUsage("`devsys artifact` needs a subcommand (list | get | register | update | history)")
+	if familyUsage(stdout, rest, "`devsys artifact` needs a subcommand (list | get | register | update | history)") {
+		return nil
 	}
 	svc, err := requireProjectRoot()
 	if err != nil {
@@ -334,12 +334,16 @@ func runArtifact(stdout io.Writer, opts options, rest []string) error {
 		runID := fs.String("run", "", "run that produced it")
 		status := fs.String("status", "draft", "status")
 		related := fs.String("related", "", "comma-separated related work items")
+		actor := fs.String("actor", "", "operator (audit trail)")
+		reason := fs.String("reason", "", "registration reason (audit trail)")
+		const registerUsage = "artifact register --name N --actor <a> --reason <r> [--type document] [--path P] [--source S] [--run <run-id>] [--status draft] [--related WLM-1]"
 		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *name == "" {
-			return errUsage("artifact register --name N [--type document] [--path P] [--source S] [--run <run-id>] [--status draft] [--related WLM-1]")
+			return errUsage("%s", registerUsage)
 		}
 		view, err := svc.ArtifactRegister(ctx, app.RegisterArtifactRequest{
 			Type: *kind, Name: *name, Path: *path, Source: *source,
 			CreatedByRunID: *runID, Status: *status, RelatedWorkItems: splitList(*related),
+			Actor: *actor, Reason: *reason,
 		})
 		if err != nil {
 			return err
@@ -431,8 +435,8 @@ func orNoneText(sha string) string {
 }
 
 func runRun(stdout io.Writer, opts options, rest []string) error {
-	if len(rest) == 0 {
-		return errUsage("`devsys run` needs a subcommand (list | get | log | create | update | heartbeat | exec | prompt | verify | complete | fail | cancel)")
+	if familyUsage(stdout, rest, "`devsys run` needs a subcommand (list | get | log | create | update | heartbeat | exec | prompt | verify | complete | fail | cancel)") {
+		return nil
 	}
 	svc, err := requireProjectRoot()
 	if err != nil {
@@ -796,8 +800,8 @@ func runRun(stdout io.Writer, opts options, rest []string) error {
 
 // runContext routes the context family (方案 §8.2 context_*).
 func runContext(stdout io.Writer, opts options, rest []string) error {
-	if len(rest) == 0 {
-		return errUsage("`devsys context` needs a subcommand (get | workitem | refresh | compact)")
+	if familyUsage(stdout, rest, "`devsys context` needs a subcommand (get | workitem | refresh | compact)") {
+		return nil
 	}
 	svc, err := requireProjectRoot()
 	if err != nil {
@@ -972,8 +976,8 @@ func splitPaths(list string) []string {
 // (M5.2), and `validate` checks the page layer's front matter contract
 // (M5.1, 方案 §12.5).
 func runKnowledge(stdout io.Writer, opts options, rest []string) error {
-	if len(rest) == 0 {
-		return errUsage("`devsys knowledge` needs a subcommand (status, scan, validate, refresh)")
+	if familyUsage(stdout, rest, "`devsys knowledge` needs a subcommand (status, scan, validate, refresh)") {
+		return nil
 	}
 	switch rest[0] {
 	case "status":
@@ -1260,7 +1264,10 @@ func runPrime(stdout io.Writer, opts options, rest []string) error {
 // runSession routes the session family: `start` is the one-shot orientation
 // a new agent session runs first (方案 §8.3, 实施计划 M4.4).
 func runSession(stdout io.Writer, opts options, rest []string) error {
-	if len(rest) == 0 || rest[0] != "start" {
+	if familyUsage(stdout, rest, "`devsys session` needs a subcommand (start)") {
+		return nil
+	}
+	if rest[0] != "start" {
 		return errUsage("`devsys session` needs a subcommand (start)")
 	}
 	fs := flag.NewFlagSet("session start", flag.ContinueOnError)

@@ -194,7 +194,7 @@ func TestDispatchRefusesUnknownAssignedHarnessWithoutClaiming(t *testing.T) {
 func TestWorkitemUpdateRejectsUnknownHarness(t *testing.T) {
 	_, svc := dispatchFixture(t, "", &domain.WorkItem{Title: "one", Priority: 5})
 	bad := "nope"
-	if _, err := svc.WorkitemUpdate(context.Background(), "WLM-1", UpdateWorkitemRequest{AssignedHarness: &bad}); err == nil || !strings.Contains(err.Error(), "unknown harness") {
+	if _, err := svc.WorkitemUpdate(context.Background(), "WLM-1", UpdateWorkitemRequest{AssignedHarness: &bad, Actor: "tester", Reason: "audit coverage"}); err == nil || !strings.Contains(err.Error(), "unknown harness") {
 		t.Fatalf("error = %v, want unknown harness", err)
 	}
 }

@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -376,6 +377,27 @@ func (s *Service) RunFinish(ctx context.Context, req RunFinishRequest) (RunView,
 		Time:      now,
 	}); err != nil {
 		return RunView{}, s.storeError(err)
+	}
+	// Success closes the attempt, and the claim served its purpose: release
+	// it like the refusal path does, so `run complete` does not leave the
+	// work item fenced behind a lease nobody will present (#342). Only the
+	// lease this run bound is touched — a newer attempt's claim is not.
+	if req.Outcome == RunSucceeded {
+		lease, lerr := s.items().LeaseInspection(ctx, r.WorkItemID)
+		switch {
+		case lerr != nil && !errors.Is(lerr, workitem.ErrNotClaimed):
+			return RunView{}, s.storeError(lerr)
+		case lerr == nil && lease.Owner != "" && lease.RunID == r.ID:
+			if err := s.items().Release(ctx, r.WorkItemID, workitem.ReleaseOptions{
+				ForCompleted: true,
+				BoundRunID:   r.ID,
+				Actor:        req.Actor,
+				Reason:       fmt.Sprintf("run completed: %s", req.Reason),
+				Now:          s.now(),
+			}); err != nil {
+				return RunView{}, s.storeError(err)
+			}
+		}
 	}
 	return s.RunGet(ctx, r.ID)
 }

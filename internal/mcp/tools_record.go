@@ -312,6 +312,8 @@ type artifactRegisterInput struct {
 	CreatedByRunID   string   `json:"created_by_run_id,omitempty" jsonschema:"run that produced it"`
 	Status           string   `json:"status,omitempty" jsonschema:"status (default draft)"`
 	RelatedWorkItems []string `json:"related_workitems,omitempty" jsonschema:"work items this artifact belongs to"`
+	Actor            string   `json:"actor" jsonschema:"operator identity (required: audit trail)"`
+	Reason           string   `json:"reason" jsonschema:"why the registration happens (required: audit trail)"`
 }
 
 func registerArtifactRegister(s *mcpsdk.Server, cfg Config) {
@@ -322,6 +324,7 @@ func registerArtifactRegister(s *mcpsdk.Server, cfg Config) {
 		view, err := cfg.service().ArtifactRegister(ctx, app.RegisterArtifactRequest{
 			Type: in.Type, Name: in.Name, Path: in.Path, Source: in.Source,
 			CreatedByRunID: in.CreatedByRunID, Status: in.Status, RelatedWorkItems: in.RelatedWorkItems,
+			Actor: in.Actor, Reason: in.Reason,
 		})
 		if err != nil {
 			return fail[app.RecordView](err)

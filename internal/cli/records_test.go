@@ -233,7 +233,7 @@ func TestArtifactVersionChain(t *testing.T) {
 	gatedProject(t)
 	wi := newWorkitem(t, "artifact chain task")
 	if code, _, errOut := run(t, "artifact", "register", "--name", "design.md",
-		"--path", "docs/design.md", "--related", wi); code != CodeOK {
+		"--path", "docs/design.md", "--related", wi, "--actor", "tester", "--reason", "coverage"); code != CodeOK {
 		t.Fatalf("artifact register: %d %s", code, errOut)
 	}
 	code, out, _ := run(t, "--json", "artifact", "list")

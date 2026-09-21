@@ -22,8 +22,8 @@ import (
 // (M7.3). The execution workspace is `devsys worktree` (M6.2); 方案 §17 keeps
 // the two concepts apart and so do their commands.
 func runWorkspace(stdout io.Writer, opts options, rest []string) error {
-	if len(rest) == 0 {
-		return errUsage("`devsys workspace` needs a subcommand: view | build | serve")
+	if familyUsage(stdout, rest, "`devsys workspace` needs a subcommand: view | build | serve") {
+		return nil
 	}
 	switch rest[0] {
 	case "view":

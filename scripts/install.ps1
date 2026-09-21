@@ -19,9 +19,13 @@ New-Item -ItemType Directory -Force -Path $tmp | Out-Null
 # fetch them, so try it first and fall back to the anonymous download.
 function Get-ReleaseAsset([string]$Name, [string]$OutFile) {
   if (Get-Command gh -ErrorAction SilentlyContinue) {
-    & gh auth status *> $null
+    # gh writes diagnostics to stderr even for harmless states (not logged
+    # in). Under $ErrorActionPreference="Stop", native stderr becomes an
+    # ErrorRecord and would throw past the $LASTEXITCODE check, so redirect
+    # stderr explicitly and decide on the exit code (#342).
+    & gh auth status 2>$null | Out-Null
     if ($LASTEXITCODE -eq 0) {
-      & gh release download $Tag --repo $Repo --pattern $Name --output $OutFile --clobber *> $null
+      & gh release download $Tag --repo $Repo --pattern $Name --output $OutFile --clobber 2>$null | Out-Null
       if ($LASTEXITCODE -eq 0) { return }
     }
   }

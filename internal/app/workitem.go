@@ -186,10 +186,18 @@ type UpdateWorkitemRequest struct {
 	AssignedAgent   *string
 	AssignedHarness *string
 	Expect          string
+	// Actor and Reason are the mandatory audit trail for the write.
+	Actor  string
+	Reason string
 }
 
-// WorkitemUpdate applies a patch under the version guard.
+// WorkitemUpdate applies a patch under the version guard. Actor and reason
+// are mandatory: every write carries an audit trail (手册「凡写命令都要
+// actor+reason」), recorded as a workitem_updated event.
 func (s *Service) WorkitemUpdate(ctx context.Context, id string, req UpdateWorkitemRequest) (WorkItemView, error) {
+	if strings.TrimSpace(req.Actor) == "" || strings.TrimSpace(req.Reason) == "" {
+		return WorkItemView{}, Usagef("workitem update requires --actor and --reason (audit trail)")
+	}
 	if req.Title != nil && strings.TrimSpace(*req.Title) == "" {
 		return WorkItemView{}, Usagef("title must not be empty")
 	}
@@ -202,23 +210,30 @@ func (s *Service) WorkitemUpdate(ctx context.Context, id string, req UpdateWorki
 	if err != nil {
 		return WorkItemView{}, err
 	}
+	var fields []string
 	if req.Title != nil {
 		wi.Title = *req.Title
+		fields = append(fields, "title")
 	}
 	if req.Description != nil {
 		wi.Description = *req.Description
+		fields = append(fields, "description")
 	}
 	if req.Priority != nil {
 		wi.Priority = *req.Priority
+		fields = append(fields, "priority")
 	}
 	if req.AcceptanceCriteria != nil {
 		wi.AcceptanceCriteria = req.AcceptanceCriteria
+		fields = append(fields, "acceptance")
 	}
 	if req.Dependencies != nil {
 		wi.Dependencies = req.Dependencies
+		fields = append(fields, "dependencies")
 	}
 	if req.AssignedAgent != nil {
 		wi.AssignedAgent = trimmedOrNil(req.AssignedAgent)
+		fields = append(fields, "assigned-agent")
 	}
 	if req.AssignedHarness != nil {
 		name := strings.TrimSpace(*req.AssignedHarness)
@@ -228,12 +243,25 @@ func (s *Service) WorkitemUpdate(ctx context.Context, id string, req UpdateWorki
 			}
 		}
 		wi.AssignedHarness = trimmedOrNil(req.AssignedHarness)
+		fields = append(fields, "assigned-harness")
 	}
 	if req.Constraints != nil {
 		wi.Constraints = req.Constraints
+		fields = append(fields, "constraints")
 	}
 	wi.UpdatedAt = s.now()
 	if err := s.items().Update(ctx, wi, expected); err != nil {
+		return WorkItemView{}, s.storeError(err)
+	}
+	ev := &domain.Event{
+		Type:      "workitem_updated",
+		Subject:   domain.Reference{Type: "workitem", ID: wi.ID},
+		ProjectID: wi.ProjectID,
+		Actor:     req.Actor,
+		Content:   fmt.Sprintf("fields: %s — %s", strings.Join(fields, ", "), req.Reason),
+		Time:      s.now(),
+	}
+	if err := events.New(s.Root).Append(ctx, ev); err != nil {
 		return WorkItemView{}, s.storeError(err)
 	}
 	return s.WorkitemGet(ctx, id)

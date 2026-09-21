@@ -104,8 +104,11 @@ func TestWorkspaceViewWithoutProject(t *testing.T) {
 // TestWorkspaceUsageErrors: the family rejects an unknown subcommand and
 // misuse of the view flags.
 func TestWorkspaceUsageErrors(t *testing.T) {
+	// No subcommand prints the family usage and exits 0 (#338 m15).
+	if code, out, _ := run(t, "workspace"); code != CodeOK || !strings.Contains(out, "view") {
+		t.Errorf("`devsys workspace`: code=%d out=%q", code, out)
+	}
 	cases := [][]string{
-		{"workspace"},
 		{"workspace", "bogus"},
 		{"workspace", "view", "--limit", "0"},
 		{"workspace", "view", "extra"},

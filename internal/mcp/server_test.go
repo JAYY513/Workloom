@@ -281,7 +281,7 @@ func TestProjectBlueprintToolAnswersWithoutADeclaration(t *testing.T) {
 	}
 }
 
-// coreDailySubset is the frozen 19-name daily surface. Adding or removing a
+// coreDailySubset is the frozen 20-name daily surface. Adding or removing a
 // TierCore tool is a product change and must update this list.
 var coreDailySubset = []string{
 	"agent_session_start",
@@ -302,6 +302,7 @@ var coreDailySubset = []string{
 	"workitem_create",
 	"workitem_get",
 	"workitem_list",
+	"workitem_release",
 	"workitem_transition",
 }
 
@@ -369,8 +370,8 @@ func TestAllToolsAreUniqueAndCounted(t *testing.T) {
 			core++
 		}
 	}
-	if core != 19 {
-		t.Fatalf("TierCore count = %d, want 19", core)
+	if core != 20 {
+		t.Fatalf("TierCore count = %d, want 20", core)
 	}
 }
 

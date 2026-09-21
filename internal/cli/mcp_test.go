@@ -248,7 +248,12 @@ func TestMCPServeRequiresInitializedProject(t *testing.T) {
 }
 
 func TestMCPUsage(t *testing.T) {
-	for _, args := range [][]string{{"mcp"}, {"mcp", "bogus"}} {
+	// No subcommand prints the family usage and exits 0 (#338 m15).
+	code, out, _ := run(t, "mcp")
+	if code != CodeOK || !strings.Contains(out, "serve") {
+		t.Fatalf("`devsys mcp`: code=%d out=%q", code, out)
+	}
+	for _, args := range [][]string{{"mcp", "bogus"}} {
 		code, _, _ := run(t, args...)
 		if code != CodeUsage {
 			t.Fatalf("%v: code=%d, want %d", args, code, CodeUsage)

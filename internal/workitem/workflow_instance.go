@@ -356,8 +356,14 @@ func (s *Store) workflowWrite(ctx context.Context, id string, expected []byte, n
 		if err := domain.DecodeYAML(raw, &wi); err != nil {
 			return err
 		}
-		if wi.LeaseOwner != "" && wi.LeaseToken != "" {
-			if owner != wi.LeaseOwner || token != wi.LeaseToken {
+		if wi.LeaseOwner != "" && wi.LeaseUntil != nil {
+			// The persisted snapshot carries no token (#342): fence against
+			// the local sidecar, falling back to a legacy persisted token.
+			tok, terr := tokenFromTx(tx, id, wi.LeaseToken)
+			if terr != nil {
+				return terr
+			}
+			if owner != wi.LeaseOwner || token != tok {
 				return fmt.Errorf("%w: %s is claimed (lease active); pass the current lease owner and token", ErrInvalidInput, id)
 			}
 		}

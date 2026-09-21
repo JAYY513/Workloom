@@ -526,6 +526,12 @@ func (s *Service) refuseAttempt(ctx context.Context, r *domain.Run, req RunExecR
 	if err != nil {
 		return nil
 	}
+	// The persisted lease carries no token (#342): the refusal runs on this
+	// machine, so it reads the local sidecar to queue the next attempt.
+	token, err := s.items().LeaseToken(ctx, r.WorkItemID)
+	if err != nil {
+		return nil
+	}
 	res, polErr := s.policyForWorkItem(ctx, wi)
 	if polErr != nil {
 		return nil
@@ -534,7 +540,7 @@ func (s *Service) refuseAttempt(ctx context.Context, r *domain.Run, req RunExecR
 	if res.Policy != nil {
 		policy = res.Policy
 	}
-	_, _ = s.queueNextAttempt(ctx, wi, lease, len(runsFor(runs, r.WorkItemID)), policy, note, DispatchRequest{Actor: req.Actor, Reason: req.Reason})
+	_, _ = s.queueNextAttempt(ctx, wi, lease, token, len(runsFor(runs, r.WorkItemID)), policy, note, DispatchRequest{Actor: req.Actor, Reason: req.Reason})
 	return nil
 }
 

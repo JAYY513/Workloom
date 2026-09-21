@@ -209,7 +209,7 @@ func TestConfigCheck(t *testing.T) {
 	if code != CodeOK {
 		t.Fatalf("check: code=%d stderr=%s", code, errOut)
 	}
-	if !strings.Contains(out, "config ok: 4 files checked") || !strings.Contains(out, "checkproj") {
+	if !strings.Contains(out, "config ok: 4 metadata files checked") || !strings.Contains(out, "checkproj") {
 		t.Errorf("stdout = %q", out)
 	}
 
@@ -280,7 +280,12 @@ func TestConfigCheckNotInitialized(t *testing.T) {
 }
 
 func TestConfigUsage(t *testing.T) {
-	for _, args := range [][]string{{"config"}, {"config", "bogus"}, {"config", "check", "extra"}} {
+	// No subcommand prints the family usage and exits 0 (#338 m15).
+	code, out, _ := run(t, "config")
+	if code != CodeOK || !strings.Contains(out, "config check") {
+		t.Errorf("`devsys config`: code=%d out=%q", code, out)
+	}
+	for _, args := range [][]string{{"config", "bogus"}, {"config", "check", "extra"}} {
 		code, _, errOut := run(t, args...)
 		if code != CodeUsage {
 			t.Errorf("%v: code=%d stderr=%s", args, code, errOut)

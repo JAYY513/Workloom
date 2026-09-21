@@ -63,7 +63,7 @@ func TestJSONLCoversEveryListCommand(t *testing.T) {
 	if code, _, errOut := run(t, "finding", "create", "--title", "f", "--description", "f"); code != CodeOK {
 		t.Fatalf("finding create: %d %s", code, errOut)
 	}
-	if code, _, errOut := run(t, "artifact", "register", "--name", "a.md"); code != CodeOK {
+	if code, _, errOut := run(t, "artifact", "register", "--name", "a.md", "--actor", "tester", "--reason", "coverage"); code != CodeOK {
 		t.Fatalf("artifact register: %d %s", code, errOut)
 	}
 	if code, _, errOut := run(t, "run", "create", "--workitem", wi, "--actor", "operator", "--reason", "coverage"); code != CodeOK {

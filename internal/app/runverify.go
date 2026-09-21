@@ -108,15 +108,21 @@ func (s *Service) routeToReview(ctx context.Context, r *domain.Run, actor, reaso
 	if err != nil {
 		return err
 	}
-	// The attempt asked to complete, so it is over: give the claim back first,
-	// whatever the item's status is — a claimed item refuses transitions from
-	// anyone but its lease holder, and the reviewer must not need the agent's
-	// token.
+	// The attempt asked to complete, so it is over: give the claim back
+	// first, whatever the item's status is — a claimed item refuses
+	// transitions from anyone but its lease holder, and the reviewer must
+	// not need the agent's token. The release is bound to this run's
+	// recorded refusal, so it cannot touch an unrelated active claim.
 	lease, err := s.items().LeaseInspection(ctx, wi.ID)
 	switch {
 	case err == nil && lease.Owner != "":
-		if _, err := s.WorkitemRelease(ctx, wi.ID, lease.Owner, lease.Token, actor,
-			"completion refused; claim released for review", ""); err != nil {
+		if err := s.items().Release(ctx, wi.ID, workitem.ReleaseOptions{
+			ForRefused: true,
+			BoundRunID: r.ID,
+			Actor:      actor,
+			Reason:     "completion refused; claim released for review",
+			Now:        s.now(),
+		}); err != nil {
 			return err
 		}
 		if wi, raw, err = s.readSnapshot(ctx, r.WorkItemID, ""); err != nil {
@@ -132,6 +138,26 @@ func (s *Service) routeToReview(ctx context.Context, r *domain.Run, actor, reaso
 		// A work item that cannot enter review (already closed, say) keeps its
 		// state: the refusal is still recorded on the run and in the event log.
 		return nil
+	}
+	// The automatic route goes through the same stage gate as a manual
+	// transition: a refuse-to-review must not become a way around
+	// require_comment / require_artifacts (#342). When the gate blocks, the
+	// claim stays released (the reviewer needs no token) and the item keeps
+	// its status; the event names the gate so the trail explains why.
+	if _, _, gerr := s.checkTransitionGate(ctx, wi, domain.StatusReview); gerr != nil {
+		var ae *Error
+		if errors.As(gerr, &ae) && ae.Kind == KindGate {
+			return events.New(s.Root).Append(ctx, &domain.Event{
+				Type:      "review_gate_blocked",
+				Subject:   domain.Reference{Type: "workitem", ID: wi.ID},
+				ProjectID: wi.ProjectID,
+				Actor:     actor,
+				Related:   []domain.Reference{{Type: "run", ID: r.ID}},
+				Content:   gerr.Error(),
+				Time:      s.now(),
+			})
+		}
+		return gerr
 	}
 	if _, err := s.items().Transition(ctx, wi.ID, workitem.TransitionRequest{
 		TargetStatus: domain.StatusReview,

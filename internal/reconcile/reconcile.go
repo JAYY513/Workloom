@@ -873,7 +873,7 @@ func buildProposals(ctx context.Context, st *storage.Store, now time.Time, lease
 				Kind:        ProposalReleaseExpiredLease,
 				WorkitemID:  lp.WorkitemID,
 				RunID:       lp.RunID,
-				Description: "lease_until past now; release with ForExpired=true (status untouched)",
+				Description: "lease_until past now; release with `devsys recover` (status untouched)",
 				Evidence:    leaseEvidence(lp, true),
 			})
 		case "orphan":
@@ -881,7 +881,7 @@ func buildProposals(ctx context.Context, st *storage.Store, now time.Time, lease
 				Kind:        ProposalReleaseOrphanLease,
 				WorkitemID:  lp.WorkitemID,
 				RunID:       lp.RunID,
-				Description: "lease present but referenced run missing; release with ForOrphan=true",
+				Description: "lease present but referenced run missing; release with `devsys recover`",
 				Evidence:    leaseEvidence(lp, false),
 			})
 		}

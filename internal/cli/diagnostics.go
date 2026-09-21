@@ -14,6 +14,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"workloom/internal/config"
@@ -66,8 +67,8 @@ func runSearch(stdout io.Writer, opts options, rest []string) error {
 // runConfigCheck implements `devsys config check`: the read-only diagnostic
 
 func runConfigCheck(stdout io.Writer, opts options, rest []string) error {
-	if len(rest) == 0 {
-		return errUsage("`devsys config` needs a subcommand (try `devsys config check`)")
+	if familyUsage(stdout, rest, "`devsys config` needs a subcommand (try `devsys config check`)") {
+		return nil
 	}
 	if rest[0] != "check" {
 		return errUsage("unknown `devsys config` subcommand %q (try `devsys config check`)", rest[0])
@@ -102,7 +103,8 @@ func runConfigCheck(stdout io.Writer, opts options, rest []string) error {
 		return json.NewEncoder(stdout).Encode(out)
 	}
 	if !opts.quiet {
-		fmt.Fprintf(stdout, "config ok: %d files checked\n", len(config.ManagedFiles()))
+		fmt.Fprintf(stdout, "config ok: %d metadata files checked (%s)\n",
+			len(config.ManagedFiles()), strings.Join(config.ManagedFiles(), ", "))
 		if md.Project != nil {
 			fmt.Fprintf(stdout, "project: %s (%s)\n", md.Project.Name, md.Project.ID)
 		}

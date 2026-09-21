@@ -47,7 +47,9 @@ func allTools() []toolSpec {
 		{"workitem_update", []string{ProfileExecutor}, "", registerWorkitemUpdate},
 		{"workitem_transition", []string{ProfileExecutor}, TierCore, registerWorkitemTransition},
 		{"workitem_claim", []string{ProfileExecutor}, TierCore, registerWorkitemClaim},
-		{"workitem_release", []string{ProfileExecutor}, "", registerWorkitemRelease},
+		// Claim and release are a pair: an agent that can claim must be able
+		// to let go without leaving the core tier (#342).
+		{"workitem_release", []string{ProfileExecutor}, TierCore, registerWorkitemRelease},
 		{"workitem_start", []string{ProfileExecutor}, "", registerWorkitemStart},
 		{"workitem_block", []string{ProfileExecutor}, "", registerWorkitemBlock},
 		{"workitem_complete", []string{ProfileExecutor}, "", registerWorkitemComplete},

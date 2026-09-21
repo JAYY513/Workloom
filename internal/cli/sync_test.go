@@ -43,8 +43,9 @@ func mustGit(t *testing.T, dir string, args ...string) {
 func TestSyncStatusCodes(t *testing.T) {
 	syncProject(t)
 
-	if code, _, _ := run(t, "sync"); code != CodeUsage {
-		t.Errorf("sync: code=%d, want %d", code, CodeUsage)
+	// No subcommand prints the family usage and exits 0 (#338 m15).
+	if code, out, _ := run(t, "sync"); code != CodeOK || !strings.Contains(out, "status") {
+		t.Errorf("sync: code=%d out=%q, want usage exit 0", code, out)
 	}
 	if code, _, _ := run(t, "sync", "bogus"); code != CodeUsage {
 		t.Errorf("sync bogus: code=%d, want %d", code, CodeUsage)

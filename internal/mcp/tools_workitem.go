@@ -123,6 +123,8 @@ func registerWorkitemCreate(s *mcpsdk.Server, cfg Config) {
 type workitemUpdateInput struct {
 	ID                 string   `json:"id" jsonschema:"work item id"`
 	Expect             string   `json:"expect" jsonschema:"version hash from workitem_get (required: read before you write)"`
+	Actor              string   `json:"actor" jsonschema:"operator identity (required: audit trail)"`
+	Reason             string   `json:"reason" jsonschema:"why the update happens (required: audit trail)"`
 	Title              *string  `json:"title,omitempty" jsonschema:"new title"`
 	Description        *string  `json:"description,omitempty" jsonschema:"new description"`
 	Priority           *int     `json:"priority,omitempty" jsonschema:"new priority"`
@@ -136,12 +138,12 @@ type workitemUpdateInput struct {
 func registerWorkitemUpdate(s *mcpsdk.Server, cfg Config) {
 	mcpsdk.AddTool(s, &mcpsdk.Tool{
 		Name:        "workitem_update",
-		Description: "Patch mutable work item fields under the version guard (expect from workitem_get).",
+		Description: "Patch mutable work item fields under the version guard (expect from workitem_get). Writes a workitem_updated audit event.",
 	}, func(ctx context.Context, req *mcpsdk.CallToolRequest, in workitemUpdateInput) (*mcpsdk.CallToolResult, app.WorkItemView, error) {
 		view, err := cfg.service().WorkitemUpdate(ctx, in.ID, app.UpdateWorkitemRequest{
 			Title: in.Title, Description: in.Description, Priority: in.Priority,
 			AcceptanceCriteria: in.AcceptanceCriteria, Dependencies: in.Dependencies,
-			Constraints: in.Constraints, Expect: in.Expect,
+			Constraints: in.Constraints, Expect: in.Expect, Actor: in.Actor, Reason: in.Reason,
 			AssignedAgent: in.AssignedAgent, AssignedHarness: in.AssignedHarness,
 		})
 		if err != nil {
