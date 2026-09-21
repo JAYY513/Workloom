@@ -39,7 +39,11 @@ linux/arm64
 darwin/amd64
 darwin/arm64
 MATRIX
-(cd "$out" && sha256sum devsys-* > checksums.txt)
+# The install scripts ship as release assets too: the "paste this prompt to
+# your agent" flow downloads them straight from the release page, and manual
+# users skip even the shallow clone (#347).
+cp -- "$repo_root/scripts/install.sh" "$repo_root/scripts/install.ps1" "$out/"
+(cd "$out" && sha256sum devsys-* install.sh install.ps1 > checksums.txt)
 # Keep the file in GNU text mode: "<sha256>  <file>". macOS `shasum` writes
 # "<sha256> *<file>", which `sha256sum -c` accepts but the install scripts
 # (and this repo's release check) do not want — v0.1.0 shipped such a file.

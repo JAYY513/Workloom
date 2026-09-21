@@ -1,6 +1,6 @@
 name: release
 
-# Publish the devsys 6-platform binaries + SHA-256 checksums to a GitHub Release.
+# Publish the devsys 6-platform binaries + install scripts + SHA-256 checksums to a GitHub Release.
 #
 # Triggers:
 #   - pushing a v* tag (automatic)
@@ -102,7 +102,7 @@ jobs:
           # The checksum file must match the files it names.
           (cd dist && sha256sum -c checksums.txt)
           # And every published asset must be named in it.
-          for asset in dist/devsys-*; do
+          for asset in dist/devsys-* dist/install.sh dist/install.ps1; do
             base="$(basename "$asset")"
             if ! grep -qF "  $base" dist/checksums.txt; then
               echo "checksums.txt does not list $base" >&2
@@ -128,4 +128,4 @@ jobs:
           else
             args+=(--generate-notes)
           fi
-          gh release create "$VERSION" dist/devsys-* dist/checksums.txt "${args[@]}"
+          gh release create "$VERSION" dist/devsys-* dist/install.sh dist/install.ps1 dist/checksums.txt "${args[@]}"
