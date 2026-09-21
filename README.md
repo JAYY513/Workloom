@@ -155,26 +155,37 @@ Agent 会从仓库中的 `AGENTS.md` 和 `.agents/skills/devsys/` 获得操作�
 ```bash
 git clone https://github.com/JAYY513/Workloom.git
 cd Workloom
+# Linux / macOS
 GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys ./cmd/devsys
+# Windows（产物带 .exe 扩展名，Git Bash / PowerShell / cmd 均可直接执行）
+GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys.exe ./cmd/devsys
 ```
+
+> Windows 注意：`install.sh` 与上面的构建命令请在 **Git Bash** 中运行；若
+> `bash.exe` 解析到 WSL，脚本会按 Linux 分支处理（WSL 内通常没有 Go/Git，
+> 报 “go is not installed” 之类错误），不是脚本故障。
 
 > 说明：`v0.1.0` 起提供 Release 二进制（Linux/macOS/Windows × amd64/arm64，SHA-256 校验）。
 > 本仓库为私有仓库：下载 Release 产物需要先 `gh auth login`（或在浏览器登录后下载）。
 > 未登录时 `install.sh` 会自动回退到 `git clone --branch <tag> + go build`（需本机有 Go + Git，且 clone 同样需要仓库访问权限）。
 > `v0.1.1` 起二进制与 `checksums.txt` 均由 CI 发布（GNU 校验和格式）。`v0.1.2` 起默认 MCP `--tier core`
-> 严格为 19 项日常子集（`run_fail` / `run_cancel` 不再随 `run_complete` 泄漏）。`v0.1.3` 起补齐首启接入闭环
+> 严格为 19 项日常子集（`run_fail` / `run_cancel` 不再随 `run_complete` 泄漏）；`v0.1.4` 起
+> core 档补入 `workitem_release`（与 claim 配对），严格为 20 项。`v0.1.4` 还带来：租约 token
+> 侧车脱敏（scheduling/ 随 git 但无凭证）、质量门中日韩文字加权、run complete 成功即释租约、
+> `workitem update` / `artifact register` 强制 `--actor/--reason` 审计、族级 `--help` exit 0、
+> `wire` 默认含 skill。`v0.1.3` 起补齐首启接入闭环
 > （蓝图写入 `project update --blueprint-artifact`、`mcp serve` 空工具集报错、损坏受管 YAML exit 4、
 > `workflow init --template` 内嵌模板）。想要与本文档一致的行为
-> （`prime`、`--latest`、`--tier core` 19 项、`next` 与 `claim` 同源的质量门判定、`default_policy`、
-> 安装链修复），请用 `v0.1.3` 或更新版本，或从源码构建。
+> （`prime`、`--latest`、`--tier core` 20 项、`next` 与 `claim` 同源的质量门判定、`default_policy`、
+> 安装链修复），请用 `v0.1.4` 或更新版本，或从源码构建。
 
 ```bash
 # Linux / macOS
-bash scripts/install.sh --tag v0.1.3
+bash scripts/install.sh --tag v0.1.4
 
 # Windows PowerShell
 powershell -NoProfile -ExecutionPolicy Bypass \
-  -File scripts/install.ps1 -Tag v0.1.3 -AddToPath
+  -File scripts/install.ps1 -Tag v0.1.4 -AddToPath
 ```
 
 Release 构建覆盖 Linux、macOS 与 Windows 的 `amd64` / `arm64`。
@@ -242,7 +253,7 @@ devsys wire --print-mcp opencode
 devsys mcp serve --profile session,executor --tier core
 ```
 
-默认 `--tier core` 是 19 项日常子集。`run_update` / `run_fail` / `workitem_block` 等进度、失败与受阻工具在 `--tier standard`；MCP 优先的 Agent 对这些步骤请用 CLI，或把 serve 改成 `--tier standard`。
+默认 `--tier core` 是 20 项日常子集（含 `workitem_release`，与 claim 配对）。`run_update` / `run_fail` / `workitem_block` 等进度、失败与受阻工具在 `--tier standard`；MCP 优先的 Agent 对这些步骤请用 CLI，或把 serve 改成 `--tier standard`。
 
 ### 5. 查看项目状态
 

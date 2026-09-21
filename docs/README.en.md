@@ -166,26 +166,39 @@ Build from source. The repository includes `vendor/`, so the build can run offli
 ```bash
 git clone https://github.com/JAYY513/Workloom.git
 cd Workloom
+# Linux / macOS
 GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys ./cmd/devsys
+# Windows (the .exe suffix matters: Git Bash / PowerShell / cmd all refuse to
+# execute an extensionless PE binary)
+GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys.exe ./cmd/devsys
 ```
+
+> On Windows run `install.sh` and the build above from **Git Bash**. If
+> `bash.exe` resolves to WSL, the script takes the Linux branch and fails with
+> "go is not installed" (WSL usually has neither Go nor Git) — a shell routing
+> issue, not a script bug.
 
 > Note: release binaries are available starting from `v0.1.0` (Linux/macOS/Windows × amd64/arm64, SHA-256 verified).
 > This repository is private: downloading release artifacts requires `gh auth login` first (or downloading in a logged-in browser).
 > Without login, `install.sh` automatically falls back to `git clone --branch <tag> + go build` (requires Go + Git on your machine, and clone needs repository access too).
 > From `v0.1.1` on, the binaries and `checksums.txt` are published by CI (GNU checksum format). From `v0.1.2` on, default MCP `--tier core`
-> is strictly the 19-tool daily subset (`run_fail` / `run_cancel` no longer leak in with `run_complete`). From `v0.1.3` on, the first-run
+> is strictly the 19-tool daily subset (`run_fail` / `run_cancel` no longer leak in with `run_complete`); from `v0.1.4` on,
+> core also includes `workitem_release` (paired with claim), making it 20. `v0.1.4` also brings: lease-token sidecars
+> (scheduling/ stays in git, credentials do not), CJK-aware quality scoring, `run complete` releasing the claim on success,
+> mandatory `--actor`/`--reason` on `workitem update` / `artifact register`, family `--help` exiting 0, and `wire` writing
+> the skill by default. From `v0.1.3` on, the first-run
 > loop is closed (blueprint write via `project update --blueprint-artifact`, `mcp serve` refuses an empty toolset, corrupt managed YAML
 > exits 4, `workflow init --template` ships embedded templates). For the behavior described here
-> (`prime`, `--latest`, `--tier core` of 19 tools, the claim-aligned quality gate in `next`, `default_policy`, the installer fixes),
-> use `v0.1.3` or newer, or build from source.
+> (`prime`, `--latest`, `--tier core` of 20 tools, the claim-aligned quality gate in `next`, `default_policy`, the installer fixes),
+> use `v0.1.4` or newer, or build from source.
 
 ```bash
 # Linux / macOS
-bash scripts/install.sh --tag v0.1.3
+bash scripts/install.sh --tag v0.1.4
 
 # Windows PowerShell
 powershell -NoProfile -ExecutionPolicy Bypass \
-  -File scripts/install.ps1 -Tag v0.1.3 -AddToPath
+  -File scripts/install.ps1 -Tag v0.1.4 -AddToPath
 ```
 
 Release builds target Linux, macOS, and Windows on `amd64` and `arm64`.
@@ -253,7 +266,7 @@ The underlying server command is:
 devsys mcp serve --profile session,executor --tier core
 ```
 
-Default `--tier core` is the 19-tool daily subset. Progress, failure and block tools (`run_update`, `run_fail`, `workitem_block`) live at `--tier standard`. MCP-first agents should use the CLI for those steps, or serve `--tier standard`.
+Default `--tier core` is the 20-tool daily subset (including `workitem_release`, paired with claim). Progress, failure and block tools (`run_update`, `run_fail`, `workitem_block`) live at `--tier standard`. MCP-first agents should use the CLI for those steps, or serve `--tier standard`.
 
 ### 5. Inspect Project State
 
