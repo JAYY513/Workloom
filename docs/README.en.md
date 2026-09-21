@@ -188,17 +188,20 @@ GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys.exe ./cmd/devsys
 > mandatory `--actor`/`--reason` on `workitem update` / `artifact register`, family `--help` exiting 0, and `wire` writing
 > the skill by default. From `v0.1.3` on, the first-run
 > loop is closed (blueprint write via `project update --blueprint-artifact`, `mcp serve` refuses an empty toolset, corrupt managed YAML
-> exits 4, `workflow init --template` ships embedded templates). For the behavior described here
+> exits 4, `workflow init --template` ships embedded templates). `v0.1.5` fixes the retest leftovers: the
+> `run complete` refusal message now matches the real state (blocked by the review gate it names the comment
+> remedy), and `init` writes a project-level `.gitattributes` (`.devsys/`/`.agents/` pinned to LF, silencing
+> Windows line-ending warnings). For the behavior described here
 > (`prime`, `--latest`, `--tier core` of 20 tools, the claim-aligned quality gate in `next`, `default_policy`, the installer fixes),
-> use `v0.1.4` or newer, or build from source.
+> use `v0.1.5` or newer, or build from source.
 
 ```bash
 # Linux / macOS
-bash scripts/install.sh --tag v0.1.4
+bash scripts/install.sh --tag v0.1.5
 
 # Windows PowerShell
 powershell -NoProfile -ExecutionPolicy Bypass \
-  -File scripts/install.ps1 -Tag v0.1.4 -AddToPath
+  -File scripts/install.ps1 -Tag v0.1.5 -AddToPath
 ```
 
 Release builds target Linux, macOS, and Windows on `amd64` and `arm64`.
