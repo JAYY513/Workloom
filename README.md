@@ -179,7 +179,8 @@ go env -w GOPRIVATE=github.com/JAYY513/Workloom
 go install github.com/JAYY513/Workloom/cmd/devsys@v0.1.7
 ```
 
-这样装的二进制同样能自报版本（`devsys --version` → `devsys v0.1.7 (…)`）。
+这样装的二进制同样能自报版本（`devsys --version` → `devsys v0.1.7`；
+zip 模块无 VCS stamping，故无 commit 后缀）。
 
 > 说明：`v0.1.0` 起提供 Release 二进制（Linux/macOS/Windows × amd64/arm64，SHA-256 校验）。
 > 本仓库为私有仓库：下载 Release 产物需要先 `gh auth login`（或在浏览器登录后下载）。

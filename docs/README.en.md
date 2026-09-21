@@ -194,7 +194,7 @@ go install github.com/JAYY513/Workloom/cmd/devsys@v0.1.7
 ```
 
 A binary installed this way still reports its version (`devsys --version` →
-`devsys v0.1.7 (…)`).
+`devsys v0.1.7`; zip modules carry no VCS stamping, so there is no commit suffix).
 
 > Note: release binaries are available starting from `v0.1.0` (Linux/macOS/Windows × amd64/arm64, SHA-256 verified).
 > This repository is private: downloading release artifacts requires `gh auth login` first (or downloading in a logged-in browser).

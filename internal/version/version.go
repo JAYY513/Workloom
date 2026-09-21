@@ -4,14 +4,19 @@
 //
 //  1. -ldflags -X overrides (release pipeline), then
 //
-//  2. the module version recorded by `go install …@vX.Y.Z`
-//     (debug.ReadBuildInfo().Main.Version), then
+//  2. the module version stamped by the Go toolchain: the release tag for
+//     `go install …@vX.Y.Z`, or a pseudo-version (v0.1.8-0.20260921…-abc)
+//     for a plain repository `go build` — Go fills
+//     debug.ReadBuildInfo().Main.Version whenever VCS metadata exists, then
 //
-//  3. the development marker, with the VCS revision appended when known.
+//  3. the development marker, for source exports without VCS metadata (where
+//     Main.Version is "(devel)").
 //
-//     go build -ldflags "-X github.com/JAYY513/Workloom/internal/version.Version=0.1.0 \
-//     -X github.com/JAYY513/Workloom/internal/version.Commit=$(git rev-parse --short HEAD)" \
-//     -o bin/devsys ./cmd/devsys
+// The commit short hash (from VCS stamping) is appended whenever known.
+//
+//	go build -ldflags "-X github.com/JAYY513/Workloom/internal/version.Version=0.1.0 \
+//	                   -X github.com/JAYY513/Workloom/internal/version.Commit=$(git rev-parse --short HEAD)" \
+//	         -o bin/devsys ./cmd/devsys
 package version
 
 import (
@@ -57,10 +62,12 @@ func String() string {
 	return version + " (" + Commit + ")"
 }
 
-// effectiveVersion resolves the dev marker to the module version recorded by
-// `go install github.com/JAYY513/Workloom/cmd/devsys@vX.Y.Z`, so that binary
-// states its release without ldflags. A plain repository `go build` reports
-// "(devel)" there — not a version — and keeps the marker.
+// effectiveVersion resolves the dev marker to the module version stamped by
+// the Go toolchain. `go install …@vX.Y.Z` yields the release tag; a plain
+// repository `go build` yields a pseudo-version (v0.1.8-0.2026…-abc) because
+// Go fills Main.Version whenever VCS metadata is present. Only a source
+// export without VCS metadata reports "(devel)" there — not a version — and
+// keeps the marker.
 func effectiveVersion() string {
 	if Version != devMarker {
 		return Version
