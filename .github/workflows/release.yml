@@ -1,6 +1,6 @@
 name: release
 
-# Publish the workloom 6-platform binaries + install scripts + SHA-256 checksums + npm tarballs to a GitHub Release.
+# Publish the workloom 6-platform binaries + install scripts + SHA-256 checksums + npm tarballs to a GitHub Release, then publish the npm packages via OIDC trusted publishing (no long-lived token).
 #
 # Triggers:
 #   - pushing a v* tag (automatic)
@@ -34,6 +34,10 @@ on:
 
 permissions:
   contents: write
+  # Trusted publishing: npm CLI exchanges this OIDC token for a short-lived
+  # publish token against the per-package trusted publisher configured on
+  # npmjs.com. No NPM_TOKEN secret exists in this repo.
+  id-token: write
 
 concurrency:
   group: release-${{ github.ref }}
@@ -114,12 +118,23 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # npm >= 11.5.1 on Node >= 22.14 is required for OIDC trusted
+          # publishing (auto-detected; no NODE_AUTH_TOKEN involved).
+          node-version: 24
 
       - name: Pack npm tarballs
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: bash scripts/pack-npm.sh --version "$VERSION" --dist dist --out dist/npm
+
+      # Trusted publishing (OIDC): npm CLI detects the GitHub Actions OIDC
+      # token (id-token: write above) and exchanges it for a short-lived
+      # publish token. Requires the per-package trusted publisher on npmjs.com
+      # (@kaki317/workloom + @kaki317/workloom-win32-x64, workflow release.yml,
+      # direct publish allowed). Fails closed before the GitHub Release is
+      # created if the registry side is not configured.
+      - name: Publish npm packages
+        run: bash scripts/publish-npm.sh --dir dist/npm
 
       - name: Publish the release
         env:

@@ -34,7 +34,7 @@
 
 ## 发布
 
-tag 触发 `.github/workflows/release.yml`（6 平台矩阵 + 严格 checksums 自检 + `dist/npm/*.tgz` 附到 GitHub Release，不 `npm publish`）；步骤、校验与回退见[发布流程](docs/发布流程.md)。
+tag 触发 `.github/workflows/release.yml`（6 平台矩阵 + 严格 checksums 自检 + `dist/npm/*.tgz` 附到 GitHub Release，并经 trusted publishing / OIDC 自动 `npm publish`，无任何长期凭据）；步骤、校验与回退见[发布流程](docs/发布流程.md)。
 
 ## 许可证
 
