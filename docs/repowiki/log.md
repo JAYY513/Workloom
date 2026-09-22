@@ -5,7 +5,7 @@
 - 引注维护：`internal/cli/cli.go` 净增 2 行（`init` → 65、`sync status` → 83）→ 全 bundle **157 处** `file://internal/cli/cli.go#L…` 锚点、**151 处**带前缀正文行号与 **23 处**裸 `cli.go:…` 引用按位移重算（`init` 之前不变、`init` 与 `sync status` 之间 +1、其后 +2）；逐条比对位移前后所引代码文本，0 失配、0 越界。`视图层` / `可靠文本存储` / `知识层` 等非受影响模块的引注同步修号（仅行号，正文未动）。`log.md` 自身的历史条目按史实保留（机械位移已回退）。
 - 计划：模块 / 文章 / scope / caps 不变；coverage 保持 301/317（快照 317 文件未变）；`budget.reason` 追加本批说明。
 - 校验：`repowiki validate` = 55 files / 0 errors / 0 warnings；自建审计（引注路径与行号、bundle 内相对链接、围栏配平、frontmatter YAML、CRLF、重复行）= 2104 条 `file://` 引注 0 越界 / 0 缺失、324 条 bundle 相对链接 0 死链、0 围栏失衡、frontmatter 55/55 YAML 合法、0 CRLF；产品侧 `go test ./... -count=1` 全绿（28 包）、`go vet ./internal/cli/...` 与 gofmt 净、`--help` 实测含两行。
-- 收尾：`repowiki state --update` 基线 → `98c291c`；`repowiki status` = 1 commit / 0 files（自指提交）。
+- 收尾：`repowiki state --update` 把源码基线推到 `98c291c`（=`#398` 的产品提交），随后吸收本轮 wiki 提交（`71db9eb`）→ `repowiki status` = 1 commit / 0 files / affected_pages []（残差是本轮 wiki 提交本身；基线记录的 commit 不可能等于包含它自身的提交）。注：若基线落在新一轮 wiki 提交之前，status 会把该提交的**非 ASCII 路径**（git 输出带引号的 `"docs/repowiki/…"`）计入 `changed_files`，因 CLI 未 unquote 而漏掉 `docs/repowiki/` 前缀过滤——`affected_pages` 仍为空，判定不受影响。
 - 验证边界：本轮只改 `docs/repowiki/**`、`.repowiki/**` 与产品侧两行 `usage` 文案（无逻辑改动）。
 
 ## 2026-09-22 · 19b9149 增量刷新（v0.1.9 发布链：主命令改名 workloom + 公开仓库安装 + Git 可选）
