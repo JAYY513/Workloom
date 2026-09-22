@@ -134,6 +134,11 @@ jobs:
       # direct publish allowed). Fails closed before the GitHub Release is
       # created if the registry side is not configured.
       - name: Publish npm packages
+        env:
+          # Verbose so the OIDC token-exchange failure body lands in the log
+          # (oidc.js logs exchange errors only at verbose level and otherwise
+          # fails silently as ENEEDAUTH). Remove once publishing is proven.
+          NPM_CONFIG_LOGLEVEL: verbose
         run: bash scripts/publish-npm.sh --dir dist/npm
 
       - name: Publish the release
