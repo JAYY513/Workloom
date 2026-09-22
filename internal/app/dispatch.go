@@ -411,6 +411,7 @@ func defaultSpawner() AttemptSpawner {
 		if err != nil {
 			return 0, fmt.Errorf("resolve workloom executable: %w", err)
 		}
+		spawn := attemptSpawnCommand(filepath.ToSlash(exe), argv, exec.LookPath)
 		if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
 			return 0, fmt.Errorf("create attempt log directory: %w", err)
 		}
@@ -419,7 +420,7 @@ func defaultSpawner() AttemptSpawner {
 			return 0, fmt.Errorf("open attempt log: %w", err)
 		}
 		defer log.Close()
-		cmd := exec.Command(exe, argv...)
+		cmd := exec.Command(spawn.Command, spawn.Args...)
 		cmd.Dir = root
 		cmd.Stdout, cmd.Stderr = log, log
 		cmd.Stdin = nil
@@ -433,6 +434,20 @@ func defaultSpawner() AttemptSpawner {
 		// reporting an error here would hand the claim back to a live attempt.
 		_ = cmd.Process.Release()
 		return pid, nil
+	}
+}
+
+// attemptSpawnCommand resolves the running executable onto the process form
+// used to start an attempt and appends the devsys subcommand argv. An
+// npm-managed install runs from a node_modules tree whose layout belongs to
+// the package manager, so the attempt starts through node + the wrapper
+// script — the same resolution MCP registration uses — and everything else
+// spawns the bare binary.
+func attemptSpawnCommand(exe string, argv []string, lookPath func(string) (string, error)) MCPCommand {
+	resolved := ResolveMCPCommand(exe, lookPath)
+	return MCPCommand{
+		Command: resolved.Command,
+		Args:    append(append([]string{}, resolved.Args...), argv...),
 	}
 }
 

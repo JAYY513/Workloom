@@ -19,7 +19,7 @@ import (
 // tools (`run_update`, `run_fail`, `workitem_block`) live at `--tier standard`
 // or the CLI — core stays an explicit opt-in surface.
 func MCPSnippet(name string, cmd MCPCommand, projectRoot string) (string, error) {
-	const coreNote = `Default --tier core is the 19-tool daily subset. ` +
+	const coreNote = `Default --tier core is the daily subset. ` +
 		`run_update / run_fail / workitem_block need the CLI or --tier standard.`
 	const npxNote = "\n# Optional npx form (cold start, needs a network; not a replacement for the local binary above):\n# npx --yes @kaki317/workloom mcp serve --profile session,executor --tier core\n"
 	bin := filepath.ToSlash(strings.TrimSpace(cmd.Command))
