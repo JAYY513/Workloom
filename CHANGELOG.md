@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- `workloom --help` 顶层命令表补回 `init` 与 `sync status`：两条命令一直可路由（`init` 是 `setup` 的第一步、`sync status` 是 M8.1 只读接力判定），但 e4f1a9e 重写命令表时漏列，按 INSTALL.md 分步接入的用户在 `--help` 里找不到入口。纯文案，无行为变更。
+
 ## v0.1.9 — 2026-09-22
 
 ### Added

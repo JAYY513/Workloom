@@ -62,6 +62,7 @@ usage:
   workloom [--json | --jsonl] [--quiet] <command>
 
 commands:
+  init          create .devsys/ in the current directory (idempotent; setup runs it first)
   setup         one-command onboarding: init + starter workflow + wire + checks (idempotent)
   config check  validate the managed metadata files (read-only)
   search <text> search project-local text records
@@ -79,6 +80,7 @@ commands:
   worktree      prepare | remove | list execution workspaces (方案 §4.8)
   dispatch      one scheduling tick: recover, reconcile, dispatch (--watch loops; refused while a merge conflicts)
   archive       events --before <YYYY-MM> | runs --id <id,...> move JSONL streams to .devsys/archive/ (conservative, no delete)
+  sync status   read-only handoff readiness (no fetch, no locks; a blocked handoff is a verdict, exit 0)
   workspace     view [--limit N] | build --static [--out DIR] [--limit N] | serve [--host 127.0.0.1] [--port N] read-only project view / offline site / local service (方案 §17)
   knowledge         status | scan | validate [dir|page.md...] | refresh
   prime         alias for session start --compact (minimal orientation for agents)
