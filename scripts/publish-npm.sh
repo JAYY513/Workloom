@@ -92,6 +92,19 @@ for ((i = 0; i < ${#pkgs[@]}; i += 2)); do
   echo "publish ${name}@${npm_version}"
   npm "${args[@]}"
   published=$((published + 1))
+  # OIDC trusted publishing (npm >= 11.5.1) persists the short-lived,
+  # package-scoped exchange token to the user-level npmrc
+  # (config.set(..., 'user') in lib/utils/oidc.js). The next package's publish
+  # in the same CI job loads that stale per-package token and never completes
+  # its own exchange — the v0.1.13 first run failed exactly so (platform
+  # package published, wrapper ENEEDAUTH). Drop the line after each publish,
+  # but only in the CI OIDC case: a local operator's saved token must survive.
+  if [[ -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]]; then
+    npmrc="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
+    if [[ -f "$npmrc" ]]; then
+      sed -i '\|^//registry\.npmjs\.org/:_authToken=|d' -- "$npmrc"
+    fi
+  fi
 done
 
 if [[ -n "$dry_run" ]]; then
