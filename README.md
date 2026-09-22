@@ -146,18 +146,18 @@ Agent 会从仓库中的 `AGENTS.md` 和 `.agents/skills/devsys/` 获得操作�
 
 ```bash
 # Linux / macOS（Git Bash）
-bash install.sh --tag v0.1.9
+bash install.sh --tag v0.1.10
 
 # Windows PowerShell
-powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1 -Tag v0.1.9 -AddToPath
+powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1 -Tag v0.1.10 -AddToPath
 ```
 
-装完用 `workloom --version` 自证（应输出 `workloom v0.1.9 (…)`）。本仓库为公开仓库：已登录 `gh` 时脚本优先用它下载，否则匿名拉取 Release 资产；下载或校验失败才回退 `git clone --branch <tag> + go build`（本机需 Go + Git）。私有 fork 才需要先 `gh auth login`。`install.ps1` 装到 `%LOCALAPPDATA%\workloom\` 并只改 User PATH。
+装完用 `workloom --version` 自证（应输出 `workloom v0.1.10 (…)`）。本仓库为公开仓库：已登录 `gh` 时脚本优先用它下载，否则匿名拉取 Release 资产；下载或校验失败才回退 `git clone --branch <tag> + go build`（本机需 Go + Git）。私有 fork 才需要先 `gh auth login`。`install.ps1` 装到 `%LOCALAPPDATA%\workloom\` 并只改 User PATH。
 
 **② 已装 Go**：一行直装。公开模块不要设 `GOPRIVATE`（那会跳过公共校验和数据库；只有私有 fork 才需要）：
 
 ```bash
-go install github.com/JAYY513/Workloom/cmd/workloom@v0.1.9
+go install github.com/JAYY513/Workloom/cmd/workloom@v0.1.10
 ```
 
 **③ 源码构建**（兜底，仓库已提交 `vendor/`，可离线）：
@@ -179,7 +179,7 @@ GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/workloom.exe ./cmd/workloom
 > 格式 `checksums.txt` 由 CI 发布）。Windows 上跑 `install.sh` 与上面的构建命令请用 **Git Bash**；
 > 若 `bash.exe` 解析到 WSL 会按 Linux 分支处理（WSL 内通常没有 Go/Git），不是脚本故障。版本
 > 沿革（core 档 20 项、token 侧车、CJK 质量门、`workflow init --template` 等）见各 Release
-> 说明；想要与本文档一致的行为，请用 `v0.1.9` 或更新版本。
+> 说明；想要与本文档一致的行为，请用 `v0.1.10` 或更新版本。
 
 Release 构建覆盖 Linux、macOS 与 Windows 的 `amd64` / `arm64`。
 
