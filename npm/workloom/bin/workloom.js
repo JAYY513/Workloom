@@ -37,9 +37,13 @@ function resolveBinary(platform, arch) {
     pkgJson = require.resolve(name + "/package.json");
   } catch {
     throw new Error(
-      "platform package " +
+      "no workloom binary for " +
+        platform +
+        "-" +
+        arch +
+        ": platform package " +
         name +
-        " is not installed; reinstall @kaki317/workloom without --omit=optional. This package does not download a binary.",
+        " is not installed. Either that platform is not published on npm yet (npm currently ships Windows x64), or npm skipped optional dependencies (--omit=optional). This package does not download a binary; for other platforms see INSTALL.md (release script / go install).",
     );
   }
   const bin = path.join(path.dirname(pkgJson), binaryName(platform));

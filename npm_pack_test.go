@@ -148,6 +148,9 @@ func TestNPMWrapperExecsPlantedBinaryAndRefusesToDownload(t *testing.T) {
 	if !strings.Contains(string(out), "does not download") {
 		t.Fatalf("stderr = %s, want a refusal that does not download", out)
 	}
+	if !strings.Contains(string(out), "not published") {
+		t.Fatalf("stderr = %s, want the refusal to say the platform may not be published", out)
+	}
 
 	home := t.TempDir()
 	pkgName := "@kaki317/workloom-" + platform + "-" + arch

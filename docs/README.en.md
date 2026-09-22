@@ -159,13 +159,13 @@ yourself → ② / ③.
 
 ```bash
 # Linux / macOS (Git Bash)
-bash install.sh --tag v0.1.10
+bash install.sh --tag v0.1.11
 
 # Windows PowerShell
-powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1 -Tag v0.1.10 -AddToPath
+powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1 -Tag v0.1.11 -AddToPath
 ```
 
-Confirm with `workloom --version` (expect `workloom v0.1.10 (…)`). This repository
+Confirm with `workloom --version` (expect `workloom v0.1.11 (…)`). This repository
 is public: when `gh` is logged in the scripts prefer it, otherwise they
 download the release asset anonymously. A failed download falls back to
 `git clone --branch <tag> + go build` (requires Go + Git). A private fork
@@ -177,7 +177,7 @@ public module (that skips the public checksum database; only a private fork
 needs it):
 
 ```bash
-go install github.com/JAYY513/Workloom/cmd/workloom@v0.1.10
+go install github.com/JAYY513/Workloom/cmd/workloom@v0.1.11
 ```
 
 **③ Build from source** (fallback; the repository includes `vendor/`, so the
@@ -212,7 +212,7 @@ so use ①–③ there. See [INSTALL.md](../INSTALL.md) §1d.
 > nor Git) — a shell routing issue, not a script bug. The version history (20-tool
 > core tier, token sidecars, CJK-aware quality gate, `workflow init --template`,
 > …) lives in each Release's notes; for the behavior described here, use
-> `v0.1.10` or newer.
+> `v0.1.11` or newer.
 
 Release builds target Linux, macOS, and Windows on `amd64` and `arm64`.
 

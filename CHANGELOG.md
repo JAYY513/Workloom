@@ -2,13 +2,18 @@
 
 格式参照 Keep a Changelog；pre-release 阶段遵循语义化版本。发版步骤与回退见 [docs/发布流程.md](docs/发布流程.md)。
 
-## Unreleased
+## v0.1.11 — 2026-09-22
 
 ### Added
 
 - npm 首发：`@kaki317/workloom@0.1.10` 与平台包 `@kaki317/workloom-win32-x64@0.1.10` 已发布到 registry（当前只发 Windows x64；其余平台包仍只随 Release 附发）。装 CLI：`npm install -g @kaki317/workloom`。
 - `scripts/publish-npm.sh`：把已打包的 tgz 发到 npm registry 的显式步骤（不构建、不 pack、不下载）。平台包先于 wrapper，已存在同版本则跳过，可重跑；`--dry-run` 只做本地校验。默认发布范围是 Windows x64（`--platforms win32-x64`），其余平台包继续只随 Release 附发。`make npm-publish` 是同一入口。
 - npm 包模板增 `publishConfig.access = "public"`：scoped 包默认 restricted，缺这一项首次发布会被拒。
+
+### Changed
+
+- 安装口径按环境收敛：**Windows x64 + Node.js ≥ 18 → npm**（`npm install -g @kaki317/workloom`，升级=重跑同一条），其他平台 → Release 脚本。README 中英与 INSTALL.md §1 新增「选哪条」，docs/使用手册.md 同步；不再让用户自己比较四条路径。
+- npm 平台包缺失时的拒绝文案改为点明「该平台尚未发布（npm 目前只发 Windows x64）」或「安装跳过了 optionalDependencies」，并指向 INSTALL.md 的其他安装路径；此前只说「重装且不要 `--omit=optional`」，对未发布平台是误导。行为不变：仍拒绝、仍不下载、退出码 1。
 
 ## v0.1.10 — 2026-09-22
 
