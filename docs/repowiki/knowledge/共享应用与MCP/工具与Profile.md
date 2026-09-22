@@ -34,7 +34,7 @@ triggers:
   - workloom setup 不注册 MCP
 description: "MCP 服务端的四种 profile（session / executor / reviewer / admin）暴露规则、默认组合与 `visible` 的注册期过滤语义；本批（#301）在 profile 之上叠加 **tier 档**——`TierCore` 是默认 CLI `--tier core` / 缺省值（20 项「日常子集」工具），`TierStandard` 含 profile 全量（66 项工具面），二者与 profile 合取（visible(spec.profiles, cfg.Profiles) && visibleTier(spec.tier, tier)）。`toolSpec` 新增 `tier` 字段（空 = standard，显式 `TierCore` 才进 core 档）；`server.go` 新增 `ParseTier`（拒绝未知名）/ `tierLevel`（core=0 / 其它=1）/ `visibleTier`；`tools_health.go` 的 `health` 响应回传当前 `tier`；CLI `workloom mcp serve --tier core|standard` 直接转 `mcp.ParseTier`。`project_blueprint_get`（session 档 / standard tier）补注册入口由 `tools.go` 与 `tools_project.go:56` 共同组成，未声明蓝图时 `artifact: null`。本批（#336/#337，project_update 蓝图字段+mcp 启动前过滤）：project_update 输入增 blueprint_artifact_id（empty string clears，id must already be registered）；internal/mcp/server.go 新导出 VisibleTools(cfg) []string，让 CLI mcp serve 在 0 工具时拒绝启动（exit 2，提示 --tier standard），是注册期过滤之外的\"启用前\"二次检查。；本轮（ca58d27→19b9149，setup/mcp install 与注册名）：workloom mcp install 写入的条目统一调用 mcp serve --profile session,executor --tier core（与 DefaultProfiles / DefaultTier 默认一致），目标客户端 codex / claude / opencode 支持 user / project scope；注册名保持 devsys（二进制改名 workloom，配置键仍是 mcp_servers.devsys / mcpServers.devsys / mcp.devsys）；workloom setup 不注册 MCP（只报告 mcp 行）；MCP run_verify 的返回体随 CompletionCheck 增 skipped 字段（非 Git 项目 / 目录工作区），Advanced 仍为 false。"
 generated: true
-source_commit: 19b9149
+source_commit: 238e30c
 generator: repowiki-gen
 ---
 
@@ -228,6 +228,8 @@ mcp serve: profiles "a", "b" have no tools in tier core; use --tier standard
 - **条目名仍是 `devsys`**（`mcp_servers.devsys` / `mcpServers.devsys` / `mcp.devsys`），而命令里的二进制名是 `workloom`——本轮改名只动命令面，不动注册名与配置键：user scope 路径仍在 `mcpClientPath`（[internal/app/mcpinstall.go:167-182](file://internal/app/mcpinstall.go#L167-L182)）里，Claude 成员形状 `{"type":"stdio","command":<bin>,"args":mcpServeArgs()}`（[:375-385](file://internal/app/mcpinstall.go#L375-L385)）与 OpenCode 的 `{"type":"local","command":[<bin>, …]}`（[:389-398](file://internal/app/mcpinstall.go#L389-L398)）键名与结构不变。
 - 工具面不受 `mcp install` 影响：注册期过滤仍在 `mcp serve` 进程内生效；`install` 只写客户端配置，`setup` **完全不注册**（只报告 `wire --check` 的 `mcp` 行）。
 - `run_verify` 的返回体随 `app.CompletionCheck` 增 `skipped` 字段（非 Git 项目 / 目录工作区，`advanced` 仍为 false，`reason` 为 `git completion check is not applicable`）——MCP 客户端与 CLI 看到同一份判定。
+
+- **本批（v0.1.11 / npm 首发）**：本页口径不变——四种 profile、`toolSpec` 注册表、tier 档（core 20 项 / standard 全量）与 `mcp install` 写出的注册条目都没有变化；npm 首发只落在分发包（`@kaki317/workloom`，当前只发 Windows x64），`source_commit` 跟进至 `238e30c`。
 
 ## 与其他层的关系
 

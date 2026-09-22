@@ -19,7 +19,7 @@ triggers:
   - wire --check git 能力缺失
 description: "M4 `workloom wire` 把 devsys 纪律块注入 AGENTS.md；`<!-- devsys:begin/end -->` 标记、幂等（三次运行字节一致）、区段外字节保留（含其它工具的管理块）、`--dry-run` 预览；P1 起 `wire --check`（只读环境报告）/ `wire --skill`（写 `.agents/skills/devsys/{SKILL.md,references/cli.md,references/troubleshooting.md}`）/ `wire --print-mcp <codex|claude|opencode>`（生成 MCP 客户端 stdio 片段）；本轮（ca58d27→19b9149，v0.1.9 发布链 + 主命令改名 workloom + Git 可选能力）：纪律块标题与示例命令改名 `workloom`（标记常量仍为 `<!-- devsys:begin/end -->`）、`wire --check` 的 git 项记为可选能力缺失（`OK: true`）、`setup` 默认调用 `wire` + `WriteSkill`"
 generated: true
-source_commit: 21a9e71
+source_commit: 238e30c
 ---
 
 
@@ -144,3 +144,4 @@ type WireView struct {
 - **`workloom setup` 复用同一写路径**：setup 的 wire 步骤调 `Service.Wire(ctx, false)` + `Service.WriteSkill()`，detail 形如 `created AGENTS.md; skill wrote N files` / `already wired; skill already installed`（[internal/app/setup.go:84-106](file://internal/app/setup.go#L84-L106)）；skill 三文件内容同步改写为 `workloom`（[internal/app/skill.go:26-104](file://internal/app/skill.go#L26-L104)，`.agents/skills/devsys/` 路径与 `<!-- devsys-skill -->` 标记不变）。
 - **本批（#398）**：`workloom --help` 顶层命令表补回 `init` 与 `sync status` 两行（[internal/cli/cli.go:65](file://internal/cli/cli.go#L65)、[internal/cli/cli.go:83](file://internal/cli/cli.go#L83)）——两条命令一直可路由（`setup` 第一步就是 `init`，`sync status` 是 M8.1 只读接力判定），e4f1a9e 重写命令表时漏列；纯文案、无行为变更。本页引用的 `internal/cli/cli.go` 行号已按 +2 位移重算（`init` 之前不变，`init` 与 `sync status` 之间 +1，其后 +2）。
 - **本批（v0.1.10）**：补丁版本发布（`--help` 顶层命令表修复，无行为变更）；本页口径不变，`source_commit` 跟进至 `21a9e71`。
+- **本批（v0.1.11 / npm 首发）**：`wire --print-mcp` 生成的片段里，npx 可选注释行的包名同步为 `@kaki317/workloom`（[internal/app/mcpsnippets.go:24](file://internal/app/mcpsnippets.go#L24)）——本地二进制行不变，npx 仍只是可选补充（冷启动要联网、版本随缓存漂移）；本页其余口径不变，`source_commit` 跟进至 `238e30c`。

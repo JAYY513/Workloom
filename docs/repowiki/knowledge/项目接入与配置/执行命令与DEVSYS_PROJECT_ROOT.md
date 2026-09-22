@@ -38,7 +38,7 @@ triggers:
   - Git 可选能力
   - run verify skipped
 description: M6 执行层（harness/workspace/dispatch/retry/prompt）到 CLI/MCP 的接线：`workloom worktree/dispatch/run exec|prompt|verify|complete|fail|cancel` 与 MCP `run_prompt/verify/complete/fail/cancel` 的对应；`DEVSYS_PROJECT_ROOT` 与 `HookEnv` 注入规则；`config.workspace_root` / `config.dispatch_command` 解析与默认；M7.1 视图域 `workloom workspace view` 的接线（不经 internal/app、调 internal/view.Build 与 storage.Inspect）与 §4.8 `worktree`（执行工作区）严格分开的边界。；本轮（ca58d27→19b9149，v0.1.9 发布链 + 主命令改名 workloom + Git 可选能力）：非 Git 项目走目录工作区（`ensureDirectory`，`Workspace.Branch` 为空）、`HookEnv` 的 `DEVSYS_BRANCH` 仅在 worktree 形态注入、`run verify` / `run complete` 对非 Git 路径 `Skipped=true` 跳过 Git 证据、`workspace.ErrGitMissing` 只留给 worktree 操作
-source_commit: 21a9e71
+source_commit: 238e30c
 generated: true
 generator: repowiki-gen
 ---
@@ -203,3 +203,4 @@ M7.1 把方案 §17「视图域」落在 `internal/view` 包 + `internal/cli/wor
 `verifyCompletion` 先判定「目录工作区（`Workspace.Path != "" && Branch == ""`）或项目不在 git work tree 内」，命中即返回 `CompletionCheck{Skipped: true, Advanced: false, Reason: "git completion check is not applicable"}`——**skip 不是 verified advance**（[internal/app/runverify.go:45-56](file://internal/app/runverify.go#L45-L56)）。`run complete`（`Outcome == RunSucceeded`）的守卫分支是 `case check.Advanced, req.Force, check.Skipped:`——**`Skipped` 放行**，所以非 Git 项目 / 目录工作区可以正常完成 attempt（[internal/app/run.go:318-325](file://internal/app/run.go#L318-L325)）。放行时刻意留痕：记录里 `verification.advanced = false`、`head_sha_at_complete` 为空，事件类型仍是普通 `run_finished`（只在真正 verified 时才是 `completion_verified`），事件内容后缀是 `(git check not applicable, head none)`（[internal/app/run.go:356-372](file://internal/app/run.go#L356-L372)）。Git + 已绑定 worktree 的完成门禁**完全不变**：未 advance 且无 `--force` → exit 4 + run `failed` + workitem 进 `review`。
 - **本批（#398）**：`workloom --help` 顶层命令表补回 `init` 与 `sync status` 两行（[internal/cli/cli.go:65](file://internal/cli/cli.go#L65)、[internal/cli/cli.go:83](file://internal/cli/cli.go#L83)）——两条命令一直可路由（`setup` 第一步就是 `init`，`sync status` 是 M8.1 只读接力判定），e4f1a9e 重写命令表时漏列；纯文案、无行为变更。本页引用的 `internal/cli/cli.go` 行号已按 +2 位移重算（`init` 之前不变，`init` 与 `sync status` 之间 +1，其后 +2）。
 - **本批（v0.1.10）**：补丁版本发布（`--help` 顶层命令表修复，无行为变更）；本页口径不变，`source_commit` 跟进至 `21a9e71`。
+- **本批（v0.1.11 / npm 首发）**：v0.1.11 发布（npm 首发 + 安装口径收敛 + npm 平台包拒绝文案，[CHANGELOG.md:5-16](file://CHANGELOG.md#L5-L16)）；执行层接线与 `DEVSYS_PROJECT_ROOT` 注入不变，本页口径不变，`source_commit` 跟进至 `238e30c`。

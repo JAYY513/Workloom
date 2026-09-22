@@ -23,7 +23,7 @@ triggers:
   - workloom --version
 description: "M4 CLI 的 `--json` / `--jsonl` 两种结构化输出形态与退出码/MCP 错误对应；M7.1–M7.4 workspace 子命令族 view/build/serve（信封差异 + hint 行），人类输出一行一事实；M8 sync status / repair conflict notes / archive events|runs / dispatch merge gate 的 `--json` 信封与人类输出约定；本批（#336/#337）workitem/workflow list 空集合统一 `[]`、doctor `INVALID` 行 + exit 4、`mcp serve` 0 工具 exit 2、`workflow init --template` 与 `--blueprint-artifact` flaggenerated: true；本轮（ca58d27→19b9149，v0.1.9 发布链 + 主命令改名 workloom + Git 可选能力）：usage 文本与错误行前缀改 `workloom`、`--version` 输出 `workloom <version> (<commit>)`；新增 `setup` / `mcp install` 两条命令的信封（`{ok, ready, template, steps[], next?}` 与 `{ok, scope, results[]}`，均沿用 `--json` 单文档信封、不走 `--jsonl`）"
 generated: true；
-source_commit: 21a9e71
+source_commit: 238e30c
 ---
 
 # CLI 渲染与交换协议 · 项目接入与配置
@@ -402,3 +402,4 @@ dispatch tick 在 `recover` **之前**跑 `mergeConflict(root)`（[internal/app/
 - `workloom wire --check --json` 的 `git` 行在 git 不在 PATH 时是 `{name: "Git", ok: true, detail: "not on PATH (optional: worktree, sync, knowledge freshness unavailable)"}`——**不**把整次检查打成失败（[internal/app/wirecheck.go:49-54](file://internal/app/wirecheck.go#L49-L54)）。
 - **本批（#398）**：`workloom --help` 顶层命令表补回 `init` 与 `sync status` 两行（[internal/cli/cli.go:65](file://internal/cli/cli.go#L65)、[internal/cli/cli.go:83](file://internal/cli/cli.go#L83)）——两条命令一直可路由（`setup` 第一步就是 `init`，`sync status` 是 M8.1 只读接力判定），e4f1a9e 重写命令表时漏列；纯文案、无行为变更。本页引用的 `internal/cli/cli.go` 行号已按 +2 位移重算（`init` 之前不变，`init` 与 `sync status` 之间 +1，其后 +2）。
 - **本批（v0.1.10）**：补丁版本发布（`--help` 顶层命令表修复，无行为变更）；本页口径不变，`source_commit` 跟进至 `21a9e71`。
+- **本批（v0.1.11 / npm 首发）**：v0.1.11 发布（npm 首发 + 安装口径收敛 + npm 平台包拒绝文案，[CHANGELOG.md:5-16](file://CHANGELOG.md#L5-L16)）；workloom CLI 的输出契约与退出码均不变，本页口径不变，`source_commit` 跟进至 `238e30c`。

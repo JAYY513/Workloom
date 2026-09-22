@@ -37,7 +37,7 @@ triggers:
   - setup 退出码
   - mcp install 退出码
 description: "devsys 受管 YAML 文件的严格 schema：每文件白名单 + schema_version 闸门 + 行号定位 + Problems 错误结构（含 SeverityWarning） + 退出码 4 的语义边界 + M1 完整 Project 模型 + 嵌套字段校验；M2 新增退出码 3/4 在 workitem 与 repair 中的扩展语义、--expect 64-hex sha256 + fail-closed、--confirm 摘要格式、写命令 --actor/--reason 必填；M3 新增 workflow/approval/next 的 kind 与 code 语义、workitem.TransitionRequest.Guard 签名、policy issue 与 LKG 报错；M4 收口到 *app.Error.Class() 四类（映射 CLI 退出码 + MCP tool error code）、--jsonl 列表流、知识层 10/11 退出码预留；M5 新增 KnowledgePages / KnowledgeGenerator 配置键、kindStrings（接受 null 与空列表）+ kindMilestones 双路径、warning severity、KindKnowledge 错误类、knowledge_pages / knowledge_generator 字段解析；M6 增 workspace_root / dispatch_command 配置键、HookEnv 注入、run exec / run complete 在执行层的扩展退出码语义；M7.1 增 workspace view 在视图域的退出码语义（沿用 0/2/3/1，10/11 仍专属 knowledge status）、workspace view 的 --limit 与子命令缺失 → 2、缺 .devsys/ → 3、view.Build 失败 → 1、advisory_unlocked 是事实标签不是失败码。；**本批**：`config.yaml` 增 `default_policy` 键（未绑定实例的工作项按其过门禁；键值非法或指向缺失策略时 claim fail closed）、`project blueprint` 未声明蓝图 exit 0、非法 workitem id 归 usage/exit 2、`storage: version conflict` 附「重新读取重试 / `--latest`」出路。；本轮（ca58d27→19b9149，v0.1.9 发布链 + 主命令改名 workloom + Git 可选能力）：退出码 3 的「非 git 仓库」用法作废（`init` 允许非 Git 目录与 git 子目录，禁止自动 `git init`），`workspace.ErrGitMissing` 只在 worktree 操作上保留；`run verify` / `run complete` 的非 Git 路径以 `CompletionCheck.skipped=true` 跳过 Git 证据（不标 `Advanced`），`wire --check` 的 git 行改记能力缺失；CLI 退出码与 JSON 错误信封结构不变（仅前缀/文本改 `workloom`）"
-source_commit: 21a9e71
+source_commit: 238e30c
 generated: true
 generator: repowiki-gen
 ---
@@ -642,3 +642,4 @@ M6 在 `CodePrecondition = 3` 与 `CodeInvalid = 4` 下扩展执行层错误语�
 - 两条命令的成功/失败信封与既有约定一致：`--json` 单文档信封（`ok` + 数据，失败加 `error{code,kind,message}`，走 stderr 语义由 `render`/`exitWithCode` 承载）；**不**使用 `--jsonl`。
 - **本批（#398）**：`workloom --help` 顶层命令表补回 `init` 与 `sync status` 两行（[internal/cli/cli.go:65](file://internal/cli/cli.go#L65)、[internal/cli/cli.go:83](file://internal/cli/cli.go#L83)）——两条命令一直可路由（`setup` 第一步就是 `init`，`sync status` 是 M8.1 只读接力判定），e4f1a9e 重写命令表时漏列；纯文案、无行为变更。本页引用的 `internal/cli/cli.go` 行号已按 +2 位移重算（`init` 之前不变，`init` 与 `sync status` 之间 +1，其后 +2）。
 - **本批（v0.1.10）**：补丁版本发布（`--help` 顶层命令表修复，无行为变更）；本页口径不变，`source_commit` 跟进至 `21a9e71`。
+- **本批（v0.1.11 / npm 首发）**：v0.1.11 发布（npm 首发 + 安装口径收敛 + npm 平台包拒绝文案，[CHANGELOG.md:5-16](file://CHANGELOG.md#L5-L16)）；受管 schema 与 workloom 退出码契约均不变，本页口径不变，`source_commit` 跟进至 `238e30c`。
