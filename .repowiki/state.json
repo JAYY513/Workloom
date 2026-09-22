@@ -3,9 +3,9 @@
   "partition": {
     "locale": "zh"
   },
-  "generated_at": "2026-09-21T07:53:55.204Z",
+  "generated_at": "2026-09-22T05:53:27.185Z",
   "git": {
-    "commit": "ca58d270e607d19a4741d28900a11399df5543c9",
+    "commit": "1ffb4a5d18951f470a0836b0fadfe8bbf8b35eed",
     "branch": "master"
   },
   "pages": {
@@ -40,6 +40,12 @@
         "scripts/smoke-m8.sh",
         "scripts/smoke-m8.ps1",
         "scripts/contrabass/**",
+        "INSTALL.md",
+        "CHANGELOG.md",
+        "Makefile",
+        ".github/workflows/release.yml",
+        "npm/**",
+        ".agents/skills/devsys/**",
         "internal/storage/**",
         "internal/workitem/**",
         "internal/events/**",
@@ -69,7 +75,7 @@
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "1f0b2e324d739212675f2137c17a49401a0b268e2b5ca31f62c35d5131513a62"
+      "content_hash": "f723b9c15f0afdd236a86debe7a47a5c146d47ed89f90b7fa17bd1d93e40da74"
     },
     "content/快速开始.md": {
       "sources": [
@@ -100,6 +106,12 @@
         "scripts/smoke-m8.sh",
         "scripts/smoke-m8.ps1",
         "scripts/contrabass/**",
+        "INSTALL.md",
+        "CHANGELOG.md",
+        "Makefile",
+        ".github/workflows/release.yml",
+        "npm/**",
+        ".agents/skills/devsys/**",
         "internal/storage/**",
         "internal/workitem/**",
         "internal/events/**",
@@ -129,7 +141,7 @@
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "f2f87e3f3fc9d691013f510a3ec81fb10cc8453b59c24cac1576da31855d2aa4"
+      "content_hash": "ae749c36b5da673be9afdfc0c6ea0c932b3e10912282aeea841904e1506098e6"
     },
     "content/项目总览.md": {
       "sources": [
@@ -160,6 +172,12 @@
         "scripts/smoke-m8.sh",
         "scripts/smoke-m8.ps1",
         "scripts/contrabass/**",
+        "INSTALL.md",
+        "CHANGELOG.md",
+        "Makefile",
+        ".github/workflows/release.yml",
+        "npm/**",
+        ".agents/skills/devsys/**",
         "internal/storage/**",
         "internal/workitem/**",
         "internal/events/**",
@@ -189,11 +207,11 @@
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "b1f51331bc5320a22ba4704b1b413cf7d2bb0e85ce05bb688d42a0956082c252"
+      "content_hash": "71d0c43de5638271fa1c780799d95c3d183827ed21c2770add5a5e5843751205"
     },
     "index.md": {
       "sources": [],
-      "content_hash": "28fd3759667d882e401ea9d6f9e513b1d83fbf049e2a8ea2b01b9560dd4d3afa"
+      "content_hash": "c7be27507247b1d072bb0603af2caad7148e82b2dcd393bd1449505c3cd17861"
     },
     "knowledge/共享应用与MCP/完成校验与人工复核.md": {
       "sources": [
@@ -202,7 +220,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "64ccc92ff3fd010e4138b1c72470a460902ad22905fc2705991661e0ffa210b6"
+      "content_hash": "4db14c7154b54197f559cda58349b3f099a22c8029e347ff19ea948f40258064"
     },
     "knowledge/共享应用与MCP/工具与Profile.md": {
       "sources": [
@@ -211,7 +229,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "79f09f6dab842a6c10b8517d6757560367c9ddf475b100d223eaa16ff134887a"
+      "content_hash": "e94280ef1bd80068681414778ebf5977666eecc41bc3b4716d6578f309fe535e"
     },
     "knowledge/共享应用与MCP/执行命令族.md": {
       "sources": [
@@ -220,7 +238,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "35dfd973b93434f20cf0dca2bc6b6334a0eea6d8f582dfb555aaba5584255cfa"
+      "content_hash": "50dc9239d86635280234ec329cc7e14628865637fe0e39426b08c9c1e4f20fd3"
     },
     "knowledge/共享应用与MCP/架构设计.md": {
       "sources": [
@@ -229,7 +247,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "d35a73ed2bf4a94b34264215cbfc336e69b0c98e012b87a60cb8b26d468fd0d4"
+      "content_hash": "52173650cd65f2022301f826128c1c2eaca4699b14806c00255b69b11b8699cc"
     },
     "knowledge/共享应用与MCP/概述.md": {
       "sources": [
@@ -238,7 +256,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "d27064b0f32961e1274b1707988f5fcb2500db5abb7dc35e185747b4898f8687"
+      "content_hash": "31829ff741859d70298f5f3170eb4aa6942172c21b746d75e88b21451952744d"
     },
     "knowledge/共享应用与MCP/错误语义.md": {
       "sources": [
@@ -247,7 +265,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "d6934d4f96aabc75c529bd36c06de39e419a17521bce30d66072eee73b47fd33"
+      "content_hash": "fae1d0424d4bdafe1ebc311958dc494bd7febd710c494126f9dad9d05ba2613d"
     },
     "knowledge/可靠文本存储/事务与恢复.md": {
       "sources": [
@@ -269,7 +287,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "40fe08ac0f42feb9bd0f7ba485a8e3d67afecc26b0f2b348be599e060ea36288"
+      "content_hash": "93265ee47a6bb3853632fbc166c63eb12005b4c0ee91bf109f5a6e1dedb1b4af"
     },
     "knowledge/可靠文本存储/存储错误语义.md": {
       "sources": [
@@ -291,7 +309,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "c7e6830aece5edb5e19c404b76757d90832f21e04952c8f1490dbe42eaae27c7"
+      "content_hash": "4fd7d252188a7d0de3e8842b363e844dcde3ee59cc5f8a24d4eaf38840e27533"
     },
     "knowledge/可靠文本存储/对账与修复.md": {
       "sources": [
@@ -313,7 +331,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "1c28b371dda20175ace95a4fd0bd8db2b4f356af41175590b73ec0db5144954c"
+      "content_hash": "aabd9b2ef2b399cd1760125c2e75f38bc601e4d490e13aa010c5aeaf4f14d68d"
     },
     "knowledge/可靠文本存储/架构设计.md": {
       "sources": [
@@ -335,7 +353,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "b3672984d0bc7333b381187421c2e00e555ec3b46698a7954c37c40de7c10ca5"
+      "content_hash": "6bd9073e1a099648ee6fbb808185c55cec0fcc7b4f9d9ff40df11b1f2160aefe"
     },
     "knowledge/可靠文本存储/概述.md": {
       "sources": [
@@ -357,7 +375,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "1d6a0d602681f47ee9f567922278174bcb2f405f452642826a45d94ed02cd665"
+      "content_hash": "7a4d77dcc1c15e9148f0cae537ec0bcc4fbd7474b797724ab7183748dd6bbe2e"
     },
     "knowledge/可靠文本存储/特殊配置与命令.md": {
       "sources": [
@@ -379,7 +397,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "dfd9c6d738acf7e363a184fd2f59f24a4869c10f7a2b17ddd8c24f5e28b0a9b4"
+      "content_hash": "d6bae443cbc337a56808bcc2f26a0291c32ed8fb4fa858fb128e364fcd24f3ab"
     },
     "knowledge/可靠文本存储/状态机与调度.md": {
       "sources": [
@@ -401,7 +419,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "250eab7c4cd12d9ead9d401f67ec03a60f8cb92560e021d9ca21a9eb29d7a291"
+      "content_hash": "a92108ecb34ad5f15c2501cf3e6a9d58fee971ffe811527f7df9a634a1004699"
     },
     "knowledge/可靠文本存储/编码规范.md": {
       "sources": [
@@ -423,7 +441,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "b1842e732cbb3ab88d27db596c0e217dff6e3611348be0b0d837b8ef8e8562d8"
+      "content_hash": "6c0a3a42a3fd5484873ad36f3573b97d44aaaa3ace270c40a8fe175c9c845ae8"
     },
     "knowledge/可靠文本存储/读快照与守卫更新.md": {
       "sources": [
@@ -445,7 +463,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "9bc0594effdde8c732348249ac5241f971b7627afe98080171a07c335207a650"
+      "content_hash": "f11b6ea609b13632289ffefff84d45480a7b0f71a612e52cefc3c6e8d28a3625"
     },
     "knowledge/可靠文本存储/运行事件流.md": {
       "sources": [
@@ -467,7 +485,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "689cf9f0f06cfff189aee760cd680ffbaa104d1b3655fff4abc911d9f88980b2"
+      "content_hash": "db803a7ea45d8d78bd78eaee6379655ff8599c99e232693af60e2f2b5905f7f9"
     },
     "knowledge/可靠文本存储/领域记录与事件.md": {
       "sources": [
@@ -489,7 +507,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "9478042c33adebfb8f818442f2b0beb010149092363e98f5b61e0fec65168476"
+      "content_hash": "e1a6ae1ceb6fc8065b10c3a72340a5caae5fb206ddf6b3892a6be6e13e46a413"
     },
     "knowledge/执行层/技术栈.md": {
       "sources": [
@@ -499,7 +517,7 @@
         "internal/retry/**",
         "internal/prompt/**"
       ],
-      "content_hash": "259a897ec378993682029c9775317096ea14db83886a524c4a9ad6e8be23054f"
+      "content_hash": "ed1d73f2cb60ae86a84b2f678ffdff4fb05e3fa469cd288baec1ce1ce1ad7230"
     },
     "knowledge/执行层/架构设计.md": {
       "sources": [
@@ -509,7 +527,7 @@
         "internal/retry/**",
         "internal/prompt/**"
       ],
-      "content_hash": "26be72948ee2240458ecbc21f70a9d5db6b7f458210203a8691355ade8851aae"
+      "content_hash": "63a51d3ea8853592115b8ec579743e1ba89150558af50d4a6f090551a298f50a"
     },
     "knowledge/执行层/概述.md": {
       "sources": [
@@ -519,7 +537,7 @@
         "internal/retry/**",
         "internal/prompt/**"
       ],
-      "content_hash": "1234a335b40ecb18b9a05bb9bb4f34128a880edf686f379d0287db1c2f25e3c1"
+      "content_hash": "c704161a7ac269365dad64e01ea445bc4396b882da672acca8674c08355a8f3a"
     },
     "knowledge/执行层/特殊配置与命令.md": {
       "sources": [
@@ -529,7 +547,7 @@
         "internal/retry/**",
         "internal/prompt/**"
       ],
-      "content_hash": "ecb13066c3cfa679bdb3bf3756a4b1aa9929f9bb392cfe9f6b9f8d4ff49f7576"
+      "content_hash": "f73fab985b1c14efc096dfba65312914787a8284211582cae0f82c51c9232620"
     },
     "knowledge/执行层/编码规范.md": {
       "sources": [
@@ -539,7 +557,7 @@
         "internal/retry/**",
         "internal/prompt/**"
       ],
-      "content_hash": "969d3c9d37dec5475d8d3d8ffcf28b613e2d5c593b27c4442b62ea3746c0ff03"
+      "content_hash": "770e57e5824dbe16f20ddbbc61a4d5256782adf2cb63c22cb5465a98dc383055"
     },
     "knowledge/执行层/适配器协议契约.md": {
       "sources": [
@@ -549,7 +567,7 @@
         "internal/retry/**",
         "internal/prompt/**"
       ],
-      "content_hash": "aba2b3dce516a72a41f2d104a2238bb7264d0a33d8a3fc070abf355cbf6b1b42"
+      "content_hash": "0cbb744b0474298f3a713b2e06029619c0973803d00477aabadca0186fffba6d"
     },
     "knowledge/知识层/上下文快照.md": {
       "sources": [
@@ -603,7 +621,7 @@
         ".repowikiignore",
         "internal/knowledge/syncgit.go"
       ],
-      "content_hash": "d73d4769c1261d3a65cddfc1161ad8aa46ade34bccb76ce425dfa4a6382e2b1d"
+      "content_hash": "4f16915aac4d2f768cb99884a931ad5d4c04a0ac3ec906f92f8c23d32907041e"
     },
     "knowledge/知识层/概述.md": {
       "sources": [
@@ -630,7 +648,7 @@
         ".repowikiignore",
         "internal/knowledge/syncgit.go"
       ],
-      "content_hash": "4948e3e5de0505bef12975ab5977937c87bc85706983ba5dab0ce3b9a7c82684"
+      "content_hash": "340e667de6b356022497dc0e5b986e7c11727e872d4c2f00f124d531203609c0"
     },
     "knowledge/知识层/索引快照与匹配器.md": {
       "sources": [
@@ -655,49 +673,49 @@
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "a870c6f2d03491879d254982f296e52fe681966fe63a55c21e6547e20834a4a9"
+      "content_hash": "dd4d1bd13241f3d4a2661914d74659b9926aed165f8480c453c1c8c03c8eecfc"
     },
     "knowledge/视图层/架构设计.md": {
       "sources": [
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "d865bb248245d492118799fe82069a9104a0f776871195109743f5f273874229"
+      "content_hash": "bf5e5241c764b8466fb772862fdc819eef2ffc54ef8913a6342f94b6b58ea1c4"
     },
     "knowledge/视图层/概述.md": {
       "sources": [
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "795924ee1fa10ceda72d4e9bb9b39cda19d14dcb1dfc0fe9eff7178166276f8c"
+      "content_hash": "429e455ac971b4e7c741409856041e08005ff638684c6bfed334a1a930cda1fd"
     },
     "knowledge/视图层/特殊配置与命令.md": {
       "sources": [
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "ab229bf4f21a2a46db48f6a7667fc58c65f67e9017124bceb7f67e3dc7b4f166"
+      "content_hash": "0ca5bc09597dac17cad1f39d3e57145ce15541c995a4731df09d1b79f2e69113"
     },
     "knowledge/视图层/编码规范.md": {
       "sources": [
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "3f187f6818b64d4d8dbe422b6cae7d3e3c2aba7a1e1777cc29d6c3e3298455cf"
+      "content_hash": "9f6169f08ea537a13f765679e49ebbf30f197ad4b2ec40663cec7a8a1eab8e0f"
     },
     "knowledge/视图层/视图数据模型.md": {
       "sources": [
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "b17ef1d8577270c9bcfb8fc1fdc7306c3fb9c985fbce45ab40be40371f91e5ef"
+      "content_hash": "489e4ff722a616b6c366f73d35e0de3c30337d91312d27f97887c1e7110c702e"
     },
     "knowledge/视图层/读取纪律与信任语义.md": {
       "sources": [
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "62517b4f3243273a920cbe801a73b1af830b64333af6ac131cc28e11cbd977a2"
+      "content_hash": "ea5eff6fce3a7451258a784306b68bad7d9af05232038a662032800b93d893fa"
     },
     "knowledge/项目接入与配置/AGENTS.md写入.md": {
       "sources": [
@@ -727,9 +745,15 @@
         "internal/archive/**",
         "scripts/smoke-m8.sh",
         "scripts/smoke-m8.ps1",
-        "scripts/contrabass/**"
+        "scripts/contrabass/**",
+        "INSTALL.md",
+        "CHANGELOG.md",
+        "Makefile",
+        ".github/workflows/release.yml",
+        "npm/**",
+        ".agents/skills/devsys/**"
       ],
-      "content_hash": "74365243da12ad9be948fba14c489084a8c54b7e28e9f6e4164561f871589b45"
+      "content_hash": "3aa1167aa97b58ec2da2c34cec4089330587ba4ff0461e4307af20b4753a6e0f"
     },
     "knowledge/项目接入与配置/CLI渲染与交换协议.md": {
       "sources": [
@@ -759,9 +783,15 @@
         "internal/archive/**",
         "scripts/smoke-m8.sh",
         "scripts/smoke-m8.ps1",
-        "scripts/contrabass/**"
+        "scripts/contrabass/**",
+        "INSTALL.md",
+        "CHANGELOG.md",
+        "Makefile",
+        ".github/workflows/release.yml",
+        "npm/**",
+        ".agents/skills/devsys/**"
       ],
-      "content_hash": "cb5c6b2b51834d3a248bf1573cde1857d4015a78ace49f647a35cd0fb5f1f55e"
+      "content_hash": "936b13aca4e69f8e330edf4ed61964437844e5eb1b82c0e38b1c44cb9317fb1d"
     },
     "knowledge/项目接入与配置/Schema与错误契约.md": {
       "sources": [
@@ -791,9 +821,15 @@
         "internal/archive/**",
         "scripts/smoke-m8.sh",
         "scripts/smoke-m8.ps1",
-        "scripts/contrabass/**"
+        "scripts/contrabass/**",
+        "INSTALL.md",
+        "CHANGELOG.md",
+        "Makefile",
+        ".github/workflows/release.yml",
+        "npm/**",
+        ".agents/skills/devsys/**"
       ],
-      "content_hash": "27644ad9aab9a7b0583886f9cb9867d20511a9c535e763f47cf44ac996c1c9ae"
+      "content_hash": "3e227631ed84a187468e70841c505cd5b233846db3a65eccd3ff5042a31cc54e"
     },
     "knowledge/项目接入与配置/执行命令与DEVSYS_PROJECT_ROOT.md": {
       "sources": [
@@ -823,9 +859,15 @@
         "internal/archive/**",
         "scripts/smoke-m8.sh",
         "scripts/smoke-m8.ps1",
-        "scripts/contrabass/**"
+        "scripts/contrabass/**",
+        "INSTALL.md",
+        "CHANGELOG.md",
+        "Makefile",
+        ".github/workflows/release.yml",
+        "npm/**",
+        ".agents/skills/devsys/**"
       ],
-      "content_hash": "44ea04b47928e523baac785dcbd38478dfa26d2155e32070c9ee2e5962ea5e8a"
+      "content_hash": "ab03e321e17fe78920c1873650cd4a0991feac8216d64fa9f92098fa281dc201"
     },
     "knowledge/项目接入与配置/技术栈.md": {
       "sources": [
@@ -855,9 +897,15 @@
         "internal/archive/**",
         "scripts/smoke-m8.sh",
         "scripts/smoke-m8.ps1",
-        "scripts/contrabass/**"
+        "scripts/contrabass/**",
+        "INSTALL.md",
+        "CHANGELOG.md",
+        "Makefile",
+        ".github/workflows/release.yml",
+        "npm/**",
+        ".agents/skills/devsys/**"
       ],
-      "content_hash": "321b4313259dc9b5dd471d13e999556e6a5dda35b2bad2da9cc2567146f62e49"
+      "content_hash": "301df9c6055845c524fe6946a847c573bbaaee75a7956a8d59f968ba58cb3a98"
     },
     "knowledge/项目接入与配置/架构设计.md": {
       "sources": [
@@ -887,9 +935,15 @@
         "internal/archive/**",
         "scripts/smoke-m8.sh",
         "scripts/smoke-m8.ps1",
-        "scripts/contrabass/**"
+        "scripts/contrabass/**",
+        "INSTALL.md",
+        "CHANGELOG.md",
+        "Makefile",
+        ".github/workflows/release.yml",
+        "npm/**",
+        ".agents/skills/devsys/**"
       ],
-      "content_hash": "e20f6e12ed9f5a93f967b13842a67baed0d220746e725670367bb583a76a4ed8"
+      "content_hash": "88d0f8f42aee0b5e0af2dcd75c3a216f2fa8dc57efe3dcdbd45a4d94ecb49c2f"
     },
     "knowledge/项目接入与配置/概述.md": {
       "sources": [
@@ -919,9 +973,15 @@
         "internal/archive/**",
         "scripts/smoke-m8.sh",
         "scripts/smoke-m8.ps1",
-        "scripts/contrabass/**"
+        "scripts/contrabass/**",
+        "INSTALL.md",
+        "CHANGELOG.md",
+        "Makefile",
+        ".github/workflows/release.yml",
+        "npm/**",
+        ".agents/skills/devsys/**"
       ],
-      "content_hash": "589bf64605bc64fc5a115822b1d22dfed5a291363047912786d70e70e31e1020"
+      "content_hash": "9865146af6ec8baf487f7d034ce0f61bff3be59924d5c6cd89a1542a54c9a752"
     },
     "knowledge/项目接入与配置/特殊配置与命令.md": {
       "sources": [
@@ -951,9 +1011,15 @@
         "internal/archive/**",
         "scripts/smoke-m8.sh",
         "scripts/smoke-m8.ps1",
-        "scripts/contrabass/**"
+        "scripts/contrabass/**",
+        "INSTALL.md",
+        "CHANGELOG.md",
+        "Makefile",
+        ".github/workflows/release.yml",
+        "npm/**",
+        ".agents/skills/devsys/**"
       ],
-      "content_hash": "bf57e431885a9c27273cbd71397986a6b7dd61213d9e5a544999ec79298c72d0"
+      "content_hash": "39b2f9eac66b7b72b215d43ff5f024bc347e075cde695d97a34c424b367cca4b"
     },
     "knowledge/项目接入与配置/编码规范.md": {
       "sources": [
@@ -983,22 +1049,28 @@
         "internal/archive/**",
         "scripts/smoke-m8.sh",
         "scripts/smoke-m8.ps1",
-        "scripts/contrabass/**"
+        "scripts/contrabass/**",
+        "INSTALL.md",
+        "CHANGELOG.md",
+        "Makefile",
+        ".github/workflows/release.yml",
+        "npm/**",
+        ".agents/skills/devsys/**"
       ],
-      "content_hash": "f791f598eb5809b49aec2d81d2d9c9e9acba090e96cd20870b3ecc830de8621c"
+      "content_hash": "b15895bef4574665459b7bdb6d3df886f9ed02c16ded6263cfd07fa4d0ab2d52"
     },
     "log.md": {
       "sources": [],
-      "content_hash": "5c5d23bbee9a7dd13314f1b3c8966cdbdf9ae9e05c697116c5078138dcc769ee"
+      "content_hash": "9fc7462c5d3092d84bfb93ff5fc39b9744fa942cca68e89f434857788eed231f"
     }
   },
-  "snapshot_digest": "d8ac1496ad4da7aeccdc982ca90545c308d001a8902b507efd862c03805e09a6",
+  "snapshot_digest": "9e8de38c95b6f9585aceb2df5f29bec13e1a3b554e0945f2cfc543caf2fd5bc5",
   "snapshot_file": ".repowiki/snapshot.json",
   "last_run": {
     "status": "success",
     "phase": "finalize",
-    "started_at": "2026-09-21T07:53:55.204Z",
-    "finished_at": "2026-09-21T07:53:55.204Z",
+    "started_at": "2026-09-22T05:25:14.809Z",
+    "finished_at": "2026-09-22T05:53:27.185Z",
     "error": ""
   }
 }
