@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "generated_at": "2026-09-22T08:29:18.473Z",
+  "generated_at": "2026-09-22T12:44:10.032Z",
   "files": [
     {
       "path": ".agents/skills/devsys/references/cli.md",
@@ -32,10 +32,10 @@
     },
     {
       "path": ".github/workflows/release.yml",
-      "size": 4755,
-      "hash": "95d392a8ca090a3318b0b1378b142ca6feaad498e44aa588239e74654836e84a",
+      "size": 5731,
+      "hash": "2c94230b2e501929444ed167882256a227df3207accdd2406e3ac03b2f339c5b",
       "language": "yaml",
-      "lines": 141
+      "lines": 156
     },
     {
       "path": ".gitignore",
@@ -53,10 +53,10 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 8491,
-      "hash": "1810adb113e0c3e22fae5ea6b463b06876365ca241cd2268a49ee49774f89464",
+      "size": 9565,
+      "hash": "e6dd8cf957d993b59bf563bc80999f9d77fa264a6be4a4622d6555bef315a6dd",
       "language": "markdown",
-      "lines": 136
+      "lines": 147
     },
     {
       "path": "cmd/devsys/main.go",
@@ -74,17 +74,17 @@
     },
     {
       "path": "CONTRIBUTING.md",
-      "size": 2261,
-      "hash": "4e2835b1a65015dca559581f6c42ad6c214a0286de04a8f804c32de47fa6e07f",
+      "size": 2321,
+      "hash": "0daa0dab98c8642e78008eca7df175def3965329d2e8c75f2202bc63f29e7461",
       "language": "markdown",
       "lines": 41
     },
     {
       "path": "docs/发布流程.md",
-      "size": 13764,
-      "hash": "be9d0ba8718742a7c09e51ae85041d89cde89948f4e5b0dd081426f48c41bcc5",
+      "size": 16925,
+      "hash": "91c3449556cf871621c2cb5615baf8323cba9d4b49e6bcf922b0772bf492ad95",
       "language": "markdown",
-      "lines": 119
+      "lines": 131
     },
     {
       "path": "docs/迁移指南.md",
@@ -264,7 +264,7 @@
     {
       "path": "INSTALL.md",
       "size": 6835,
-      "hash": "cbe503cb5bbd30d1fe2eb95702bdb0ff7daf52d9f8b8d8bd83413953058a8dd5",
+      "hash": "1a14b9963d0c2984b6591448e6cc067a47cdb1c69d4033d4a3c6cfee6c6eca59",
       "language": "markdown",
       "lines": 132
     },
@@ -325,6 +325,13 @@
       "lines": 288
     },
     {
+      "path": "internal/app/dispatch_spawn_test.go",
+      "size": 2491,
+      "hash": "268034840a2b5164761e15ce342990e3977311b614ea15ec61758a927956b7ca",
+      "language": "go",
+      "lines": 62
+    },
+    {
       "path": "internal/app/dispatch_test.go",
       "size": 15026,
       "hash": "c8c31735ae91850da517b9aea436d4f7bd2b3bd179a4dc7d32041a2a98f00727",
@@ -333,10 +340,10 @@
     },
     {
       "path": "internal/app/dispatch.go",
-      "size": 25012,
-      "hash": "6998980163dd584218ead5ab2ff7b76b060cc0da9201e6300df748c95a721b9f",
+      "size": 25779,
+      "hash": "1750356e0fbed75b7ca3c9844966cac994be161967664f2ae2a2394f429b7a77",
       "language": "go",
-      "lines": 661
+      "lines": 676
     },
     {
       "path": "internal/app/harness_test.go",
@@ -403,8 +410,8 @@
     },
     {
       "path": "internal/app/mcpsnippets.go",
-      "size": 3672,
-      "hash": "504ddd3708591adc37d73045b5529540db996840a35a7c9039d6049fbc1a6782",
+      "size": 3664,
+      "hash": "ff029a13cf1ac9bb147ce7e78b26bfa1d80903edbeee277c30d2bd62dad99951",
       "language": "go",
       "lines": 104
     },
@@ -2062,10 +2069,10 @@
     },
     {
       "path": "scripts/build-release.sh",
-      "size": 2494,
-      "hash": "f9344e60e6b7c0067ef30668e1c1faa390bcf80dd236462f34209435d2833e15",
+      "size": 2711,
+      "hash": "80fe66bb37f01f46771e561d5f961efcd448ba22c58566175901023923f52ac2",
       "language": "shell",
-      "lines": 55
+      "lines": 58
     },
     {
       "path": "scripts/contrabass/export.py",
@@ -2132,10 +2139,10 @@
     },
     {
       "path": "scripts/publish-npm.sh",
-      "size": 3386,
-      "hash": "4164477cc60390a0b9e3439f1231c63c8850aa2953179baea0405377485176d7",
+      "size": 4122,
+      "hash": "8c669887ec49d863cba7048a7d99ccfdeb22207496f41ff0c693ae598bce653c",
       "language": "shell",
-      "lines": 102
+      "lines": 115
     },
     {
       "path": "scripts/smoke-m1-helper.go",
@@ -2265,13 +2272,13 @@
     }
   ],
   "stats": {
-    "total_files": 323,
-    "total_size": 2363454,
-    "total_lines": 67229,
+    "total_files": 324,
+    "total_size": 2372928,
+    "total_lines": 67360,
     "languages": {
       "other": 7,
       "markdown": 19,
-      "go": 249,
+      "go": 250,
       "makefile": 1,
       "powershell": 10,
       "shell": 13,

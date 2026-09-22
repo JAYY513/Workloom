@@ -21,9 +21,9 @@ triggers:
   - workloom setup 信封
   - workloom mcp install 信封
   - workloom --version
-description: "M4 CLI 的 `--json` / `--jsonl` 两种结构化输出形态与退出码/MCP 错误对应；M7.1–M7.4 workspace 子命令族 view/build/serve（信封差异 + hint 行），人类输出一行一事实；M8 sync status / repair conflict notes / archive events|runs / dispatch merge gate 的 `--json` 信封与人类输出约定；本批（#336/#337）workitem/workflow list 空集合统一 `[]`、doctor `INVALID` 行 + exit 4、`mcp serve` 0 工具 exit 2、`workflow init --template` 与 `--blueprint-artifact` flaggenerated: true；本轮（ca58d27→19b9149，v0.1.9 发布链 + 主命令改名 workloom + Git 可选能力）：usage 文本与错误行前缀改 `workloom`、`--version` 输出 `workloom <version> (<commit>)`；新增 `setup` / `mcp install` 两条命令的信封（`{ok, ready, template, steps[], next?}` 与 `{ok, scope, results[], probe}`，均沿用 `--json` 单文档信封、不走 `--jsonl`）"
-generated: true；
-source_commit: 7cdd918
+description: "M4 CLI 的 `--json` / `--jsonl` 两种结构化输出形态与退出码/MCP 错误对应；M7.1–M7.4 workspace 子命令族 view/build/serve（信封差异 + hint 行），人类输出一行一事实；M8 sync status / repair conflict notes / archive events|runs / dispatch merge gate 的 `--json` 信封与人类输出约定；本批（#336/#337）workitem/workflow list 空集合统一 `[]`、doctor `INVALID` 行 + exit 4、`mcp serve` 0 工具 exit 2、`workflow init --template` 与 `--blueprint-artifact` flag；本轮（ca58d27→19b9149，v0.1.9 发布链 + 主命令改名 workloom + Git 可选能力）：usage 文本与错误行前缀改 `workloom`、`--version` 输出 `workloom <version> (<commit>)`；新增 `setup` / `mcp install` 两条命令的信封（`{ok, ready, template, steps[], next?}` 与 `{ok, scope, results[], probe}`，均沿用 `--json` 单文档信封、不走 `--jsonl`）"
+generated: true
+source_commit: 705cb18
 ---
 
 # CLI 渲染与交换协议 · 项目接入与配置
@@ -331,7 +331,7 @@ M8.2 在 `repair` 的人类输出与 `--apply` 路径里加入「git 冲突」�
 
 ### `dispatch --dry-run / --watch` 的 merge 门控文案（M8.2）
 
-dispatch tick 在 `recover` **之前**跑 `mergeConflict(root)`（[internal/app/dispatch.go:86-95](file://internal/app/dispatch.go#L86-L95)、[internal/app/dispatch.go:230-263](file://internal/app/dispatch.go#L230-L263)）：发现 `knowledge.PorcelainStatus` 的 unmerged XY 或 `knowledge.MergeHeads` 报出的 merge machinery → `Preconditionf("dispatch blocked: <summary>; resolve the merge with git, then \`workloom repair --dry-run\`", blocked)` → `CodePrecondition = 3`。人类输出走 `renderDispatch`（[internal/cli/dispatch.go:66-137](file://internal/cli/dispatch.go#L66-L137)），错误仍走 M4 stderr JSON 信封，**不在 notice 列表里**—— `Notice` 仅记录「git 探针不可用（`"git conflict probe unavailable (...)"`）」的**降级**，不是冲突本身。
+dispatch tick 在 `recover` **之前**跑 `mergeConflict(root)`（[internal/app/dispatch.go:86-95](file://internal/app/dispatch.go#L86-L95)、[internal/app/dispatch.go:238-264](file://internal/app/dispatch.go#L238-L264)）：发现 `knowledge.PorcelainStatus` 的 unmerged XY 或 `knowledge.MergeHeads` 报出的 merge machinery → `Preconditionf("dispatch blocked: <summary>; resolve the merge with git, then \`workloom repair --dry-run\`", blocked)` → `CodePrecondition = 3`。人类输出走 `renderDispatch`（[internal/cli/dispatch.go:66-137](file://internal/cli/dispatch.go#L66-L137)），错误仍走 M4 stderr JSON 信封，**不在 notice 列表里**—— `Notice` 仅记录「git 探针不可用（`"git conflict probe unavailable (...)"`）」的**降级**，不是冲突本身。
 
 成功路径的人类输出按既有约定（`dry-run: ...` / `recovered: ...` / `in flight: N (global cap N)` / `swept <wi>\t<action>\t...` / `started <wi>\t<run>[ pid=N]\tlog=...` / `planned <wi>\t(not started)` / `skipped (<reason>): N\t<ids>` / `notice: <text>`）逐行落到 stdout。
 
@@ -402,5 +402,6 @@ dispatch tick 在 `recover` **之前**跑 `mergeConflict(root)`（[internal/app/
 - `workloom wire --check --json` 的 `git` 行在 git 不在 PATH 时是 `{name: "Git", ok: true, detail: "not on PATH (optional: worktree, sync, knowledge freshness unavailable)"}`——**不**把整次检查打成失败（[internal/app/wirecheck.go:49-54](file://internal/app/wirecheck.go#L49-L54)）。
 - **本批（#398）**：`workloom --help` 顶层命令表补回 `init` 与 `sync status` 两行（[internal/cli/cli.go:65](file://internal/cli/cli.go#L65)、[internal/cli/cli.go:83](file://internal/cli/cli.go#L83)）——两条命令一直可路由（`setup` 第一步就是 `init`，`sync status` 是 M8.1 只读接力判定），e4f1a9e 重写命令表时漏列；纯文案、无行为变更。本页引用的 `internal/cli/cli.go` 行号已按 +2 位移重算（`init` 之前不变，`init` 与 `sync status` 之间 +1，其后 +2）。
 - **本批（v0.1.10）**：补丁版本发布（`--help` 顶层命令表修复，无行为变更）；本页口径不变，`source_commit` 跟进至 `21a9e71`。
-- **本批（v0.1.11 / npm 首发）**：v0.1.11 发布（npm 首发 + 安装口径收敛 + npm 平台包拒绝文案，[CHANGELOG.md:17-28](file://CHANGELOG.md#L17-L28)）；workloom CLI 的输出契约与退出码均不变，本页口径不变，`source_commit` 跟进至 `238e30c`。
+- **本批（v0.1.11 / npm 首发）**：v0.1.11 发布（npm 首发 + 安装口径收敛 + npm 平台包拒绝文案，[CHANGELOG.md:17-28](file://CHANGELOG.md#L28-L39)）；workloom CLI 的输出契约与退出码均不变，本页口径不变，`source_commit` 跟进至 `238e30c`。
 - **本批（v0.1.12 / MCP 接入闭环）**：`mcp install` 的 `--json` 信封增 `probe{ok, skipped, tools, duration_ms, detail}`（[internal/app/mcpinstall.go:51-55](file://internal/app/mcpinstall.go#L51-L55)）；人类模式在 `scope:` / 每客户端一行之后增 `probe: <line>` 一行，三种渲染 `ok (N tools in Tms)` / `failed: <detail>` / 跳过原因（[internal/cli/mcp.go:113-115](file://internal/cli/mcp.go#L113-L115)、[internal/cli/mcp.go:121-130](file://internal/cli/mcp.go#L121-L130)）。**退出码 3 的新用法**：`--apply` 下探针失败 → `CodePrecondition = 3`，但人类报告先打印、配置保留（`err != nil && view == nil` 才提前返回，[internal/cli/mcp.go:105-107](file://internal/cli/mcp.go#L105-L107)）；`DEVSYS_MCP_PROBE=0` 跳过时 `probe.skipped = true`，不作为通过。`wire --print-mcp` 的片段形状随安装渠道变化（npm 树内 `node` + wrapper 脚本），信封 `{ok, harness, snippet}` 不变（[internal/app/mcpcommand.go:53-74](file://internal/app/mcpcommand.go#L53-L74)）。`source_commit` 跟进至 `7cdd918`。
+- **本批（v0.1.13 / #414+#416）**：CLI 输出契约与退出码**不变**——`probe: ok (N tools in Tms)` 渲染形态不变，仅 INSTALL.md 的探针示例计数从 `19 tools` 更正为 `20 tools`（[INSTALL.md:112](file://INSTALL.md#L112)）；#414 的 attempt 启动命令解析发生在进程 spawn 层，不改任何 CLI/MCP 输出信封。发布侧改 npm OIDC trusted publishing，属 CI 层、不进本页交换协议。

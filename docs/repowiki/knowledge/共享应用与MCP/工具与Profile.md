@@ -34,7 +34,7 @@ triggers:
   - workloom setup 不注册 MCP
 description: "MCP 服务端的四种 profile（session / executor / reviewer / admin）暴露规则、默认组合与 `visible` 的注册期过滤语义；本批（#301）在 profile 之上叠加 **tier 档**——`TierCore` 是默认 CLI `--tier core` / 缺省值（20 项「日常子集」工具），`TierStandard` 含 profile 全量（66 项工具面），二者与 profile 合取（visible(spec.profiles, cfg.Profiles) && visibleTier(spec.tier, tier)）。`toolSpec` 新增 `tier` 字段（空 = standard，显式 `TierCore` 才进 core 档）；`server.go` 新增 `ParseTier`（拒绝未知名）/ `tierLevel`（core=0 / 其它=1）/ `visibleTier`；`tools_health.go` 的 `health` 响应回传当前 `tier`；CLI `workloom mcp serve --tier core|standard` 直接转 `mcp.ParseTier`。`project_blueprint_get`（session 档 / standard tier）补注册入口由 `tools.go` 与 `tools_project.go:56` 共同组成，未声明蓝图时 `artifact: null`。本批（#336/#337，project_update 蓝图字段+mcp 启动前过滤）：project_update 输入增 blueprint_artifact_id（empty string clears，id must already be registered）；internal/mcp/server.go 新导出 VisibleTools(cfg) []string，让 CLI mcp serve 在 0 工具时拒绝启动（exit 2，提示 --tier standard），是注册期过滤之外的\"启用前\"二次检查。；本轮（ca58d27→19b9149，setup/mcp install 与注册名）：workloom mcp install 写入的条目统一调用 mcp serve --profile session,executor --tier core（与 DefaultProfiles / DefaultTier 默认一致），目标客户端 codex / claude / opencode 支持 user / project scope；注册名保持 devsys（二进制改名 workloom，配置键仍是 mcp_servers.devsys / mcpServers.devsys / mcp.devsys）；workloom setup 不注册 MCP（只报告 mcp 行）；MCP run_verify 的返回体随 CompletionCheck 增 skipped 字段（非 Git 项目 / 目录工作区），Advanced 仍为 false。"
 generated: true
-source_commit: 7cdd918
+source_commit: 705cb18
 generator: repowiki-gen
 ---
 
@@ -234,6 +234,8 @@ mcp serve: profiles "a", "b" have no tools in tier core; use --tier standard
 - **本批（v0.1.11 / npm 首发）**：本页口径不变——四种 profile、`toolSpec` 注册表、tier 档（core 20 项 / standard 全量）与 `mcp install` 写出的注册条目都没有变化；npm 首发只落在分发包（`@kaki317/workloom`，当前只发 Windows x64），`source_commit` 跟进至 `238e30c`。
 
 - **本批（v0.1.12 / MCP 接入闭环）**：本页的 profile / tier 暴露面与工具清单不变；`mcp install` 侧两处变化——写出的条目命令由 `ResolveMCPCommand` 决定（npm 安装改成 `node` + wrapper 脚本 `bin/workloom.js`，[internal/app/mcpcommand.go:53-74](file://internal/app/mcpcommand.go#L53-L74)），并新增启动探针（`MCPInstallView.Probe` / JSON `probe`：`--dry-run` 也探不写、`--apply` 失败 → `Preconditionf` exit 3 且配置保留、`DEVSYS_MCP_PROBE=0` → `Skipped`）；`MCPSnippet` 第二参由 `devsysBin string` 换成 `cmd MCPCommand`；`source_commit` 跟进至 `7cdd918`。
+
+- **本批（v0.1.13 / #414+#416）**：本页 profile / tier 暴露面与工具清单不变（core 20 项 / standard 66 项口径照旧）；`internal/app/mcpsnippets.go` 的 `coreNote` 去掉硬编码「19-tool」（[internal/app/mcpsnippets.go:22-23](file://internal/app/mcpsnippets.go#L22-L23)），只保留「`--tier core` 是日常子集；`run_update` / `run_fail` / `workitem_block` 需 CLI 或 `--tier standard`」——snippet 文案不再携带会漂移的工具数，注册 / 暴露语义不变；#416 的 npm OIDC 发布链只影响分发包，不触及工具面；`source_commit` 跟进至 `705cb18`。
 
 ## 与其他层的关系
 

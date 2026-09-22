@@ -1,3 +1,14 @@
+## 2026-09-22 · 705cb18 v0.1.13（#414 dispatch 解析统一 + #416 npm OIDC trusted publishing）repowiki 增量刷新
+
+- 源码基线：`6bd1cf1` → `705cb18`（8 commits / 10 文件：`internal/app/dispatch.go` +17、`dispatch_spawn_test.go` 新增、`mcpsnippets.go` coreNote 去 19 计数；`release.yml` id-token: write + Node 24 + Publish npm packages 步骤；`publish-npm.sh` OIDC 多包 token 清理；`build-release.sh` `sha256sum -t`；`docs/发布流程.md` §5b 重写 + v0.1.13 实跑记录；`CHANGELOG.md` / `CONTRIBUTING.md` / `INSTALL.md` 探针 19→20）。任务 #422。
+- 受影响 29 页全部重生成：3 篇文章（`项目总览` / `快速开始` / `开发与故障诊断`）+ 26 张卡（共享应用与MCP 6、可靠文本存储 11、项目接入与配置 9）。6 个子代理并行（3 模块 + 3 文章），证据驱动外科更新；`content/开发与故障诊断.md` 的 cc5de1f 人工修订行逐字保留。
+- 保护：D4 hash 比对 29/29 全匹配，0 跳过、0 强制覆盖；历史批次条目（含 v0.1.2 core=19 等过期数字）按史实保留。
+- 实质更新：dispatch attempt 启动命令经 `attemptSpawnCommand` → `ResolveMCPCommand`（npm 树 → node + wrapper 脚本，与 MCP 注册同一解析；新增 `dispatch_spawn_test.go` 2 项）；`coreNote` 删「19-tool」硬编码（保留 run_update/run_fail/workitem_block 语义）；npm 发布链改述为 OIDC trusted publishing（无长期凭据、fail closed、双包 SLSA provenance，v0.1.13 实跑 run `35725111638` 2m40s 16 资产）；新增两个已实踩故障条目（OIDC 多包第二包 ENEEDAUTH 的 oidc.js token 落盘机理 + Git Bash `sha256sum` 二进制标记坑）；传播窗口同一性口径（registry `dist.shasum` ≠ 本地 pack sha1，以 `npm view` 版本 + `dist.attestations` 为准）。CHANGELOG 引注因 v0.1.13 条目插入顶部全部 +11，已逐处重算。
+- **validate 漂移记录**：本批起 `repowiki validate`（LoomWiki 仓 #420 breaking 产物形状，ce05f15）按「knowledge 一模块一文件 + `module:` 字段」新 schema 校验，对本仓旧形状 bundle（`knowledge/<模块>/<卡>.md` + dimension）报 50× `missing required field 'module'`——校验器领先于 bundle，非本批引入的内容错误；旧 validate 的 0 errors 记录见下列各轮。迁移到新形状单独立任务跟踪。本批改用自建机械审计收口。
+- 校验（自建审计）：55 页 frontmatter YAML 全合法、`source_commit` 29 页 → `705cb18`；**2395** 条 `file:` 引注 0 缺失 / 0 越界、**2753** 条 bundle 链接 0 死链（路径型目标）、0 CRLF、0 围栏失衡；`执行层/架构设计.md:82` 一处重复行为 ASCII 图示空格行误报，已目检确认。子代理侧复核：AccessCards 717 条、StorageCards 459 条引注逐条命中。
+- 收尾：`index.md`「正式 tag」行 v0.1.10 → v0.1.13（顺带补 OIDC 一句；此前两轮漏改）；`repowiki state --update` 基线 → `705cb18`；`repowiki status` 复査见下。
+- 验证边界：本轮零产品代码改动；wiki 与生成元数据之外不动。
+
 ## 2026-09-22 · 21a9e71 v0.1.10 发布（`--help` 命令表修复）+ 安装口径同步
 
 - 源码基线：`98c291c` → `21a9e71`（产品改动仍是 `--help` 顶层命令表两行；`21a9e71` 是版本与安装指引提交——CHANGELOG 的 Unreleased 收口为 v0.1.10、README / docs/README.en.md / docs/使用手册.md 的安装示例与「或更新版本」口径提到 v0.1.10）。任务 #398 的发布收尾。
