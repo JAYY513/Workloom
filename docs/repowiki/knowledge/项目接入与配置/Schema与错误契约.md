@@ -33,8 +33,11 @@ triggers:
   - WorkflowInitTemplate
   - BlueprintArtifactID
   - CreateWorkitemCommand
-description: devsys 受管 YAML 文件的严格 schema：每文件白名单 + schema_version 闸门 + 行号定位 + Problems 错误结构（含 SeverityWarning） + 退出码 4 的语义边界 + M1 完整 Project 模型 + 嵌套字段校验；M2 新增退出码 3/4 在 workitem 与 repair 中的扩展语义、--expect 64-hex sha256 + fail-closed、--confirm 摘要格式、写命令 --actor/--reason 必填；M3 新增 workflow/approval/next 的 kind 与 code 语义、workitem.TransitionRequest.Guard 签名、policy issue 与 LKG 报错；M4 收口到 *app.Error.Class() 四类（映射 CLI 退出码 + MCP tool error code）、--jsonl 列表流、知识层 10/11 退出码预留；M5 新增 KnowledgePages / KnowledgeGenerator 配置键、kindStrings（接受 null 与空列表）+ kindMilestones 双路径、warning severity、KindKnowledge 错误类、knowledge_pages / knowledge_generator 字段解析；M6 增 workspace_root / dispatch_command 配置键、HookEnv 注入、run exec / run complete 在执行层的扩展退出码语义；M7.1 增 workspace view 在视图域的退出码语义（沿用 0/2/3/1，10/11 仍专属 knowledge status）、workspace view 的 --limit 与子命令缺失 → 2、缺 .devsys/ → 3、view.Build 失败 → 1、advisory_unlocked 是事实标签不是失败码。；**本批**：`config.yaml` 增 `default_policy` 键（未绑定实例的工作项按其过门禁；键值非法或指向缺失策略时 claim fail closed）、`project blueprint` 未声明蓝图 exit 0、非法 workitem id 归 usage/exit 2、`storage: version conflict` 附「重新读取重试 / `--latest`」出路。
-source_commit: 690b294
+  - git 可选能力
+  - setup 退出码
+  - mcp install 退出码
+description: "devsys 受管 YAML 文件的严格 schema：每文件白名单 + schema_version 闸门 + 行号定位 + Problems 错误结构（含 SeverityWarning） + 退出码 4 的语义边界 + M1 完整 Project 模型 + 嵌套字段校验；M2 新增退出码 3/4 在 workitem 与 repair 中的扩展语义、--expect 64-hex sha256 + fail-closed、--confirm 摘要格式、写命令 --actor/--reason 必填；M3 新增 workflow/approval/next 的 kind 与 code 语义、workitem.TransitionRequest.Guard 签名、policy issue 与 LKG 报错；M4 收口到 *app.Error.Class() 四类（映射 CLI 退出码 + MCP tool error code）、--jsonl 列表流、知识层 10/11 退出码预留；M5 新增 KnowledgePages / KnowledgeGenerator 配置键、kindStrings（接受 null 与空列表）+ kindMilestones 双路径、warning severity、KindKnowledge 错误类、knowledge_pages / knowledge_generator 字段解析；M6 增 workspace_root / dispatch_command 配置键、HookEnv 注入、run exec / run complete 在执行层的扩展退出码语义；M7.1 增 workspace view 在视图域的退出码语义（沿用 0/2/3/1，10/11 仍专属 knowledge status）、workspace view 的 --limit 与子命令缺失 → 2、缺 .devsys/ → 3、view.Build 失败 → 1、advisory_unlocked 是事实标签不是失败码。；**本批**：`config.yaml` 增 `default_policy` 键（未绑定实例的工作项按其过门禁；键值非法或指向缺失策略时 claim fail closed）、`project blueprint` 未声明蓝图 exit 0、非法 workitem id 归 usage/exit 2、`storage: version conflict` 附「重新读取重试 / `--latest`」出路。；本轮（ca58d27→19b9149，v0.1.9 发布链 + 主命令改名 workloom + Git 可选能力）：退出码 3 的「非 git 仓库」用法作废（`init` 允许非 Git 目录与 git 子目录，禁止自动 `git init`），`workspace.ErrGitMissing` 只在 worktree 操作上保留；`run verify` / `run complete` 的非 Git 路径以 `CompletionCheck.skipped=true` 跳过 Git 证据（不标 `Advanced`），`wire --check` 的 git 行改记能力缺失；CLI 退出码与 JSON 错误信封结构不变（仅前缀/文本改 `workloom`）"
+source_commit: 19b9149
 generated: true
 generator: repowiki-gen
 ---
@@ -94,7 +97,7 @@ generator: repowiki-gen
 | 字段 | 类型 | 必填？ | 备注 |
 | `schema_version` | `int` | 是 | 必须等于 `SupportedSchemaVersion` |
 | `workspace_root` | `string` | 否 | **M6** 工作区根目录；绝对路径或相对项目根；缺失回退 `<project>/.devsys/workspaces`；M6 起 `app.WorkspacePrepare` / `app.RunExec` / `internal/workspace.Root` 共同使用 |
-| `dispatch_command` | `string` | 否 | **M6** 调度 tick 默认每个 attempt 的 argv 模板；M6.4 默认 `"devsys run exec --id {run_id} --actor dispatch --reason tick"`；M6.7 起由 per-workitem `assigned_harness` 取代 |
+| `dispatch_command` | `string` | 否 | **M6** 调度 tick 默认每个 attempt 的 argv 模板；M6.4 默认 `"workloom run exec --id {run_id} --actor dispatch --reason tick"`；M6.7 起由 per-workitem `assigned_harness` 取代 |
 | `default_policy` | `string` | 否 | **b89ffae** 工作项未绑 Workflow 实例时按它判定质量门 / 阶段门 / 提示词 / 工作区钩子（方案 §4.7/§5.3 项目级默认）；空保持现有行为（未绑实例的工作项 ungated）；`internal/project/tree.go:68-70` 的 `configYAML` 头注释列出全部可选键 |
 ### `state/current.yaml` 与 `state/milestones.yaml`
 
@@ -227,7 +230,7 @@ workitem.parent_id            string (optional)
 
 ## 退出码契约
 
-`CodeInvalid = 4`（[internal/cli/cli.go:34-45](file://internal/cli/cli.go#L34-L45)）的语义在 `usage` 文本里写明（[internal/cli/cli.go:67-72](file://internal/cli/cli.go#L67-L72)）：
+`CodeInvalid = 4`（[internal/cli/cli.go:44-56](file://internal/cli/cli.go#L44-L56)）的语义在 `usage` 文本里写明（[internal/cli/cli.go:100-106](file://internal/cli/cli.go#L100-L106)）：
 
 ```text
 0  success
@@ -239,28 +242,29 @@ workitem.parent_id            string (optional)
 
 ### `CodeInvalid = 4`：受管状态存在但不可信
 
-它**只**由 `errInvalid(config.Problems)` 触发（[internal/cli/cli.go:138-149](file://internal/cli/cli.go#L138-L149)）。写命令在拿到 `Problems` 时返回 `CodeInvalid` 并**不**修改磁盘。
+它**只**由 `errInvalid(config.Problems)` 触发（[internal/cli/cli.go:139-150](file://internal/cli/cli.go#L139-L150)）。写命令在拿到 `Problems` 时返回 `CodeInvalid` 并**不**修改磁盘。
 
-M2 起 `CodeInvalid = 4` 还覆盖 workitem / reconcile 写路径下的领域错误：非 `storage.ErrNotInitialized` / `workitem.ErrNotFound` 的领域错误升为带 `kind="workitem"` 的 `codedError{Code: CodeInvalid}`（M4 起统一由 `toCoded` 翻译，现行实现见 [internal/cli/cli.go:153-172](file://internal/cli/cli.go#L153-L172)）。
+M2 起 `CodeInvalid = 4` 还覆盖 workitem / reconcile 写路径下的领域错误：非 `storage.ErrNotInitialized` / `workitem.ErrNotFound` 的领域错误升为带 `kind="workitem"` 的 `codedError{Code: CodeInvalid}`（M4 起统一由 `toCoded` 翻译，现行实现见 [internal/cli/cli.go:154-173](file://internal/cli/cli.go#L154-L173)）。
 
 M3 起又扩展：
 
-- `kind="approval"`：`approval.ErrInvalidInput` 走 `errUsage`；`storage.ErrNotInitialized` 走 `errPrecondition`；其余 `ErrNotFound` / `ErrNotPending` / `ErrNotApproved` / `ErrAlreadyConsumed` / `ErrInvalidated` / `ErrMismatch` 升为带 `kind="approval"` 的 `CodeInvalid`（M4 起统一由 `toCoded` 翻译，现行实现见 [internal/cli/cli.go:153-172](file://internal/cli/cli.go#L153-L172)）。
-- `kind="workflow"`：workflow 实例操作的拒绝（含 `WorkflowStepError` + `Resolve` 失败 + `Render` 错误）升为带 `kind="workflow"` 的 `CodeInvalid`（M4 起统一由 `toCoded` 翻译，现行实现见 [internal/cli/cli.go:153-172](file://internal/cli/cli.go#L153-L172)）。
+- `kind="approval"`：`approval.ErrInvalidInput` 走 `errUsage`；`storage.ErrNotInitialized` 走 `errPrecondition`；其余 `ErrNotFound` / `ErrNotPending` / `ErrNotApproved` / `ErrAlreadyConsumed` / `ErrInvalidated` / `ErrMismatch` 升为带 `kind="approval"` 的 `CodeInvalid`（M4 起统一由 `toCoded` 翻译，现行实现见 [internal/cli/cli.go:154-173](file://internal/cli/cli.go#L154-L173)）。
+- `kind="workflow"`：workflow 实例操作的拒绝（含 `WorkflowStepError` + `Resolve` 失败 + `Render` 错误）升为带 `kind="workflow"` 的 `CodeInvalid`（M4 起统一由 `toCoded` 翻译，现行实现见 [internal/cli/cli.go:154-173](file://internal/cli/cli.go#L154-L173)）。
 - `workflow check` 把策略文件的结构/类型/必填/交叉引用错误升为 `CodeInvalid`（同 `config check` 路径）。
 
 ### `CodePrecondition = 3`：前提不满足
 
-原本只承担"环境侧错误"（非 git 仓库、git 不在 PATH、CWD 不是仓库根）。M2 在同一退出码下聚合新用法（[internal/cli/cli.go:71](file://internal/cli/cli.go#L71)）：
+原本只承担"环境侧错误"（当时的清单是「非 git 仓库、git 不在 PATH、CWD 不是仓库根」；**本轮起 Git 不再是入场券**，见下）。M2 在同一退出码下聚合新用法（[internal/cli/cli.go:48](file://internal/cli/cli.go#L48)）：
 
 | 触发点 | 来源 | 错误提示 |
 |---|---|---|
-| 非 git 仓库 / git 不在 PATH / CWD 不在仓库根 | `project.PreconditionError` → `codedError{Code: CodePrecondition}` | `not a git repository` 等 |
-| `.devsys/` 不存在（`search` / `workitem get` / `workitem create` 等） | `storage.ErrNotInitialized` / `workitem.ErrNotFound` → `errPrecondition`（M4 起经 `toCoded` 翻译） | `project not initialized; run devsys init` 等 |
+| **~~非 git 仓库~~（本轮已废）** / 嵌套项目 / 目标不是目录 | `project.PreconditionError` → `codedError{Code: CodePrecondition}` | `.devsys/ already exists at <parent>; refusing to nest another project`、`<abs> is not a directory`（[internal/project/init.go:60-67](file://internal/project/init.go#L60-L67)） |
+| worktree 操作需要 git 而 git 不在 PATH | `workspace.ErrGitMissing` → `errPrecondition` | `git is not available on PATH`（[internal/workspace/git.go:12-14](file://internal/workspace/git.go#L12-L14)）；**目录工作区不需要 git**，`Ensure` / `List` 不再要求 |
+| `.devsys/` 不存在（`search` / `workitem get` / `workitem create` 等） | `storage.ErrNotInitialized` / `workitem.ErrNotFound` → `errPrecondition`（M4 起经 `toCoded` 翻译） | `project not initialized; run workloom init` 等 |
 | ~~workitem `--expect` 哈希与现状不符~~（M2 时归此类；**现行已改** `CodeInvalid = 4` / kind=`workitem`，见 [internal/app/workitem.go:475-480](file://internal/app/workitem.go#L475-L480)） | `expectedSnapshot` 返回 `version mismatch` | `version mismatch: work item changed since your read; rerun workitem get` |
-| `repair --apply` 收到的 `--confirm` 与重跑摘要不符 | `reconcile.ErrDigestMismatch` → `errPrecondition` | `confirmation digest does not match current state; run `devsys repair --dry-run` again` |
+| `repair --apply` 收到的 `--confirm` 与重跑摘要不符 | `reconcile.ErrDigestMismatch` → `errPrecondition` | `confirmation digest does not match current state; run `workloom repair --dry-run` again` |
 | workflow / approval / project 实例操作 `--expect` 不匹配（现行同改 `CodeInvalid = 4`，[internal/app/project.go:364](file://internal/app/project.go#L364)） | `expectedSnapshot` 返回 `version mismatch` | 同上 |
-| approval 操作时 `.devsys/` 不存在 | `storage.ErrNotInitialized` → `errPrecondition` | `project not initialized; run devsys init` 等 |
+| approval 操作时 `.devsys/` 不存在 | `storage.ErrNotInitialized` → `errPrecondition` | `project not initialized; run workloom init` 等 |
 
 第 3–5 行即方案 §15.4 "推断→确认→重写" / "快照必填" 闭环在退出码层面的体现：调用方必须重新读证据 / 重新干跑，才能继续动盘。脚本可以**只信 `code == 3` 重新发起一次 `get` / `dry-run`**。
 
@@ -269,27 +273,27 @@ M3 起又扩展：
 M3 新增触发：
 
 - `approval list --status` 取值不在 `{pending, approved, rejected}` → exit 2。
-- `workflow` / `approval` 子命令缺失 → stdout 打印用法文本 + **exit 0**（v0.1.4 起统一走 `familyUsage`，[internal/cli/cli.go:342-348](file://internal/cli/cli.go#L342-L348)）；子命令不在已知集合 → `errUsage` → exit 2。
+- `workflow` / `approval` 子命令缺失 → stdout 打印用法文本 + **exit 0**（v0.1.4 起统一走 `familyUsage`，[internal/cli/cli.go:345-351](file://internal/cli/cli.go#L345-L351)）；子命令不在已知集合 → `errUsage` → exit 2。
 
-M7.1–M7.4 在 `CodeUsage = 2` 与 `CodePrecondition = 3` / `CodeInternal = 1` 下扩展 `devsys workspace` 子命令面（视图域只读，与 §4.8 `worktree` 子命令独立）：
-- `devsys workspace` 子命令缺失 → stdout 打印用法 + **exit 0**（`familyUsage`）；子命令不在 `{view, build, serve}` → exit 2：`errUsage("unknown `devsys workspace` subcommand %q", rest[0])`（[internal/cli/workspace.go:24-38](file://internal/cli/workspace.go#L24-L38)）。
-- `devsys workspace view --limit N` 且 `N <= 0` → exit 2：`errUsage("`--limit` must be positive")`（[internal/cli/workspace.go:121-122](file://internal/cli/workspace.go#L121-L122)）。
-- `devsys workspace build` 不带 `--static`（M7.2 唯一支持的站点形态）→ exit 2：`errUsage("`devsys workspace build` needs --static (the only site form in M7.2)")`（[internal/cli/workspace.go:53-55](file://internal/cli/workspace.go#L53-L55)）；参数解析失败 / 含未知位置参数 → exit 2：`errUsage("`devsys workspace build --static [--out DIR] [--limit N]`")`（[internal/cli/workspace.go:50-52](file://internal/cli/workspace.go#L50-L52)）；非法 `--out` → exit 2：`errUsage("workspace build: %v", err)`（[internal/cli/workspace.go:63-66](file://internal/cli/workspace.go#L63-L66)）。
-- `devsys workspace serve --host <non-loopback>` 且未带 `--allow-remote` → exit 2：`errUsage("refusing non-loopback bind %q without --allow-remote ...")`（[internal/cli/workspace_serve.go:170-172](file://internal/cli/workspace_serve.go#L170-L172)）；`--port` 越界或带 `--json`/`--quiet` → exit 2（[internal/cli/workspace_serve.go:164-168](file://internal/cli/workspace_serve.go#L164-L168)）。
+M7.1–M7.4 在 `CodeUsage = 2` 与 `CodePrecondition = 3` / `CodeInternal = 1` 下扩展 `workloom workspace` 子命令面（视图域只读，与 §4.8 `worktree` 子命令独立）：
+- `workloom workspace` 子命令缺失 → stdout 打印用法 + **exit 0**（`familyUsage`）；子命令不在 `{view, build, serve}` → exit 2：`errUsage("unknown `workloom workspace` subcommand %q", rest[0])`（[internal/cli/workspace.go:24-38](file://internal/cli/workspace.go#L24-L38)）。
+- `workloom workspace view --limit N` 且 `N <= 0` → exit 2：`errUsage("`--limit` must be positive")`（[internal/cli/workspace.go:121-122](file://internal/cli/workspace.go#L121-L122)）。
+- `workloom workspace build` 不带 `--static`（M7.2 唯一支持的站点形态）→ exit 2：`errUsage("`workloom workspace build` needs --static (the only site form in M7.2)")`（[internal/cli/workspace.go:53-55](file://internal/cli/workspace.go#L53-L55)）；参数解析失败 / 含未知位置参数 → exit 2：`errUsage("`workloom workspace build --static [--out DIR] [--limit N]`")`（[internal/cli/workspace.go:50-52](file://internal/cli/workspace.go#L50-L52)）；非法 `--out` → exit 2：`errUsage("workspace build: %v", err)`（[internal/cli/workspace.go:63-66](file://internal/cli/workspace.go#L63-L66)）。
+- `workloom workspace serve --host <non-loopback>` 且未带 `--allow-remote` → exit 2：`errUsage("refusing non-loopback bind %q without --allow-remote ...")`（[internal/cli/workspace_serve.go:170-172](file://internal/cli/workspace_serve.go#L170-L172)）；`--port` 越界或带 `--json`/`--quiet` → exit 2（[internal/cli/workspace_serve.go:164-168](file://internal/cli/workspace_serve.go#L164-L168)）。
 
-`workspace view` / `build` / `serve` 不引入新退出码：成功（含 `trust.state = advisory_unlocked` / `pending_transaction`）→ 0；缺 `.devsys/`（`storage.ErrNotInitialized`）→ 3（precondition）；`view.Build` 其它失败 → 1（internal）；`workspace build` 写盘失败 → 1（`sitestatic.Build` 错误，[internal/cli/workspace.go:72-78](file://internal/cli/workspace.go#L72-L78)）；`workspace serve` 端口占用（EADDRINUSE，含 Windows Winsock 10048，`addrInUse` 判定）→ 3（`errPrecondition`，v0.1.4 起；[internal/cli/workspace_serve.go:183-191](file://internal/cli/workspace_serve.go#L183-L191)），其它 `net.Listen` 失败 / 服务运行期错误 → 1（`errInternal`）。**build/serve 沿用同一 0/1/2/3/4**，10/11 仍专属 `devsys knowledge status`（[internal/cli/cli.go:53-56](file://internal/cli/cli.go#L53-L56)）。
+`workspace view` / `build` / `serve` 不引入新退出码：成功（含 `trust.state = advisory_unlocked` / `pending_transaction`）→ 0；缺 `.devsys/`（`storage.ErrNotInitialized`）→ 3（precondition）；`view.Build` 其它失败 → 1（internal）；`workspace build` 写盘失败 → 1（`sitestatic.Build` 错误，[internal/cli/workspace.go:72-78](file://internal/cli/workspace.go#L72-L78)）；`workspace serve` 端口占用（EADDRINUSE，含 Windows Winsock 10048，`addrInUse` 判定）→ 3（`errPrecondition`，v0.1.4 起；[internal/cli/workspace_serve.go:183-191](file://internal/cli/workspace_serve.go#L183-L191)），其它 `net.Listen` 失败 / 服务运行期错误 → 1（`errInternal`）。**build/serve 沿用同一 0/1/2/3/4**，10/11 仍专属 `workloom knowledge status`（[internal/cli/cli.go:53-56](file://internal/cli/cli.go#L53-L56)）。
 
 ## 本批（M9 #336/#337 提交 362b637 / 7e08e3d）
 
 ### `CodeInvalid = 4` 新增触发点
 
-- `devsys doctor` 人类模式在 `InspectionReport.InvalidFiles` 非空时打 `INVALID  <path>  <err>` 行（[internal/cli/diagnostics.go:156-158](file://internal/cli/diagnostics.go#L156-L158)）；`--json` 模式 `rep.InvalidFiles` 嵌入信封同时 `exitWithCode(CodeInvalid)`（[internal/cli/diagnostics.go:131-139](file://internal/cli/diagnostics.go#L131-L139)、[internal/cli/diagnostics.go:170-174](file://internal/cli/diagnostics.go#L170-L174)）。健康项目（`InvalidFiles == nil`）→ exit 0。新增的 `reconcile.InvalidFile{Path, Err}`（[internal/reconcile/reconcile.go:107-114](file://internal/reconcile/reconcile.go#L107-L114)）是 doctor 的 1-based 错误载体：`String()` 返回 `path: err`，`InspectionReport.InvalidFiles` 字段 json/yaml tag `invalid_files,omitempty`。`readAllWorkitems` / `buildProposals` 在解码失败时**继续**扫其余文件，让一条坏 item 不遮蔽整棵树；doctor 的 `Note` 追加 `one or more work item files are unreadable…`。`RepairDryRun` 有 invalid 时拒绝 `cannot plan repairs: …`——保持 dry-run 的 fail-closed 承诺。
-- `devsys next` / `prime` / `session start` / `project status` 在 `len(doc.InvalidFiles) > 0` 时由 [internal/app/next.go:28-46](file://internal/app/next.go#L28-L46) 装配 `next.Report{}` + `Invalidf(KindInvalid, nil, "next: managed state unreadable: <file>: <err>…")`：消息体 ≤ 3 条 + `+N more`。`Class()` 归一 `KindInvalid` → `CodeInvalid = 4`。理由：基于不完整工作项列表出的 verdict 会推荐错误动作，按方案 §14.1 视为 untrusted state。
+- `workloom doctor` 人类模式在 `InspectionReport.InvalidFiles` 非空时打 `INVALID  <path>  <err>` 行（[internal/cli/diagnostics.go:156-158](file://internal/cli/diagnostics.go#L156-L158)）；`--json` 模式 `rep.InvalidFiles` 嵌入信封同时 `exitWithCode(CodeInvalid)`（[internal/cli/diagnostics.go:131-139](file://internal/cli/diagnostics.go#L131-L139)、[internal/cli/diagnostics.go:170-174](file://internal/cli/diagnostics.go#L170-L174)）。健康项目（`InvalidFiles == nil`）→ exit 0。新增的 `reconcile.InvalidFile{Path, Err}`（[internal/reconcile/reconcile.go:107-114](file://internal/reconcile/reconcile.go#L107-L114)）是 doctor 的 1-based 错误载体：`String()` 返回 `path: err`，`InspectionReport.InvalidFiles` 字段 json/yaml tag `invalid_files,omitempty`。`readAllWorkitems` / `buildProposals` 在解码失败时**继续**扫其余文件，让一条坏 item 不遮蔽整棵树；doctor 的 `Note` 追加 `one or more work item files are unreadable…`。`RepairDryRun` 有 invalid 时拒绝 `cannot plan repairs: …`——保持 dry-run 的 fail-closed 承诺。
+- `workloom next` / `prime` / `session start` / `project status` 在 `len(doc.InvalidFiles) > 0` 时由 [internal/app/next.go:28-46](file://internal/app/next.go#L28-L46) 装配 `next.Report{}` + `Invalidf(KindInvalid, nil, "next: managed state unreadable: <file>: <err>…")`：消息体 ≤ 3 条 + `+N more`。`Class()` 归一 `KindInvalid` → `CodeInvalid = 4`。理由：基于不完整工作项列表出的 verdict 会推荐错误动作，按方案 §14.1 视为 untrusted state。
 
 ### `CodeUsage = 2` 新增触发点
 
-- `devsys mcp serve` 在构造 cfg 后调 `mcp.VisibleTools(cfg)` 拿到 `0` 工具时走 `errUsage("mcp serve: %s %s %s no tools in tier %s; use --tier standard", word, strings.Join(quoted, ", "), verb, tier)`（单 profile 渲染为 `mcp serve: profile "session" has no tools in tier core; use --tier standard`）（[internal/cli/mcp.go:79-91](file://internal/cli/mcp.go#L79-L91)）——多 profile 时单复数与动词变 `profiles %s have`。零工具的 silent server 是最常见的隐藏陷阱（只读 profile + core tier），文案直接给出 `--tier standard` 出路。
-- `devsys workflow init --template <id>`（[internal/cli/cli.go:1207-1235](file://internal/cli/cli.go#L1207-L1235)）：usage 列四模板 `quick-fix / feature-development / architecture-change / reference-template`；未知 id / 已存在 → `Usagef`。`devsys project update --blueprint-artifact <artifact-id>`（fs.Visit 模式，[internal/cli/cli.go:709-752](file://internal/cli/cli.go#L709-L752)）：empty string clears；非空须 `record.KindArtifact.ValidID`（形态错 → `Usagef` / exit 2），未注册（`GetArtifact` ErrNotFound → `Preconditionf` / exit 3 + 出路 `devsys artifact register`）。
+- `workloom mcp serve` 在构造 cfg 后调 `mcp.VisibleTools(cfg)` 拿到 `0` 工具时走 `errUsage("mcp serve: %s %s %s no tools in tier %s; use --tier standard", word, strings.Join(quoted, ", "), verb, tier)`（单 profile 渲染为 `mcp serve: profile "session" has no tools in tier core; use --tier standard`）（[internal/cli/mcp.go:79-91](file://internal/cli/mcp.go#L79-L91)）——多 profile 时单复数与动词变 `profiles %s have`。零工具的 silent server 是最常见的隐藏陷阱（只读 profile + core tier），文案直接给出 `--tier standard` 出路。
+- `workloom workflow init --template <id>`（[internal/cli/cli.go:1210-1241](file://internal/cli/cli.go#L1210-L1241)）：usage 列四模板 `quick-fix / feature-development / architecture-change / reference-template`；未知 id / 已存在 → `Usagef`。`workloom project update --blueprint-artifact <artifact-id>`（fs.Visit 模式，[internal/cli/cli.go:719-745](file://internal/cli/cli.go#L719-L745)）：empty string clears；非空须 `record.KindArtifact.ValidID`（形态错 → `Usagef` / exit 2），未注册（`GetArtifact` ErrNotFound → `Preconditionf` / exit 3 + 出路 `workloom artifact register`）。
 
 ### 新增 schema 字段
 
@@ -297,7 +301,7 @@ M7.1–M7.4 在 `CodeUsage = 2` 与 `CodePrecondition = 3` / `CodeInternal = 1` 
 
 ## `--expect`：64-hex sha256 + fail-closed
 
-`workitem transition` / `claim` / `workflow start` / `step-complete` / `pause` / `resume` / `cancel` 的 `--expect` 是调用方持有的"工作项快照版本哈希"，由 `workitem get` 在 `--json` 模式下的 `version` 字段给出（[internal/cli/cli.go:881-889](file://internal/cli/cli.go#L881-L889)）。
+`workitem transition` / `claim` / `workflow start` / `step-complete` / `pause` / `resume` / `cancel` 的 `--expect` 是调用方持有的"工作项快照版本哈希"，由 `workitem get` 在 `--json` 模式下的 `version` 字段给出（[internal/cli/cli.go:884-892](file://internal/cli/cli.go#L884-L892)）。
 
 格式与解析：
 
@@ -309,26 +313,26 @@ M7.1–M7.4 在 `CodeUsage = 2` 与 `CodePrecondition = 3` / `CodeInternal = 1` 
 调用契约：
 
 ```sh
-VERSION=$(bin/devsys.exe --json workitem get WLM-0001 | jq -r .version)
-bin/devsys.exe workitem transition --id WLM-0001 --to in_progress \
+VERSION=$(bin/workloom.exe --json workitem get WLM-0001 | jq -r .version)
+bin/workloom.exe workitem transition --id WLM-0001 --to in_progress \
     --actor alice --reason "M3 kickoff" --expect "$VERSION"
 ```
 
 ## `--confirm`：确定性 digest + 摘要回放
 
-`devsys repair --apply --confirm <digest>` 的 `--confirm` 是 `repair --dry-run` 在 `--json` 模式下的 `plan.digest` 字段（[internal/cli/diagnostics.go:283-296](file://internal/cli/diagnostics.go#L283-L296)）。
+`workloom repair --apply --confirm <digest>` 的 `--confirm` 是 `repair --dry-run` 在 `--json` 模式下的 `plan.digest` 字段（[internal/cli/diagnostics.go:283-296](file://internal/cli/diagnostics.go#L283-L296)）。
 
 格式与判定（[internal/cli/diagnostics.go:238-258](file://internal/cli/diagnostics.go#L238-L258) + [internal/reconcile/reconcile.go:319-335](file://internal/reconcile/reconcile.go#L319-L335)）：
 
 - 编码：`reconcile.ComputeDigest(plan.Proposals)` 输出小写十六进制摘要；墙钟时间**不**参与计算，相同证据输入产生相同摘要。
-- 判定：`--apply` 内部**先**重跑 `reconcile.RepairDryRun` 取得当前 `Digest`，**再**用调用方的 `--confirm` 覆盖 `plan.Digest`，**再**调 `reconcile.RepairApply`；摘要不一致由 `reconcile.ErrDigestMismatch` 上浮为 `CodePrecondition = 3`，并提示 `run `devsys repair --dry-run` again`。
+- 判定：`--apply` 内部**先**重跑 `reconcile.RepairDryRun` 取得当前 `Digest`，**再**用调用方的 `--confirm` 覆盖 `plan.Digest`，**再**调 `reconcile.RepairApply`；摘要不一致由 `reconcile.ErrDigestMismatch` 上浮为 `CodePrecondition = 3`，并提示 `run `workloom repair --dry-run` again`。
 - 空摘要：`--apply` 在缺 `--confirm` 时直接返回 `CodeUsage = 2`，**不**进入 reconcile（[internal/cli/diagnostics.go:239-241](file://internal/cli/diagnostics.go#L239-L241)）。
 
 调用契约：
 
 ```sh
-DIGEST=$(bin/devsys.exe --json repair --dry-run --actor alice --reason "M3 audit" | jq -r .plan.digest)
-bin/devsys.exe repair --apply --confirm "$DIGEST" --actor alice --reason "M3 audit"
+DIGEST=$(bin/workloom.exe --json repair --dry-run --actor alice --reason "M3 audit" | jq -r .plan.digest)
+bin/workloom.exe repair --apply --confirm "$DIGEST" --actor alice --reason "M3 audit"
 ```
 
 ## 写命令必填 `--actor` 与 `--reason`
@@ -337,20 +341,20 @@ bin/devsys.exe repair --apply --confirm "$DIGEST" --actor alice --reason "M3 aud
 
 | 命令 | 必填参数 | 来源 |
 |---|---|---|
-| `workitem create` | `--title` `--actor` `--reason`（`--prefix` 可选） | [internal/cli/cli.go:893-906](file://internal/cli/cli.go#L893-L906) |
-| `workitem transition` | `--id` `--to` `--actor` `--reason` `--expect` | [internal/cli/cli.go:959-984](file://internal/cli/cli.go#L959-L984) |
-| `workitem claim` | `--id` `--owner` `--reason`（`--expect` 可选但建议必带） | [internal/cli/cli.go:985-1018](file://internal/cli/cli.go#L985-L1018) |
+| `workitem create` | `--title` `--actor` `--reason`（`--prefix` 可选） | [internal/cli/cli.go:896-909](file://internal/cli/cli.go#L896-L909) |
+| `workitem transition` | `--id` `--to` `--actor` `--reason` `--expect` | [internal/cli/cli.go:963-987](file://internal/cli/cli.go#L963-L987) |
+| `workitem claim` | `--id` `--owner` `--reason`（`--expect` 可选但建议必带） | [internal/cli/cli.go:989-1021](file://internal/cli/cli.go#L989-L1021) |
 | `recover` | `--actor` `--reason` | [internal/cli/diagnostics.go:183-190](file://internal/cli/diagnostics.go#L183-L190) |
 | `repair --dry-run` | `--actor` `--reason` | [internal/cli/diagnostics.go:223-232](file://internal/cli/diagnostics.go#L223-L232) |
 | `repair --apply --confirm <digest>` | `--actor` `--reason` `--confirm` | [internal/cli/diagnostics.go:223-232](file://internal/cli/diagnostics.go#L223-L232) |
-| `workflow start` | `--id` `--policy` `--actor` `--reason` `--expect`（租约活跃时 `--owner` `--token`） | [internal/cli/cli.go:1373-1400](file://internal/cli/cli.go#L1373-L1400) |
-| `workflow step-complete` | `--id` `--actor` `--reason` `--expect`（`--to` 可选；租约活跃时 `--owner` `--token`） | [internal/cli/cli.go:1419-1449](file://internal/cli/cli.go#L1419-L1449) |
-| `workflow pause` / `resume` / `cancel` | `--id` `--actor` `--reason` `--expect`（租约活跃时 `--owner` `--token`） | [internal/cli/cli.go:1450-1480](file://internal/cli/cli.go#L1450-L1480) |
-| `approval request` | `--id` `--stage`（`scope=stage_gate`） `--actor` `--reason`（`--scope`、`--run` 可选） | [internal/cli/cli.go:1590-1616](file://internal/cli/cli.go#L1590-L1616) |
-| `approval approve` | `--id` `--by`（`--comment` 可选） | [internal/cli/cli.go:1618-1645](file://internal/cli/cli.go#L1618-L1645) |
-| `approval reject` | `--id` `--by` `--reason`（`scope=stage_gate` 时随状态变更走 `rejectStageGate`） | [internal/cli/cli.go:1618-1667](file://internal/cli/cli.go#L1618-L1667) |
+| `workflow start` | `--id` `--policy` `--actor` `--reason` `--expect`（租约活跃时 `--owner` `--token`） | [internal/cli/cli.go:1376-1420](file://internal/cli/cli.go#L1376-L1420) |
+| `workflow step-complete` | `--id` `--actor` `--reason` `--expect`（`--to` 可选；租约活跃时 `--owner` `--token`） | [internal/cli/cli.go:1422-1452](file://internal/cli/cli.go#L1422-L1452) |
+| `workflow pause` / `resume` / `cancel` | `--id` `--actor` `--reason` `--expect`（租约活跃时 `--owner` `--token`） | [internal/cli/cli.go:1453-1482](file://internal/cli/cli.go#L1453-L1482) |
+| `approval request` | `--id` `--stage`（`scope=stage_gate`） `--actor` `--reason`（`--scope`、`--run` 可选） | [internal/cli/cli.go:1593-1619](file://internal/cli/cli.go#L1593-L1619) |
+| `approval approve` | `--id` `--by`（`--comment` 可选） | [internal/cli/cli.go:1621-1648](file://internal/cli/cli.go#L1621-L1648) |
+| `approval reject` | `--id` `--by` `--reason`（`scope=stage_gate` 时随状态变更走 `rejectStageGate`） | [internal/cli/cli.go:1621-1670](file://internal/cli/cli.go#L1621-L1670) |
 
-## `devsys next` 判定输出
+## `workloom next` 判定输出
 
 [internal/next/evaluate.go](file://internal/next/evaluate.go) 输出 `Report{Verdict, Reasons, Risks, Fixes, Next}`：
 
@@ -363,7 +367,7 @@ bin/devsys.exe repair --apply --confirm "$DIGEST" --actor alice --reason "M3 aud
 
 ## JSON 错误结构（`--json`）
 
-`render` 在 `--json` 时输出（[internal/cli/cli.go:352-384](file://internal/cli/cli.go#L352-L384)）：
+`render` 在 `--json` 时输出（[internal/cli/cli.go:355-386](file://internal/cli/cli.go#L355-L386)）：
 
 ```json
 {
@@ -381,7 +385,7 @@ bin/devsys.exe repair --apply --confirm "$DIGEST" --actor alice --reason "M3 aud
 
 `kind` 取值与 `codedError.kind` 一致：`"usage"` / `"precondition"` / `"invalid"` / `"internal"`。M2 起 workitem 领域错误的 `kind="workitem"`，M3 起又扩 `"approval"` / `"workflow"`。**调用脚本应当只信 `code` 字段做分支**，不要解析 `message`。
 
-`devsys --json search <keyword>` 的成功载荷则是（[internal/cli/diagnostics.go:45-57](file://internal/cli/diagnostics.go#L45-L57)）：
+`workloom --json search <keyword>` 的成功载荷则是（[internal/cli/diagnostics.go:45-57](file://internal/cli/diagnostics.go#L45-L57)）：
 
 ```json
 {
@@ -393,7 +397,7 @@ bin/devsys.exe repair --apply --confirm "$DIGEST" --actor alice --reason "M3 aud
 }
 ```
 
-`devsys --json doctor` / `repair --dry-run` / `workflow check` / `approval list` / `next` 分别输出 `InspectionReport` / `Plan` / `{ok, policies[], warnings[]}` / `{ok, approvals[]}` / `{ok, readiness, …}`。
+`workloom --json doctor` / `repair --dry-run` / `workflow check` / `approval list` / `next` 分别输出 `InspectionReport` / `Plan` / `{ok, policies[], warnings[]}` / `{ok, approvals[]}` / `{ok, readiness, …}`。
 ## M4 错误分类：`*app.Error` 与 `Class()`
 
 M4 把所有业务错误收口到 `internal/app/app.go` 的 `*app.Error` 类型：
@@ -447,7 +451,7 @@ func (e *Error) Class() string {
 
 ### CLI 翻译：`toCoded`
 
-[internal/cli/cli.go:153-172](file://internal/cli/cli.go#L153-L172)：
+[internal/cli/cli.go:154-173](file://internal/cli/cli.go#L154-L173)：
 
 ```go
 func toCoded(err error) *codedError {
@@ -511,7 +515,7 @@ type toolError struct {
 只信 `code` 字段：
 
 - `usage` (exit 2)：修正参数。
-- `precondition` (exit 3)：运行 `devsys init` / `devsys recover` / 重新 `get` 取新 version。
+- `precondition` (exit 3)：运行 `workloom init` / `workloom recover` / 重新 `get` 取新 version。
 - `internal` (exit 1)：重试或上报。
 - `invalid` (exit 4)：按 `problems[]` 修复受管状态，或按 `message` 处理拒绝原因（门禁未满足、审批失效等）。
 
@@ -525,11 +529,11 @@ type toolError struct {
 - 列表子命令：`workitem list` / `decision list` / `finding list` / `event list` / `artifact list` / `run list` / `approval list` / `workflow list` 都支持 `--jsonl`。
 - 详情子命令（`get` / `create` / `update` 等）只支持 `--json`，不支持 `--jsonl`。
 
-实现：[internal/cli/cli.go:177-186](file://internal/cli/cli.go#L177-L186) 的 `writeJSONL[T]` 泛型。
+实现：[internal/cli/cli.go:178-186](file://internal/cli/cli.go#L178-L186) 的 `writeJSONL[T]` 泛型。
 
 ## M4 知识层退出码（10/11 预留）
 
-CLI 注释 [internal/cli/cli.go:34-45](file://internal/cli/cli.go#L34-L45)：
+CLI 注释 [internal/cli/cli.go:44-56](file://internal/cli/cli.go#L44-L56)：
 
 ```go
 // The knowledge layer reserves its own 0/10/11 convention (0 fresh, 10 stale,
@@ -543,7 +547,7 @@ const (
 )
 ```
 
-M4 阶段 `devsys knowledge status` 仍然返回 `CodeOK = 0`（与 `app.Error{Kind: precondition}` 同源，仅语义占位）。M5 达到时 `CodeKnowledgeStale = 10` / `CodeKnowledgeMissing = 11` 启用。
+M4 阶段 `workloom knowledge status` 仍然返回 `CodeOK = 0`（与 `app.Error{Kind: precondition}` 同源，仅语义占位）。M5 达到时 `CodeKnowledgeStale = 10` / `CodeKnowledgeMissing = 11` 启用。
 
 ## 与存储层的边界
 
@@ -582,42 +586,57 @@ M6 在 `CodePrecondition = 3` 与 `CodeInvalid = 4` 下扩展执行层错误语�
 
 | 触发点 | 来源 | 错误分类 |
 |---|---|---|
-| `devsys worktree prepare` 时 git 不可用 | `workspace.ErrGitMissing` → `app.Preconditionf` | `CodePrecondition` |
-| `devsys worktree prepare --path` 越界（不在配置根内） | `workspace.Validate` → `app.Preconditionf` | `CodePrecondition` |
-| `devsys run exec --harness <unknown>` | `harness.ByName` 返回 `false` → `app.Usagef` | `CodeUsage` |
-| `devsys run exec --harness codex` 但 codex 未安装 | `harness.Availability.Installed == false` → `app.Preconditionf` | `CodePrecondition` |
-| `devsys run exec --timeout 30s` 到期 | `harness.Result.TimedOut == true` → run 进 `timeout` 终态 | run 终态（不是 exit code） |
-| `devsys run verify` `Advanced=false` 且未 `--force` | `app.refuseCompletion` → run 进 `failed`，workitem 进 `review` | run 终态（不是 exit code） |
-| `devsys run complete` 验证未 advance | `app.RunFinish` 内部升 `*app.Error{Kind: workflow}` | `CodeInvalid`（kind="workflow"） |
-| `devsys run fail` / `cancel` 已经终态 | `app.isTerminalRun` → `*app.Error{Kind: workflow}` | `CodeInvalid` |
-| `devsys dispatch --once` 无候选 dispatchable | `app.Dispatch` 返回 `Report{Started: nil}` + notice | exit 0（不是错误） |
-| `devsys dispatch --watch` Ctrl-C | `signal.NotifyContext` cancel | exit 0 |
+| `workloom worktree prepare` 时 git 不可用 | `workspace.ErrGitMissing` → `app.Preconditionf` | `CodePrecondition` |
+| `workloom worktree prepare --path` 越界（不在配置根内） | `workspace.Validate` → `app.Preconditionf` | `CodePrecondition` |
+| `workloom run exec --harness <unknown>` | `harness.ByName` 返回 `false` → `app.Usagef` | `CodeUsage` |
+| `workloom run exec --harness codex` 但 codex 未安装 | `harness.Availability.Installed == false` → `app.Preconditionf` | `CodePrecondition` |
+| `workloom run exec --timeout 30s` 到期 | `harness.Result.TimedOut == true` → run 进 `timeout` 终态 | run 终态（不是 exit code） |
+| `workloom run verify` `Advanced=false` 且未 `--force` | `app.refuseCompletion` → run 进 `failed`，workitem 进 `review` | run 终态（不是 exit code） |
+| `workloom run complete` 验证未 advance | `app.RunFinish` 内部升 `*app.Error{Kind: workflow}` | `CodeInvalid`（kind="workflow"） |
+| `workloom run fail` / `cancel` 已经终态 | `app.isTerminalRun` → `*app.Error{Kind: workflow}` | `CodeInvalid` |
+| `workloom dispatch --once` 无候选 dispatchable | `app.Dispatch` 返回 `Report{Started: nil}` + notice | exit 0（不是错误） |
+| `workloom dispatch --watch` Ctrl-C | `signal.NotifyContext` cancel | exit 0 |
 
 | **P1** `mcp serve --tier <unknown>` | `mcp.ParseTier` 失败（[internal/mcp/server.go:47-60](file://internal/mcp/server.go#L47-L60)）→ `app.Usagef` | `CodeUsage` |
-| **c150007** 写命令同时给 `--expect` 与 `--latest` | `checkLatest`（[internal/cli/cli.go:587-592](file://internal/cli/cli.go#L587-L592)）→ `errUsage` | `CodeUsage` |
+| **c150007** 写命令同时给 `--expect` 与 `--latest` | `checkLatest`（[internal/cli/cli.go:590-596](file://internal/cli/cli.go#L590-L596)）→ `errUsage` | `CodeUsage` |
 | **d726ed4** `workitem <cmd> --id <malformed>`（路径穿越 / 多行 / 含换行） | `app.storeError`（[internal/app/workitem.go:447-484](file://internal/app/workitem.go#L447-L484)）`workitem.ReadSnapshot` id 形状校验 → `app.Usagef("invalid workitem id <id>")` | `CodeUsage` |
-| **b89ffae** `claim` 时 `config.yaml` 非法 / 默认策略缺失 | `policyForWorkItem`（[internal/app/workitem.go:505-516](file://internal/app/workitem.go#L505-L516)）→ `fmt.Errorf("config.yaml is invalid: ...; claims stay blocked until the file is fixed (\`devsys config check\`)")` 经 `app.Classify` 包装 | `CodeInvalid` |
+| **b89ffae** `claim` 时 `config.yaml` 非法 / 默认策略缺失 | `policyForWorkItem`（[internal/app/workitem.go:505-516](file://internal/app/workitem.go#L505-L516)）→ `fmt.Errorf("config.yaml is invalid: ...; claims stay blocked until the file is fixed (\`workloom config check\`)")` 经 `app.Classify` 包装 | `CodeInvalid` |
 
 ## M7.1–M7.4 退出码语义扩展（视图域）
 
 | 触发点 | 来源 | 错误分类 |
 |---|---|---|
-| `devsys workspace` 子命令缺失 | `runWorkspace` `familyUsage` → stdout 用法 + exit 0（[internal/cli/workspace.go:24-38](file://internal/cli/workspace.go#L24-38)） | `CodeOK = 0`（v0.1.4 起；未知子命令才 → `CodeUsage = 2`） |
-| `devsys workspace view` 参数解析失败 / 含未知位置参数 | `runWorkspaceView` `errUsage`（[internal/cli/workspace.go:118-119](file://internal/cli/workspace.go#L118-L119)） | `CodeUsage = 2`（kind="usage"） |
-| `devsys workspace view --limit N` 且 `N <= 0` | `runWorkspaceView` `errUsage`（[internal/cli/workspace.go:121-122](file://internal/cli/workspace.go#L121-L122)） | `CodeUsage = 2`（kind="usage"） |
-| `devsys workspace view` 且 `.devsys/` 不存在 | `view.Build` 返回 `storage.ErrNotInitialized` → `errPrecondition`（[internal/cli/workspace.go:129-132](file://internal/cli/workspace.go#L129-L132)） | `CodePrecondition = 3`（kind="precondition"） |
+| `workloom workspace` 子命令缺失 | `runWorkspace` `familyUsage` → stdout 用法 + exit 0（[internal/cli/workspace.go:24-38](file://internal/cli/workspace.go#L24-38)） | `CodeOK = 0`（v0.1.4 起；未知子命令才 → `CodeUsage = 2`） |
+| `workloom workspace view` 参数解析失败 / 含未知位置参数 | `runWorkspaceView` `errUsage`（[internal/cli/workspace.go:118-119](file://internal/cli/workspace.go#L118-L119)） | `CodeUsage = 2`（kind="usage"） |
+| `workloom workspace view --limit N` 且 `N <= 0` | `runWorkspaceView` `errUsage`（[internal/cli/workspace.go:121-122](file://internal/cli/workspace.go#L121-L122)） | `CodeUsage = 2`（kind="usage"） |
+| `workloom workspace view` 且 `.devsys/` 不存在 | `view.Build` 返回 `storage.ErrNotInitialized` → `errPrecondition`（[internal/cli/workspace.go:129-132](file://internal/cli/workspace.go#L129-L132)） | `CodePrecondition = 3`（kind="precondition"） |
 | `view.Build` 其它失败（inspect / read / decode） | `errInternal`（[internal/cli/workspace.go:133-133](file://internal/cli/workspace.go#L133-L133)） | `CodeInternal = 1`（kind="internal"） |
-| `devsys workspace build` 不带 `--static` | `runWorkspaceBuild` `errUsage`（[internal/cli/workspace.go:53-55](file://internal/cli/workspace.go#L53-L55)） | `CodeUsage = 2`（kind="usage"） |
-| `devsys workspace build` 参数解析失败 / 含未知位置参数 | `errUsage`（[internal/cli/workspace.go:50-52](file://internal/cli/workspace.go#L50-L52)） | `CodeUsage = 2`（kind="usage"） |
-| `devsys workspace build --out DIR` 非法 | `sitestatic.ResolveOut` 失败 → `errUsage`（[internal/cli/workspace.go:63-66](file://internal/cli/workspace.go#L63-L66)） | `CodeUsage = 2`（kind="usage"） |
-| `devsys workspace build` 且 `.devsys/` 不存在 | `view.Build` 返回 `storage.ErrNotInitialized` → `errPrecondition`（[internal/cli/workspace.go:68-71](file://internal/cli/workspace.go#L68-L71)） | `CodePrecondition = 3`（kind="precondition"） |
+| `workloom workspace build` 不带 `--static` | `runWorkspaceBuild` `errUsage`（[internal/cli/workspace.go:53-55](file://internal/cli/workspace.go#L53-L55)） | `CodeUsage = 2`（kind="usage"） |
+| `workloom workspace build` 参数解析失败 / 含未知位置参数 | `errUsage`（[internal/cli/workspace.go:50-52](file://internal/cli/workspace.go#L50-L52)） | `CodeUsage = 2`（kind="usage"） |
+| `workloom workspace build --out DIR` 非法 | `sitestatic.ResolveOut` 失败 → `errUsage`（[internal/cli/workspace.go:63-66](file://internal/cli/workspace.go#L63-L66)） | `CodeUsage = 2`（kind="usage"） |
+| `workloom workspace build` 且 `.devsys/` 不存在 | `view.Build` 返回 `storage.ErrNotInitialized` → `errPrecondition`（[internal/cli/workspace.go:68-71](file://internal/cli/workspace.go#L68-L71)） | `CodePrecondition = 3`（kind="precondition"） |
 | `view.Build` 其它失败 / `sitestatic.Build` 写盘失败 | `errInternal`（[internal/cli/workspace.go:72-78](file://internal/cli/workspace.go#L72-L78)） | `CodeInternal = 1`（kind="internal"） |
-| `devsys workspace serve --host <non-loopback>` 无 `--allow-remote` | `runWorkspaceServe` `errUsage`（[internal/cli/workspace_serve.go:170-172](file://internal/cli/workspace_serve.go#L170-L172)） | `CodeUsage = 2`（kind="usage"） |
-| `devsys workspace serve --port` 越界 / 带 `--json` / `--quiet` / `--limit N<=0` | `errUsage`（[internal/cli/workspace_serve.go:161-168](file://internal/cli/workspace_serve.go#L161-L168)） | `CodeUsage = 2`（kind="usage"） |
-| `devsys workspace serve` 且 `.devsys/` 不存在 | `view.Build` 返回 `storage.ErrNotInitialized` → `errPrecondition`（[internal/cli/workspace_serve.go:177-181](file://internal/cli/workspace_serve.go#L177-L181)） | `CodePrecondition = 3`（kind="precondition"） |
+| `workloom workspace serve --host <non-loopback>` 无 `--allow-remote` | `runWorkspaceServe` `errUsage`（[internal/cli/workspace_serve.go:170-172](file://internal/cli/workspace_serve.go#L170-L172)） | `CodeUsage = 2`（kind="usage"） |
+| `workloom workspace serve --port` 越界 / 带 `--json` / `--quiet` / `--limit N<=0` | `errUsage`（[internal/cli/workspace_serve.go:161-168](file://internal/cli/workspace_serve.go#L161-L168)） | `CodeUsage = 2`（kind="usage"） |
+| `workloom workspace serve` 且 `.devsys/` 不存在 | `view.Build` 返回 `storage.ErrNotInitialized` → `errPrecondition`（[internal/cli/workspace_serve.go:177-181](file://internal/cli/workspace_serve.go#L177-L181)） | `CodePrecondition = 3`（kind="precondition"） |
 | `net.Listen` 端口占用（EADDRINUSE / Winsock 10048） | `addrInUse` 判定 → `errPrecondition`（[internal/cli/workspace_serve.go:183-191](file://internal/cli/workspace_serve.go#L183-L191)） | `CodePrecondition = 3`（kind="precondition"） |
 | 服务运行期错误 / 其它 `net.Listen` 失败 | `errInternal`（[internal/cli/workspace_serve.go:183-207](file://internal/cli/workspace_serve.go#L183-L207)） | `CodeInternal = 1`（kind="internal"） |
 | 成功（含 `trust.state = advisory_unlocked` / `pending_transaction`） | `renderWorkspaceView` / `Build` 写 stdout，`render` 返 0 | `CodeOK = 0` |
 | 成功且 `knowledge.status == "missing"` | 同上，但 `view.Knowledge` 段降级提示 | `CodeOK = 0`（`missing` 是事实标签，不是失败） |
 
-`advisory_unlocked`（无锁文件、未跑过写命令）→ `view.Build` 仍渲染业务事实，`Trust.State` 写进 `view.Model.trust.state` 与人类输出 `trust: advisory_unlocked — <note>` 行；**不**算作错误。`pending_transaction` → `view.Build` 进入 §15.4 路径：`emptyBusiness` 抹掉业务事实，`Progress.Readiness` 走 `pendingReadiness`（`next.Evaluate` FAIL + `recoverCommand`），但**仍**退出码 0——`trust` 字段已经告诉调用方状态不可信。10/11 仍只承载 `devsys knowledge status`（[internal/cli/cli.go:53-57](file://internal/cli/cli.go#L53-L57)）；视图层把 `view.Knowledge.Status` 用 `KnowledgeFresh / Stale / Missing / Unavailable` 字符串承载（[internal/view/view.go:46-51](file://internal/view/view.go#L46-L51)），但不映射到退出码。
+`advisory_unlocked`（无锁文件、未跑过写命令）→ `view.Build` 仍渲染业务事实，`Trust.State` 写进 `view.Model.trust.state` 与人类输出 `trust: advisory_unlocked — <note>` 行；**不**算作错误。`pending_transaction` → `view.Build` 进入 §15.4 路径：`emptyBusiness` 抹掉业务事实，`Progress.Readiness` 走 `pendingReadiness`（`next.Evaluate` FAIL + `recoverCommand`），但**仍**退出码 0——`trust` 字段已经告诉调用方状态不可信。10/11 仍只承载 `workloom knowledge status`（[internal/cli/cli.go:53-57](file://internal/cli/cli.go#L53-L57)）；视图层把 `view.Knowledge.Status` 用 `KnowledgeFresh / Stale / Missing / Unavailable` 字符串承载（[internal/view/view.go:46-51](file://internal/view/view.go#L46-L51)），但不映射到退出码。
+
+## 本批（v0.1.9，ca58d27→19b9149）
+
+### Git 可选能力对错误契约的影响（cc5de1f）
+
+- 退出码 3 里「非 git 仓库」这一用法**作废**：`init` 的项目身份是含 `.devsys/` 的目录，允许非 Git 目录与 git 子目录，且**禁止**自动 `git init`（[internal/project/init.go:40-46](file://internal/project/init.go#L40-L46)）。剩下的 `project.PreconditionError` 只有两条：目标不是目录、祖先已有 `.devsys/`（[internal/project/init.go:60-67](file://internal/project/init.go#L60-L67)）——错误文本 `<abs> is not a directory`、`.devsys/ already exists at <parent>; refusing to nest another project`。
+- `workspace.ErrGitMissing`（`git is not available on PATH`）**只在需要 git 的路径**上升为 exit 3：worktree 形态的工作区（`ensureWorktree` 内的 `requireGit`）。目录工作区（`ensureDirectory`）与 `List` 都不再要求 git（[internal/workspace/workspace.go:73-77](file://internal/workspace/workspace.go#L73-L77)、[internal/workspace/workspace.go:318-330](file://internal/workspace/workspace.go#L318-L330)）。
+- `run verify` / `run complete` 对非 Git 项目或目录工作区**不报错**：`CompletionCheck{Advanced:false, Skipped:true, Reason:"git completion check is not applicable"}`；`Skipped` 不是「已验证」（[internal/app/runverify.go:19-56](file://internal/app/runverify.go#L19-L56)）。
+- `wire --check` 的 git 行在 git 缺失时是 `OK: true` + 能力说明——只读检查不因可选取能失败（[internal/app/wirecheck.go:49-54](file://internal/app/wirecheck.go#L49-L54)）。
+
+### 新增命令面的退出码
+
+- **`workloom setup`**（[internal/cli/setup.go:17-58](file://internal/cli/setup.go#L17-L58)）：未知 template → `Usagef` / exit 2；`init` / 起手工作流 / `wire` 失败 → 原样透传（多为 1 或 3）；`config check` 有问题 → `Invalidf(KindInvalid, problems, …)` / exit 4；`wire --check` 自检不过 → `Preconditionf("setup wrote state that wire --check still rejects: …")` / exit 3；doctor 有不可读文件 → `Invalidf(KindInvalid, nil, "unreadable managed files (%d)")` / exit 4（[internal/app/setup.go:43-198](file://internal/app/setup.go#L43-L198)）。蓝图未声明 / MCP 未注册**不是**错误：只在 `steps` 与 `next` 里报告。
+- **`workloom mcp install`**（[internal/cli/mcp.go:54-113](file://internal/cli/mcp.go#L54-L113)）：`--scope` 非法 → `Usagef("unknown scope %q (expected user or project)")`；`--client` 非法 → `Usagef("unknown client %q (expected codex, claude or opencode)")`；`--apply` 与 `--dry-run` 同时给 → exit 2；单客户端配置不可解析（非严格 JSON / Codex 行内 `mcp_servers` 表）**不算致命**——该客户端记 `status="failed"` + detail 指向 `workloom wire --print-mcp`，其余客户端照常处理（[internal/app/mcpinstall.go:63-162](file://internal/app/mcpinstall.go#L63-L162)）。人类 mark：`installed`/`planned` → `v`，`skipped` → `=`，`not-detected` → `?`，`failed` → `x`（[internal/cli/mcp.go:118-127](file://internal/cli/mcp.go#L118-L127)）。
+- 两条命令的成功/失败信封与既有约定一致：`--json` 单文档信封（`ok` + 数据，失败加 `error{code,kind,message}`，走 stderr 语义由 `render`/`exitWithCode` 承载）；**不**使用 `--jsonl`。

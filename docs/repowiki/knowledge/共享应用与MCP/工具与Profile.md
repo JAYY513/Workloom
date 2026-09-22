@@ -27,10 +27,16 @@ triggers:
   - project_update blueprint_artifact_id
   - empty tools refuse
   - mcp serve 0 tools
-description: "MCP 服务端的四种 profile（session / executor / reviewer / admin）暴露规则、默认组合与 `visible` 的注册期过滤语义；本批（#301）在 profile 之上叠加 **tier 档**——`TierCore` 是默认 CLI `--tier core` / 缺省值（20 项「日常子集」工具），`TierStandard` 含 profile 全量（66 项工具面），二者与 profile 合取（visible(spec.profiles, cfg.Profiles) && visibleTier(spec.tier, tier)）。`toolSpec` 新增 `tier` 字段（空 = standard，显式 `TierCore` 才进 core 档）；`server.go` 新增 `ParseTier`（拒绝未知名）/ `tierLevel`（core=0 / 其它=1）/ `visibleTier`；`tools_health.go` 的 `health` 响应回传当前 `tier`；CLI `devsys mcp serve --tier core|standard` 直接转 `mcp.ParseTier`。`project_blueprint_get`（session 档 / standard tier）补注册入口由 `tools.go` 与 `tools_project.go:56` 共同组成，未声明蓝图时 `artifact: null`。本批（#336/#337，project_update 蓝图字段+mcp 启动前过滤）：project_update 输入增 blueprint_artifact_id（empty string clears，id must already be registered）；internal/mcp/server.go 新导出 VisibleTools(cfg) []string，让 CLI mcp serve 在 0 工具时拒绝启动（exit 2，提示 --tier standard），是注册期过滤之外的"启用前"二次检查。"
+  - workloom mcp install
+  - 注册名 devsys
+  - mcp serve --profile session,executor --tier core
+  - run_verify skipped
+  - workloom setup 不注册 MCP
+description: "MCP 服务端的四种 profile（session / executor / reviewer / admin）暴露规则、默认组合与 `visible` 的注册期过滤语义；本批（#301）在 profile 之上叠加 **tier 档**——`TierCore` 是默认 CLI `--tier core` / 缺省值（20 项「日常子集」工具），`TierStandard` 含 profile 全量（66 项工具面），二者与 profile 合取（visible(spec.profiles, cfg.Profiles) && visibleTier(spec.tier, tier)）。`toolSpec` 新增 `tier` 字段（空 = standard，显式 `TierCore` 才进 core 档）；`server.go` 新增 `ParseTier`（拒绝未知名）/ `tierLevel`（core=0 / 其它=1）/ `visibleTier`；`tools_health.go` 的 `health` 响应回传当前 `tier`；CLI `workloom mcp serve --tier core|standard` 直接转 `mcp.ParseTier`。`project_blueprint_get`（session 档 / standard tier）补注册入口由 `tools.go` 与 `tools_project.go:56` 共同组成，未声明蓝图时 `artifact: null`。本批（#336/#337，project_update 蓝图字段+mcp 启动前过滤）：project_update 输入增 blueprint_artifact_id（empty string clears，id must already be registered）；internal/mcp/server.go 新导出 VisibleTools(cfg) []string，让 CLI mcp serve 在 0 工具时拒绝启动（exit 2，提示 --tier standard），是注册期过滤之外的\"启用前\"二次检查。；本轮（ca58d27→19b9149，setup/mcp install 与注册名）：workloom mcp install 写入的条目统一调用 mcp serve --profile session,executor --tier core（与 DefaultProfiles / DefaultTier 默认一致），目标客户端 codex / claude / opencode 支持 user / project scope；注册名保持 devsys（二进制改名 workloom，配置键仍是 mcp_servers.devsys / mcpServers.devsys / mcp.devsys）；workloom setup 不注册 MCP（只报告 mcp 行）；MCP run_verify 的返回体随 CompletionCheck 增 skipped 字段（非 Git 项目 / 目录工作区），Advanced 仍为 false。"
 generated: true
-source_commit: 690b294
+source_commit: 19b9149
 generator: repowiki-gen
+---
 
 # 工具与 Profile · 共享应用与 MCP
 
@@ -176,7 +182,7 @@ tier 维度的矩阵（core 藏 `workitem_update` / `workflow_step_complete` / `
 - 拆分 `,` → 逐项 `TrimSpace`、空项报错、未知名字报错、去重后返回。
 - 错误原文：`profile list %q contains an empty name` / `unknown profile %q (expected session, executor, reviewer or admin)`。
 
-调用方在 CLI 层 (`devsys mcp serve --profile session,executor`) 直接看到错误；MCP 端 `Run` 返回 error 并被 `runMCPServe` 转译为 `errInternal`。
+调用方在 CLI 层 (`workloom mcp serve --profile session,executor`) 直接看到错误；MCP 端 `Run` 返回 error 并被 `runMCPServe` 转译为 `errInternal`。
 
 ## `ParseTier` 拒绝策略（本批新增）
 
@@ -186,7 +192,7 @@ tier 维度的矩阵（core 藏 `workitem_update` / `workflow_step_complete` / `
 - 字面量只接受 `core` / `standard`，未知名直接报错。
 - 错误原文：`unknown tier %q (expected core or standard)`。
 
-CLI 入口：`devsys mcp serve --tier core` / `--tier standard`（[internal/cli/mcp.go:43-73](file://internal/cli/mcp.go#L43-L73)）。CLI 层只把字面量原样传给 `mcp.ParseTier`，不重复实现 tier 解析。
+CLI 入口：`workloom mcp serve --tier core` / `--tier standard`（[internal/cli/mcp.go:133-160](file://internal/cli/mcp.go#L133-L160)）。CLI 层只把字面量原样传给 `mcp.ParseTier`，不重复实现 tier 解析。
 
 `DefaultTier()` 与 `DefaultProfiles()` 互相独立——`DefaultProfiles()` 是 `session + executor`，`DefaultTier()` 是 `core`（最小可用子集）。CLI 不显式 `--tier` 也不显式 `--profile` 时，两层默认同时生效，结果就是「core 档 + session/executor 全暴露」的常用组合。
 
@@ -196,19 +202,32 @@ CLI 入口：`devsys mcp serve --tier core` / `--tier standard`（[internal/cli/
 `internal/mcp/tools_project.go:127-150` 的 `projectUpdateInput` 增 `BlueprintArtifactID *string`（`json:"blueprint_artifact_id,omitempty"`），jsonschema 注明 `artifact id to declare as the project blueprint (empty string clears; the id must already be registered)`。handler 直接转发到 `cfg.service().ProjectUpdate`，业务校验全在 `internal/app/project.go:62-75`：
 
 - 非空字符串必须 `record.KindArtifact.ValidID(id)` 通过——形态错 `Usagef`（CLI exit 2 / MCP `code=usage`）；
-- `record.New(s.Root).GetArtifact(ctx, id)` 返回 `ErrNotFound` → `Preconditionf("artifact %q not found; register it first (...devsys artifact register --path <file> --name <name>...)", id)`（CLI exit 3 / MCP `code=precondition`）；
+- `record.New(s.Root).GetArtifact(ctx, id)` 返回 `ErrNotFound` → ``Preconditionf("artifact %q not found; register it first (`workloom artifact register --path <file> --name <name>`)", id)``（CLI exit 3 / MCP `code=precondition`）；
 - 其它错误走 `storeError`。
 
 ### `VisibleTools` 与 0 工具拒绝（本批新增）
 
-`internal/mcp/server.go:149-163` 新导出 `VisibleTools(cfg Config) []string`，沿用 `NewServer` 内同一 `visible(...) && visibleTier(...)` 过滤——返回值为「当前 cfg 启动时会注册的工具名集合」。`internal/cli/mcp.go:79-92` 的 `runMCPServe` 在 `len(VisibleTools(cfg)) == 0` 时返回 `errUsage`：
+`internal/mcp/server.go:149-163` 新导出 `VisibleTools(cfg Config) []string`，沿用 `NewServer` 内同一 `visible(...) && visibleTier(...)` 过滤——返回值为「当前 cfg 启动时会注册的工具名集合」。`internal/cli/mcp.go:173-186` 的 `runMCPServe` 在 `len(VisibleTools(cfg)) == 0` 时返回 `errUsage("mcp serve: %s %s %s no tools in tier %s; use --tier standard", …)`：
 
 ```text
-profile "reviewer" has no tools in tier core; use --tier standard
-profiles "a", "b" have no tools in tier core; use --tier standard
+mcp serve: profile "reviewer" has no tools in tier core; use --tier standard
+mcp serve: profiles "a", "b" have no tools in tier core; use --tier standard
 ```
 
 把"启动一个静默 no-op server"拦在 `mcp.Run` 之前——常见场景是「read-only profile + core tier」。这与注册期过滤是同一语义的 CLI 端表达：注册期过滤让 `tools/list` 不暴露；`VisibleTools` + 0 工具拒绝让 CLI 在 spawn 之前就拒绝启动。
+
+### `mcp install` 写出的注册条目（本轮新增）
+
+`workloom mcp install` 与 `mcp serve` 共用同一份默认值——条目 argv 由 `mcpServeArgs()`（[internal/app/mcpinstall.go:55-57](file://internal/app/mcpinstall.go#L55-L57)）给出：
+
+```text
+["mcp", "serve", "--profile", "session,executor", "--tier", "core"]
+```
+
+- profile / tier 与 `DefaultProfiles()` / `DefaultTier()` 完全一致：任何客户端注册出来的 server 就是「core 档 20 项 + session/executor」的默认面，不存在第二套默认。
+- **条目名仍是 `devsys`**（`mcp_servers.devsys` / `mcpServers.devsys` / `mcp.devsys`），而命令里的二进制名是 `workloom`——本轮改名只动命令面，不动注册名与配置键：user scope 路径仍在 `mcpClientPath`（[internal/app/mcpinstall.go:167-182](file://internal/app/mcpinstall.go#L167-L182)）里，Claude 成员形状 `{"type":"stdio","command":<bin>,"args":mcpServeArgs()}`（[:375-385](file://internal/app/mcpinstall.go#L375-L385)）与 OpenCode 的 `{"type":"local","command":[<bin>, …]}`（[:389-398](file://internal/app/mcpinstall.go#L389-L398)）键名与结构不变。
+- 工具面不受 `mcp install` 影响：注册期过滤仍在 `mcp serve` 进程内生效；`install` 只写客户端配置，`setup` **完全不注册**（只报告 `wire --check` 的 `mcp` 行）。
+- `run_verify` 的返回体随 `app.CompletionCheck` 增 `skipped` 字段（非 Git 项目 / 目录工作区，`advanced` 仍为 false，`reason` 为 `git completion check is not applicable`）——MCP 客户端与 CLI 看到同一份判定。
 
 ## 与其他层的关系
 
