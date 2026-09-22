@@ -128,7 +128,7 @@ type Metadata struct {
 func Load(root string) (*Metadata, Problems) { return load(root, false) }
 
 // Diagnose is Load plus missing-file problems: the read-only view behind
-// `devsys config check`. It reads files plainly — no lock, no recovery, no
+// `workloom config check`. It reads files plainly — no lock, no recovery, no
 // writes — so it also works on state that write commands must refuse.
 func Diagnose(root string) (*Metadata, Problems) { return load(root, true) }
 
@@ -140,7 +140,7 @@ func load(root string, reportMissing bool) (*Metadata, Problems) {
 		data, err := os.ReadFile(path)
 		if errors.Is(err, fs.ErrNotExist) {
 			if reportMissing {
-				problems = append(problems, Problem{File: rel, Reason: "missing; run `devsys init` to create it"})
+				problems = append(problems, Problem{File: rel, Reason: "missing; run `workloom init` to create it"})
 			}
 			continue
 		}

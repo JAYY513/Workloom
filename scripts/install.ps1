@@ -1,4 +1,5 @@
-# install.ps1: download a devsys release binary, verify sha256, install to %LOCALAPPDATA%/devsys.
+# install.ps1: download a workloom release binary, verify sha256, install to %LOCALAPPDATA%/workloom.
+# Also installs a devsys.exe alias copy (same bytes) for old scripts.
 # Falls back to `git clone --branch <tag> + go build` when download fails and Go exists.
 # Uses the system proxy via Invoke-WebRequest natively.
 # Usage: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1 -Tag <tag> [-Repo JAYY513/Workloom] [-AddToPath]
@@ -8,15 +9,15 @@ param(
   [switch]$AddToPath
 )
 $ErrorActionPreference = "Stop"
-$dest = Join-Path $env:LOCALAPPDATA "devsys"
+$dest = Join-Path $env:LOCALAPPDATA "workloom"
 $arch = if ($env:PROCESSOR_ARCHITECTURE -match "ARM64") { "arm64" } else { "amd64" }
-$asset = "devsys-windows-$arch.exe"
+$asset = "workloom-windows-$arch.exe"
 $base = "https://github.com/$Repo/releases/download/$Tag"
-$tmp = Join-Path ([IO.Path]::GetTempPath()) ("devsys-install-" + [Guid]::NewGuid().ToString("N"))
+$tmp = Join-Path ([IO.Path]::GetTempPath()) ("workloom-install-" + [Guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Force -Path $tmp | Out-Null
-# A private repository's release assets need authentication: an anonymous
-# Invoke-WebRequest only sees a 404. `gh`, when installed and logged in, can
-# fetch them, so try it first and fall back to the anonymous download.
+# Public releases download anonymously. When `gh` is installed and logged in,
+# try it first: that covers private forks and avoids anonymous rate limits.
+# Fall back to the anonymous download otherwise.
 function Get-ReleaseAsset([string]$Name, [string]$OutFile) {
   if (Get-Command gh -ErrorAction SilentlyContinue) {
     # gh writes diagnostics to stderr even for harmless states (not logged
@@ -59,7 +60,7 @@ try {
       $env:GOFLAGS = "-mod=vendor"
       # The version ldflags match scripts/build-release.sh, so a fallback build
       # reports the tag it was built from instead of the 0.1.0-dev default.
-      & go build -ldflags "-s -w -X github.com/JAYY513/Workloom/internal/version.Version=$Tag" -o (Join-Path $tmp $asset) ./cmd/devsys
+      & go build -ldflags "-s -w -X github.com/JAYY513/Workloom/internal/version.Version=$Tag" -o (Join-Path $tmp $asset) ./cmd/workloom
       if ($LASTEXITCODE -ne 0) { throw "go build failed" }
     } finally {
       Pop-Location
@@ -67,8 +68,9 @@ try {
     }
   }
   New-Item -ItemType Directory -Force -Path $dest | Out-Null
+  Copy-Item -Force (Join-Path $tmp $asset) (Join-Path $dest "workloom.exe")
   Copy-Item -Force (Join-Path $tmp $asset) (Join-Path $dest "devsys.exe")
-  & (Join-Path $dest "devsys.exe") --version
+  & (Join-Path $dest "workloom.exe") --version
   $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
   if ($null -eq $userPath) { $userPath = "" }
   $inPath = ($userPath -split ';' | ForEach-Object { $_.Trim() }) -contains $dest

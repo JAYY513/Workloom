@@ -36,7 +36,7 @@ func ClassifyAttempts(now time.Time, items []*domain.WorkItem, latest map[string
 		case "failed", "timed_out", "stalled", "canceled":
 			dead = append(dead, AttemptRef{
 				WorkitemID: wi.ID, RunID: r.ID,
-				Detail: fmt.Sprintf("attempt %s ended as %s with no follow-up claim; recover with `%s` or inspect `devsys run get --id %s`",
+				Detail: fmt.Sprintf("attempt %s ended as %s with no follow-up claim; recover with `%s` or inspect `workloom run get --id %s`",
 					r.ID, r.Status, defaultRecoverCommand, r.ID),
 			})
 		case "succeeded":
@@ -56,7 +56,7 @@ func ClassifyAttempts(now time.Time, items []*domain.WorkItem, latest map[string
 			if n == 0 && (r.StartedAt.IsZero() || age >= SpawnGrace) {
 				dead = append(dead, AttemptRef{
 					WorkitemID: wi.ID, RunID: r.ID,
-					Detail: fmt.Sprintf("attempt %s produced no run evidence; recover with `%s` or fail it with `devsys run fail --id %s --actor operator --reason \"attempt produced no evidence\"`",
+					Detail: fmt.Sprintf("attempt %s produced no run evidence; recover with `%s` or fail it with `workloom run fail --id %s --actor operator --reason \"attempt produced no evidence\"`",
 						r.ID, defaultRecoverCommand, r.ID),
 				})
 				continue

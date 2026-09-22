@@ -174,9 +174,9 @@ func head5[T any](list []T) []T {
 func freshnessHint(k view.Knowledge) (show bool, title, text, reason, cmd string) {
 	switch k.Status {
 	case view.KnowledgeStale:
-		return true, "知识已过期", "执行以下命令重新生成受影响页面：", k.Reason, "devsys knowledge refresh"
+		return true, "知识已过期", "执行以下命令重新生成受影响页面：", k.Reason, "workloom knowledge refresh"
 	case view.KnowledgeMissing:
-		return true, "知识页面层缺失", "配置 knowledge_generator 后执行：", k.Reason, "devsys knowledge refresh --full"
+		return true, "知识页面层缺失", "配置 knowledge_generator 后执行：", k.Reason, "workloom knowledge refresh --full"
 	case view.KnowledgeUnavailable:
 		return true, "知识新鲜度不可判", "", k.Reason, ""
 	default:
@@ -306,12 +306,12 @@ const siteTemplates = `{{define "head"}}<!DOCTYPE html>
 <a href="records.html"{{if eq .Active "records.html"}} class="active"{{end}}>记录</a>
 <a href="knowledge.html"{{if eq .Active "knowledge.html"}} class="active"{{end}}>知识</a>
 </nav>{{end}}
-{{define "banner"}}{{if .ShowBanner}}<div class="banner" role="alert"><strong>trust: {{.TrustState}}</strong>{{if .TrustNote}} — {{.TrustNote}}{{end}}{{if .Pending}}<br>pending: {{join .Pending ", "}}{{end}}{{if .IsPending}}<br>存在未完成的事务，业务数据按方案 §15.4 置空：先执行 <code>devsys recover</code> 再信任本页。可用 <code>devsys doctor</code> 先查看事务详情。{{end}}</div>{{end}}{{end}}
+{{define "banner"}}{{if .ShowBanner}}<div class="banner" role="alert"><strong>trust: {{.TrustState}}</strong>{{if .TrustNote}} — {{.TrustNote}}{{end}}{{if .Pending}}<br>pending: {{join .Pending ", "}}{{end}}{{if .IsPending}}<br>存在未完成的事务，业务数据按方案 §15.4 置空：先执行 <code>workloom recover</code> 再信任本页。可用 <code>workloom doctor</code> 先查看事务详情。{{end}}</div>{{end}}{{end}}
 {{define "foot"}}</main>
 <footer>
 <h3>数据来源与基线</h3>
 <p class="meta">本节来源文件：{{if .Sources}}{{join .Sources ", "}}{{else}}（无）{{end}}</p>
-<p class="meta">全站来源文件见 <a href="data/model.json">data/model.json</a>（与 <code>devsys workspace view --json</code> 同一模型）。</p>
+<p class="meta">全站来源文件见 <a href="data/model.json">data/model.json</a>（与 <code>workloom workspace view --json</code> 同一模型）。</p>
 <p class="meta">基线提交：{{if .M.Baseline.Available}}<code>{{.M.Baseline.Commit}}</code>（{{.M.Baseline.Branch}}）· 工作区脏：{{dirtyStr .M.Baseline.Dirty .M.Baseline.ChangedFiles}}{{else}}不可用{{if .M.Baseline.Reason}} — {{.M.Baseline.Reason}}{{end}}{{end}} · 生成时间：{{.GeneratedAt}}</p>
 </footer>
 </body>

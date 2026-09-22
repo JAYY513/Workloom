@@ -206,7 +206,7 @@ func TestToolFailureCarriesStructuredError(t *testing.T) {
 	if got.Code != "precondition" {
 		t.Fatalf("code = %q, want precondition", got.Code)
 	}
-	if !strings.Contains(got.Message, "devsys init") {
+	if !strings.Contains(got.Message, "workloom init") {
 		t.Fatalf("message = %q", got.Message)
 	}
 }

@@ -8,7 +8,7 @@ Set-StrictMode -Version Latest
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $workspace = Join-Path ([IO.Path]::GetTempPath()) ('smoke-m1-' + [guid]::NewGuid().ToString('N'))
 $project = Join-Path $workspace 'demo-project'
-$devsys = Join-Path $workspace 'devsys.exe'
+$devsys = Join-Path $workspace 'workloom.exe'
 $helper = Join-Path $workspace 'smoke-helper.exe'
 $originalLocation = Get-Location
 $originalConfig = $env:DEVSYS_CONFIG_DIR
@@ -22,20 +22,20 @@ try {
     New-Item -ItemType Directory -Path $project | Out-Null
     $env:DEVSYS_CONFIG_DIR = Join-Path $workspace 'config'
     Set-Location $repoRoot
-    go build -o $devsys ./cmd/devsys
+    go build -o $devsys ./cmd/workloom
     Assert-Exit 'build CLI'
     go build -o $helper ./scripts/smoke-m1-helper.go
     Assert-Exit 'build helper'
     git init -q $project
     Assert-Exit 'git init'
     Set-Location $project
-    & $devsys init
+    & $workloom init
     Assert-Exit 'init'
     & $helper $project
     Assert-Exit 'create scenario'
-    & $devsys --json config check
+    & $workloom --json config check
     Assert-Exit 'config check'
-    $json = & $devsys --json search 'M1'
+    $json = & $workloom --json search 'M1'
     Assert-Exit 'search'
     $result = $json | ConvertFrom-Json
     if (-not $result.ok -or -not ($result.matches | Where-Object { $_.path -eq 'workitems/WLM-1.yaml' })) {

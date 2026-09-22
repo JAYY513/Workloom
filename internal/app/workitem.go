@@ -63,7 +63,7 @@ func (s *Service) claimNotice(ctx context.Context, wi *domain.WorkItem) string {
 		return ""
 	}
 	return fmt.Sprintf(
-		"%s has no workflow instance and .devsys/config.yaml declares no default_policy: quality and stage gates are not enforced for it; bind one with `devsys workflow start --id %s --policy <id>` or set `default_policy` in .devsys/config.yaml",
+		"%s has no workflow instance and .devsys/config.yaml declares no default_policy: quality and stage gates are not enforced for it; bind one with `workloom workflow start --id %s --policy <id>` or set `default_policy` in .devsys/config.yaml",
 		wi.ID, wi.ID)
 }
 
@@ -550,7 +550,7 @@ func (s *Service) policyForWorkItem(ctx context.Context, wi *domain.WorkItem) (w
 			// silently drop the project's gates, so refuse instead of
 			// claiming under no policy (方案 §5.3: 配置错误阻塞新任务派发).
 			return workflow.Resolution{}, fmt.Errorf(
-				"%s is invalid: %s; claims stay blocked until the file is fixed (`devsys config check`)", config.ConfigFile, p.String())
+				"%s is invalid: %s; claims stay blocked until the file is fixed (`workloom config check`)", config.ConfigFile, p.String())
 		}
 		if md == nil || md.Config == nil {
 			return workflow.Resolution{}, nil
@@ -633,7 +633,7 @@ func (s *Service) gateEvidence(ctx context.Context, wi *domain.WorkItem, stage s
 		// required" after having approved.
 		if stale, serr := approval.InvalidatedFor(ctx, s.Root, wi.ID, stage); serr == nil {
 			note = fmt.Sprintf(
-				"%s was invalidated at %s when the work item left %q (方案 §4.9); request a new approval with `devsys approval request`",
+				"%s was invalidated at %s when the work item left %q (方案 §4.9); request a new approval with `workloom approval request`",
 				stale.ID, stale.InvalidatedAt.UTC().Format(time.RFC3339), stale.RequestedStatus)
 		} else if !errors.Is(serr, approval.ErrNotFound) {
 			return workflow.GateEvidence{}, "", s.evidenceError(serr)

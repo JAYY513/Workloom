@@ -1,5 +1,5 @@
 # Build output
-bin/
+/bin/
 dist/
 
 # Local-only state inside a managed project (design §14.3)

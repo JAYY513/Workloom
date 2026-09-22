@@ -109,14 +109,14 @@ Coding Agents
 ```text
 帮我在当前项目接入 Workloom（https://github.com/JAYY513/Workloom）：
 
-1. 若 devsys 未安装（devsys --version 无输出）：按该仓库 INSTALL.md 的
+1. 若 workloom 未安装（workloom --version 无输出）：按该仓库 INSTALL.md 的
    §1 安装（releases/latest 下载脚本，校验 checksums.txt 后执行），装完自证版本。
-2. 在目标项目目录执行 init（该目录已是 git 仓则建议在仓库根；
-   非 Git 原型可直接 init）。然后按 INSTALL.md 的 §2 完成项目接入（init → 工作流模板 → wire →
-   wire --check → prime → 蓝图检查）。
+2. 在目标项目目录执行 init → `workloom setup`（该目录已是 git 仓则建议在仓库根；
+   非 Git 原型可直接 init）。`setup` 一步完成接入并自检（init → 工作流模板 →
+   wire → wire --check → prime → 蓝图检查 → doctor），失败即停。
 
 任一步失败就停下报告，不要跳过哈希校验；不要直接修改 .devsys/ 内的
-受管文件（所有写入走 devsys CLI 或 MCP）；若某一步必须我手动操作，
+受管文件（所有写入走 workloom CLI 或 MCP）；若某一步必须我手动操作，
 只告诉我那一步，然后继续完成剩余工作。
 ```
 
@@ -134,7 +134,7 @@ Coding Agents
 完成后记录验证证据，更新项目状态，并告诉我结果和剩余风险。
 ```
 
-Agent 会从仓库中的 `AGENTS.md` 和 `.agents/skills/devsys/` 获得操作规范，通过 `devsys prime` 恢复上下文；你仍然可以在 Git 中审查所有状态变化。
+Agent 会从仓库中的 `AGENTS.md` 和 `.agents/skills/devsys/` 获得操作规范，通过 `workloom prime` 恢复上下文；你仍然可以在 Git 中审查所有状态变化。
 
 ### 方式 B：手动接入
 
@@ -146,19 +146,18 @@ Agent 会从仓库中的 `AGENTS.md` 和 `.agents/skills/devsys/` 获得操作�
 
 ```bash
 # Linux / macOS（Git Bash）
-bash install.sh --tag v0.1.7
+bash install.sh --tag v0.1.9
 
 # Windows PowerShell
-powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1 -Tag v0.1.7 -AddToPath
+powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1 -Tag v0.1.9 -AddToPath
 ```
 
-装完用 `devsys --version` 自证（应输出 `devsys v0.1.7 (…)`）。本仓库为私有仓库：脚本优先用 `gh` 鉴权下载（需 `gh auth login`），未登录自动回退 `git clone --branch <tag> + go build`（本机需 Go + Git）。`install.ps1` 装到 `%LOCALAPPDATA%\devsys\` 并只改 User PATH。
+装完用 `workloom --version` 自证（应输出 `workloom v0.1.9 (…)`）。本仓库为公开仓库：已登录 `gh` 时脚本优先用它下载，否则匿名拉取 Release 资产；下载或校验失败才回退 `git clone --branch <tag> + go build`（本机需 Go + Git）。私有 fork 才需要先 `gh auth login`。`install.ps1` 装到 `%LOCALAPPDATA%\workloom\` 并只改 User PATH。
 
-**② 已装 Go**：一行直装（私有仓库需先让 Go 直连仓库，跳过校验和数据库）：
+**② 已装 Go**：一行直装。公开模块不要设 `GOPRIVATE`（那会跳过公共校验和数据库；只有私有 fork 才需要）：
 
 ```bash
-go env -w GOPRIVATE=github.com/JAYY513/Workloom
-go install github.com/JAYY513/Workloom/cmd/devsys@v0.1.7
+go install github.com/JAYY513/Workloom/cmd/workloom@v0.1.9
 ```
 
 **③ 源码构建**（兜底，仓库已提交 `vendor/`，可离线）：
@@ -167,39 +166,56 @@ go install github.com/JAYY513/Workloom/cmd/devsys@v0.1.7
 git clone https://github.com/JAYY513/Workloom.git
 cd Workloom
 # Linux / macOS
-GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys ./cmd/devsys
+GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/workloom ./cmd/workloom
 # Windows（产物带 .exe 扩展名，Git Bash / PowerShell / cmd 均可直接执行）
-GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys.exe ./cmd/devsys
+GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/workloom.exe ./cmd/workloom
 ```
+
+**④ npm（可选，尚未发布）**。不替代 ①–③。包名预定 `@jayy513/workloom`，npm bin 只有 `workloom`，安装时不下载 exe。registry 上还没有这个包，不要执行 `npm install`。原因与打包方式见 [INSTALL.md](INSTALL.md) §1d。
+
+> 改名兼容：早期版本的主命令叫 `devsys`。`devsys` 现在是指向同一程序的兼容别名（安装脚本会同时装入两个名字），旧脚本与文档里的 `devsys …` 命令照常可用；状态目录仍是 `.devsys/`，MCP 注册名仍是 `devsys`。新用法一律写 `workloom`。
 
 > 说明：`v0.1.0` 起提供 Release 二进制（Linux/macOS/Windows × amd64/arm64，SHA-256 校验，GNU
 > 格式 `checksums.txt` 由 CI 发布）。Windows 上跑 `install.sh` 与上面的构建命令请用 **Git Bash**；
 > 若 `bash.exe` 解析到 WSL 会按 Linux 分支处理（WSL 内通常没有 Go/Git），不是脚本故障。版本
 > 沿革（core 档 20 项、token 侧车、CJK 质量门、`workflow init --template` 等）见各 Release
-> 说明；想要与本文档一致的行为，请用 `v0.1.7` 或更新版本。
+> 说明；想要与本文档一致的行为，请用 `v0.1.9` 或更新版本。
 
 Release 构建覆盖 Linux、macOS 与 Windows 的 `amd64` / `arm64`。
 
 ### 2. 初始化项目
 
-在任意 Git 仓库根目录运行：
+在任意目录运行一条命令（Git 仓库根目录最佳；非 Git 目录也可用）：
 
 ```bash
-devsys init
-devsys config check
-devsys wire
-devsys session start
+workloom setup
 ```
 
-`devsys init` 幂等创建 `.devsys/`；`wire` 将精简的协作纪律写入 `AGENTS.md`，且保留文件中的手写内容。
+它按顺序完成 `init`（幂等）→ 安装 `quick-fix` 起手工作流（已有文件不动）→
+`wire`（AGENTS.md 纪律块 + Agent Skill）→ 配置校验 → 环境检查 → `prime` →
+蓝图检查（未声明只报告，不猜）→ `doctor`，任一步硬失败即停。重跑安全：
+已存在的文件一律保留。
 
-新项目的 `.devsys/workflows/` 是空的：没有工作流时任务照常推进，但派发给 Agent 的轮次提示词里不会有流程约束。用内嵌模板装一份起手并按项目改写：
+装好二进制后，`workloom mcp install` 把 devsys 注册进检测到的 MCP 客户端（服务器名仍为 `devsys`，兼容既有客户端配置）
+（Codex / Claude Code / OpenCode；显式 `--client` 可强制）。默认只预览不写；`--apply` 才写入，
+已有条目不覆盖，`--force` 才替换。无法安全合并时拒绝并指向 `wire --print-mcp`。
+
+想逐步执行或换模板时，底层命令仍然都在：
 
 ```bash
-devsys workflow init --template quick-fix            # 最简起手；完整模板列表见该命令的用法输出（内嵌于二进制，随版本更新）
-devsys workflow init --template reference-template   # 参考级模板：姿态、步骤、证据、停止条件
-devsys workflow check                                # 校验全部策略文件
+workloom init
+workloom config check
+workloom wire
+workloom session start
+workloom setup --template reference-template   # 或 workflow init --template <id> 单装工作流
+workloom workflow check                        # 校验全部策略文件
 ```
+
+模板清单单源化：`setup --template` 与 `workflow init --template` 的
+完整模板列表见该命令的用法输出（内嵌于二进制，随版本更新）。
+
+`workloom init` 幂等创建 `.devsys/`；`wire` 将精简的协作纪律写入 `AGENTS.md`，且保留文件中的手写内容。
+新项目的 `.devsys/workflows/` 是空的：没有工作流时任务照常推进，但派发给 Agent 的轮次提示词里不会有流程约束。
 
 ### 3. 接着用它
 
@@ -207,9 +223,9 @@ devsys workflow check                                # 校验全部策略文件
 查看项目状态——见《使用手册》（`docs/使用手册.md`）。最常用的三个命令：
 
 ```bash
-devsys next            # 现在该做什么（只读）
-devsys prime           # 会话起手：项目事实 + 在飞工作 + 推荐下一步
-devsys workitem create # 新任务入口
+workloom next            # 现在该做什么（只读）
+workloom prime           # 会话起手：项目事实 + 在飞工作 + 推荐下一步
+workloom workitem create # 新任务入口
 ```
 
 ## 一个典型闭环

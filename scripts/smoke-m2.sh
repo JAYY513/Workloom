@@ -18,7 +18,7 @@ project="$workspace/demo-project"
 success=0
 cleanup() {
   if [[ "$success" == 1 && "$keep" == 1 ]]; then
-    rm -f -- "$workspace/devsys.exe"
+    rm -f -- "$workspace/workloom.exe"
     rm -rf -- "$workspace/config"
     printf 'KEPT_PROJECT=%s\n' "$project"
   else
@@ -28,8 +28,8 @@ cleanup() {
 trap cleanup EXIT
 mkdir -p -- "$project"
 export DEVSYS_CONFIG_DIR="$workspace/config"
-(cd "$repo_root" && go build -o "$workspace/devsys.exe" ./cmd/devsys)
-D="$workspace/devsys.exe"
+(cd "$repo_root" && go build -o "$workspace/workloom.exe" ./cmd/workloom)
+D="$workspace/workloom.exe"
 git init -q "$project"
 cd "$project"
 version_of() { "$D" --json workitem get "$1" | python -c "import json,sys; print(json.load(sys.stdin)['version'])"; }

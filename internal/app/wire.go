@@ -20,16 +20,16 @@ const (
 // same description the MCP server gives of itself, plus the entry points an
 // agent needs.
 const wireBlock = wireBegin + `
-## devsys（项目状态与读取纪律）
+## workloom（项目状态与读取纪律）
 
-- 项目状态保存在仓库内 ` + "`.devsys/`" + `，它是唯一事实来源；不要直接编辑受管文件（修复请用 ` + "`devsys repair`" + `）。
-- 查询与变更通过 CLI（` + "`devsys …`" + `）或 MCP（` + "`devsys mcp serve`" + `，工作目录 = 项目根）；两者共用同一应用服务，约束一致。
+- 项目状态保存在仓库内 ` + "`.devsys/`" + `，它是唯一事实来源；不要直接编辑受管文件（修复请用 ` + "`workloom repair`" + `）。
+- 查询与变更通过 CLI（` + "`workloom …`" + `）或 MCP（` + "`workloom mcp serve`" + `，工作目录 = 项目根）；两者共用同一应用服务，约束一致。
 - 先读后写：写操作携带版本哈希（` + "`--expect`" + ` / 工具的 ` + "`expect`" + `），过期哈希一律拒绝。
-- 入口：` + "`devsys session start`" + ` 一次给出项目状态与下一步；` + "`devsys next`" + ` 给出就绪判定与推荐动作；` + "`devsys project status`" + ` 给出计数与风险。
-- 详细工作流见 ` + "`.agents/skills/devsys/SKILL.md`" + `（MCP 不可用时用 ` + "`devsys --json`" + `）。
+- 入口：` + "`workloom session start`" + ` 一次给出项目状态与下一步；` + "`workloom next`" + ` 给出就绪判定与推荐动作；` + "`workloom project status`" + ` 给出计数与风险。
+- 详细工作流见 ` + "`.agents/skills/devsys/SKILL.md`" + `（MCP 不可用时用 ` + "`workloom --json`" + `）。
 ` + wireEnd
 
-// WireView reports what `devsys wire` did (or would do).
+// WireView reports what `workloom wire` did (or would do).
 type WireView struct {
 	Path    string `json:"path"`
 	Changed bool   `json:"changed"`
@@ -113,13 +113,13 @@ func spliceWireBlock(content string) (string, bool, error) {
 		case wireBegin:
 			if beginAt != -1 {
 				return "", false, Invalidf(KindInvalid, nil,
-					"AGENTS.md carries more than one devsys begin marker; fix or remove the extra block and rerun `devsys wire`")
+					"AGENTS.md carries more than one devsys begin marker; fix or remove the extra block and rerun `workloom wire`")
 			}
 			beginAt = i
 		case wireEnd:
 			if endAt != -1 {
 				return "", false, Invalidf(KindInvalid, nil,
-					"AGENTS.md carries more than one devsys end marker; fix or remove the extra block and rerun `devsys wire`")
+					"AGENTS.md carries more than one devsys end marker; fix or remove the extra block and rerun `workloom wire`")
 			}
 			endAt = i
 		}
@@ -136,10 +136,10 @@ func spliceWireBlock(content string) (string, bool, error) {
 		return joinLines(out, eol), true, nil
 	case beginAt == -1 || endAt == -1:
 		return "", false, Invalidf(KindInvalid, nil,
-			"AGENTS.md carries a malformed devsys block (begin marker without end, or the reverse); fix or remove it and rerun `devsys wire`")
+			"AGENTS.md carries a malformed devsys block (begin marker without end, or the reverse); fix or remove it and rerun `workloom wire`")
 	case endAt < beginAt:
 		return "", false, Invalidf(KindInvalid, nil,
-			"AGENTS.md has the devsys end marker before its begin marker; fix or remove it and rerun `devsys wire`")
+			"AGENTS.md has the devsys end marker before its begin marker; fix or remove it and rerun `workloom wire`")
 	}
 	if equalLines(lines[beginAt:endAt+1], blockLines) {
 		return content, false, nil

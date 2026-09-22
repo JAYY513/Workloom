@@ -17,18 +17,18 @@ import (
 // `status` inspection only. Handoff execution (push/pull/merge) stays with
 // git itself; devsys only judges readiness.
 func runSync(stdout io.Writer, opts options, rest []string) error {
-	if familyUsage(stdout, rest, "`devsys sync` needs a subcommand: status") {
+	if familyUsage(stdout, rest, "`workloom sync` needs a subcommand: status") {
 		return nil
 	}
 	switch rest[0] {
 	case "status":
 		return runSyncStatus(stdout, opts, rest[1:])
 	default:
-		return errUsage("unknown `devsys sync` subcommand %q", rest[0])
+		return errUsage("unknown `workloom sync` subcommand %q", rest[0])
 	}
 }
 
-// runSyncStatus implements `devsys sync status`: the read-only handoff
+// runSyncStatus implements `workloom sync status`: the read-only handoff
 // verdict (M8.1). It writes nothing — no fetch, no lock creation, no
 // recovery — and reports blocked-vs-ready through stdout with exit 0: a
 // blocked handoff is the inspected state, not a command failure (the same
@@ -37,7 +37,7 @@ func runSyncStatus(stdout io.Writer, opts options, rest []string) error {
 	fs := flag.NewFlagSet("sync status", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	if err := fs.Parse(rest); err != nil || fs.NArg() != 0 {
-		return errUsage("`devsys sync status` takes no arguments")
+		return errUsage("`workloom sync status` takes no arguments")
 	}
 	svc, err := requireProjectRoot()
 	if err != nil {
@@ -116,7 +116,7 @@ func renderSyncStatus(stdout io.Writer, st syncstatus.Status) {
 		}
 	}
 	if st.HandoffReady {
-		fmt.Fprintln(stdout, "handoff: ready — old device already stopped? `git push`, then the new device runs `git fetch` + `devsys sync status`")
+		fmt.Fprintln(stdout, "handoff: ready — old device already stopped? `git push`, then the new device runs `git fetch` + `workloom sync status`")
 	} else {
 		for _, b := range st.Blockers {
 			fmt.Fprintf(stdout, "blocked [%s]: %s\n", b.Code, b.Detail)

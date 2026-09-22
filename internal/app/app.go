@@ -1,4 +1,4 @@
-// Package app is the shared application service behind every devsys surface
+// Package app is the shared application service behind every workloom surface
 // (CLI, MCP, file protocol): one implementation of input validation, gates,
 // approvals, version guards and transactions, so no entry point can bypass a
 // constraint the others enforce (方案 §8.1, 实施计划 M4.2).
@@ -124,7 +124,7 @@ func (s *Service) project() (*config.Metadata, error) {
 		return nil, err
 	}
 	if md.Project == nil {
-		return nil, Preconditionf("project not initialized; run devsys init")
+		return nil, Preconditionf("project not initialized; run workloom init")
 	}
 	return md, nil
 }

@@ -58,7 +58,7 @@ type configFile struct {
 }
 
 func projectYAML(id, name string, now time.Time) ([]byte, error) {
-	return withHeader("# devsys 项目元数据（方案 §5.1）；由 devsys 命令维护。\n", domain.Project{
+	return withHeader("# workloom 项目元数据（方案 §5.1）；由 workloom 命令维护。\n", domain.Project{
 		SchemaVersion: domain.SchemaVersion,
 		ID:            id, Name: name, Status: "active",
 		CreatedAt: now.UTC(), UpdatedAt: now.UTC(),
@@ -66,18 +66,18 @@ func projectYAML(id, name string, now time.Time) ([]byte, error) {
 }
 
 func configYAML(string, string, time.Time) ([]byte, error) {
-	return withHeader("# devsys 项目配置（方案 §14.2/§14.3）；可选项见 `devsys config check` 校验的白名单：\n# workspace_root、dispatch_command、knowledge_pages、knowledge_generator、default_policy。\n", configFile{SchemaVersion: 1})
+	return withHeader("# workloom 项目配置（方案 §14.2/§14.3）；可选项见 `workloom config check` 校验的白名单：\n# workspace_root、dispatch_command、knowledge_pages、knowledge_generator、default_policy。\n", configFile{SchemaVersion: 1})
 }
 
 func currentStateYAML(string, string, time.Time) ([]byte, error) {
-	return withHeader("# 项目当前状态（方案 §5.1 current_state）；由 devsys 命令维护。\n", domain.CurrentStateFile{
+	return withHeader("# 项目当前状态（方案 §5.1 current_state）；由 workloom 命令维护。\n", domain.CurrentStateFile{
 		SchemaVersion: domain.SchemaVersion,
 		CurrentState:  domain.CurrentState{Risks: []string{}, Blockers: []string{}, NextFocus: []string{}},
 	})
 }
 
 func milestonesYAML(string, string, time.Time) ([]byte, error) {
-	return withHeader("# 里程碑（方案 §5.1）；由 devsys 命令维护。\n", domain.MilestonesFile{
+	return withHeader("# 里程碑（方案 §5.1）；由 workloom 命令维护。\n", domain.MilestonesFile{
 		SchemaVersion: domain.SchemaVersion, Milestones: []domain.Milestone{},
 	})
 }

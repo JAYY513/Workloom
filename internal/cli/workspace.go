@@ -19,10 +19,10 @@ import (
 
 // runWorkspace routes the workspace view family (方案 §17): the read-only
 // aggregation behind `workspace build --static` (M7.2) and `workspace serve`
-// (M7.3). The execution workspace is `devsys worktree` (M6.2); 方案 §17 keeps
+// (M7.3). The execution workspace is `workloom worktree` (M6.2); 方案 §17 keeps
 // the two concepts apart and so do their commands.
 func runWorkspace(stdout io.Writer, opts options, rest []string) error {
-	if familyUsage(stdout, rest, "`devsys workspace` needs a subcommand: view | build | serve") {
+	if familyUsage(stdout, rest, "`workloom workspace` needs a subcommand: view | build | serve") {
 		return nil
 	}
 	switch rest[0] {
@@ -33,7 +33,7 @@ func runWorkspace(stdout io.Writer, opts options, rest []string) error {
 	case "serve":
 		return runWorkspaceServe(stdout, opts, rest[1:])
 	default:
-		return errUsage("unknown `devsys workspace` subcommand %q", rest[0])
+		return errUsage("unknown `workloom workspace` subcommand %q", rest[0])
 	}
 }
 
@@ -48,10 +48,10 @@ func runWorkspaceBuild(stdout io.Writer, opts options, rest []string) error {
 	out := fs.String("out", "", "output directory (default .devsys/dist/site/)")
 	limit := fs.Int("limit", view.DefaultLimit, "max entries per list section (runs, records, pages)")
 	if err := fs.Parse(rest); err != nil || fs.NArg() != 0 {
-		return errUsage("`devsys workspace build --static [--out DIR] [--limit N]`")
+		return errUsage("`workloom workspace build --static [--out DIR] [--limit N]`")
 	}
 	if !*static {
-		return errUsage("`devsys workspace build` needs --static (the only site form in M7.2)")
+		return errUsage("`workloom workspace build` needs --static (the only site form in M7.2)")
 	}
 	if *limit <= 0 {
 		return errUsage("`--limit` must be positive")
@@ -116,7 +116,7 @@ func runWorkspaceView(stdout io.Writer, opts options, rest []string) error {
 	fs.SetOutput(io.Discard)
 	limit := fs.Int("limit", view.DefaultLimit, "max entries per list section (runs, records, pages)")
 	if err := fs.Parse(rest); err != nil || fs.NArg() != 0 {
-		return errUsage("`devsys workspace view` takes [--limit N] only")
+		return errUsage("`workloom workspace view` takes [--limit N] only")
 	}
 	if *limit <= 0 {
 		return errUsage("`--limit` must be positive")
@@ -196,7 +196,7 @@ func renderWorkspaceView(stdout io.Writer, m *view.Model) {
 	k := m.Knowledge
 	if k.Status == view.KnowledgeMissing {
 		fmt.Fprintf(stdout, "  knowledge: missing — %s\n", k.Reason)
-		fmt.Fprintf(stdout, "  hint: configure `knowledge_generator`, then run `devsys knowledge refresh --full`\n")
+		fmt.Fprintf(stdout, "  hint: configure `knowledge_generator`, then run `workloom knowledge refresh --full`\n")
 	} else {
 		fmt.Fprintf(stdout, "  knowledge: %s — %d page(s)%s%s\n", k.Status, len(k.Pages), truncatedSuffix(k.Truncated), reasonSuffix(k.Reason))
 		for _, page := range k.Affected {
@@ -207,10 +207,10 @@ func renderWorkspaceView(stdout io.Writer, m *view.Model) {
 		}
 		switch k.Status {
 		case view.KnowledgeStale:
-			fmt.Fprintf(stdout, "  hint: run `devsys knowledge refresh` to regenerate affected pages\n")
+			fmt.Fprintf(stdout, "  hint: run `workloom knowledge refresh` to regenerate affected pages\n")
 		case view.KnowledgeUnavailable:
 			if m.Trust.State != view.TrustPending {
-				fmt.Fprintf(stdout, "  hint: run `devsys knowledge status` to see the underlying error\n")
+				fmt.Fprintf(stdout, "  hint: run `workloom knowledge status` to see the underlying error\n")
 			}
 		}
 	}
@@ -219,7 +219,7 @@ func renderWorkspaceView(stdout io.Writer, m *view.Model) {
 	}
 	if len(m.Trust.Pending) > 0 {
 		fmt.Fprintf(stdout, "  pending: %s\n", strings.Join(m.Trust.Pending, ", "))
-		fmt.Fprintf(stdout, "  hint: run `devsys doctor` to inspect before `devsys recover`\n")
+		fmt.Fprintf(stdout, "  hint: run `workloom doctor` to inspect before `workloom recover`\n")
 	}
 	for _, problem := range m.Problems {
 		fmt.Fprintf(stdout, "  problem: %s\n", problem)

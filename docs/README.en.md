@@ -109,7 +109,7 @@ You do not need to learn the Workloom commands first. Open Codex, Claude Code, O
 ```text
 Help me set up Workloom (https://github.com/JAYY513/Workloom) in the current project:
 
-1. If devsys is not installed (`devsys --version` prints nothing): install it per
+1. If workloom is not installed (`workloom --version` prints nothing): install it per
    §1 of the repository's INSTALL.md (download the script from releases/latest,
    verify it against checksums.txt, run it), then confirm the version.
 2. Run init in the target project directory (if it is already a git
@@ -118,7 +118,7 @@ Help me set up Workloom (https://github.com/JAYY513/Workloom) in the current pro
    starter workflow → wire → wire --check → prime → blueprint check).
 
 Stop and report on any failure; never skip the hash verification; never edit managed
-files under .devsys/ directly (all writes go through the devsys CLI or MCP). If one
+files under .devsys/ directly (all writes go through the workloom CLI or MCP). If one
 step genuinely needs me, name that step and continue with the rest.
 ```
 
@@ -138,7 +138,7 @@ their dependencies when new work is discovered. Record verification evidence,
 update project state, and summarize the result and remaining risks.
 ```
 
-The agent learns the operating rules from `AGENTS.md` and `.agents/skills/devsys/`, then restores context through `devsys prime`. You can still review every state change in Git.
+The agent learns the operating rules from `AGENTS.md` and `.agents/skills/devsys/`, then restores context through `workloom prime`. You can still review every state change in Git.
 
 ### Option B: Manual Setup
 
@@ -154,24 +154,25 @@ in [INSTALL.md](../INSTALL.md); the essentials are below.
 
 ```bash
 # Linux / macOS (Git Bash)
-bash install.sh --tag v0.1.7
+bash install.sh --tag v0.1.9
 
 # Windows PowerShell
-powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1 -Tag v0.1.7 -AddToPath
+powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1 -Tag v0.1.9 -AddToPath
 ```
 
-Confirm with `devsys --version` (expect `devsys v0.1.7 (…)`). This repository
-is private: the scripts download through `gh` when authenticated (run
-`gh auth login` first), and otherwise fall back to `git clone --branch <tag> +
-go build` (requires Go + Git). `install.ps1` installs to
-`%LOCALAPPDATA%\devsys\` and only edits the User PATH.
+Confirm with `workloom --version` (expect `workloom v0.1.9 (…)`). This repository
+is public: when `gh` is logged in the scripts prefer it, otherwise they
+download the release asset anonymously. A failed download falls back to
+`git clone --branch <tag> + go build` (requires Go + Git). A private fork
+needs `gh auth login` first. `install.ps1` installs to
+`%LOCALAPPDATA%\workloom\` and only edits the User PATH.
 
-**② With Go installed**: one-line install (a private repository needs Go to
-reach it directly, bypassing the checksum database):
+**② With Go installed**: one-line install. Do not set `GOPRIVATE` for this
+public module (that skips the public checksum database; only a private fork
+needs it):
 
 ```bash
-go env -w GOPRIVATE=github.com/JAYY513/Workloom
-go install github.com/JAYY513/Workloom/cmd/devsys@v0.1.7
+go install github.com/JAYY513/Workloom/cmd/workloom@v0.1.9
 ```
 
 **③ Build from source** (fallback; the repository includes `vendor/`, so the
@@ -181,11 +182,22 @@ build runs offline):
 git clone https://github.com/JAYY513/Workloom.git
 cd Workloom
 # Linux / macOS
-GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys ./cmd/devsys
+GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/workloom ./cmd/workloom
 # Windows (the .exe suffix matters: Git Bash / PowerShell / cmd all refuse to
 # execute an extensionless PE binary)
-GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys.exe ./cmd/devsys
+GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/workloom.exe ./cmd/workloom
 ```
+
+**④ npm (optional, not published)**. This does not replace ①–③. The intended
+package is `@jayy513/workloom`; the npm bin is only `workloom`, and install
+does not download an exe. The package is not on the registry — do not run
+`npm install`. See [INSTALL.md](../INSTALL.md) §1d.
+
+> Renaming compatibility: the primary command used to be `devsys`, which now
+> remains as a compatibility alias for the same binary (install scripts ship
+> both names), so existing scripts and docs calling `devsys …` keep working.
+> The state directory stays `.devsys/` and the MCP registration name stays
+> `devsys`. Write `workloom` in new usage.
 
 > Note: release binaries are available starting from `v0.1.0` (Linux/macOS/Windows
 > × amd64/arm64, SHA-256 verified, GNU-format `checksums.txt` published by CI).
@@ -194,30 +206,47 @@ GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/devsys.exe ./cmd/devsys
 > nor Git) — a shell routing issue, not a script bug. The version history (20-tool
 > core tier, token sidecars, CJK-aware quality gate, `workflow init --template`,
 > …) lives in each Release's notes; for the behavior described here, use
-> `v0.1.7` or newer.
+> `v0.1.9` or newer.
 
 Release builds target Linux, macOS, and Windows on `amd64` and `arm64`.
 
 ### 2. Initialize a Project
 
-Run these commands at the root of any Git repository:
+Run one command in any directory (a Git repository root is best; a non-Git directory works too):
 
 ```bash
-devsys init
-devsys config check
-devsys wire
-devsys session start
+workloom setup
 ```
 
-`devsys init` creates `.devsys/` idempotently. `wire` adds concise collaboration rules to `AGENTS.md` while preserving hand-written content.
+It runs `init` (idempotent) → installs the `quick-fix` starter workflow (an
+existing file is never overwritten) → `wire` (AGENTS.md discipline block +
+agent skill) → config validation → environment checks → `prime` → blueprint
+check (a missing blueprint is reported, never guessed) → `doctor`, and stops
+at the first hard failure. Re-running is safe: existing files always win.
 
-A fresh project has an empty `.devsys/workflows/`. Tasks run without a policy, but the round prompt handed to an agent then carries no process rules. Install a starter template and adapt it:
+Once the binary is in place, `workloom mcp install` registers devsys with the
+detected MCP clients (Codex / Claude Code / OpenCode; `--client` forces one).
+The default is a dry-run. `--apply` writes; an existing `devsys` entry is left
+alone unless `--force` replaces that entry. JSONC and an inline Codex
+`mcp_servers` table are refused even with `--force`; use `wire --print-mcp`.
+
+The underlying commands remain for step-by-step use or a different template:
 
 ```bash
-devsys workflow init --template quick-fix            # minimal starter; full list: the command's own usage output (embedded in the binary)
-devsys workflow init --template reference-template   # full template: posture, steps, evidence, stop conditions
-devsys workflow check                                # validates every policy file
+workloom init
+workloom config check
+workloom wire
+workloom session start
+workloom setup --template reference-template   # or workflow init --template <id> for the workflow alone
+workloom workflow check                        # validates every policy file
 ```
+
+Template ids are single-sourced: for `setup --template` and
+`workflow init --template`, the full list: the command's own usage output
+(embedded in the binary).
+
+`workloom init` creates `.devsys/` idempotently. `wire` adds concise collaboration rules to `AGENTS.md` while preserving hand-written content.
+A fresh project has an empty `.devsys/workflows/`. Tasks run without a policy, but the round prompt handed to an agent then carries no process rules.
 
 ### 3. Use It
 
@@ -226,9 +255,9 @@ connecting an MCP client, inspecting project state — lives in the handbook
 (`docs/使用手册.md`). The three most used commands:
 
 ```bash
-devsys next            # what to do now (read-only)
-devsys prime           # session starter: project facts, in-flight work, next action
-devsys workitem create # entry point for new work
+workloom next            # what to do now (read-only)
+workloom prime           # session starter: project facts, in-flight work, next action
+workloom workitem create # entry point for new work
 ```
 
 ## A Typical Loop

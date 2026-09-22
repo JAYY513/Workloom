@@ -96,7 +96,7 @@ func TestNextReportsQualityGateBlock(t *testing.T) {
 	if !strings.Contains(out, "next: start "+id) {
 		t.Errorf("stdout = %q, want the ladder to point at %s", out, id)
 	}
-	if !strings.Contains(out, "devsys workitem update --id "+id) {
+	if !strings.Contains(out, "workloom workitem update --id "+id) {
 		t.Errorf("stdout = %q, want the remediation command", out)
 	}
 }
@@ -116,7 +116,7 @@ func TestNextReportsQueuedRetry(t *testing.T) {
 	if !strings.Contains(out, "risk: retry_pending WLM-9: retry queued; next attempt at "+due.Format(time.RFC3339)) {
 		t.Errorf("stdout = %q, want the queued retry with its recorded due time", out)
 	}
-	for _, want := range []string{"next: report_done", "wait for a dispatch retry", "devsys dispatch --once"} {
+	for _, want := range []string{"next: report_done", "wait for a dispatch retry", "workloom dispatch --once"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("stdout = %q, want %q (the project is not idle)", out, want)
 		}
@@ -134,7 +134,7 @@ func TestClaimWarnsWhenNoPolicyGoverns(t *testing.T) {
 	if !strings.Contains(out, "warning: ") || !strings.Contains(out, "gates are not enforced") {
 		t.Errorf("stdout = %q, want the gates-not-enforced warning", out)
 	}
-	if !strings.Contains(out, "devsys workflow start --id "+id) {
+	if !strings.Contains(out, "workloom workflow start --id "+id) {
 		t.Errorf("stdout = %q, want the binding command", out)
 	}
 

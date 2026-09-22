@@ -59,7 +59,7 @@ func TestCheckGateMissingEvidenceInOrder(t *testing.T) {
 	}
 	// Every remediation names the executable command (#342).
 	for _, m := range res.Missing[:3] {
-		if !strings.Contains(m, "devsys ") {
+		if !strings.Contains(m, "workloom ") {
 			t.Fatalf("missing line lacks a remedy command: %q", m)
 		}
 	}

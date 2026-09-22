@@ -12,7 +12,7 @@ import (
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// serveSession starts `devsys mcp serve` in-process over pipes and connects
+// serveSession starts `workloom mcp serve` in-process over pipes and connects
 // a real SDK client to it: the test exercises the CLI wiring and the whole
 // protocol path, not internals. Extra args are appended to the serve command
 // (e.g. "--tier", "standard" for tests that need the full surface).
@@ -231,7 +231,7 @@ func TestMCPServeRejectsOutputFlags(t *testing.T) {
 	}
 }
 
-// runMCPArgs runs `devsys mcp serve` with no client attached (usage paths).
+// runMCPArgs runs `workloom mcp serve` with no client attached (usage paths).
 func runMCPArgs(t *testing.T, args ...string) (int, string, string) {
 	t.Helper()
 	var out, errBuf bytes.Buffer
@@ -242,7 +242,7 @@ func runMCPArgs(t *testing.T, args ...string) (int, string, string) {
 func TestMCPServeRequiresInitializedProject(t *testing.T) {
 	t.Chdir(t.TempDir())
 	code, _, stderr := runMCPArgs(t)
-	if code != CodePrecondition || !strings.Contains(stderr, "devsys init") {
+	if code != CodePrecondition || !strings.Contains(stderr, "workloom init") {
 		t.Fatalf("code=%d stderr=%q", code, stderr)
 	}
 }
@@ -251,7 +251,7 @@ func TestMCPUsage(t *testing.T) {
 	// No subcommand prints the family usage and exits 0 (#338 m15).
 	code, out, _ := run(t, "mcp")
 	if code != CodeOK || !strings.Contains(out, "serve") {
-		t.Fatalf("`devsys mcp`: code=%d out=%q", code, out)
+		t.Fatalf("`workloom mcp`: code=%d out=%q", code, out)
 	}
 	for _, args := range [][]string{{"mcp", "bogus"}} {
 		code, _, _ := run(t, args...)

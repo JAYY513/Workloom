@@ -22,7 +22,7 @@ func TestCommittedSkillMatchesGenerator(t *testing.T) {
 			t.Fatalf("read %s: %v", f.rel, err)
 		}
 		if string(got) != f.body {
-			t.Errorf("%s differs from the generator; run `devsys wire --skill`", f.rel)
+			t.Errorf("%s differs from the generator; run `workloom wire --skill`", f.rel)
 		}
 	}
 }

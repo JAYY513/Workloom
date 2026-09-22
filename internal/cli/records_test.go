@@ -307,7 +307,7 @@ func TestKnowledgeStatusDegrades(t *testing.T) {
 	if !view.OK || view.Status != "missing" || view.Pages != 0 || !strings.Contains(view.Reason, "生成器") {
 		t.Fatalf("view = %s", out)
 	}
-	if strings.Contains(errOut, "devsys:") {
+	if strings.Contains(errOut, "workloom:") {
 		t.Fatalf("degradation was reported as an error: %q", errOut)
 	}
 }
@@ -514,7 +514,7 @@ func TestKnowledgeScanExcludesSecretsAndLargeFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	// The scanned tree contains a.go plus the repository-root
-	// .gitattributes that `devsys init` now writes (#345 N2).
+	// .gitattributes that `workloom init` now writes (#345 N2).
 	if !view.OK || view.File != ".devsys/knowledge/snapshot.json" || view.Files != 2 {
 		t.Fatalf("view = %s", out)
 	}

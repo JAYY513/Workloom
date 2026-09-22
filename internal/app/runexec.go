@@ -108,7 +108,7 @@ func (s *Service) RunExec(ctx context.Context, req RunExecRequest) (RunExecView,
 		return RunExecView{}, Preconditionf("run %s already ended as %s", r.ID, r.Status)
 	}
 	if req.Harness == "" && len(req.Argv) == 0 {
-		return s.execRefuse(ctx, r, req, Usagef("run exec requires a command (devsys run exec --id <run-id> -- <command...>) or --harness <name>"))
+		return s.execRefuse(ctx, r, req, Usagef("run exec requires a command (workloom run exec --id <run-id> -- <command...>) or --harness <name>"))
 	}
 	if req.Harness != "" && len(req.Argv) > 0 {
 		return s.execRefuse(ctx, r, req, Usagef("run exec takes either --harness or a command, not both"))

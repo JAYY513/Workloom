@@ -42,7 +42,7 @@ const (
 )
 
 // Knowledge statuses. fresh/stale/missing mirror app.KnowledgeStatusView; the
-// exit codes 0/10/11 belong to `devsys knowledge status` and stay there.
+// exit codes 0/10/11 belong to `workloom knowledge status` and stay there.
 const (
 	KnowledgeFresh       = "fresh"
 	KnowledgeStale       = "stale"
@@ -135,7 +135,7 @@ type Progress struct {
 	Provenance
 	Counts map[string]int `json:"counts"`
 	Items  []Item         `json:"items"`
-	// Readiness is internal/next's evaluation, the same verdict `devsys next`
+	// Readiness is internal/next's evaluation, the same verdict `workloom next`
 	// reports; empty risks/fixes mean none were observed.
 	Readiness next.Report `json:"readiness"`
 	Degraded  bool        `json:"degraded,omitempty"`

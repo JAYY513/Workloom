@@ -1,6 +1,6 @@
 name: release
 
-# Publish the devsys 6-platform binaries + install scripts + SHA-256 checksums to a GitHub Release.
+# Publish the workloom 6-platform binaries + install scripts + SHA-256 checksums + npm tarballs to a GitHub Release.
 #
 # Triggers:
 #   - pushing a v* tag (automatic)
@@ -84,7 +84,7 @@ jobs:
         run: |
           set -euo pipefail
           # The binary must report the version being published.
-          ./dist/devsys-linux-amd64 --version | grep -F "$VERSION"
+          ./dist/workloom-linux-amd64 --version | grep -F "$VERSION"
           # checksums.txt must be GNU text mode: "<sha256>  <file>". macOS
           # `shasum` writes the binary marker "<sha256> *<file>", which
           # `sha256sum -c` happily accepts — that is how v0.1.0 shipped a file
@@ -102,7 +102,7 @@ jobs:
           # The checksum file must match the files it names.
           (cd dist && sha256sum -c checksums.txt)
           # And every published asset must be named in it.
-          for asset in dist/devsys-* dist/install.sh dist/install.ps1; do
+          for asset in dist/workloom-* dist/install.sh dist/install.ps1; do
             base="$(basename "$asset")"
             if ! grep -qF "  $base" dist/checksums.txt; then
               echo "checksums.txt does not list $base" >&2
@@ -110,6 +110,17 @@ jobs:
             fi
           done
           ls -l dist
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: false
+
+      - name: Pack npm tarballs
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: bash scripts/pack-npm.sh --version "$VERSION" --dist dist --out dist/npm
 
       - name: Publish the release
         env:
@@ -128,4 +139,4 @@ jobs:
           else
             args+=(--generate-notes)
           fi
-          gh release create "$VERSION" dist/devsys-* dist/install.sh dist/install.ps1 dist/checksums.txt "${args[@]}"
+          gh release create "$VERSION" dist/workloom-* dist/install.sh dist/install.ps1 dist/checksums.txt dist/npm/*.tgz "${args[@]}"

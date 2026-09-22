@@ -1,0 +1,28 @@
+{
+  "name": "@jayy513/workloom",
+  "version": "0.0.0",
+  "description": "Distribution wrapper for the workloom Go binary. Does not download binaries.",
+  "license": "MIT",
+  "bin": {
+    "workloom": "bin/workloom.js"
+  },
+  "files": [
+    "bin/workloom.js"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "optionalDependencies": {
+    "@jayy513/workloom-darwin-arm64": "0.0.0",
+    "@jayy513/workloom-darwin-x64": "0.0.0",
+    "@jayy513/workloom-linux-arm64": "0.0.0",
+    "@jayy513/workloom-linux-x64": "0.0.0",
+    "@jayy513/workloom-win32-arm64": "0.0.0",
+    "@jayy513/workloom-win32-x64": "0.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JAYY513/Workloom.git",
+    "directory": "npm/workloom"
+  }
+}

@@ -18,7 +18,7 @@ project="$workspace/demo-project"
 success=0
 cleanup() {
   if [[ "$success" == 1 && "$keep" == 1 ]]; then
-    rm -f -- "$workspace/devsys.exe" "$workspace/smoke-helper.exe"
+    rm -f -- "$workspace/workloom.exe" "$workspace/smoke-helper.exe"
     rm -rf -- "$workspace/config"
     printf 'KEPT_PROJECT=%s\n' "$project"
   else
@@ -28,14 +28,14 @@ cleanup() {
 trap cleanup EXIT
 mkdir -p -- "$project"
 export DEVSYS_CONFIG_DIR="$workspace/config"
-(cd "$repo_root" && go build -o "$workspace/devsys.exe" ./cmd/devsys && go build -o "$workspace/smoke-helper.exe" ./scripts/smoke-m1-helper.go)
+(cd "$repo_root" && go build -o "$workspace/workloom.exe" ./cmd/workloom && go build -o "$workspace/smoke-helper.exe" ./scripts/smoke-m1-helper.go)
 git init -q "$project"
 (
   cd "$project"
-  "$workspace/devsys.exe" init
+  "$workspace/workloom.exe" init
   "$workspace/smoke-helper.exe" "$project"
-  "$workspace/devsys.exe" --json config check
-  result="$("$workspace/devsys.exe" --json search M1)"
+  "$workspace/workloom.exe" --json config check
+  result="$("$workspace/workloom.exe" --json search M1)"
   printf '%s\n' "$result"
   [[ "$result" == *'"path":"workitems/WLM-1.yaml"'* ]] || { echo 'search did not return the work item' >&2; exit 1; }
   git -c core.autocrlf=false add -- .devsys

@@ -91,7 +91,7 @@ func TestAssembleFullRoundCarriesTheBrief(t *testing.T) {
 		"按 implement 步骤实现，目标：实现登录限流。", // rendered template
 		"### 验收标准", "超限返回 429",
 		"decision://decision-1", "artifact://artifact-2",
-		"devsys run complete",
+		"workloom run complete",
 	} {
 		if !strings.Contains(p.Text, want) {
 			t.Fatalf("full prompt misses %q:\n%s", want, p.Text)

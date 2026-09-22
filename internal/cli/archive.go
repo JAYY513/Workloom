@@ -16,7 +16,7 @@ import (
 // .devsys/archive/. Reads merge live and archived state automatically;
 // there is no delete/purge shape (默认保守：不删，只归档).
 func runArchive(stdout io.Writer, opts options, rest []string) error {
-	if familyUsage(stdout, rest, "`devsys archive` needs a subcommand: events | runs") {
+	if familyUsage(stdout, rest, "`workloom archive` needs a subcommand: events | runs") {
 		return nil
 	}
 	switch rest[0] {
@@ -25,7 +25,7 @@ func runArchive(stdout io.Writer, opts options, rest []string) error {
 	case "runs":
 		return runArchiveRuns(stdout, opts, rest[1:])
 	default:
-		return errUsage("`devsys archive` needs a subcommand: events | runs")
+		return errUsage("`workloom archive` needs a subcommand: events | runs")
 	}
 }
 

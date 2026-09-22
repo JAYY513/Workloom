@@ -194,7 +194,7 @@ func TestBuildPendingBanner(t *testing.T) {
 	buildTo(t, m, out)
 	for _, page := range PageFiles {
 		content := readFile(t, out, page)
-		if !strings.Contains(content, "devsys recover") || !strings.Contains(content, "tx-1") {
+		if !strings.Contains(content, "workloom recover") || !strings.Contains(content, "tx-1") {
 			t.Errorf("%s missing pending banner", page)
 		}
 	}

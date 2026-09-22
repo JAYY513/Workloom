@@ -32,8 +32,8 @@ export DEVSYS_CONFIG_DIR="$workspace/config"
 # The command binary is linked with -s -w: some endpoint protection flags the
 # unstripped build of this program as a false positive, and the smoke suite is
 # about behaviour, not debug symbols.
-(cd "$repo_root" && go build -ldflags "-s -w" -o "$workspace/devsys.exe" ./cmd/devsys)
-D="$workspace/devsys.exe"
+(cd "$repo_root" && go build -ldflags "-s -w" -o "$workspace/workloom.exe" ./cmd/workloom)
+D="$workspace/workloom.exe"
 
 git init -q "$project"
 cd "$project"
@@ -82,7 +82,7 @@ echo "$CLAIM_JSON" | python -c "import json,sys; d=json.load(sys.stdin); assert 
 grep -q "blocked \[active-leases\]" "$workspace/sync-leased.txt" || { echo "FAIL: active lease not classified" >&2; cat "$workspace/sync-leased.txt" >&2; exit 1; }
 grep -q "handoff: NOT ready" "$workspace/sync-leased.txt" || { echo "FAIL: leased tree reported ready" >&2; exit 1; }
 "$D" workitem release --id "$item_id" --owner old-device --token "$(grep '^token:' .devsys/scheduling/"$item_id".yaml | awk '{print $2}')" --actor me --reason handoff-done --expect "$(version_of "$item_id")" >/dev/null
-git add -A && git commit -qm "chore(devsys): claim and release $item_id"
+git add -A && git commit -qm "chore(workloom): claim and release $item_id"
 git push -q origin main
 "$D" sync status | grep -q "handoff: ready" || { echo "FAIL: release did not restore ready" >&2; exit 1; }
 echo "PASS: an active lease blocks with active-leases; release restores ready"
@@ -153,11 +153,11 @@ fi
 grep -q "only terminal runs may be archived" "$workspace/archive-runs.txt" || { echo "FAIL: refusal unexplained" >&2; cat "$workspace/archive-runs.txt" >&2; exit 1; }
 echo "PASS: a running stream is refused with only-terminal-runs"
 "$D" workitem release --id "$guard_id" --owner archivist --token "$(grep '^token:' .devsys/scheduling/"$guard_id".yaml | awk '{print $2}')" --actor me --reason runs-guard-done --expect "$(version_of "$guard_id")" >/dev/null
-git add -A && git commit -qm "chore(devsys): archive segment $item_id"
+git add -A && git commit -qm "chore(workloom): archive segment $item_id"
 git push -q origin main
 echo "== board fixture loop flows back through the CLI only (M8.4) =="
 walk "$item_id" review verification
-git add -A && git commit -qm "chore(devsys): $item_id to verification"
+git add -A && git commit -qm "chore(workloom): $item_id to verification"
 python "$repo_root/scripts/contrabass/export.py" --root "$project" --out "$workspace/board" --devsys "$D" | grep -q "verification -> review" || { echo "FAIL: export missed the card" >&2; exit 1; }
 python - "$workspace/board/issues/$item_id.json" <<'PY'
 import json, sys
@@ -185,7 +185,7 @@ assert any(e['type'] == 'comment' and (e.get('content') or '').startswith('[boar
 print('events carry the transition and the [board] comment')
 "
 echo "PASS: the board verdict lands as a transition plus a [board] comment"
-git add -A && git commit -qm "chore(devsys): board verdict $item_id"
+git add -A && git commit -qm "chore(workloom): board verdict $item_id"
 git push -q origin main
 "$D" sync status | grep -q "handoff: ready" || { echo "FAIL: final handoff not ready" >&2; exit 1; }
 test -z "$(git status --short)" || { echo "FAIL: final tree dirty" >&2; git status --short >&2; exit 1; }

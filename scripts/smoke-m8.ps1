@@ -8,7 +8,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $workspace = Join-Path ([IO.Path]::GetTempPath()) ('smoke-m8-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
 $project = Join-Path $workspace 'demo-project'
-$devsys = Join-Path $workspace 'devsys.exe'
+$devsys = Join-Path $workspace 'workloom.exe'
 $originalLocation = Get-Location
 $originalConfig = $env:DEVSYS_CONFIG_DIR
 $originalEncoding = [Console]::OutputEncoding
@@ -28,12 +28,12 @@ function Invoke-Expect([string]$What, [int]$Code, [scriptblock]$Run) {
     if ($LASTEXITCODE -ne $Code) { throw "$What exited $LASTEXITCODE, want $Code" }
 }
 function Get-Version([string]$Id) {
-    $json = & $script:devsys --json workitem get $Id | ConvertFrom-Json
+    $json = & $script:workloom --json workitem get $Id | ConvertFrom-Json
     return $json.version
 }
 function Move-To([string]$Id, [string[]]$Targets) {
     foreach ($t in $Targets) {
-        & $script:devsys workitem transition --id $Id --to $t --actor me --reason smoke --expect (Get-Version $Id) | Out-Null
+        & $script:workloom workitem transition --id $Id --to $t --actor me --reason smoke --expect (Get-Version $Id) | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "transition $Id -> $t failed: exit $LASTEXITCODE" }
     }
 }
@@ -42,7 +42,7 @@ try {
     New-Item -ItemType Directory -Path $project -Force | Out-Null
     $env:DEVSYS_CONFIG_DIR = Join-Path $workspace 'config'
     Set-Location $repoRoot
-    go build -ldflags '-s -w' -o $devsys ./cmd/devsys
+    go build -ldflags '-s -w' -o $devsys ./cmd/workloom
     Assert-Exit 'build CLI'
     $env:PATH = "$workspace;$env:PATH"
     Set-Location $project
@@ -52,9 +52,9 @@ try {
     git config user.email devsys@test
     git config user.name devsys
     git config core.autocrlf false
-    & $devsys init | Out-Null
+    & $workloom init | Out-Null
     Assert-Exit 'init'
-    $itemId = ((& $devsys workitem create --title '接力任务' --actor me --reason smoke) | Select-Object -First 1).Split("`t")[0]
+    $itemId = ((& $workloom workitem create --title '接力任务' --actor me --reason smoke) | Select-Object -First 1).Split("`t")[0]
     Move-To $itemId @('backlog', 'ready')
     git branch -M main
     Assert-Exit 'branch -M'
@@ -73,7 +73,7 @@ try {
     $clean = (& $devsys sync status) -join "`n"
     Assert-Exit 'sync clean'
     if (-not $clean.Contains('handoff: ready')) { throw "clean tree not ready: $clean" }
-    $ready = (& $devsys --json sync status | ConvertFrom-Json)
+    $ready = (& $workloom --json sync status | ConvertFrom-Json)
     if (-not $ready.handoff_ready -or $ready.blockers.Count -ne 0) { throw "json not ready: $($ready | ConvertTo-Json -Compress)" }
     Write-Output 'PASS: a clean pushed tree is ready'
     & $devsys event record --type note --subject-type workitem --subject $itemId --actor me --content dirty-probe | Out-Null
@@ -84,16 +84,16 @@ try {
     git checkout -q -- .devsys
     Assert-Exit 'checkout .devsys'
     Write-Output 'PASS: uncommitted .devsys/ blocks with uncommitted-devsys, then recovers'
-    $claim = (& $devsys --json workitem claim --id $itemId --owner old-device --reason handoff | ConvertFrom-Json)
+    $claim = (& $workloom --json workitem claim --id $itemId --owner old-device --reason handoff | ConvertFrom-Json)
     if ($claim.status -ne 'in_progress') { throw 'claim did not produce in_progress' }
     $leased = (& $devsys sync status) -join "`n"
     if (-not $leased.Contains('blocked [active-leases]')) { throw "lease not classified: $leased" }
     if (-not $leased.Contains('handoff: NOT ready')) { throw 'leased tree reported ready' }
     $token = (Get-Content (Join-Path $project ".devsys/scheduling/$itemId.yaml") | Where-Object { $_ -like 'token:*' }).Split(':')[1].Trim()
-    & $devsys workitem release --id $itemId --owner old-device --token $token --actor me --reason handoff-done --expect (Get-Version $itemId) | Out-Null
+    & $workloom workitem release --id $itemId --owner old-device --token $token --actor me --reason handoff-done --expect (Get-Version $itemId) | Out-Null
     Assert-Exit 'release'
     git add -A
-    git -c user.email=devsys@test -c user.name=devsys commit -q -m "chore(devsys): claim and release $itemId"
+    git -c user.email=devsys@test -c user.name=devsys commit -q -m "chore(workloom): claim and release $itemId"
     Assert-Exit 'commit release'
     git push -q origin main
     Assert-Exit 'push release'
@@ -155,7 +155,7 @@ try {
     Write-Output '== archiving keeps history queryable and shrinks live (M8.3) =='
     & $devsys event record --type note --subject-type workitem --subject $itemId --actor me --content live-event | Out-Null
     Assert-Exit 'live event'
-    $nBefore = (& $devsys --json event list | ConvertFrom-Json).events.Count
+    $nBefore = (& $workloom --json event list | ConvertFrom-Json).events.Count
     $liveBefore = (Get-ChildItem (Join-Path $project '.devsys/events') -Recurse -Filter '*.jsonl' | Measure-Object -Property Length -Sum).Sum
     $dryOut = (& $devsys archive events --before 2999-01 --dry-run --actor me --reason trim) -join "`n"
     Assert-Exit 'archive dry-run'
@@ -168,12 +168,12 @@ try {
     Assert-Exit 'archive apply'
     if (-not $archOut.Contains("live bytes: $liveBefore -> 0 ")) { throw "live bytes did not drain: $archOut" }
     if (-not (Test-Path (Join-Path $project '.devsys/archive/manifest.yaml'))) { throw 'manifest missing' }
-    $nAfter = (& $devsys --json event list | ConvertFrom-Json).events.Count
+    $nAfter = (& $workloom --json event list | ConvertFrom-Json).events.Count
     if ($nBefore -ne $nAfter) { throw "events $nBefore -> $nAfter across archive" }
     Write-Output "PASS: $nAfter events still queryable after live drained to 0"
-    $guardId = ((& $devsys workitem create --title '归档守卫' --actor me --reason smoke) | Select-Object -First 1).Split("`t")[0]
+    $guardId = ((& $workloom workitem create --title '归档守卫' --actor me --reason smoke) | Select-Object -First 1).Split("`t")[0]
     Move-To $guardId @('backlog', 'ready')
-    $runId = (& $devsys --json workitem claim --id $guardId --owner archivist --reason runs-guard | ConvertFrom-Json).run_id
+    $runId = (& $workloom --json workitem claim --id $guardId --owner archivist --reason runs-guard | ConvertFrom-Json).run_id
     Invoke-Expect 'running stream refused' 1 { & $devsys archive runs --id $runId --actor me --reason trim }
     $oldErr2 = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
@@ -182,10 +182,10 @@ try {
     if (-not $refusal.Contains('only terminal runs may be archived')) { throw "refusal unexplained: $refusal" }
     Write-Output 'PASS: a running stream is refused with only-terminal-runs'
     $gtoken = (Get-Content (Join-Path $project ".devsys/scheduling/$guardId.yaml") | Where-Object { $_ -like 'token:*' }).Split(':')[1].Trim()
-    & $devsys workitem release --id $guardId --owner archivist --token $gtoken --actor me --reason runs-guard-done --expect (Get-Version $guardId) | Out-Null
+    & $workloom workitem release --id $guardId --owner archivist --token $gtoken --actor me --reason runs-guard-done --expect (Get-Version $guardId) | Out-Null
     Assert-Exit 'guard release'
     git add -A
-    git -c user.email=devsys@test -c user.name=devsys commit -q -m "chore(devsys): archive segment $itemId"
+    git -c user.email=devsys@test -c user.name=devsys commit -q -m "chore(workloom): archive segment $itemId"
     Assert-Exit 'commit archive'
     git push -q origin main
     Assert-Exit 'push archive'
@@ -193,7 +193,7 @@ try {
     Write-Output '== board fixture loop flows back through the CLI only (M8.4) =='
     Move-To $itemId @('review', 'verification')
     git add -A
-    git -c user.email=devsys@test -c user.name=devsys commit -q -m "chore(devsys): $itemId to verification"
+    git -c user.email=devsys@test -c user.name=devsys commit -q -m "chore(workloom): $itemId to verification"
     Assert-Exit 'commit verification'
     $export = (& python (Join-Path $repoRoot 'scripts/contrabass/export.py') --root $project --out (Join-Path $workspace 'board') --devsys $devsys) -join "`n"
     if (-not $export.Contains('verification -> review')) { throw "export missed the card: $export" }
@@ -210,10 +210,10 @@ try {
     Write-Output 'PASS: import --dry-run previews and leaves .devsys alone'
     $import = (& python (Join-Path $repoRoot 'scripts/contrabass/import.py') --root $project --board (Join-Path $workspace 'board') --actor board --reason verdict --devsys $devsys) -join "`n"
     if (-not $import.Contains('verification -> done')) { throw "import did not transition: $import" }
-    $got = (& $devsys --json workitem get $itemId | ConvertFrom-Json)
+    $got = (& $workloom --json workitem get $itemId | ConvertFrom-Json)
     if ($got.item.status -ne 'done') { throw 'board verdict did not land' }
     Write-Output 'workitem is done'
-    $evs = (& $devsys --json event list --subject-type workitem --subject $itemId | ConvertFrom-Json).events
+    $evs = (& $workloom --json event list --subject-type workitem --subject $itemId | ConvertFrom-Json).events
     $hasTransition = @($evs | Where-Object { $_.type -eq 'status_changed' -and $_.content.Contains('verification -> done') }).Count -gt 0
     $hasComment = @($evs | Where-Object { $_.type -eq 'comment' -and $_.content.Contains('[board] board executed OK') }).Count -gt 0
     if (-not $hasTransition) { throw 'transition evidence missing' }
@@ -221,7 +221,7 @@ try {
     Write-Output 'events carry the transition and the [board] comment'
     Write-Output 'PASS: the board verdict lands as a transition plus a [board] comment'
     git add -A
-    git -c user.email=devsys@test -c user.name=devsys commit -q -m "chore(devsys): board verdict $itemId"
+    git -c user.email=devsys@test -c user.name=devsys commit -q -m "chore(workloom): board verdict $itemId"
     Assert-Exit 'commit verdict'
     git push -q origin main
     Assert-Exit 'push verdict'

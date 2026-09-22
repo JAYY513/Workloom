@@ -190,7 +190,7 @@ func Doctor(ctx context.Context, root string, opts Options) (InspectionReport, e
 	}
 	rep.PendingTransactions = diag.Pending
 	if len(diag.Pending) > 0 {
-		rep.Note = "pending transactions: run `devsys recover` before trusting business state (方案 §15.4)"
+		rep.Note = "pending transactions: run `workloom recover` before trusting business state (方案 §15.4)"
 		probes, _ := walkScheduling(ctx, st, now())
 		rep.ExpiredLeases = probes
 		return rep, nil
@@ -368,7 +368,7 @@ func conflictNotes(root string) ([]Proposal, string) {
 		}
 		out = append(out, Proposal{
 			Kind:        ProposalNoteUnmerged,
-			Description: "unmerged path " + e.Path + ": resolve with git (keep both sides explicit), then `devsys repair --dry-run`",
+			Description: "unmerged path " + e.Path + ": resolve with git (keep both sides explicit), then `workloom repair --dry-run`",
 			Evidence: []Evidence{
 				{Kind: EvidenceAbsent, Path: "git:" + e.Path, Note: "human resolution required"},
 			},
@@ -873,7 +873,7 @@ func buildProposals(ctx context.Context, st *storage.Store, now time.Time, lease
 				Kind:        ProposalReleaseExpiredLease,
 				WorkitemID:  lp.WorkitemID,
 				RunID:       lp.RunID,
-				Description: "lease_until past now; release with `devsys recover` (status untouched)",
+				Description: "lease_until past now; release with `workloom recover` (status untouched)",
 				Evidence:    leaseEvidence(lp, true),
 			})
 		case "orphan":
@@ -881,7 +881,7 @@ func buildProposals(ctx context.Context, st *storage.Store, now time.Time, lease
 				Kind:        ProposalReleaseOrphanLease,
 				WorkitemID:  lp.WorkitemID,
 				RunID:       lp.RunID,
-				Description: "lease present but referenced run missing; release with `devsys recover`",
+				Description: "lease present but referenced run missing; release with `workloom recover`",
 				Evidence:    leaseEvidence(lp, false),
 			})
 		}

@@ -57,10 +57,10 @@ try {
   Push-Location $repoRoot
   # Some endpoint protection flags the unstripped command binary as a false
   # positive; the smoke suite is about behaviour, not debug symbols.
-  & go build -ldflags '-s -w' -o (Join-Path $workspace 'devsys.exe') ./cmd/devsys
+  & go build -ldflags '-s -w' -o (Join-Path $workspace 'workloom.exe') ./cmd/workloom
   if ($LASTEXITCODE -ne 0) { Fail 'go build failed' }
   Pop-Location
-  $script:D = Join-Path $workspace 'devsys.exe'
+  $script:D = Join-Path $workspace 'workloom.exe'
 
   # The stub generator implements the contract: it records the argv and the
   # scope file it was handed, then fails, sleeps or records a page on request.

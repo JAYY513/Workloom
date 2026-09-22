@@ -15,7 +15,7 @@ func TestFreshnessBannerStale(t *testing.T) {
 	buildTo(t, m, out)
 	for _, page := range PageFiles {
 		content := readFile(t, out, page)
-		for _, want := range []string{"知识已过期", "2 pages stale", "devsys knowledge refresh"} {
+		for _, want := range []string{"知识已过期", "2 pages stale", "workloom knowledge refresh"} {
 			if !strings.Contains(content, want) {
 				t.Errorf("%s misses %q", page, want)
 			}
@@ -33,7 +33,7 @@ func TestFreshnessBannerStates(t *testing.T) {
 	buildTo(t, m, out)
 	for _, page := range PageFiles {
 		content := readFile(t, out, page)
-		for _, want := range []string{"知识页面层缺失", "devsys knowledge refresh --full"} {
+		for _, want := range []string{"知识页面层缺失", "workloom knowledge refresh --full"} {
 			if !strings.Contains(content, want) {
 				t.Errorf("missing %s misses %q", page, want)
 			}
@@ -49,7 +49,7 @@ func TestFreshnessBannerStates(t *testing.T) {
 		if !strings.Contains(content, "知识新鲜度不可判") {
 			t.Errorf("unavailable %s misses title", page)
 		}
-		if strings.Contains(content, "devsys knowledge refresh") {
+		if strings.Contains(content, "workloom knowledge refresh") {
 			t.Errorf("unavailable %s must not suggest a refresh command", page)
 		}
 	}
@@ -79,7 +79,7 @@ func TestKnowledgeHintRow(t *testing.T) {
 	out := t.TempDir() + "/site"
 	buildTo(t, m, out)
 	content := readFile(t, out, "knowledge.html")
-	for _, want := range []string{"执行以下命令重新生成受影响页面", "devsys knowledge refresh"} {
+	for _, want := range []string{"执行以下命令重新生成受影响页面", "workloom knowledge refresh"} {
 		if !strings.Contains(content, want) {
 			t.Errorf("knowledge.html misses %q", want)
 		}
@@ -124,7 +124,7 @@ func TestPendingBannerNamesDoctor(t *testing.T) {
 	buildTo(t, m, out)
 	for _, page := range PageFiles {
 		content := readFile(t, out, page)
-		for _, want := range []string{"devsys recover", "devsys doctor", "tx-1"} {
+		for _, want := range []string{"workloom recover", "workloom doctor", "tx-1"} {
 			if !strings.Contains(content, want) {
 				t.Errorf("%s misses %q", page, want)
 			}

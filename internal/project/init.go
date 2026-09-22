@@ -1,5 +1,5 @@
 // Package project implements project-local devsys operations. M0.2 ships
-// `devsys init` only; later milestones add the rest of the command family.
+// `workloom init` only; later milestones add the rest of the command family.
 package project
 
 import (
@@ -193,7 +193,7 @@ func isGitToplevel(dir string) bool {
 func ensureIgnoreEntries(path string, entries []string) error {
 	data, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {
-		content := "# devsys 本地文件（方案 §14.2）：不提交，可删除。\n" + strings.Join(entries, "\n") + "\n"
+		content := "# workloom 本地文件（方案 §14.2）：不提交，可删除。\n" + strings.Join(entries, "\n") + "\n"
 		return storage.AtomicWrite(path, []byte(content), 0o644)
 	}
 	if err != nil {
@@ -217,7 +217,7 @@ func ensureIgnoreEntries(path string, entries []string) error {
 	if !strings.HasSuffix(out, "\n") {
 		out += "\n"
 	}
-	out += "# devsys 本地文件（方案 §14.2）：不提交，可删除。\n" + strings.Join(missing, "\n") + "\n"
+	out += "# workloom 本地文件（方案 §14.2）：不提交，可删除。\n" + strings.Join(missing, "\n") + "\n"
 	return storage.AtomicWrite(path, []byte(out), 0o644)
 }
 
@@ -230,7 +230,7 @@ var attrsEntries = []string{".devsys/** text eol=lf", ".agents/** text eol=lf"}
 func ensureAttrsEntries(path string, entries []string) error {
 	data, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {
-		content := "# devsys 写的文件保持 LF：消除 Windows 换行噪音。\n" + strings.Join(entries, "\n") + "\n"
+		content := "# workloom 写的文件保持 LF：消除 Windows 换行噪音。\n" + strings.Join(entries, "\n") + "\n"
 		return storage.AtomicWrite(path, []byte(content), 0o644)
 	}
 	if err != nil {
@@ -254,6 +254,6 @@ func ensureAttrsEntries(path string, entries []string) error {
 	if !strings.HasSuffix(out, "\n") {
 		out += "\n"
 	}
-	out += "# devsys 写的文件保持 LF：消除 Windows 换行噪音。\n" + strings.Join(missing, "\n") + "\n"
+	out += "# workloom 写的文件保持 LF：消除 Windows 换行噪音。\n" + strings.Join(missing, "\n") + "\n"
 	return storage.AtomicWrite(path, []byte(out), 0o644)
 }

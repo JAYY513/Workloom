@@ -181,7 +181,7 @@ func (s *Store) Update(ctx context.Context, wi *domain.WorkItem, expected []byte
 	// present owner/token via UpdateClaimed. This prevents a stale
 	// claimant from bypassing lease fencing on metadata fields.
 	if hasActiveLeaseInSnapshot(expected) {
-		return fmt.Errorf("%w: work item %s has an active lease; release it first (`devsys workitem release --id %s --owner <owner> --token <token> --actor <you> --reason <why>`) or update through the claim holder", ErrInvalidInput, wi.ID, wi.ID)
+		return fmt.Errorf("%w: work item %s has an active lease; release it first (`workloom workitem release --id %s --owner <owner> --token <token> --actor <you> --reason <why>`) or update through the claim holder", ErrInvalidInput, wi.ID, wi.ID)
 	}
 	st, err := s.store()
 	if err != nil {

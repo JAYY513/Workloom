@@ -77,7 +77,7 @@ func ScoreQuality(in QualityInput) QualityResult {
 	if len(in.AcceptanceCriteria) > 0 {
 		res.Score += 15
 	} else {
-		res.Improvements = append(res.Improvements, "缺少验收标准：用 `devsys workitem update --id <id> --acceptance a,b --actor <you> --reason <why>` 补充验收条件")
+		res.Improvements = append(res.Improvements, "缺少验收标准：用 `workloom workitem update --id <id> --acceptance a,b --actor <you> --reason <why>` 补充验收条件")
 	}
 
 	text := in.Title + "\n" + in.Description + "\n" + strings.Join(in.AcceptanceCriteria, "\n")

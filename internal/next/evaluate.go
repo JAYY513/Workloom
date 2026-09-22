@@ -59,11 +59,11 @@ const (
 const ReviewStaleAfter = 24 * time.Hour
 
 // defaultRecoverCommand is the FAIL remediation hint when Input carries none.
-const defaultRecoverCommand = `devsys recover --actor operator --reason "recover interrupted state"`
+const defaultRecoverCommand = `workloom recover --actor operator --reason "recover interrupted state"`
 
 // CreateWorkitemCommand is the empty-project remediation `next` and `init`
 // name, so the first-use path does not invent a second create recipe.
-const CreateWorkitemCommand = `devsys workitem create --title "…" --actor <you> --reason "first task"`
+const CreateWorkitemCommand = `workloom workitem create --title "…" --actor <you> --reason "first task"`
 
 // Input is the observed project stateEvaluate consumes.
 type Input struct {
@@ -251,7 +251,7 @@ func Evaluate(in Input) Report {
 	if in.emptyProject() {
 		detail := "no work items; create one with `" + CreateWorkitemCommand + "`"
 		if !in.HasBlueprint {
-			detail += "; no blueprint declared (declare one: devsys project update --blueprint-artifact <artifact-id>)"
+			detail += "; no blueprint declared (declare one: workloom project update --blueprint-artifact <artifact-id>)"
 		}
 		rep.Risks = append(rep.Risks, Risk{Kind: RiskEmptyProject, Detail: detail})
 	}
@@ -326,7 +326,7 @@ func recommend(in Input) Recommendation {
 		if qb, ok := in.qualityBlock(wi.ID); ok {
 			// The ladder still points at the task to work on; the reason says
 			// what to do first, because claiming it as-is is a known failure.
-			reason = fmt.Sprintf("ready, but the quality gate would refuse the claim (score %d is below min_score %d): %s; fix it first with `devsys workitem update --id %s`",
+			reason = fmt.Sprintf("ready, but the quality gate would refuse the claim (score %d is below min_score %d): %s; fix it first with `workloom workitem update --id %s`",
 				qb.Score, qb.MinScore, strings.Join(qb.Improvements, "；"), wi.ID)
 		}
 		return Recommendation{Action: ActionStart, WorkitemID: wi.ID, Reason: reason + in.policyGap(wi)}
@@ -354,11 +354,11 @@ func recommend(in Input) Recommendation {
 	if queue := retryQueue(in); len(queue) > 0 {
 		// Idle is wrong while a retry waits: the next scheduling tick is the
 		// work, and it will not happen on its own (§4.8).
-		reason = fmt.Sprintf("%s; %d work item(s) wait for a dispatch retry (%s) — run `devsys dispatch --once`",
+		reason = fmt.Sprintf("%s; %d work item(s) wait for a dispatch retry (%s) — run `workloom dispatch --once`",
 			reason, len(queue), retrySchedule(queue))
 	}
 	if inflight := sortedAttemptRefs(in.InFlight); len(inflight) > 0 {
-		reason = fmt.Sprintf("%s; %d attempt(s) still in flight (%s) — wait or inspect `devsys run get --id %s`",
+		reason = fmt.Sprintf("%s; %d attempt(s) still in flight (%s) — wait or inspect `workloom run get --id %s`",
 			reason, len(inflight), inflightIDs(inflight), inflight[0].RunID)
 	}
 	return Recommendation{Action: ActionReportDone, Reason: reason}
@@ -436,7 +436,7 @@ func retryDetail(wi *domain.WorkItem, now time.Time) string {
 	if at.After(now) {
 		return fmt.Sprintf("retry queued; next attempt at %s", at.Format(time.RFC3339))
 	}
-	return fmt.Sprintf("retry queued and due since %s; run `devsys dispatch --once`", at.Format(time.RFC3339))
+	return fmt.Sprintf("retry queued and due since %s; run `workloom dispatch --once`", at.Format(time.RFC3339))
 }
 
 // retrySchedule summarizes a retry queue for a recommendation reason.

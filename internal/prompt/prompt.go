@@ -151,12 +151,12 @@ const noPolicyBody = "（未挂工作流策略：按任务简报、验收标准�
 // protocol is the reporting contract every round carries: agents report
 // through the same surfaces humans use, so evidence never lives only in the
 // harness's own transcript (方案 §8/§9.2).
-const protocol = `- 通过 CLI 或 MCP 汇报（两者同一实现）：` + "`devsys ...`" + ` 与同名 MCP 工具等价。
-- 进度：` + "`devsys run update --id $DEVSYS_RUN_ID --log <一行说明>`" + `（可多次）。
-- 产物：` + "`devsys artifact register --name <名称> --path <路径> --run $DEVSYS_RUN_ID --related $DEVSYS_WORKITEM --actor <身份> --reason <原因>`" + `。
-- 决策：` + "`devsys decision create --title <标题> --decision <结论> --by <身份>`" + `；发现：` + "`devsys finding create --title <标题> --description <说明>`" + `。
-- 受阻：` + "`devsys workitem block --id $DEVSYS_WORKITEM --actor <身份> --reason <原因>`" + `；需要人工放行时按策略请求审批（` + "`devsys approval request --id $DEVSYS_WORKITEM --stage <阶段> --actor <身份> --reason <原因>`" + `）。
-- 完成：` + "`devsys run complete --id $DEVSYS_RUN_ID --actor <身份> --reason <原因>`" + `；失败：` + "`devsys run fail ...`" + `。
+const protocol = `- 通过 CLI 或 MCP 汇报（两者同一实现）：` + "`workloom ...`" + ` 与同名 MCP 工具等价。
+- 进度：` + "`workloom run update --id $DEVSYS_RUN_ID --log <一行说明>`" + `（可多次）。
+- 产物：` + "`workloom artifact register --name <名称> --path <路径> --run $DEVSYS_RUN_ID --related $DEVSYS_WORKITEM --actor <身份> --reason <原因>`" + `。
+- 决策：` + "`workloom decision create --title <标题> --decision <结论> --by <身份>`" + `；发现：` + "`workloom finding create --title <标题> --description <说明>`" + `。
+- 受阻：` + "`workloom workitem block --id $DEVSYS_WORKITEM --actor <身份> --reason <原因>`" + `；需要人工放行时按策略请求审批（` + "`workloom approval request --id $DEVSYS_WORKITEM --stage <阶段> --actor <身份> --reason <原因>`" + `）。
+- 完成：` + "`workloom run complete --id $DEVSYS_RUN_ID --actor <身份> --reason <原因>`" + `；失败：` + "`workloom run fail ...`" + `。
 - 退出码 0 表示本轮成功，非零表示失败（失败原因写 stderr）。`
 
 // Assemble builds one round's text. Round 1 is the full brief; later rounds
@@ -211,7 +211,7 @@ func Assemble(in Input) (Prompt, error) {
 			{Title: "任务", Body: taskLine(in.Task)},
 			{Title: "上一轮以来的变化", Body: changesSection(in.Changes)},
 			{Title: "未完成项", Body: listSection(in.Remaining, "（无）")},
-			{Title: "汇报协议", Body: "沿用首轮协议：`devsys run update` 记进度、`devsys run complete`/`fail` 收尾；不要重述完整计划，从断点继续。"},
+			{Title: "汇报协议", Body: "沿用首轮协议：`workloom run update` 记进度、`workloom run complete`/`fail` 收尾；不要重述完整计划，从断点继续。"},
 		}
 	}
 

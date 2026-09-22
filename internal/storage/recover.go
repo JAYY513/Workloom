@@ -162,7 +162,7 @@ func (s *Store) verifyUntouched(j *journal) error {
 				return fmt.Errorf("op %d (%s): %v", i, o.Rel, err)
 			}
 			if !expect.satisfiedBy(cur, exists) {
-				return fmt.Errorf("op %d (%s): target changed outside devsys while the transaction was interrupted (expected %s, found %s)",
+				return fmt.Errorf("op %d (%s): target changed outside workloom while the transaction was interrupted (expected %s, found %s)",
 					i, o.Rel, expect, describeCurrent(cur, exists))
 			}
 		case opKindAppend:
@@ -183,7 +183,7 @@ func (s *Store) verifyUntouched(j *journal) error {
 				return fmt.Errorf("op %d (%s): %v", i, o.Rel, err)
 			}
 			if !expect.satisfiedBy(cur, exists) {
-				return fmt.Errorf("op %d (%s): target changed outside devsys while the transaction was interrupted (expected %s, found %s)",
+				return fmt.Errorf("op %d (%s): target changed outside workloom while the transaction was interrupted (expected %s, found %s)",
 					i, o.Rel, expect, describeCurrent(cur, exists))
 			}
 		}

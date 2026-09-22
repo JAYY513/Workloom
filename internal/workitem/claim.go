@@ -486,7 +486,7 @@ func (s *Store) Release(ctx context.Context, id string, opts ReleaseOptions) err
 
 		if !opts.ForExpired && !opts.ForOrphan && !opts.ForCompleted && !opts.ForRefused {
 			if opts.Owner == "" || opts.Token == "" {
-				return fmt.Errorf("%w: owner and token are required (expired or orphaned leases are recovered with `devsys recover` instead)", ErrInvalidInput)
+				return fmt.Errorf("%w: owner and token are required (expired or orphaned leases are recovered with `workloom recover` instead)", ErrInvalidInput)
 			}
 			tok, err := tokenFromTx(tx, id, lease.Token)
 			if err != nil {

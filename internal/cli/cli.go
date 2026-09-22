@@ -1,4 +1,4 @@
-// Package cli implements the devsys command surface: global switches, command
+// Package cli implements the workloom command surface: global switches, command
 // dispatch, output rendering and the exit-code taxonomy. Keeping dispatch out
 // of main() makes the exit contract testable.
 //
@@ -56,13 +56,13 @@ const (
 	CodeMissing = 11
 )
 
-const usage = `devsys - project-local agent development infrastructure
+const usage = `workloom - project-local agent development infrastructure
 
 usage:
-  devsys [--json | --jsonl] [--quiet] <command>
+  workloom [--json | --jsonl] [--quiet] <command>
 
 commands:
-  init          create .devsys/ in the current directory
+  setup         one-command onboarding: init + starter workflow + wire + checks (idempotent)
   config check  validate the managed metadata files (read-only)
   search <text> search project-local text records
   project       list | get | status | blueprint | update | state-update
@@ -84,6 +84,7 @@ commands:
   prime         alias for session start --compact (minimal orientation for agents)
   session start  one-shot session orientation (project, work in flight, next action)
   wire          AGENTS.md block [--dry-run] | --check | --skill | --print-mcp <codex|claude|opencode>
+  mcp install   register devsys with detected MCP clients [--scope user|project] [--client codex|claude|opencode] [--apply] [--force] [--dry-run]
   doctor        report transactions and orphaned claims (read-only)
   recover       recover transactions, release expired/orphaned claims
   repair        --dry-run proposes repairs; --apply --confirm <digest> applies (unmerged paths surface as human-only notes)
@@ -202,7 +203,7 @@ func requireProjectRoot() (*app.Service, error) {
 		return nil, err
 	}
 	if info, statErr := os.Stat(filepath.Join(svc.Root, project.DevsysDirName)); errors.Is(statErr, os.ErrNotExist) {
-		return nil, errPrecondition("no %s/ in %s: run `devsys init` first", project.DevsysDirName, svc.Root)
+		return nil, errPrecondition("no %s/ in %s: run `workloom init` first", project.DevsysDirName, svc.Root)
 	} else if statErr != nil {
 		return nil, errInternal("inspect %s: %v", filepath.Join(svc.Root, project.DevsysDirName), statErr)
 	} else if !info.IsDir() {
@@ -235,7 +236,7 @@ func RunWithIO(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		case "--quiet":
 			opts.quiet = true
 		case "--version", "-v":
-			fmt.Fprintln(stdout, "devsys "+version.String())
+			fmt.Fprintln(stdout, "workloom "+version.String())
 			return CodeOK
 		case "--help", "-h":
 			fmt.Fprint(stdout, usage)
@@ -256,7 +257,7 @@ func RunWithIO(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		// Leaf commands answer --help with the top-level usage (families
 		// print their own usage inside their routers).
 		switch cmd {
-		case "init", "search", "next", "doctor", "recover", "repair", "prime", "dispatch", "wire":
+		case "init", "setup", "search", "next", "doctor", "recover", "repair", "prime", "dispatch", "wire":
 			fmt.Fprint(stdout, usage)
 			return CodeOK
 		}
@@ -264,9 +265,11 @@ func RunWithIO(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	switch cmd {
 	case "init":
 		if len(rest) > 0 {
-			return render(stderr, opts, errUsage("`devsys init` takes no arguments (got %q)", rest[0]))
+			return render(stderr, opts, errUsage("`workloom init` takes no arguments (got %q)", rest[0]))
 		}
 		return render(stderr, opts, runInit(stdout, opts))
+	case "setup":
+		return render(stderr, opts, runSetup(stdout, opts, rest))
 	case "sync":
 		return render(stderr, opts, runSync(stdout, opts, rest))
 	case "config":
@@ -338,7 +341,7 @@ func exitWithCode(code int) error { return &codedExit{code: code} }
 // familyUsage prints the family usage and reports whether the router should
 // stop with exit 0: either no subcommand was given or the first argument is
 // a help request. 族级无参/--help 打 usage、exit 0（#338 m15），不再把
-// `devsys config --help` 当成未知子命令。
+// `workloom config --help` 当成未知子命令。
 func familyUsage(stdout io.Writer, rest []string, text string) bool {
 	if len(rest) == 0 || rest[0] == "--help" || rest[0] == "-h" {
 		fmt.Fprintln(stdout, text)
@@ -374,7 +377,7 @@ func render(stderr io.Writer, opts options, err error) int {
 		payload.Error.Problems = ce.problems
 		_ = json.NewEncoder(stderr).Encode(payload)
 	} else {
-		fmt.Fprintf(stderr, "devsys: %s\n", ce.msg)
+		fmt.Fprintf(stderr, "workloom: %s\n", ce.msg)
 		for _, p := range ce.problems {
 			fmt.Fprintf(stderr, "  %s\n", p.String())
 		}
@@ -424,15 +427,15 @@ func runInit(stdout io.Writer, opts options) error {
 		}
 		fmt.Fprintf(stdout, "registry: %s\n", regPath)
 		fmt.Fprintln(stdout, "next:")
-		fmt.Fprintln(stdout, "  1. install a starter workflow: devsys workflow init --template quick-fix (also: feature-development, architecture-change, reference-template), then adapt it")
-		fmt.Fprintln(stdout, "  2. devsys wire --skill")
+		fmt.Fprintln(stdout, "  1. install a starter workflow: workloom workflow init --template quick-fix (also: feature-development, architecture-change, reference-template), then adapt it")
+		fmt.Fprintln(stdout, "  2. workloom wire --skill")
 		fmt.Fprintln(stdout, "  3. "+next.CreateWorkitemCommand)
-		fmt.Fprintln(stdout, "  4. devsys workspace view")
+		fmt.Fprintln(stdout, "  4. workloom workspace view")
 	}
 	return nil
 }
 
-// runWire implements `devsys wire`: the idempotent AGENTS.md managed block
+// runWire implements `workloom wire`: the idempotent AGENTS.md managed block
 // (方案 §12.5, 实施计划 M4.6). Content outside the block — including other
 // tools' blocks — is never touched. `--check` is the read-only environment
 // report, `--skill` writes the agent skill files, `--print-mcp` prints a
@@ -446,14 +449,14 @@ func runWire(stdout io.Writer, opts options, rest []string) error {
 	skill := fs.Bool("skill", false, "write .agents/skills/devsys/ files (idempotent; default wire already does)")
 	printMCP := fs.String("print-mcp", "", "print MCP client snippet (codex|claude|opencode)")
 	if err := fs.Parse(rest); err != nil || fs.NArg() != 0 {
-		return errUsage("`devsys wire` [--dry-run] [--check [--strict]] [--skill] [--print-mcp codex|claude|opencode]")
+		return errUsage("`workloom wire` [--dry-run] [--check [--strict]] [--skill] [--print-mcp codex|claude|opencode]")
 	}
 	if *strict && !*check {
-		return errUsage("`devsys wire --strict` requires --check")
+		return errUsage("`workloom wire --strict` requires --check")
 	}
 	if *check || *printMCP != "" {
 		if *dryRun || *skill {
-			return errUsage("`devsys wire --check/--print-mcp` takes no other flags")
+			return errUsage("`workloom wire --check/--print-mcp` takes no other flags")
 		}
 		svc, err := appService()
 		if err != nil {
@@ -504,7 +507,7 @@ func runWire(stdout io.Writer, opts options, rest []string) error {
 	}
 	if *skill {
 		if *dryRun {
-			return errUsage("`devsys wire --skill` takes no other flags")
+			return errUsage("`workloom wire --skill` takes no other flags")
 		}
 		svc, err := requireProjectRoot()
 		if err != nil {
@@ -541,7 +544,7 @@ func runWire(stdout io.Writer, opts options, rest []string) error {
 	}
 	// The default wiring includes the skill files: an AGENTS.md block that
 	// points at a missing SKILL.md is a broken installation (#338 C1), so
-	// `devsys wire` alone must leave the tree in the state the block claims.
+	// `workloom wire` alone must leave the tree in the state the block claims.
 	var skillChanged []string
 	if !*dryRun {
 		skillChanged, err = svc.WriteSkill()
@@ -593,7 +596,7 @@ func checkLatest(latest bool, expect, usage string) error {
 
 // runProject routes the project family (方案 §8.2 project_*).
 func runProject(stdout io.Writer, opts options, rest []string) error {
-	if familyUsage(stdout, rest, "`devsys project` needs a subcommand (list | get | status | blueprint | update | state-update)") {
+	if familyUsage(stdout, rest, "`workloom project` needs a subcommand (list | get | status | blueprint | update | state-update)") {
 		return nil
 	}
 	svc, err := requireProjectRoot()
@@ -604,7 +607,7 @@ func runProject(stdout io.Writer, opts options, rest []string) error {
 	switch rest[0] {
 	case "list":
 		if len(rest) != 1 {
-			return errUsage("`devsys project list` takes no arguments")
+			return errUsage("`workloom project list` takes no arguments")
 		}
 		entries, err := svc.ProjectList(ctx)
 		if err != nil {
@@ -631,7 +634,7 @@ func runProject(stdout io.Writer, opts options, rest []string) error {
 		return nil
 	case "get":
 		if len(rest) != 1 {
-			return errUsage("`devsys project get` takes no arguments")
+			return errUsage("`workloom project get` takes no arguments")
 		}
 		view, err := svc.ProjectGet(ctx)
 		if err != nil {
@@ -651,7 +654,7 @@ func runProject(stdout io.Writer, opts options, rest []string) error {
 		return nil
 	case "status":
 		if len(rest) != 1 {
-			return errUsage("`devsys project status` takes no arguments")
+			return errUsage("`workloom project status` takes no arguments")
 		}
 		view, err := svc.ProjectStatus(ctx)
 		if err != nil {
@@ -682,7 +685,7 @@ func runProject(stdout io.Writer, opts options, rest []string) error {
 		return nil
 	case "blueprint":
 		if len(rest) != 1 {
-			return errUsage("`devsys project blueprint` takes no arguments")
+			return errUsage("`workloom project blueprint` takes no arguments")
 		}
 		art, err := svc.ProjectBlueprint(ctx)
 		if err != nil {
@@ -798,7 +801,7 @@ func runProject(stdout io.Writer, opts options, rest []string) error {
 		}
 		return nil
 	default:
-		return errUsage("unknown `devsys project` subcommand %q", rest[0])
+		return errUsage("unknown `workloom project` subcommand %q", rest[0])
 	}
 }
 
@@ -1175,7 +1178,7 @@ func outputWorkitem(stdout io.Writer, opts options, view app.WorkItemView) error
 // point; the instance subcommands drive a work item's workflow instance
 // through the shared service (实施计划 M3.6).
 func runWorkflow(stdout io.Writer, opts options, rest []string) error {
-	if familyUsage(stdout, rest, "`devsys workflow` needs a subcommand (check | init | list | get | start | next | step-complete | pause | resume | cancel)") {
+	if familyUsage(stdout, rest, "`workloom workflow` needs a subcommand (check | init | list | get | start | next | step-complete | pause | resume | cancel)") {
 		return nil
 	}
 	switch rest[0] {
@@ -1196,11 +1199,11 @@ func runWorkflow(stdout io.Writer, opts options, rest []string) error {
 	case "pause", "resume", "cancel":
 		return runWorkflowSignal(stdout, opts, rest[0], rest[1:])
 	default:
-		return errUsage("unknown `devsys workflow` subcommand %q", rest[0])
+		return errUsage("unknown `workloom workflow` subcommand %q", rest[0])
 	}
 }
 
-// runWorkflowInit implements `devsys workflow init --template <id>`: copy one
+// runWorkflowInit implements `workloom workflow init --template <id>`: copy one
 // embedded example policy into .devsys/workflows/ so binary-only users start
 // from the same files the repository ships under docs/examples/workflows/.
 // An existing policy is never overwritten.
@@ -1235,12 +1238,12 @@ func runWorkflowInit(stdout io.Writer, opts options, rest []string) error {
 	return nil
 }
 
-// runWorkflowCheck implements `devsys workflow check`: the read-only policy
+// runWorkflowCheck implements `workloom workflow check`: the read-only policy
 // diagnostic (方案 §5.3, 实施计划 M3.1). Unknown keys are warnings: they are
 // recorded, and a policy carrying only warnings still loads.
 func runWorkflowCheck(stdout io.Writer, opts options, rest []string) error {
 	if len(rest) != 0 {
-		return errUsage("`devsys workflow check` takes no arguments (got %q)", rest[0])
+		return errUsage("`workloom workflow check` takes no arguments (got %q)", rest[0])
 	}
 	svc, err := requireProjectRoot()
 	if err != nil {
@@ -1275,7 +1278,7 @@ func runWorkflowCheck(stdout io.Writer, opts options, rest []string) error {
 // runWorkflowList lists the policy files with their identity (M4.2).
 func runWorkflowList(stdout io.Writer, opts options, rest []string) error {
 	if len(rest) != 0 {
-		return errUsage("`devsys workflow list` takes no arguments (got %q)", rest[0])
+		return errUsage("`workloom workflow list` takes no arguments (got %q)", rest[0])
 	}
 	svc, err := requireProjectRoot()
 	if err != nil {
@@ -1479,7 +1482,7 @@ func runWorkflowSignal(stdout io.Writer, opts options, action string, rest []str
 // gate-checked transition, never as a standalone command, so no caller can
 // consume without advancing.
 func runApproval(stdout io.Writer, opts options, rest []string) error {
-	if familyUsage(stdout, rest, "`devsys approval` needs a subcommand (list | get | request | approve | reject)") {
+	if familyUsage(stdout, rest, "`workloom approval` needs a subcommand (list | get | request | approve | reject)") {
 		return nil
 	}
 	switch rest[0] {
@@ -1494,7 +1497,7 @@ func runApproval(stdout io.Writer, opts options, rest []string) error {
 	case "reject":
 		return runApprovalDecide(stdout, opts, rest[1:], false)
 	default:
-		return errUsage("unknown `devsys approval` subcommand %q", rest[0])
+		return errUsage("unknown `workloom approval` subcommand %q", rest[0])
 	}
 }
 
@@ -1666,14 +1669,14 @@ func runApprovalDecide(stdout io.Writer, opts options, rest []string, approve bo
 	return nil
 }
 
-// runNext implements `devsys next`: the read-only readiness verdict and the
+// runNext implements `workloom next`: the read-only readiness verdict and the
 // single recommended next action (方案 §7.4, 实施计划 M3.4). Like doctor it
 // never writes, recovers or creates the local lock; while pending
 // transactions exist — or no writer ever ran — it reports without rendering
 // business facts (方案 §15.4).
 func runNext(stdout io.Writer, opts options, rest []string) error {
 	if len(rest) != 0 {
-		return errUsage("`devsys next` takes no arguments")
+		return errUsage("`workloom next` takes no arguments")
 	}
 	svc, err := requireProjectRoot()
 	if err != nil {

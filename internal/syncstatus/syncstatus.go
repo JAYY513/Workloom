@@ -1,5 +1,5 @@
 // Package syncstatus implements the read-only inspection behind
-// `devsys sync status` (实施计划 M8.1, 方案 §14.4).
+// `workloom sync status` (实施计划 M8.1, 方案 §14.4).
 //
 // It answers one question: is this device ready to hand the project to
 // another device? Every check is read-only — no git fetch, no lock
@@ -135,7 +135,7 @@ func Check(ctx context.Context, root string) (Status, error) {
 	st.UncommittedDevsys = sortedOrEmpty(devsys)
 	st.UncommittedOther = sortedOrEmpty(other)
 	if len(unmerged) > 0 {
-		block(CodeUnmergedPaths, "unmerged paths need a human or `devsys repair`: "+strings.Join(st.Unmerged, ", "))
+		block(CodeUnmergedPaths, "unmerged paths need a human or `workloom repair`: "+strings.Join(st.Unmerged, ", "))
 	}
 	if len(devsys) > 0 {
 		block(CodeUncommittedDevsys, "uncommitted .devsys/ changes: commit them with a `chore(devsys):` prefix before handing off")
@@ -164,7 +164,7 @@ func Check(ctx context.Context, root string) (Status, error) {
 	sort.Strings(st.Pending)
 	if len(st.Pending) > 0 {
 		block(CodePendingTransactions,
-			"pending transactions ("+strings.Join(st.Pending, ", ")+"): run `devsys recover --actor <a> --reason <r>` before handing off")
+			"pending transactions ("+strings.Join(st.Pending, ", ")+"): run `workloom recover --actor <a> --reason <r>` before handing off")
 		// A partial lease snapshot would be worse than none: the pending
 		// material may still apply, so defer the lease audit entirely.
 		st.LeasesDeferred = true
@@ -181,7 +181,7 @@ func Check(ctx context.Context, root string) (Status, error) {
 				block(CodeUnreadableLeases, "unreadable lease "+lp.WorkitemID+" ("+lp.Path+"): fix or remove it before handing off")
 			case lp.ReasonKind == "orphan":
 				st.Leases = append(st.Leases, Lease{WorkitemID: lp.WorkitemID, Owner: lp.Owner, RunID: lp.RunID, Kind: "orphan"})
-				block(CodeOrphanLeases, "orphan lease on "+lp.WorkitemID+" (owner="+lp.Owner+" run="+lp.RunID+" missing): run `devsys recover` on the old device first")
+				block(CodeOrphanLeases, "orphan lease on "+lp.WorkitemID+" (owner="+lp.Owner+" run="+lp.RunID+" missing): run `workloom recover` on the old device first")
 			case lp.Expired || lp.ReasonKind == "expired":
 				st.Leases = append(st.Leases, Lease{WorkitemID: lp.WorkitemID, Owner: lp.Owner, RunID: lp.RunID, Kind: "expired"})
 				block(CodeExpiredLeases, "expired lease on "+lp.WorkitemID+" (owner="+lp.Owner+"): the old device never released it")

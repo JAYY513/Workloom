@@ -35,8 +35,8 @@ export DEVSYS_CONFIG_DIR="$workspace/config"
 # The command binary is linked with -s -w: some endpoint protection flags the
 # unstripped build of this program as a false positive, and the smoke suite is
 # about behaviour, not debug symbols.
-(cd "$repo_root" && go build -ldflags "-s -w" -o "$workspace/devsys.exe" ./cmd/devsys)
-D="$workspace/devsys.exe"
+(cd "$repo_root" && go build -ldflags "-s -w" -o "$workspace/workloom.exe" ./cmd/workloom)
+D="$workspace/workloom.exe"
 
 # The stub generator implements the contract: it records the argv and the scope
 # file it was handed, then fails or succeeds on request. A generator is a

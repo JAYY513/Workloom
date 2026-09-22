@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# build-release.sh: matrix-build devsys release binaries + checksums.txt.
+# build-release.sh: matrix-build workloom release binaries + checksums.txt.
+# The devsys compatibility alias ships as install-time copy, not a separate asset.
 # Repeatable. Requires Go and Git. Windows: run with Git Bash.
 # Usage: scripts/build-release.sh [--version <v>] [--out dist]
 #   --version defaults to `git describe --tags --always --dirty`.
@@ -27,9 +28,9 @@ mkdir -p -- "$out"
 # The unstripped build trips some endpoint protection (see smoke-m8.sh); -s -w stays.
 while IFS=/ read -r goos goarch; do
   [[ -z "$goos" ]] && continue
-  name="devsys-${goos}-${goarch}"
+  name="workloom-${goos}-${goarch}"
   [[ "$goos" == "windows" ]] && name="${name}.exe"
-  (cd "$repo_root" && GOOS="$goos" GOARCH="$goarch" GOFLAGS=-mod=vendor go build -ldflags "$ldflags" -o "$out/$name" ./cmd/devsys)
+  (cd "$repo_root" && GOOS="$goos" GOARCH="$goarch" GOFLAGS=-mod=vendor go build -ldflags "$ldflags" -o "$out/$name" ./cmd/workloom)
   echo "built $out/$name"
 done <<'MATRIX'
 windows/amd64
@@ -43,7 +44,7 @@ MATRIX
 # your agent" flow downloads them straight from the release page, and manual
 # users skip even the shallow clone (#347).
 cp -- "$repo_root/scripts/install.sh" "$repo_root/scripts/install.ps1" "$out/"
-(cd "$out" && sha256sum devsys-* install.sh install.ps1 > checksums.txt)
+(cd "$out" && sha256sum workloom-* install.sh install.ps1 > checksums.txt)
 # Keep the file in GNU text mode: "<sha256>  <file>". macOS `shasum` writes
 # "<sha256> *<file>", which `sha256sum -c` accepts but the install scripts
 # (and this repo's release check) do not want — v0.1.0 shipped such a file.

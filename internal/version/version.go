@@ -1,4 +1,4 @@
-// Package version carries the build identity of the devsys CLI.
+// Package version carries the build identity of the workloom CLI.
 //
 // The identity comes from, in priority order:
 //
@@ -16,7 +16,7 @@
 //
 //	go build -ldflags "-X github.com/JAYY513/Workloom/internal/version.Version=0.1.0 \
 //	                   -X github.com/JAYY513/Workloom/internal/version.Commit=$(git rev-parse --short HEAD)" \
-//	         -o bin/devsys ./cmd/devsys
+//	         -o bin/workloom ./cmd/workloom
 package version
 
 import (
@@ -37,7 +37,7 @@ var Commit = "unknown"
 func init() {
 	// Source builds without -ldflags (README recipe, install.sh fallback)
 	// still know their revision via the module's VCS stamping, so
-	// `devsys --version` does not answer "unknown".
+	// `workloom --version` does not answer "unknown".
 	if Commit != "" && Commit != "unknown" {
 		return
 	}
@@ -53,7 +53,7 @@ func init() {
 	}
 }
 
-// String renders the single-line identity printed by `devsys --version`.
+// String renders the single-line identity printed by `workloom --version`.
 func String() string {
 	version := effectiveVersion()
 	if Commit == "" || Commit == "unknown" {

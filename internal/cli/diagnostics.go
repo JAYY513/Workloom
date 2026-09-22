@@ -26,7 +26,7 @@ import (
 
 func runSearch(stdout io.Writer, opts options, rest []string) error {
 	if len(rest) != 1 {
-		return errUsage("`devsys search` needs exactly one keyword")
+		return errUsage("`workloom search` needs exactly one keyword")
 	}
 	cwd, err := resolveRoot()
 	if err != nil {
@@ -34,7 +34,7 @@ func runSearch(stdout io.Writer, opts options, rest []string) error {
 	}
 	devsys := filepath.Join(cwd, project.DevsysDirName)
 	if _, err := os.Stat(devsys); errors.Is(err, fs.ErrNotExist) {
-		return errPrecondition("no %s/ in %s: run `devsys init` first", project.DevsysDirName, cwd)
+		return errPrecondition("no %s/ in %s: run `workloom init` first", project.DevsysDirName, cwd)
 	} else if err != nil {
 		return errInternal("inspect %s: %v", devsys, err)
 	}
@@ -64,17 +64,17 @@ func runSearch(stdout io.Writer, opts options, rest []string) error {
 	return nil
 }
 
-// runConfigCheck implements `devsys config check`: the read-only diagnostic
+// runConfigCheck implements `workloom config check`: the read-only diagnostic
 
 func runConfigCheck(stdout io.Writer, opts options, rest []string) error {
-	if familyUsage(stdout, rest, "`devsys config` needs a subcommand (try `devsys config check`)") {
+	if familyUsage(stdout, rest, "`workloom config` needs a subcommand (try `workloom config check`)") {
 		return nil
 	}
 	if rest[0] != "check" {
-		return errUsage("unknown `devsys config` subcommand %q (try `devsys config check`)", rest[0])
+		return errUsage("unknown `workloom config` subcommand %q (try `workloom config check`)", rest[0])
 	}
 	if len(rest) > 1 {
-		return errUsage("`devsys config check` takes no arguments (got %q)", rest[1])
+		return errUsage("`workloom config check` takes no arguments (got %q)", rest[1])
 	}
 	cwd, err := resolveRoot()
 	if err != nil {
@@ -82,7 +82,7 @@ func runConfigCheck(stdout io.Writer, opts options, rest []string) error {
 	}
 	devsys := filepath.Join(cwd, project.DevsysDirName)
 	if _, err := os.Stat(devsys); errors.Is(err, fs.ErrNotExist) {
-		return errPrecondition("no %s/ in %s: run `devsys init` first", project.DevsysDirName, cwd)
+		return errPrecondition("no %s/ in %s: run `workloom init` first", project.DevsysDirName, cwd)
 	} else if err != nil {
 		return errInternal("inspect %s: %v", devsys, err)
 	}
@@ -116,7 +116,7 @@ func runConfigCheck(stdout io.Writer, opts options, rest []string) error {
 
 func runDoctor(stdout io.Writer, opts options, rest []string) error {
 	if len(rest) != 0 {
-		return errUsage("`devsys doctor` takes no arguments")
+		return errUsage("`workloom doctor` takes no arguments")
 	}
 	root, err := resolveRoot()
 	if err != nil {
@@ -145,7 +145,7 @@ func runDoctor(stdout io.Writer, opts options, rest []string) error {
 			fmt.Fprintf(stdout, "PENDING  %s\n", p.ID)
 		}
 		if len(rep.PendingTransactions) > 0 {
-			fmt.Fprintln(stdout, "run `devsys recover` before trusting business state")
+			fmt.Fprintln(stdout, "run `workloom recover` before trusting business state")
 		}
 		for _, l := range rep.ExpiredLeases {
 			fmt.Fprintf(stdout, "EXPIRED  %s  owner=%s  lease_until=%s\n", l.WorkitemID, l.Owner, l.LeaseUntil.Format(time.RFC3339))
@@ -175,7 +175,7 @@ func runDoctor(stdout io.Writer, opts options, rest []string) error {
 	return nil
 }
 
-// runRecover implements `devsys recover`: deterministic transaction
+// runRecover implements `workloom recover`: deterministic transaction
 // recovery followed by policy-driven orphan release (M2.3). Actor and
 // reason are mandatory so every release carries an audit trail.
 
@@ -214,7 +214,7 @@ func runRecover(stdout io.Writer, opts options, rest []string) error {
 	return nil
 }
 
-// runRepair implements `devsys repair`: dry-run lists proposals with a
+// runRepair implements `workloom repair`: dry-run lists proposals with a
 // deterministic digest; --apply re-runs the dry-run and only applies when
 // the supplied --confirm digest still matches, so every apply revalidates
 // the evidence it consumes (方案 §15.4 推断→确认→重写).
@@ -253,7 +253,7 @@ func runRepair(stdout io.Writer, opts options, rest []string) error {
 		rep, err := reconcile.RepairApply(context.Background(), root, plan, ropts)
 		if err != nil {
 			if errors.Is(err, reconcile.ErrDigestMismatch) {
-				return errPrecondition("confirmation digest does not match current state; run `devsys repair --dry-run` again")
+				return errPrecondition("confirmation digest does not match current state; run `workloom repair --dry-run` again")
 			}
 			return errInternal("repair apply: %v", err)
 		}

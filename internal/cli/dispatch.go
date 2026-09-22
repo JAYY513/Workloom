@@ -14,7 +14,7 @@ import (
 	"github.com/JAYY513/Workloom/internal/app"
 )
 
-// runDispatch implements `devsys dispatch`: one scheduling tick (方案 §4.8).
+// runDispatch implements `workloom dispatch`: one scheduling tick (方案 §4.8).
 // The tick is a command, not a service — `--watch` is a foreground
 // convenience loop, and read-only commands never dispatch.
 func runDispatch(stdout io.Writer, opts options, rest []string) error {

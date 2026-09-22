@@ -35,7 +35,7 @@ func Load(root string) []FileResult {
 		// A missing policy directory is broken layout, not an empty policy
 		// set: `config check` reports missing managed files the same way.
 		return []FileResult{{File: "workflows/", Issues: []Issue{{
-			File: "workflows/", Reason: "missing; run `devsys init` to create it", Severity: SeverityError,
+			File: "workflows/", Reason: "missing; run `workloom init` to create it", Severity: SeverityError,
 		}}}}
 	}
 	if err != nil {

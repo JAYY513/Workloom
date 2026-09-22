@@ -48,7 +48,7 @@ func run(t *testing.T, args ...string) (code int, stdout, stderr string) {
 
 func TestVersionAndHelp(t *testing.T) {
 	code, out, _ := run(t, "--version")
-	if code != CodeOK || !strings.HasPrefix(out, "devsys ") {
+	if code != CodeOK || !strings.HasPrefix(out, "workloom ") {
 		t.Fatalf("--version: code=%d out=%q", code, out)
 	}
 	code, out, _ = run(t, "--help")
@@ -69,7 +69,7 @@ func TestUsageErrors(t *testing.T) {
 		if code != CodeUsage {
 			t.Errorf("%v: code=%d, want %d (stderr=%q)", args, code, CodeUsage, errOut)
 		}
-		if !strings.Contains(errOut, "devsys:") {
+		if !strings.Contains(errOut, "workloom:") {
 			t.Errorf("%v: stderr=%q", args, errOut)
 		}
 	}
@@ -272,7 +272,7 @@ func TestConfigCheckNotInitialized(t *testing.T) {
 	if code != CodePrecondition {
 		t.Fatalf("code=%d stderr=%s", code, errOut)
 	}
-	if !strings.Contains(errOut, "devsys init") {
+	if !strings.Contains(errOut, "workloom init") {
 		t.Errorf("stderr = %q", errOut)
 	}
 }
@@ -281,7 +281,7 @@ func TestConfigUsage(t *testing.T) {
 	// No subcommand prints the family usage and exits 0 (#338 m15).
 	code, out, _ := run(t, "config")
 	if code != CodeOK || !strings.Contains(out, "config check") {
-		t.Errorf("`devsys config`: code=%d out=%q", code, out)
+		t.Errorf("`workloom config`: code=%d out=%q", code, out)
 	}
 	for _, args := range [][]string{{"config", "bogus"}, {"config", "check", "extra"}} {
 		code, _, errOut := run(t, args...)

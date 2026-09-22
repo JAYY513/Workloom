@@ -289,7 +289,7 @@ func TestQualityBlockedReadyTaskIsReportedAndExplained(t *testing.T) {
 	if rec.Action != ActionStart || rec.WorkitemID != "WLM-1" {
 		t.Fatalf("recommendation = %+v", rec)
 	}
-	for _, want := range []string{"quality gate", "acceptance_criteria", "devsys workitem update --id WLM-1"} {
+	for _, want := range []string{"quality gate", "acceptance_criteria", "workloom workitem update --id WLM-1"} {
 		if !strings.Contains(rec.Reason, want) {
 			t.Errorf("reason = %q, want %q", rec.Reason, want)
 		}
@@ -315,7 +315,7 @@ func TestQueuedRetryKeepsTheProjectFromLookingIdle(t *testing.T) {
 	if rec.Action != ActionReportDone {
 		t.Fatalf("recommendation = %+v", rec)
 	}
-	for _, want := range []string{"1 work item(s) wait for a dispatch retry", due.UTC().Format(time.RFC3339), "devsys dispatch --once"} {
+	for _, want := range []string{"1 work item(s) wait for a dispatch retry", due.UTC().Format(time.RFC3339), "workloom dispatch --once"} {
 		if !strings.Contains(rec.Reason, want) {
 			t.Errorf("reason = %q, want %q", rec.Reason, want)
 		}
@@ -325,7 +325,7 @@ func TestQueuedRetryKeepsTheProjectFromLookingIdle(t *testing.T) {
 	past := t0.Add(-time.Minute)
 	retrying.NextAttemptAt = &past
 	rep = Evaluate(Input{Now: t0, InspectionOK: true, WorkItems: []*domain.WorkItem{retrying}})
-	if !strings.Contains(rep.Risks[0].Detail, "due since") || !strings.Contains(rep.Risks[0].Detail, "devsys dispatch --once") {
+	if !strings.Contains(rep.Risks[0].Detail, "due since") || !strings.Contains(rep.Risks[0].Detail, "workloom dispatch --once") {
 		t.Errorf("detail = %q, want the due retry to name the tick", rep.Risks[0].Detail)
 	}
 }

@@ -54,8 +54,8 @@ func Path() (string, error) {
 	return filepath.Join(dir, "registry.yaml"), nil
 }
 
-const header = "# devsys 用户级项目注册表（方案 §14.4）：仅保存项目路径与标识，不含项目状态。\n" +
-	"# 由 `devsys init` 自动维护；删除本文件不影响任何项目。\n"
+const header = "# workloom 用户级项目注册表（方案 §14.4）：仅保存项目路径与标识，不含项目状态。\n" +
+	"# 由 `workloom init` 自动维护；删除本文件不影响任何项目。\n"
 
 // Load reads the registry; a missing file yields an empty registry.
 func Load(path string) (*Registry, error) {

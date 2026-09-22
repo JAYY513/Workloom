@@ -70,7 +70,7 @@ func TestLeasedTransitionNamesTheReleaseCommand(t *testing.T) {
 	if code != CodeInvalid {
 		t.Fatalf("leased transition: code=%d stderr=%q", code, errOut)
 	}
-	for _, want := range []string{"lease token mismatch", "leased by \"dev\"", "devsys workitem release --id " + id} {
+	for _, want := range []string{"lease token mismatch", "leased by \"dev\"", "workloom workitem release --id " + id} {
 		if !strings.Contains(errOut, want) {
 			t.Errorf("stderr = %q, want %q", errOut, want)
 		}

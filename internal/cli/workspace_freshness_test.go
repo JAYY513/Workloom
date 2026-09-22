@@ -34,7 +34,7 @@ func TestWorkspaceViewStaleHint(t *testing.T) {
 	for _, want := range []string{
 		"knowledge: stale",
 		"affected: " + pageRel,
-		"hint: run `devsys knowledge refresh` to regenerate affected pages",
+		"hint: run `workloom knowledge refresh` to regenerate affected pages",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("stdout misses %q:\n%s", want, out)
@@ -81,7 +81,7 @@ func TestWorkspaceViewUnverifiableHint(t *testing.T) {
 	for _, want := range []string{
 		"knowledge: stale",
 		"unverifiable: " + pageRel,
-		"hint: run `devsys knowledge refresh` to regenerate affected pages",
+		"hint: run `workloom knowledge refresh` to regenerate affected pages",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("stdout misses %q:\n%s", want, out)
@@ -103,7 +103,7 @@ func TestWorkspaceViewMissingHint(t *testing.T) {
 	}
 	for _, want := range []string{
 		"knowledge: missing",
-		"hint: configure `knowledge_generator`, then run `devsys knowledge refresh --full`",
+		"hint: configure `knowledge_generator`, then run `workloom knowledge refresh --full`",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("stdout misses %q:\n%s", want, out)
@@ -126,16 +126,16 @@ func TestWorkspaceViewPendingDoctorHint(t *testing.T) {
 	}
 	for _, want := range []string{
 		"pending: txn-1",
-		"hint: run `devsys doctor` to inspect before `devsys recover`",
+		"hint: run `workloom doctor` to inspect before `workloom recover`",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("stdout misses %q:\n%s", want, out)
 		}
 	}
-	if strings.Contains(out, "hint: run `devsys knowledge refresh`") {
+	if strings.Contains(out, "hint: run `workloom knowledge refresh`") {
 		t.Errorf("pending view must not suggest refresh:\n%s", out)
 	}
-	if strings.Contains(out, "hint: run `devsys knowledge status`") {
+	if strings.Contains(out, "hint: run `workloom knowledge status`") {
 		t.Errorf("pending view needs no status hint (trust already says recover):\n%s", out)
 	}
 }

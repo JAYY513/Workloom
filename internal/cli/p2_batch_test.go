@@ -12,7 +12,7 @@ import (
 )
 
 // TestFamilyHelpExitsZero: 族无参/--help 打 usage 且 exit 0，不再被当
-// 未知子命令（`devsys config --help` 曾是 exit 2）。
+// 未知子命令（`workloom config --help` 曾是 exit 2）。
 func TestFamilyHelpExitsZero(t *testing.T) {
 	gatedProject(t)
 	cases := [][]string{
@@ -51,7 +51,7 @@ func TestWireCheckStrictFails(t *testing.T) {
 	}
 }
 
-// TestWireDefaultWritesSkill: `devsys wire` 默认写 skill 文件——AGENTS.md
+// TestWireDefaultWritesSkill: `workloom wire` 默认写 skill 文件——AGENTS.md
 // 块指向的 SKILL.md 必须存在（方式 B 只跑 wire 不再是断链安装）。
 func TestWireDefaultWritesSkill(t *testing.T) {
 	repo, _ := gatedProject(t)

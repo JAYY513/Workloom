@@ -153,7 +153,7 @@ func TestWorkspaceBuildWithoutProject(t *testing.T) {
 	if code != CodePrecondition {
 		t.Fatalf("code = %d, want %d (stderr=%q)", code, CodePrecondition, errOut)
 	}
-	if !strings.Contains(errOut, "devsys init") {
+	if !strings.Contains(errOut, "workloom init") {
 		t.Errorf("stderr = %q", errOut)
 	}
 }

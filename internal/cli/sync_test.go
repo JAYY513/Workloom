@@ -131,7 +131,7 @@ func TestSyncStatusNoDevsys(t *testing.T) {
 	t.Setenv("DEVSYS_CONFIG_DIR", t.TempDir())
 	t.Chdir(repo)
 	code, _, errOut := run(t, "sync", "status")
-	if code != CodePrecondition || !strings.Contains(errOut, "devsys init") {
+	if code != CodePrecondition || !strings.Contains(errOut, "workloom init") {
 		t.Errorf("no .devsys: code=%d stderr=%q, want 3 with an init hint", code, errOut)
 	}
 }

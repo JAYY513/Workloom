@@ -218,8 +218,8 @@ func TestDiagnoseReportsMissingFiles(t *testing.T) {
 
 	_, problems = Diagnose(root)
 	assertProblems(t, problems, []string{
-		"state/current.yaml: missing; run `devsys init` to create it",
-		"state/milestones.yaml: missing; run `devsys init` to create it",
+		"state/current.yaml: missing; run `workloom init` to create it",
+		"state/milestones.yaml: missing; run `workloom init` to create it",
 	})
 }
 

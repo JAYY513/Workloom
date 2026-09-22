@@ -96,7 +96,7 @@ func TestWorkspaceViewWithoutProject(t *testing.T) {
 	if code != CodePrecondition {
 		t.Fatalf("code = %d, want %d (stderr=%q)", code, CodePrecondition, errOut)
 	}
-	if !strings.Contains(errOut, "devsys init") {
+	if !strings.Contains(errOut, "workloom init") {
 		t.Errorf("stderr = %q", errOut)
 	}
 }
@@ -106,7 +106,7 @@ func TestWorkspaceViewWithoutProject(t *testing.T) {
 func TestWorkspaceUsageErrors(t *testing.T) {
 	// No subcommand prints the family usage and exits 0 (#338 m15).
 	if code, out, _ := run(t, "workspace"); code != CodeOK || !strings.Contains(out, "view") {
-		t.Errorf("`devsys workspace`: code=%d out=%q", code, out)
+		t.Errorf("`workloom workspace`: code=%d out=%q", code, out)
 	}
 	cases := [][]string{
 		{"workspace", "bogus"},

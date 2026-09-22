@@ -67,7 +67,7 @@ func (s *Service) ProjectUpdate(ctx context.Context, req UpdateProjectRequest) (
 			}
 			if _, err := record.New(s.Root).GetArtifact(ctx, id); err != nil {
 				if errors.Is(err, record.ErrNotFound) {
-					return ProjectView{}, Preconditionf("artifact %q not found; register it first (`devsys artifact register --path <file> --name <name>`)", id)
+					return ProjectView{}, Preconditionf("artifact %q not found; register it first (`workloom artifact register --path <file> --name <name>`)", id)
 				}
 				return ProjectView{}, s.storeError(err)
 			}
@@ -294,7 +294,7 @@ type ProjectStatusView struct {
 }
 
 // ProjectStatus reports the project metadata, work item counts by status and
-// the readiness verdict (same evaluation `devsys next` renders).
+// the readiness verdict (same evaluation `workloom next` renders).
 func (s *Service) ProjectStatus(ctx context.Context) (ProjectStatusView, error) {
 	md, err := s.project()
 	if err != nil {

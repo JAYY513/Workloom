@@ -1,6 +1,6 @@
-// Command devsys is the CLI entry point for the project-local agent
-// development infrastructure described in docs/原始文档/
-// (方案 = specification, 实施计划 = step plan).
+// Command devsys is the compatibility alias for the workloom CLI: the same
+// entry point under the historical name, kept so existing scripts and
+// muscle memory keep working. The primary binary is ./cmd/workloom.
 package main
 
 import (

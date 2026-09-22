@@ -172,7 +172,7 @@ func (s *Shell) Start(ctx context.Context, cmd Command) (Session, error) {
 // exit status is what the attempt is judged by.
 func feedStdin(pipe io.WriteCloser, payload []byte, sess *shellSession) {
 	if _, err := pipe.Write(payload); err != nil {
-		sess.emit(Line{Stream: "stderr", Text: "devsys: stdin write failed: " + err.Error(), Time: time.Now().UTC()})
+		sess.emit(Line{Stream: "stderr", Text: "workloom: stdin write failed: " + err.Error(), Time: time.Now().UTC()})
 	}
 	_ = pipe.Close()
 }

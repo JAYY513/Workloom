@@ -51,7 +51,7 @@ func acquireLock(ctx context.Context, path string, mode lockMode, timeout time.D
 			if holder != "" {
 				return nil, fmt.Errorf("%w: %s held by %s", ErrLockTimeout, path, holder)
 			}
-			return nil, fmt.Errorf("%w: %s is held by another devsys process", ErrLockTimeout, path)
+			return nil, fmt.Errorf("%w: %s is held by another workloom process", ErrLockTimeout, path)
 		}
 		select {
 		case <-ctx.Done():

@@ -90,7 +90,7 @@ func (s *Service) Dispatch(ctx context.Context, req DispatchRequest) (DispatchRe
 	// replays and expired-lease releases wait for the next tick.
 	if blocked, notice := mergeConflict(s.Root); blocked != "" {
 		rep.Notices = append(rep.Notices, notice)
-		return rep, Preconditionf("dispatch blocked: %s; resolve the merge with git, then `devsys repair --dry-run`", blocked)
+		return rep, Preconditionf("dispatch blocked: %s; resolve the merge with git, then `workloom repair --dry-run`", blocked)
 	} else if notice != "" {
 		rep.Notices = append(rep.Notices, notice)
 	}
@@ -409,7 +409,7 @@ func defaultSpawner() AttemptSpawner {
 		}
 		exe, err := os.Executable()
 		if err != nil {
-			return 0, fmt.Errorf("resolve devsys executable: %w", err)
+			return 0, fmt.Errorf("resolve workloom executable: %w", err)
 		}
 		if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
 			return 0, fmt.Errorf("create attempt log directory: %w", err)

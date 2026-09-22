@@ -10,9 +10,9 @@ POSIX 可直接执行（shebang `#!/usr/bin/env python3`）。仅依赖 Python �
 ## 命令
 
 ```sh
-# devsys -> board（幂等，重跑同字节）
-py -3 scripts/contrabass/export.py --root <项目根> --out <board目录> [--id WLM-1,...] [--devsys /path/to/devsys]
-# board -> devsys（先预览，再回流）
+# workloom -> board（幂等，重跑同字节）
+py -3 scripts/contrabass/export.py --root <项目根> --out <board目录> [--id WLM-1,...] [--devsys /path/to/workloom]
+# board -> workloom（先预览，再回流）
 py -3 scripts/contrabass/import.py --root <项目根> --board <board目录> --dry-run --actor <人> --reason <原因>
 py -3 scripts/contrabass/import.py --root <项目根> --board <board目录> --actor <人> --reason <原因>
 # 空 board 骨架（无 Contrabass 环境时的仿真起点）
@@ -80,7 +80,7 @@ priority 数值原样透传（board 若只认高中低，由看板侧分档，�
 ```sh
 export DEVSYS_CONFIG_DIR=/tmp/cfg
 # 1. 建任务并走到可 done 的前一态（board done→devsys done 要求合法边）
-devsys workitem transition --id WLM-1 --to backlog|ready|in_progress|review|verification …
+workloom workitem transition --id WLM-1 --to backlog|ready|in_progress|review|verification …
 # 2. export → 改卡片 board_status=done + 填 result → import --dry-run（零写）→ import
 # 3. 断言：workitem get 为 done，comment 落定，event list 有 transition+comment 痕迹
 ```

@@ -8,7 +8,7 @@ Set-StrictMode -Version Latest
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $workspace = Join-Path ([IO.Path]::GetTempPath()) ('smoke-m2-' + [guid]::NewGuid().ToString('N'))
 $project = Join-Path $workspace 'demo-project'
-$devsys = Join-Path $workspace 'devsys.exe'
+$devsys = Join-Path $workspace 'workloom.exe'
 $originalLocation = Get-Location
 $originalConfig = $env:DEVSYS_CONFIG_DIR
 $originalEncoding = [Console]::OutputEncoding
@@ -17,7 +17,7 @@ function Assert-Exit([string]$Step) {
     if ($LASTEXITCODE -ne 0) { throw "$Step failed: exit $LASTEXITCODE" }
 }
 function Get-Version([string]$Id) {
-    $json = & $script:devsys --json workitem get $Id | ConvertFrom-Json
+    $json = & $script:workloom --json workitem get $Id | ConvertFrom-Json
     return $json.version
 }
 try {
@@ -25,21 +25,21 @@ try {
     New-Item -ItemType Directory -Path $project | Out-Null
     $env:DEVSYS_CONFIG_DIR = Join-Path $workspace 'config'
     Set-Location $repoRoot
-    go build -o $devsys ./cmd/devsys
+    go build -o $devsys ./cmd/workloom
     Assert-Exit 'build CLI'
     Set-Location $project
 
     # 1. Normal lifecycle: create -> ready -> claim.
     git init -q $project
     Assert-Exit 'git init'
-    & $devsys init | Out-Null
+    & $workloom init | Out-Null
     Assert-Exit 'init'
-    & $devsys workitem create --title 'M2 recovery probe' --actor main --reason 'smoke-m2' | Out-Null
+    & $workloom workitem create --title 'M2 recovery probe' --actor main --reason 'smoke-m2' | Out-Null
     Assert-Exit 'create'
     $v = Get-Version 'WLM-1'
-    & $devsys workitem transition --id WLM-1 --to ready --actor main --reason 'scoping done' --expect $v | Out-Null
+    & $workloom workitem transition --id WLM-1 --to ready --actor main --reason 'scoping done' --expect $v | Out-Null
     Assert-Exit 'transition to ready'
-    $claimJson = & $devsys --json workitem claim --id WLM-1 --owner probe-agent --reason 'smoke claim'
+    $claimJson = & $workloom --json workitem claim --id WLM-1 --owner probe-agent --reason 'smoke claim'
     Assert-Exit 'claim'
     $claim = $claimJson | ConvertFrom-Json
     if ($claim.status -ne 'in_progress') { throw 'claim did not produce in_progress' }
@@ -65,7 +65,7 @@ agent_harness: shell
 
     # 3. Doctor reports the orphan read-only.
     $lockBefore = (Get-FileHash (Join-Path $project '.devsys/local/lock') -Algorithm SHA256).Hash
-    $docJson = & $devsys --json doctor
+    $docJson = & $workloom --json doctor
     Assert-Exit 'doctor'
     $doc = $docJson -join ''
     if ($doc -notmatch 'orphan') { throw 'doctor missed the orphan lease' }

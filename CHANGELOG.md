@@ -4,6 +4,22 @@
 
 ## Unreleased
 
+## v0.1.9 — 2026-09-22
+
+### Added
+
+- `workloom setup`：一条命令完成项目接入（init → 起手工作流 → wire → config check → wire --check → prime → 蓝图检查 → doctor），幂等、失败即停；已有文件一律保留。底层命令不变。
+- `workloom mcp install`：把 devsys 注册进 MCP 客户端（Codex / Claude Code / OpenCode，user/project 两种 scope）。默认只预览；`--apply` 才写；已有 `devsys` 条目不覆盖，`--force` 才替换该条目。写入前打印目标路径。严格 JSON / TOML 外科式写入，无法安全合并时拒绝并指向 `wire --print-mcp`。
+- npm 分发层：`@jayy513/workloom` 包装现有 Go 二进制（平台包走 optionalDependencies，无 postinstall 下载）。尚未 `npm publish`。npm bin 只有 `workloom`。Release 附带 `dist/npm/*.tgz`。
+
+### Changed
+
+- 主命令从 `devsys` 改名为 `workloom`：`go install github.com/JAYY513/Workloom/cmd/workloom@v0.1.9` 安装，用法、帮助、文档中的命令示例全部改为 `workloom …`。`devsys` 保留为同一程序的兼容别名（安装脚本同时装入两个名字），旧脚本与习惯用法不受影响。状态目录 `.devsys/`、MCP 注册名 `devsys`、skill 路径 `.agents/skills/devsys/`、`DEVSYS_*` 环境变量均不改名，既有接入项目无需迁移。
+
+### Fixed
+
+- 安装文档与安装脚本不再把本仓库写成私有仓库。默认 `go install` 不设 `GOPRIVATE`（那会跳过公共校验和数据库）；`gh auth login` 与 `GOPRIVATE` 只留给私有 fork。脚本下载顺序不变。Release 资产名改为 `workloom-*`（v0.1.8 及更早仍是 `devsys-*`）。
+
 ## v0.1.8 — 2026-09-21
 
 ### Added

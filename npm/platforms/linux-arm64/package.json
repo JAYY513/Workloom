@@ -1,0 +1,14 @@
+{
+  "name": "@jayy513/workloom-linux-arm64",
+  "version": "0.0.0",
+  "description": "linux-arm64 binary for @jayy513/workloom. Not a command.",
+  "license": "MIT",
+  "os": ["linux"],
+  "cpu": ["arm64"],
+  "files": ["workloom"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JAYY513/Workloom.git",
+    "directory": "npm/platforms/linux-arm64"
+  }
+}

@@ -63,15 +63,15 @@ try {
   New-Item -ItemType Directory -Path $project -Force | Out-Null
   $env:DEVSYS_CONFIG_DIR = Join-Path $workspace 'config'
   Push-Location $repoRoot
-  & go build -ldflags "-s -w" -o (Join-Path $workspace 'devsys.exe') ./cmd/devsys; Assert-Exit 'go build devsys' 0
+  & go build -ldflags "-s -w" -o (Join-Path $workspace 'workloom.exe') ./cmd/workloom; Assert-Exit 'go build devsys' 0
   Pop-Location
-  $devsys = Join-Path $workspace 'devsys.exe'
+  $devsys = Join-Path $workspace 'workloom.exe'
   $env:PATH = "$workspace;$env:PATH"
 
   & git init -q $project; Assert-Exit 'git init' 0
   Set-Location $project
-  & $devsys init | Out-Null; Assert-Exit 'devsys init' 0
-  $itemId = ((& $devsys workitem create --title '看板任务' --actor me --reason smoke) | Select-Object -First 1).Split("`t")[0]
+  & $workloom init | Out-Null; Assert-Exit 'workloom init' 0
+  $itemId = ((& $workloom workitem create --title '看板任务' --actor me --reason smoke) | Select-Object -First 1).Split("`t")[0]
 
   function New-Page($Rel, $Commit) {
     $path = Join-Path $project $Rel
@@ -96,7 +96,7 @@ try {
   }
   $modelPy = New-Py 'model' @'
 import json, subprocess, sys
-m = json.loads(subprocess.run(["devsys.exe", "--json", "workspace", "view"], capture_output=True, text=True).stdout)
+m = json.loads(subprocess.run(["workloom.exe", "--json", "workspace", "view"], capture_output=True, text=True).stdout)
 assert m["ok"] is True, m
 assert m["schema_version"] == 1, m["schema_version"]
 assert m["trust"]["state"] == "ok", m["trust"]

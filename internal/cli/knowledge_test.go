@@ -201,7 +201,7 @@ func TestKnowledgeStatusFreshStaleMissing(t *testing.T) {
 	if !strings.Contains(out, "无知识页面层") {
 		t.Fatalf("stdout = %q", out)
 	}
-	if strings.Contains(errOut, "devsys:") {
+	if strings.Contains(errOut, "workloom:") {
 		t.Fatalf("missing was reported as an error: %q", errOut)
 	}
 }

@@ -199,23 +199,23 @@ func sessionAction(rec next.Recommendation) SessionAction {
 	// naming a blank id would be worse than no command at all.
 	switch rec.Action {
 	case "recover_claim":
-		action.Command = `devsys recover --actor operator --reason "recover interrupted state"`
+		action.Command = `workloom recover --actor operator --reason "recover interrupted state"`
 	case "review":
 		if rec.WorkitemID != "" {
-			action.Command = "devsys workitem get " + rec.WorkitemID
+			action.Command = "workloom workitem get " + rec.WorkitemID
 		} else {
-			action.Command = "devsys workitem list --status review"
+			action.Command = "workloom workitem list --status review"
 		}
 	case "start":
 		if rec.WorkitemID != "" {
-			action.Command = "devsys workitem claim --id " + rec.WorkitemID + " --owner <owner> --reason <reason>"
+			action.Command = "workloom workitem claim --id " + rec.WorkitemID + " --owner <owner> --reason <reason>"
 		}
 	case "start_backlog":
 		if rec.WorkitemID != "" {
-			action.Command = "devsys workitem transition --id " + rec.WorkitemID + " --to ready --actor <actor> --reason <reason>"
+			action.Command = "workloom workitem transition --id " + rec.WorkitemID + " --to ready --actor <actor> --reason <reason>"
 		}
 	case "milestone_review", "report_done":
-		action.Command = "devsys project status"
+		action.Command = "workloom project status"
 	}
 	return action
 }

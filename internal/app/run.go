@@ -339,7 +339,7 @@ func (s *Service) RunFinish(ctx context.Context, req RunFinishRequest) (RunView,
 			}
 			where := "the work item is in review — review it and pass --force --by <reviewer> to accept, or fix the branch and retry"
 			if !routed {
-				where = fmt.Sprintf("the work item did not enter review (its review gate is unmet — add a comment first: `devsys workitem comment --id %s --text \"...\" --actor <you>`), then transition or pass --force --by <reviewer> to accept anyway", r.WorkItemID)
+				where = fmt.Sprintf("the work item did not enter review (its review gate is unmet — add a comment first: `workloom workitem comment --id %s --text \"...\" --actor <you>`), then transition or pass --force --by <reviewer> to accept anyway", r.WorkItemID)
 			}
 			return RunView{}, Preconditionf(
 				"run %s cannot be marked succeeded: %s (claim head %s, current head %s); %s",

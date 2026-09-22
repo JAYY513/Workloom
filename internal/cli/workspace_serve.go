@@ -156,7 +156,7 @@ func runWorkspaceServe(stdout io.Writer, opts options, rest []string) error {
 	allowRemote := fs.Bool("allow-remote", false, "permit a non-loopback --host (anyone on the network could read project state)")
 	limit := fs.Int("limit", view.DefaultLimit, "max entries per list section (runs, records, pages)")
 	if err := fs.Parse(rest); err != nil || fs.NArg() != 0 {
-		return errUsage("`devsys workspace serve [--host 127.0.0.1] [--port N] [--allow-remote] [--limit N]`")
+		return errUsage("`workloom workspace serve [--host 127.0.0.1] [--port N] [--allow-remote] [--limit N]`")
 	}
 	if *limit <= 0 {
 		return errUsage("`--limit` must be positive")
@@ -165,7 +165,7 @@ func runWorkspaceServe(stdout io.Writer, opts options, rest []string) error {
 		return errUsage("`--port` must be 0-65535")
 	}
 	if opts.json || opts.quiet {
-		return errUsage("`devsys workspace serve` does not take --json or --quiet")
+		return errUsage("`workloom workspace serve` does not take --json or --quiet")
 	}
 	if !isLoopbackHost(*host) && !*allowRemote {
 		return errUsage("refusing non-loopback bind %q without --allow-remote (anyone on the network could read project state)", *host)

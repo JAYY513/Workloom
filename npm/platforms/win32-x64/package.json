@@ -1,0 +1,14 @@
+{
+  "name": "@jayy513/workloom-win32-x64",
+  "version": "0.0.0",
+  "description": "win32-x64 binary for @jayy513/workloom. Not a command.",
+  "license": "MIT",
+  "os": ["win32"],
+  "cpu": ["x64"],
+  "files": ["workloom.exe"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JAYY513/Workloom.git",
+    "directory": "npm/platforms/win32-x64"
+  }
+}

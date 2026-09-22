@@ -1,0 +1,14 @@
+{
+  "name": "@jayy513/workloom-darwin-arm64",
+  "version": "0.0.0",
+  "description": "darwin-arm64 binary for @jayy513/workloom. Not a command.",
+  "license": "MIT",
+  "os": ["darwin"],
+  "cpu": ["arm64"],
+  "files": ["workloom"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JAYY513/Workloom.git",
+    "directory": "npm/platforms/darwin-arm64"
+  }
+}

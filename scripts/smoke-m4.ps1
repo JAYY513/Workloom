@@ -46,14 +46,14 @@ try {
   New-Item -ItemType Directory -Path $script:pyDir -Force | Out-Null
   $env:DEVSYS_CONFIG_DIR = Join-Path $workspace 'config'
   Push-Location $repoRoot
-  & go build -o (Join-Path $workspace 'devsys.exe') ./cmd/devsys; Assert-Exit 'go build devsys' 0
+  & go build -o (Join-Path $workspace 'workloom.exe') ./cmd/workloom; Assert-Exit 'go build devsys' 0
   & go build -o (Join-Path $workspace 'm4helper.exe') ./scripts/m4helper; Assert-Exit 'go build m4helper' 0
   Pop-Location
-  $devsys = Join-Path $workspace 'devsys.exe'
+  $devsys = Join-Path $workspace 'workloom.exe'
   $helper = Join-Path $workspace 'm4helper.exe'
   & git init -q $project; Assert-Exit 'git init' 0
   Set-Location $project
-  & $devsys init | Out-Null; Assert-Exit 'devsys init' 0
+  & $workloom init | Out-Null; Assert-Exit 'workloom init' 0
 
   Write-Host '== MCP surface =='
   & $helper $devsys $project
@@ -62,30 +62,30 @@ try {
   Write-Host '== write parity =='
   $idPy = New-Py 'id' "import json,sys`nprint(json.loads(sys.stdin.readline())['id'])"
   $verPy = New-Py 'ver' "import json,sys`nprint(json.load(sys.stdin)['version'])"
-  $decisionId = (Run-Py $idPy (& $devsys --jsonl decision list)).Trim()
+  $decisionId = (Run-Py $idPy (& $workloom --jsonl decision list)).Trim()
   if (-not $decisionId) { throw 'no decision found over jsonl' }
-  $cliVersion = (Run-Py $verPy (& $devsys --json decision get $decisionId)).Trim()
+  $cliVersion = (Run-Py $verPy (& $workloom --json decision get $decisionId)).Trim()
   if (-not $cliVersion) { throw 'CLI could not read the MCP-created decision' }
   Write-Host "PASS: CLI reads the MCP-created decision $decisionId (version $cliVersion)"
 
   Write-Host '== session =='
-  $sessionJson = & $devsys --json session start --harness smoke --agent smoke --intent acceptance
+  $sessionJson = & $workloom --json session start --harness smoke --agent smoke --intent acceptance
   Assert-Exit 'session start' 0
   $actionPy = New-Py 'action' "import json,sys`nv=json.load(sys.stdin)`nassert v['ok'] is True`nassert v['recommended_next_action']['type']`nprint(v['recommended_next_action']['type'])"
   $action = Run-Py $actionPy $sessionJson
   Write-Host "PASS: session start recommends $($action.Trim())"
 
   Write-Host '== exchange =='
-  & $devsys workitem list | Out-Null; Assert-Exit 'workitem list' 0
+  & $workloom workitem list | Out-Null; Assert-Exit 'workitem list' 0
   Write-Host 'PASS: exit 0: workitem list'
   Invoke-Expect 'bogus command' 2 { & $devsys bogus-command }
   Write-Host 'PASS: exit 2: bogus command'
-  Invoke-Expect 'missing work item' 3 { & $devsys workitem get NOPE-1 }
+  Invoke-Expect 'missing work item' 3 { & $workloom workitem get NOPE-1 }
   Write-Host 'PASS: exit 3: missing work item'
-  & $devsys workitem create --title 'smoke task' --actor smoke --reason smoke | Out-Null
+  & $workloom workitem create --title 'smoke task' --actor smoke --reason smoke | Out-Null
   Assert-Exit 'workitem create' 0
   $jsonlPy = New-Py 'jsonl' "import json,sys`nrows=[json.loads(l) for l in sys.stdin if l.strip()]`nassert len(rows)==1, rows`nprint('PASS: jsonl streamed', rows[0]['id'])"
-  Run-Py $jsonlPy (& $devsys --jsonl workitem list) | Write-Host
+  Run-Py $jsonlPy (& $workloom --jsonl workitem list) | Write-Host
 
   Write-Host '== wire =='
   $agents = @'
@@ -113,7 +113,7 @@ try {
   Write-Host 'PASS: wire is idempotent and preserves hand-written content'
 
   Write-Host '== knowledge =='
-  $knowledge = & $devsys --json knowledge status
+  $knowledge = & $workloom --json knowledge status
   Assert-Exit 'knowledge status' 0
   $knowledgePy = New-Py 'knowledge' "import json,sys`nv=json.load(sys.stdin)`nassert v['ok'] is True`nassert v['status']=='unavailable', v`nprint('PASS: knowledge status degrades honestly')"
   Run-Py $knowledgePy $knowledge | Write-Host

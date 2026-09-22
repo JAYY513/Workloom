@@ -1,4 +1,4 @@
-# build-release.ps1: matrix-build devsys release binaries + checksums.txt.
+# build-release.ps1: matrix-build workloom release binaries + checksums.txt.
 # Usage: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-release.ps1 [-Version <v>] [-Out dist]
 param(
   [string]$Version = "",
@@ -18,15 +18,15 @@ $matrix = @(
   @("darwin", "amd64"), @("darwin", "arm64")
 )
 foreach ($pair in $matrix) {
-  $name = "devsys-$($pair[0])-$($pair[1])"
+  $name = "workloom-$($pair[0])-$($pair[1])"
   if ($pair[0] -eq "windows") { $name += ".exe" }
   $env:GOOS = $pair[0]; $env:GOARCH = $pair[1]; $env:GOFLAGS = "-mod=vendor"
-  & go build -ldflags $ldflags -o (Join-Path $repoRoot "$Out/$name") ./cmd/devsys
+  & go build -ldflags $ldflags -o (Join-Path $repoRoot "$Out/$name") ./cmd/workloom
   if ($LASTEXITCODE -ne 0) { throw "go build failed for $($pair[0])/$($pair[1])" }
   Write-Output "built $Out/$name"
 }
 Remove-Item Env:\GOOS, Env:\GOARCH, Env:\GOFLAGS -ErrorAction SilentlyContinue
-$lines = foreach ($f in Get-ChildItem (Join-Path $repoRoot "$Out/devsys-*") -File | Where-Object { $_.Name -ne "checksums.txt" }) {
+$lines = foreach ($f in Get-ChildItem (Join-Path $repoRoot "$Out/workloom-*") -File | Where-Object { $_.Name -ne "checksums.txt" }) {
   $h = (Get-FileHash -Algorithm SHA256 $f.FullName).Hash.ToLower()
   "$h  $($f.Name)"
 }

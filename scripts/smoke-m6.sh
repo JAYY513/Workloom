@@ -33,8 +33,8 @@ export DEVSYS_CONFIG_DIR="$workspace/config"
 # The command binary is linked with -s -w: some endpoint protection flags the
 # unstripped build of this program as a false positive, and the smoke suite is
 # about behaviour, not debug symbols.
-(cd "$repo_root" && go build -ldflags "-s -w" -o "$workspace/devsys.exe" ./cmd/devsys)
-D="$workspace/devsys.exe"
+(cd "$repo_root" && go build -ldflags "-s -w" -o "$workspace/workloom.exe" ./cmd/workloom)
+D="$workspace/workloom.exe"
 
 # A stub codex stands in for the real CLI: the smoke suite pins the adapter
 # chain (prompt on stdin, workspace cwd, exit code) without a provider.
@@ -133,7 +133,7 @@ printf 'hello\n' > ".devsys/workspaces/$HIGH/notes.txt" 2>/dev/null || true
 "$D" run complete --id "$run_id" --actor ops --reason "acceptance" | grep -q succeeded
 python - "$run_id" <<'PY'
 import json, subprocess, sys
-run = json.loads(subprocess.run(["devsys.exe", "--json", "run", "get", sys.argv[1]], capture_output=True, text=True).stdout)["run"]
+run = json.loads(subprocess.run(["workloom.exe", "--json", "run", "get", sys.argv[1]], capture_output=True, text=True).stdout)["run"]
 assert run["agent"]["harness"] == "codex", run["agent"]
 assert run["workspace"]["worktree"] == "WLM-2", run["workspace"]
 print("PASS: harness=%s workspace=%s advanced=%s" % (run["agent"]["harness"], run["workspace"]["worktree"], run["verification"]["advanced"]))
@@ -162,7 +162,7 @@ echo "== retry sweep =="
 # dispatch has a slot (the refusal path released the other one already).
 read -r lease_owner lease_token <<<"$(python - "$HIGH" <<'PY'
 import json, subprocess, sys
-item = json.loads(subprocess.run(["devsys.exe", "--json", "workitem", "get", sys.argv[1]], capture_output=True, text=True).stdout)["item"]
+item = json.loads(subprocess.run(["workloom.exe", "--json", "workitem", "get", sys.argv[1]], capture_output=True, text=True).stdout)["item"]
 print(item.get("lease_owner", ""), item.get("lease_token", ""))
 PY
 )"

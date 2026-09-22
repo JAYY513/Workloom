@@ -27,13 +27,13 @@ description: Devsys/Workloom 项目状态与工作追踪纪律（.devsys/ 是唯
 # Devsys Skill
 
 This project uses Devsys for tracked work. Prefer Devsys MCP tools when
-available; otherwise use ` + "`devsys --json`" + ` through the shell.
+available; otherwise use ` + "`workloom --json`" + ` through the shell.
 
 ## Start
 
-1. Run ` + "`devsys prime`" + ` (or ` + "`devsys session start`" + `) — one call: project facts, work in flight, recommended action.
+1. Run ` + "`workloom prime`" + ` (or ` + "`workloom session start`" + `) — one call: project facts, work in flight, recommended action.
 2. Read the recommended work item (` + "`workitem get`" + ` / ` + "`context get --task <id>`" + `).
-3. If the item carries a workflow, read its steps: ` + "`devsys workflow get --id <workitem>`" + `.
+3. If the item carries a workflow, read its steps: ` + "`workloom workflow get --id <workitem>`" + `.
 
 ## Claim
 
@@ -44,8 +44,8 @@ reads after a write must re-read (expired hashes are refused, never forced).
 
 - Record significant findings, decisions and blockers
   (` + "`finding`" + ` / ` + "`decision`" + ` / ` + "`event`" + `); keep the run evidence current (` + "`run update`" + `).
-- Advance a workflow with ` + "`devsys workflow step-complete`" + ` when the policy declares steps.
-- Blocked: ` + "`devsys workitem block`" + `; a gated stage needs ` + "`devsys approval request`" + ` and a human decision.
+- Advance a workflow with ` + "`workloom workflow step-complete`" + ` when the policy declares steps.
+- Blocked: ` + "`workloom workitem block`" + `; a gated stage needs ` + "`workloom approval request`" + ` and a human decision.
 
 ## Complete
 
@@ -55,48 +55,50 @@ reads after a write must re-read (expired hashes are refused, never forced).
 
 ## Boundaries
 
-- Never edit ` + "`.devsys/`" + ` files directly (repair via ` + "`devsys repair`" + `).
+- Never edit ` + "`.devsys/`" + ` files directly (repair via ` + "`workloom repair`" + `).
 - See ` + "`references/cli.md`" + ` for the command table and ` + "`references/troubleshooting.md`" + ` for exit codes and retries.
-- Operator-side families (dispatch, approval, archive, workspace) are listed in ` + "`devsys --help`" + `.
+- Operator-side families (dispatch, approval, archive, workspace) are listed in ` + "`workloom --help`" + `.
 - Default MCP ` + "`--tier core`" + ` (20 tools) does not expose ` + "`run_update`" + ` / ` + "`run_fail`" + ` / ` + "`run_cancel`" + ` / ` + "`workitem_block`" + `. Use the CLI, or serve ` + "`--tier standard`" + `.
 `
 
 const skillCLIRef = skillMarker + `
 # Devsys CLI reference (daily subset)
 
-Source of truth: ` + "`devsys --help`" + ` and per-command usage. A line marked
+Source of truth: ` + "`workloom --help`" + ` and per-command usage. A line marked
 ` + "`[w]`" + ` contains write subcommands (writes carry ` + "`--actor`" + ` / ` + "`--reason`" + `, and most
 carry a version guard: ` + "`--expect <hash>`" + ` or ` + "`--latest`" + `).
 
 ` + "```sh" + `
-devsys init                                 # [w] create .devsys/ in the current directory
-devsys wire [--dry-run]                     # [w] inject the AGENTS.md discipline block
-devsys wire --skill | --check | --print-mcp <codex|claude|opencode>
-devsys prime                                # orient: facts + recommended action (alias: session start --compact)
-devsys session start [--compact]            # same, full context payload
-devsys next                                 # readiness verdict (always exit 0); judges ready items with claim's quality gate
-devsys project status                       # counts + risks + next
-devsys project blueprint                    # exit 0 when no blueprint is declared
-devsys workitem list [--jsonl]              # one JSON record per line
-devsys workitem get <id>                    # includes version: <64-hex>
-devsys workitem create --title T --actor A --reason R [--description D --acceptance a,b]  # [w] set acceptance criteria up front
-devsys workitem update --id <id> --acceptance a,b                     # [w] acceptance criteria (replaces the list)
-devsys workitem transition --id <id> --to <status> --actor A --reason R --expect <hash>   # [w]
-devsys workitem claim --id <id> --owner O --reason R [--expect <hash>]                    # [w] warns when no policy gates the item
-devsys workitem release/start/block/complete --id <id> --actor A --reason R [--expect <hash>]  # [w]
-devsys workflow check                       # validate policy files (read-only)
-devsys workflow list|get|start|next|step-complete|pause|resume|cancel --id <workitem>   # [w] instance writes
-devsys approval list|get|request|approve|reject     # [w] request/approve/reject write
-devsys decision/finding/event/artifact list|get|create ...    # [w] create writes
-devsys run list|get|log|create|update|heartbeat|verify|complete|fail|cancel   # [w] except list/get/log/verify
-devsys context get [--task <id>] [--limit N]   # read-only aggregation
-devsys knowledge status                     # 0 fresh / 10 stale / 11 missing
-devsys workspace view                       # read-only summary
-devsys doctor                               # read-only reconcile report
-devsys dispatch [--once|--dry-run|--watch] --actor A --reason R   # [w] one scheduling tick
-devsys recover --actor A --reason R         # [w] operator recovery (idempotent)
-devsys sync status                          # handoff readiness (exit 0)
-devsys archive events|runs --actor A --reason R    # [w] conservative archive (no delete)
+workloom init                                 # [w] create .devsys/ in the current directory
+workloom setup                                # [w] one-command onboarding (init + starter workflow + wire + checks); idempotent, existing files win
+workloom wire [--dry-run]                     # [w] inject the AGENTS.md discipline block
+workloom wire --skill | --check | --print-mcp <codex|claude|opencode>
+workloom mcp install [--scope user|project] [--client codex|claude|opencode] [--apply] [--force] [--dry-run]  # [w] register devsys; default dry-run, --apply writes, --force replaces an existing entry
+workloom prime                                # orient: facts + recommended action (alias: session start --compact)
+workloom session start [--compact]            # same, full context payload
+workloom next                                 # readiness verdict (always exit 0); judges ready items with claim's quality gate
+workloom project status                       # counts + risks + next
+workloom project blueprint                    # exit 0 when no blueprint is declared
+workloom workitem list [--jsonl]              # one JSON record per line
+workloom workitem get <id>                    # includes version: <64-hex>
+workloom workitem create --title T --actor A --reason R [--description D --acceptance a,b]  # [w] set acceptance criteria up front
+workloom workitem update --id <id> --acceptance a,b                     # [w] acceptance criteria (replaces the list)
+workloom workitem transition --id <id> --to <status> --actor A --reason R --expect <hash>   # [w]
+workloom workitem claim --id <id> --owner O --reason R [--expect <hash>]                    # [w] warns when no policy gates the item
+workloom workitem release/start/block/complete --id <id> --actor A --reason R [--expect <hash>]  # [w]
+workloom workflow check                       # validate policy files (read-only)
+workloom workflow list|get|start|next|step-complete|pause|resume|cancel --id <workitem>   # [w] instance writes
+workloom approval list|get|request|approve|reject     # [w] request/approve/reject write
+workloom decision/finding/event/artifact list|get|create ...    # [w] create writes
+workloom run list|get|log|create|update|heartbeat|verify|complete|fail|cancel   # [w] except list/get/log/verify
+workloom context get [--task <id>] [--limit N]   # read-only aggregation
+workloom knowledge status                     # 0 fresh / 10 stale / 11 missing
+workloom workspace view                       # read-only summary
+workloom doctor                               # read-only reconcile report
+workloom dispatch [--once|--dry-run|--watch] --actor A --reason R   # [w] one scheduling tick
+workloom recover --actor A --reason R         # [w] operator recovery (idempotent)
+workloom sync status                          # handoff readiness (exit 0)
+workloom archive events|runs --actor A --reason R    # [w] conservative archive (no delete)
 ` + "```" + `
 `
 
@@ -112,7 +114,7 @@ managed state / 10 knowledge stale / 11 knowledge missing.
 - ` + "`storage: version conflict`" + ` (exit 4): another writer moved the file
   after your read (a dispatch child is the usual one behind ` + "`run fail`" + `);
   re-read and retry, or pass ` + "`--latest`" + ` where the command offers it.
-- ` + "`quality gate not satisfied`" + ` (exit 4): the claim is refused. ` + "`devsys next`" + `
+- ` + "`quality gate not satisfied`" + ` (exit 4): the claim is refused. ` + "`workloom next`" + `
   reports the same ready items as a ` + "`quality_blocked`" + ` risk and prints the
   ` + "`workitem update`" + ` command that unblocks the claim; ` + "`claim`" + ` prints a
   ` + "`warning:`" + ` line when no policy governs the item (no instance and no
@@ -120,13 +122,16 @@ managed state / 10 knowledge stale / 11 knowledge missing.
 - Stage gate "an approved, unconsumed approval is required" with an
   invalidation note: the earlier approval died when the work item left the
   status it was requested from (§4.9); request a new one.
-- ` + "`no .devsys/ … run devsys init first`" + ` (exit 3): wrong directory or
+- ` + "`no .devsys/ … run workloom init first`" + ` (exit 3): wrong directory or
   uninitialized project; find the project root first.
 - Illegal transition (exit 4): stderr lists the allowed next states.
 - ` + "`repair --dry-run`" + ` prints a digest; ` + "`--apply --confirm <digest>`" + `
   revalidates before writing (the only path that may lower completeness).
 - Windows Git Bash: avoid ` + "`$(…)`" + ` capture of JSON for tokens; read
   ` + "`grep '^token:' .devsys/scheduling/<id>.yaml`" + ` instead.
+- ` + "`mcp install`" + ` refuses JSONC or a Codex inline ` + "`mcp_servers`" + ` table,
+  even with ` + "`--force`" + `. Paste ` + "`workloom wire --print-mcp <codex|claude|opencode>`" + `
+  instead. The default is a dry-run; ` + "`--apply`" + ` writes.
 `
 
 // skillFile is one file WriteSkill manages.

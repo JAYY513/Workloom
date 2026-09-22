@@ -28,8 +28,8 @@ cleanup() {
 trap cleanup EXIT
 mkdir -p -- "$project"
 export DEVSYS_CONFIG_DIR="$workspace/config"
-(cd "$repo_root" && go build -o "$workspace/devsys.exe" ./cmd/devsys)
-D="$workspace/devsys.exe"
+(cd "$repo_root" && go build -o "$workspace/workloom.exe" ./cmd/workloom)
+D="$workspace/workloom.exe"
 git init -q "$project"
 cd "$project"
 "$D" init >/dev/null

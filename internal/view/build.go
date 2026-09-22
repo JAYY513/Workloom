@@ -21,11 +21,11 @@ import (
 )
 
 // recoverCommand is the remediation the readiness section names while pending
-// transactions make the state untrustworthy (the wording `devsys next` uses).
-const recoverCommand = `devsys recover --actor operator --reason "recover interrupted state"`
+// transactions make the state untrustworthy (the wording `workloom next` uses).
+const recoverCommand = `workloom recover --actor operator --reason "recover interrupted state"`
 
 // pendingReason explains why business sections render nothing.
-const pendingReason = "pending transactions: run `devsys recover` before trusting business state (方案 §15.4)"
+const pendingReason = "pending transactions: run `workloom recover` before trusting business state (方案 §15.4)"
 
 // Build assembles the view of the project at root. It reads only — see the
 // package doc for the exact contracts. A missing .devsys/ is an error
@@ -154,7 +154,7 @@ func emptyBusiness(m *Model) {
 }
 
 // pendingReadiness is the §7.4 verdict while unfinished transactions exist:
-// FAIL with the recovery command, the same report `devsys next` produces, so
+// FAIL with the recovery command, the same report `workloom next` produces, so
 // the view and the readiness verdict cannot disagree.
 func pendingReadiness(now time.Time, ids []string) next.Report {
 	txns := make([]storage.PendingTxn, 0, len(ids))
@@ -211,7 +211,7 @@ func (b *builder) project() {
 	}
 	if md == nil || md.Project == nil {
 		p.Degraded = true
-		p.Reason = "project metadata is missing or invalid; run `devsys init`"
+		p.Reason = "project metadata is missing or invalid; run `workloom init`"
 	} else {
 		mp := md.Project
 		p.ID, p.Name, p.Description, p.Status = mp.ID, mp.Name, mp.Description, mp.Status
@@ -246,7 +246,7 @@ func (b *builder) project() {
 }
 
 // progress fills the board: every work item with its scheduling facts, plus
-// the §7.4 readiness verdict over the same inputs `devsys next` consumes.
+// the §7.4 readiness verdict over the same inputs `workloom next` consumes.
 func (b *builder) progress() []*domain.WorkItem {
 	mark := b.rd.mark()
 	pr := &b.m.Progress
@@ -303,7 +303,7 @@ func (b *builder) progress() []*domain.WorkItem {
 }
 
 // metadataProblems are the located metadata defects the readiness evaluation
-// records as risks (same strings `devsys next` uses).
+// records as risks (same strings `workloom next` uses).
 func (b *builder) metadataProblems() []string {
 	_, problems := config.Diagnose(b.root)
 	out := make([]string, 0, len(problems))
@@ -333,7 +333,7 @@ func (b *builder) defaultPolicy() string {
 	return strings.TrimSpace(b.md.Config.DefaultPolicy)
 }
 
-// policyOf resolves the policy governing one work item the way `devsys next`
+// policyOf resolves the policy governing one work item the way `workloom next`
 // judges it: the item's own instance first, else the project default.
 func (f policyFacts) policyOf(defaultPolicy string) next.PolicySource {
 	return func(wi *domain.WorkItem) (string, string, *workflow.Policy) {
@@ -496,7 +496,7 @@ func (b *builder) streamTorn(id string) bool {
 	return err == nil && !status.Complete
 }
 
-// attemptSignals is the same classification `devsys next` uses, so the view's
+// attemptSignals is the same classification `workloom next` uses, so the view's
 // readiness section does not disagree with the CLI.
 func (b *builder) attemptSignals(items []*domain.WorkItem) (dead, inflight []next.AttemptRef) {
 	names, err := b.rd.list("runs", ".yaml")
@@ -631,7 +631,7 @@ func (b *builder) records() {
 }
 
 // knowledge fills the page layer's index and freshness (M5.3). While pages
-// exist the status mirrors `devsys knowledge status`; without a page layer it
+// exist the status mirrors `workloom knowledge status`; without a page layer it
 // is the documented degradation, and an unanswerable freshness question is
 // "unavailable", never "fresh" (方案 §12.5).
 func (b *builder) knowledge(items []*domain.WorkItem) {
@@ -737,7 +737,7 @@ func (b *builder) knowledge(items []*domain.WorkItem) {
 }
 
 // knowledgeState loads the page layer's own state and merges the configured
-// generator's imported state under it, the composition `devsys knowledge
+// generator's imported state under it, the composition `workloom knowledge
 // status` performs (M5.6, 方案 §12.6). A missing local state is not an error.
 func (b *builder) knowledgeState() (*knowledge.State, string, error) {
 	local, err := knowledge.LoadState(b.root)
@@ -785,7 +785,7 @@ func relatedTexts(items []*domain.WorkItem) ([]*domain.WorkItem, []string) {
 
 // relatedItems lists the work items a page is relevant to, using the trigger
 // rule the context assembly uses (M5.6). The sources rule needs the caller's
-// paths, so it stays with `devsys context get --task`.
+// paths, so it stays with `workloom context get --task`.
 func relatedItems(triggers []string, items []*domain.WorkItem, texts []string) []string {
 	var out []string
 	for i, item := range items {

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# install.sh: download a devsys release binary, verify sha256, install to --prefix.
+# install.sh: download a workloom release binary, verify sha256, install to --prefix.
+# Also installs a `devsys` alias copy (same bytes) next to `workloom` for old scripts.
 # Falls back to `git clone --branch <tag> + go build` when download fails and Go exists.
 # Respects HTTPS_PROXY/HTTP_PROXY via curl/wget natively.
 # Usage: scripts/install.sh --tag <tag> [--repo JAYY513/Workloom] [--prefix ~/.local/bin]
@@ -25,21 +26,21 @@ case "$arch" in
   x86_64|amd64) arch="amd64" ;; aarch64|arm64) arch="arm64" ;;
   *) echo "unsupported arch: $arch" >&2; exit 2 ;;
 esac
-asset="devsys-${os}-${arch}"
+asset="workloom-${os}-${arch}"
 [[ "$os" == "windows" ]] && asset="${asset}.exe"
 base="https://github.com/${repo}/releases/download/${tag}"
-tmp="$(mktemp -d "${TMPDIR:-/tmp}/devsys-install-XXXXXX")"
+tmp="$(mktemp -d "${TMPDIR:-/tmp}/workloom-install-XXXXXX")"
 trap 'rm -rf -- "$tmp"' EXIT
 download() { # download <url> <dest>
   if command -v curl >/dev/null; then curl -fsSL --retry 2 -o "$2" "$1"
   elif command -v wget >/dev/null; then wget -q -O "$2" "$1"
   else echo 'need curl or wget' >&2; return 1; fi
 }
-# A private repository's release assets need authentication: an anonymous
-# curl/wget only sees a 404. `gh`, when installed and logged in, can fetch
-# them, so try it first and fall back to the anonymous download otherwise.
-# gh's own stderr is kept: when it fails, its error is the evidence the
-# operator needs (auth, network, missing tag).
+# Public releases download anonymously. When `gh` is installed and logged in,
+# try it first: that covers private forks and avoids anonymous rate limits.
+# Fall back to the anonymous download otherwise. gh's own stderr is kept:
+# when it fails, its error is the evidence the operator needs (auth, network,
+# missing tag).
 gh_download() { # gh_download <asset-name> <dest>
   command -v gh >/dev/null || return 1
   gh auth status >/dev/null 2>&1 || return 1
@@ -60,7 +61,7 @@ fallback_build() {
   if ! (cd "$tmp/src" && GOPROXY=off GOFLAGS=-mod=vendor go build \
       -ldflags "-X github.com/JAYY513/Workloom/internal/version.Version=${tag} \
                 -X github.com/JAYY513/Workloom/internal/version.Commit=$(git -C "$tmp/src" rev-parse --short HEAD 2>/dev/null || true)" \
-      -o "$tmp/$asset" ./cmd/devsys); then
+      -o "$tmp/$asset" ./cmd/workloom); then
     echo "install failed: go build failed for ${repo}@${tag}" >&2
     return 1
   fi
@@ -88,8 +89,10 @@ else
   [ "$verified" = "1" ] || { echo 'checksum mismatch or no checker' >&2; fallback_build || exit 1; }
 fi
 mkdir -p -- "$prefix"
-dest="$prefix/devsys"
-[[ "$os" == "windows" ]] && dest="$prefix/devsys.exe"
+dest="$prefix/workloom"
+alias_dest="$prefix/devsys"
+[[ "$os" == "windows" ]] && { dest="$prefix/workloom.exe"; alias_dest="$prefix/devsys.exe"; }
 cp -- "$tmp/$asset" "$dest"
-[[ "$os" == "windows" ]] || chmod +x "$dest"
+cp -- "$tmp/$asset" "$alias_dest"
+[[ "$os" == "windows" ]] || { chmod +x "$dest"; chmod +x "$alias_dest"; }
 "$dest" --version

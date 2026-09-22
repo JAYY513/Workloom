@@ -19,7 +19,7 @@ import (
 
 // runDecision routes the decision family (方案 §8.2 decision_*).
 func runDecision(stdout io.Writer, opts options, rest []string) error {
-	if familyUsage(stdout, rest, "`devsys decision` needs a subcommand (list | get | create | approve)") {
+	if familyUsage(stdout, rest, "`workloom decision` needs a subcommand (list | get | create | approve)") {
 		return nil
 	}
 	svc, err := requireProjectRoot()
@@ -30,7 +30,7 @@ func runDecision(stdout io.Writer, opts options, rest []string) error {
 	switch rest[0] {
 	case "list":
 		if len(rest) != 1 {
-			return errUsage("`devsys decision list` takes no arguments")
+			return errUsage("`workloom decision list` takes no arguments")
 		}
 		items, err := svc.DecisionList(ctx)
 		if err != nil {
@@ -105,13 +105,13 @@ func runDecision(stdout io.Writer, opts options, rest []string) error {
 		}
 		return outputRecord(stdout, opts, view)
 	default:
-		return errUsage("unknown `devsys decision` subcommand %q", rest[0])
+		return errUsage("unknown `workloom decision` subcommand %q", rest[0])
 	}
 }
 
 // runFinding routes the finding family (方案 §8.2 finding_*).
 func runFinding(stdout io.Writer, opts options, rest []string) error {
-	if familyUsage(stdout, rest, "`devsys finding` needs a subcommand (list | get | create | resolve)") {
+	if familyUsage(stdout, rest, "`workloom finding` needs a subcommand (list | get | create | resolve)") {
 		return nil
 	}
 	svc, err := requireProjectRoot()
@@ -122,7 +122,7 @@ func runFinding(stdout io.Writer, opts options, rest []string) error {
 	switch rest[0] {
 	case "list":
 		if len(rest) != 1 {
-			return errUsage("`devsys finding list` takes no arguments")
+			return errUsage("`workloom finding list` takes no arguments")
 		}
 		items, err := svc.FindingList(ctx)
 		if err != nil {
@@ -195,13 +195,13 @@ func runFinding(stdout io.Writer, opts options, rest []string) error {
 		}
 		return outputRecord(stdout, opts, view)
 	default:
-		return errUsage("unknown `devsys finding` subcommand %q", rest[0])
+		return errUsage("unknown `workloom finding` subcommand %q", rest[0])
 	}
 }
 
 // runEvent routes the event family (方案 §8.2 event_*).
 func runEvent(stdout io.Writer, opts options, rest []string) error {
-	if familyUsage(stdout, rest, "`devsys event` needs a subcommand (list | record)") {
+	if familyUsage(stdout, rest, "`workloom event` needs a subcommand (list | record)") {
 		return nil
 	}
 	svc, err := requireProjectRoot()
@@ -274,13 +274,13 @@ func runEvent(stdout io.Writer, opts options, rest []string) error {
 		}
 		return nil
 	default:
-		return errUsage("unknown `devsys event` subcommand %q", rest[0])
+		return errUsage("unknown `workloom event` subcommand %q", rest[0])
 	}
 }
 
 // runArtifact routes the artifact family (方案 §8.2 artifact_*).
 func runArtifact(stdout io.Writer, opts options, rest []string) error {
-	if familyUsage(stdout, rest, "`devsys artifact` needs a subcommand (list | get | register | update | history)") {
+	if familyUsage(stdout, rest, "`workloom artifact` needs a subcommand (list | get | register | update | history)") {
 		return nil
 	}
 	svc, err := requireProjectRoot()
@@ -291,7 +291,7 @@ func runArtifact(stdout io.Writer, opts options, rest []string) error {
 	switch rest[0] {
 	case "list":
 		if len(rest) != 1 {
-			return errUsage("`devsys artifact list` takes no arguments")
+			return errUsage("`workloom artifact list` takes no arguments")
 		}
 		items, err := svc.ArtifactList(ctx)
 		if err != nil {
@@ -397,7 +397,7 @@ func runArtifact(stdout io.Writer, opts options, rest []string) error {
 		}
 		return nil
 	default:
-		return errUsage("unknown `devsys artifact` subcommand %q", rest[0])
+		return errUsage("unknown `workloom artifact` subcommand %q", rest[0])
 	}
 }
 
@@ -435,7 +435,7 @@ func orNoneText(sha string) string {
 }
 
 func runRun(stdout io.Writer, opts options, rest []string) error {
-	if familyUsage(stdout, rest, "`devsys run` needs a subcommand (list | get | log | create | update | heartbeat | exec | prompt | verify | complete | fail | cancel)") {
+	if familyUsage(stdout, rest, "`workloom run` needs a subcommand (list | get | log | create | update | heartbeat | exec | prompt | verify | complete | fail | cancel)") {
 		return nil
 	}
 	svc, err := requireProjectRoot()
@@ -648,7 +648,7 @@ func runRun(stdout io.Writer, opts options, rest []string) error {
 		}
 		argv := fs.Args()
 		if *harnessName == "" && len(argv) == 0 {
-			return errUsage("run exec needs a command after -- or a --harness (devsys run exec --id <run-id> -- <command...>)")
+			return errUsage("run exec needs a command after -- or a --harness (workloom run exec --id <run-id> -- <command...>)")
 		}
 		if *harnessName != "" && len(argv) > 0 {
 			return errUsage("run exec takes either --harness or a command, not both")
@@ -794,13 +794,13 @@ func runRun(stdout io.Writer, opts options, rest []string) error {
 		}
 		return nil
 	default:
-		return errUsage("unknown `devsys run` subcommand %q", rest[0])
+		return errUsage("unknown `workloom run` subcommand %q", rest[0])
 	}
 }
 
 // runContext routes the context family (方案 §8.2 context_*).
 func runContext(stdout io.Writer, opts options, rest []string) error {
-	if familyUsage(stdout, rest, "`devsys context` needs a subcommand (get | workitem | refresh | compact)") {
+	if familyUsage(stdout, rest, "`workloom context` needs a subcommand (get | workitem | refresh | compact)") {
 		return nil
 	}
 	svc, err := requireProjectRoot()
@@ -857,7 +857,7 @@ func runContext(stdout io.Writer, opts options, rest []string) error {
 		return nil
 	case "compact":
 		if len(rest) != 1 {
-			return errUsage("`devsys context compact` takes no arguments")
+			return errUsage("`workloom context compact` takes no arguments")
 		}
 		view, err := svc.ContextCompact(ctx)
 		if err != nil {
@@ -909,7 +909,7 @@ func runContext(stdout io.Writer, opts options, rest []string) error {
 		}
 		return nil
 	default:
-		return errUsage("unknown `devsys context` subcommand %q", rest[0])
+		return errUsage("unknown `workloom context` subcommand %q", rest[0])
 	}
 }
 
@@ -976,13 +976,13 @@ func splitPaths(list string) []string {
 // (M5.2), and `validate` checks the page layer's front matter contract
 // (M5.1, 方案 §12.5).
 func runKnowledge(stdout io.Writer, opts options, rest []string) error {
-	if familyUsage(stdout, rest, "`devsys knowledge` needs a subcommand (status, scan, validate, refresh)") {
+	if familyUsage(stdout, rest, "`workloom knowledge` needs a subcommand (status, scan, validate, refresh)") {
 		return nil
 	}
 	switch rest[0] {
 	case "status":
 		if len(rest) != 1 {
-			return errUsage("`devsys knowledge status` takes no arguments")
+			return errUsage("`workloom knowledge status` takes no arguments")
 		}
 		return runKnowledgeStatus(stdout, opts)
 	case "refresh":
@@ -991,15 +991,15 @@ func runKnowledge(stdout io.Writer, opts options, rest []string) error {
 		return runKnowledgeValidate(stdout, opts, rest[1:])
 	case "scan":
 		if len(rest) != 1 {
-			return errUsage("`devsys knowledge scan` takes no arguments")
+			return errUsage("`workloom knowledge scan` takes no arguments")
 		}
 		return runKnowledgeScan(stdout, opts)
 	default:
-		return errUsage("unknown `devsys knowledge` subcommand %q", rest[0])
+		return errUsage("unknown `workloom knowledge` subcommand %q", rest[0])
 	}
 }
 
-// runKnowledgeScan implements `devsys knowledge scan`: build the index layer's
+// runKnowledgeScan implements `workloom knowledge scan`: build the index layer's
 // snapshot of the working tree (M5.2).
 func runKnowledgeScan(stdout io.Writer, opts options) error {
 	svc, err := requireProjectRoot()
@@ -1040,7 +1040,7 @@ func humanBytes(n int64) string {
 	}
 }
 
-// runKnowledgeValidate implements `devsys knowledge validate`: the page
+// runKnowledgeValidate implements `workloom knowledge validate`: the page
 // layer's format gate, meant to run in CI. Problems are printed with their
 // location and field, and any error-level problem exits 4.
 func runKnowledgeValidate(stdout io.Writer, opts options, rest []string) error {
@@ -1082,7 +1082,7 @@ func runKnowledgeValidate(stdout io.Writer, opts options, rest []string) error {
 	return nil
 }
 
-// runKnowledgeStatus implements `devsys knowledge status`: the freshness gate
+// runKnowledgeStatus implements `workloom knowledge status`: the freshness gate
 // CI and hooks read. The exit code carries the state (0 fresh, 10 stale,
 // 11 missing — 方案 §12.5) after the report has been written.
 func runKnowledgeStatus(stdout io.Writer, opts options) error {
@@ -1132,7 +1132,7 @@ func runKnowledgeStatus(stdout io.Writer, opts options) error {
 	}
 }
 
-// runKnowledgeRefresh implements `devsys knowledge refresh [--affected|--full]`:
+// runKnowledgeRefresh implements `workloom knowledge refresh [--affected|--full]`:
 // regenerate the pages that no longer match the tree, through the configured
 // generator (M5.3, 方案 §12.6).
 func runKnowledgeRefresh(stdout io.Writer, opts options, rest []string) error {
@@ -1231,12 +1231,12 @@ func shortSHA(commit string) string {
 // indexSummary describes the file index in the status report.
 func indexSummary(view app.KnowledgeStatusView) string {
 	if !view.IndexReady {
-		return "not built (run `devsys knowledge scan`)"
+		return "not built (run `workloom knowledge scan`)"
 	}
 	return fmt.Sprintf("%d files", view.IndexFiles)
 }
 
-// runPrime is `devsys prime`: an alias for `session start --compact` with the
+// runPrime is `workloom prime`: an alias for `session start --compact` with the
 // same optional identity flags. One call, minimal orientation, read-only.
 func runPrime(stdout io.Writer, opts options, rest []string) error {
 	fs := flag.NewFlagSet("prime", flag.ContinueOnError)
@@ -1264,11 +1264,11 @@ func runPrime(stdout io.Writer, opts options, rest []string) error {
 // runSession routes the session family: `start` is the one-shot orientation
 // a new agent session runs first (方案 §8.3, 实施计划 M4.4).
 func runSession(stdout io.Writer, opts options, rest []string) error {
-	if familyUsage(stdout, rest, "`devsys session` needs a subcommand (start)") {
+	if familyUsage(stdout, rest, "`workloom session` needs a subcommand (start)") {
 		return nil
 	}
 	if rest[0] != "start" {
-		return errUsage("`devsys session` needs a subcommand (start)")
+		return errUsage("`workloom session` needs a subcommand (start)")
 	}
 	fs := flag.NewFlagSet("session start", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)

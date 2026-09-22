@@ -31,7 +31,7 @@ type PolicySummary struct {
 // valid policies plus every located issue, errors and warnings apart.
 func (s *Service) WorkflowList(ctx context.Context) ([]PolicySummary, []workflow.Issue, error) {
 	if !dirExists(s.Root + "/.devsys") {
-		return nil, nil, Preconditionf("no .devsys/ in %s: run `devsys init` first", s.Root)
+		return nil, nil, Preconditionf("no .devsys/ in %s: run `workloom init` first", s.Root)
 	}
 	results := workflow.Load(s.Root)
 	summaries := []PolicySummary{}

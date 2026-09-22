@@ -9,16 +9,19 @@ import (
 
 // MCPSnippet returns the copy-paste MCP client configuration for one harness.
 //
-// File-based shapes are marked [UNVERIFIED]: no live client of that kind has
-// been connected from this machine. The stdio command itself is verified:
-// `devsys mcp serve` over IOTransport (smoke-m4 via scripts/m4helper).
+// File shapes written by `mcp install` were checked against the vendor docs
+// (Codex command+args, Claude mcpServers command+args, OpenCode type local +
+// command array, cwd not directory). JSONC and an inline Codex mcp_servers
+// table are still refused, not rewritten. The snippet may include cwd; the
+// installer does not write cwd.
 //
-// Snippets pin `--tier core` (the 19-tool daily subset). Progress / failure /
-// block tools (`run_update`, `run_fail`, `workitem_block`) live at
-// `--tier standard` or the CLI — core stays an explicit opt-in surface.
+// Snippets pin `--tier core` (the daily subset). Progress / failure / block
+// tools (`run_update`, `run_fail`, `workitem_block`) live at `--tier standard`
+// or the CLI — core stays an explicit opt-in surface.
 func MCPSnippet(name, devsysBin, projectRoot string) (string, error) {
 	const coreNote = `Default --tier core is the 19-tool daily subset. ` +
 		`run_update / run_fail / workitem_block need the CLI or --tier standard.`
+	const npxNote = "\n# Optional npx form (cold start, needs a network; not a replacement for the local binary above):\n# npx --yes @jayy513/workloom mcp serve --profile session,executor --tier core\n"
 	bin := filepath.ToSlash(strings.TrimSpace(devsysBin))
 	cwd := strings.TrimSpace(projectRoot)
 	if cwd == "" {
@@ -45,13 +48,13 @@ func MCPSnippet(name, devsysBin, projectRoot string) (string, error) {
 		return `# Codex: ephemeral injection (verified with codex-cli 0.144.1, no user config touched):
 # ` + coreNote + `
 codex -c mcp_servers.devsys.command=` + binJSON + ` -c mcp_servers.devsys.args='` + args + `' -c mcp_servers.devsys.cwd=` + cwdJSON + envCodex + `
-# File form [UNVERIFIED] (~/.codex/config.toml):
+# File form (~/.codex/config.toml; command + args verified):
 # [mcp_servers.devsys]
 # command = ` + binJSON + `
 # args = ` + args + `
-# cwd = ` + cwdJSON + envTOML, nil
+# cwd = ` + cwdJSON + envTOML + npxNote, nil
 	case "claude":
-		return `# Claude Code (.mcp.json, project root) [UNVERIFIED file shape]:
+		return `# Claude Code (.mcp.json, project root). mcp install writes command, args, and type; cwd below is paste-only:
 # ` + coreNote + `
 {
   "mcpServers": {
@@ -61,23 +64,23 @@ codex -c mcp_servers.devsys.command=` + binJSON + ` -c mcp_servers.devsys.args='
       "cwd": ` + cwdJSON + envJSON + `
     }
   }
-}`, nil
+}` + npxNote, nil
 	case "opencode":
 		envOpen := ""
 		if envJSON != "" {
 			envOpen = ",\n      \"environment\": {\n        \"DEVSYS_CONFIG_DIR\": " + jsonString(filepath.ToSlash(configDir)) + "\n      }"
 		}
-		return `# OpenCode (opencode.json) [UNVERIFIED file shape]:
+		return `# OpenCode (opencode.json). mcp install writes type local + command array; cwd below is paste-only:
 # ` + coreNote + `
 {
   "mcp": {
     "devsys": {
       "type": "local",
       "command": ` + commandArr + `,
-      "directory": ` + cwdJSON + envOpen + `
+      "cwd": ` + cwdJSON + envOpen + `
     }
   }
-}`, nil
+}` + npxNote, nil
 	default:
 		return "", Usagef("unknown harness %q (expected codex, claude or opencode)", name)
 	}

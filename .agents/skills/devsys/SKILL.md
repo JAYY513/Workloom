@@ -6,13 +6,13 @@ description: Devsys/Workloom 项目状态与工作追踪纪律（.devsys/ 是唯
 # Devsys Skill
 
 This project uses Devsys for tracked work. Prefer Devsys MCP tools when
-available; otherwise use `devsys --json` through the shell.
+available; otherwise use `workloom --json` through the shell.
 
 ## Start
 
-1. Run `devsys prime` (or `devsys session start`) — one call: project facts, work in flight, recommended action.
+1. Run `workloom prime` (or `workloom session start`) — one call: project facts, work in flight, recommended action.
 2. Read the recommended work item (`workitem get` / `context get --task <id>`).
-3. If the item carries a workflow, read its steps: `devsys workflow get --id <workitem>`.
+3. If the item carries a workflow, read its steps: `workloom workflow get --id <workitem>`.
 
 ## Claim
 
@@ -23,8 +23,8 @@ reads after a write must re-read (expired hashes are refused, never forced).
 
 - Record significant findings, decisions and blockers
   (`finding` / `decision` / `event`); keep the run evidence current (`run update`).
-- Advance a workflow with `devsys workflow step-complete` when the policy declares steps.
-- Blocked: `devsys workitem block`; a gated stage needs `devsys approval request` and a human decision.
+- Advance a workflow with `workloom workflow step-complete` when the policy declares steps.
+- Blocked: `workloom workitem block`; a gated stage needs `workloom approval request` and a human decision.
 
 ## Complete
 
@@ -34,7 +34,7 @@ reads after a write must re-read (expired hashes are refused, never forced).
 
 ## Boundaries
 
-- Never edit `.devsys/` files directly (repair via `devsys repair`).
+- Never edit `.devsys/` files directly (repair via `workloom repair`).
 - See `references/cli.md` for the command table and `references/troubleshooting.md` for exit codes and retries.
-- Operator-side families (dispatch, approval, archive, workspace) are listed in `devsys --help`.
+- Operator-side families (dispatch, approval, archive, workspace) are listed in `workloom --help`.
 - Default MCP `--tier core` (20 tools) does not expose `run_update` / `run_fail` / `run_cancel` / `workitem_block`. Use the CLI, or serve `--tier standard`.

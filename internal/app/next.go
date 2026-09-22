@@ -52,7 +52,7 @@ func (s *Service) Next(ctx context.Context) (next.Report, []*domain.WorkItem, er
 		UnreadableLeases: doc.UnreadableLeases,
 		InspectionOK:     doc.InspectionOK,
 		InspectionNote:   doc.Note,
-		RecoverCommand:   `devsys recover --actor operator --reason "recover interrupted state"`,
+		RecoverCommand:   `workloom recover --actor operator --reason "recover interrupted state"`,
 	}
 	var items []*domain.WorkItem
 	if doc.InspectionOK && len(doc.PendingTransactions) == 0 {

@@ -10,7 +10,7 @@ import (
 	"github.com/JAYY513/Workloom/internal/registry"
 )
 
-// WireCheckLine is one environment line of `devsys wire --check`.
+// WireCheckLine is one environment line of `workloom wire --check`.
 type WireCheckLine struct {
 	Name   string `json:"name"`
 	OK     bool   `json:"ok"`
@@ -61,7 +61,7 @@ func (s *Service) checkDevsys() WireCheckLine {
 	case err == nil:
 		return WireCheckLine{Name: ".devsys", Detail: ".devsys is not a directory"}
 	case os.IsNotExist(err):
-		return WireCheckLine{Name: ".devsys", Detail: "missing: run `devsys init` first"}
+		return WireCheckLine{Name: ".devsys", Detail: "missing: run `workloom init` first"}
 	default:
 		return WireCheckLine{Name: ".devsys", Detail: err.Error()}
 	}
@@ -93,7 +93,7 @@ func (s *Service) checkAgentsBlock() WireCheckLine {
 	data, err := os.ReadFile(filepath.Join(s.Root, "AGENTS.md"))
 	if err != nil {
 		if os.IsNotExist(err) {
-			return WireCheckLine{Name: "AGENTS.md", Detail: "missing: `devsys wire` creates it"}
+			return WireCheckLine{Name: "AGENTS.md", Detail: "missing: `workloom wire` creates it"}
 		}
 		return WireCheckLine{Name: "AGENTS.md", Detail: err.Error()}
 	}
@@ -111,14 +111,14 @@ func (s *Service) checkSkill() WireCheckLine {
 	files, marked := s.SkillStatus()
 	total := len(skillFiles())
 	if files == 0 {
-		return WireCheckLine{Name: "skill", Detail: "missing: `devsys wire --skill` writes " + skillDir + "/"}
+		return WireCheckLine{Name: "skill", Detail: "missing: `workloom wire --skill` writes " + skillDir + "/"}
 	}
 	if marked == total && files == total {
 		// Content, not just the marker: a committed copy drifts when the
-		// generator changes and `devsys wire --skill` is not rerun, and a
+		// generator changes and `workloom wire --skill` is not rerun, and a
 		// green check on a stale file is worse than no check.
 		if stale := s.staleSkillFiles(); len(stale) > 0 {
-			return WireCheckLine{Name: "skill", Detail: "stale: " + strings.Join(stale, ", ") + " differ from this binary; run `devsys wire --skill`"}
+			return WireCheckLine{Name: "skill", Detail: "stale: " + strings.Join(stale, ", ") + " differ from this binary; run `workloom wire --skill`"}
 		}
 		return WireCheckLine{Name: "skill", OK: true, Detail: skillDir + "/ present"}
 	}
@@ -162,5 +162,5 @@ func (s *Service) checkMCPConfig() WireCheckLine {
 			return WireCheckLine{Name: "mcp", OK: true, Detail: rel + " mentions devsys"}
 		}
 	}
-	return WireCheckLine{Name: "mcp", Detail: "no MCP client config in the project mentions devsys; `devsys wire --print-mcp <codex|claude|opencode>` prints a pasteable snippet"}
+	return WireCheckLine{Name: "mcp", Detail: "no MCP client config in the project mentions devsys; `workloom wire --print-mcp <codex|claude|opencode>` prints a pasteable snippet"}
 }

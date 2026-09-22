@@ -5,7 +5,7 @@
 
 ## 1. 定位
 
-Workloom（二进制名 `devsys`）是独立于具体编码 Harness 的 Agent 开发基础设施：把任务、工作流、审批、运行记录、决策、发现、事件与知识上下文保存为项目内 `.devsys/` 下的可读文本，由同一套 CLI 与 MCP 应用服务实施校验、并发控制和恢复。
+Workloom（二进制名 `workloom`，兼容别名 `devsys`）是独立于具体编码 Harness 的 Agent 开发基础设施：把任务、工作流、审批、运行记录、决策、发现、事件与知识上下文保存为项目内 `.devsys/` 下的可读文本，由同一套 CLI 与 MCP 应用服务实施校验、并发控制和恢复。
 
 更换 Codex、Claude Code、OpenCode 或其他 Agent 时，项目状态不丢失；有 Git 时状态随 clone/pull/checkout 迁移，无 Git 时仅本机目录；没有跨项目数据库，也没有常驻服务。
 
