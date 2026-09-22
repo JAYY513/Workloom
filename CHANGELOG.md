@@ -2,6 +2,17 @@
 
 格式参照 Keep a Changelog；pre-release 阶段遵循语义化版本。发版步骤与回退见 [docs/发布流程.md](docs/发布流程.md)。
 
+## v0.1.13 — 2026-09-22
+
+### Fixed
+
+- dispatch 派发的 attempt 启动命令与 MCP 注册走同一解析：npm 安装树内不再直接 exec 嵌套平台二进制路径（`node_modules/.../workloom-win32-x64/workloom.exe`），改经 `node <wrapper>/bin/workloom.js` 启动——包管理器布局变化不再影响已派发的 attempt；Release 脚本 / `go install` / 源码构建仍原样 spawn 二进制。
+- MCP 客户端片段的 core 档说明去掉过期的「19-tool」硬编码计数（实际 20 项）；改为不含数字的描述，语义不变（`run_update` / `run_fail` / `workitem_block` 仍需 CLI 或 `--tier standard`）。
+
+### Changed
+
+- npm 发布改走 trusted publishing（OIDC）：release.yml 声明 `id-token: write` 并用 Node 24，`npm publish` 由发版 CI 自动完成（`scripts/publish-npm.sh` 不变）。全程无长期凭据（仓库无 `NPM_TOKEN` secret），packument 自动生成 provenance/attestation；npm 发布失败会拦下整个 Release（fail closed）。发布侧细节与回退口径见 docs/发布流程.md §5b。
+
 ## v0.1.12 — 2026-09-22
 
 ### Added
