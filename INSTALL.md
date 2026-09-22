@@ -15,7 +15,13 @@
 
 完成标准：`workloom --version` 能输出版本号。
 
-### 1a. Release 脚本（推荐，约 10 秒）
+**选哪条**（按环境选，不用比较）：
+
+- **Windows x64 + 已装 Node.js ≥ 18** → **1d（npm）**：`npm install -g @kaki317/workloom`，一条命令，升级就是重跑同一条。
+- **其他平台（macOS / Linux / Windows ARM64）** → **1a（Release 脚本）**：npm 还没有这些平台的平台包，见 1d。
+- 已装 Go、或不想下载脚本 / 要自己构建 → 1b / 1c。
+
+### 1a. Release 脚本（macOS / Linux / Windows ARM64 的默认路径，约 10 秒）
 
 1. 打开 <https://github.com/JAYY513/Workloom/releases/latest>；
 2. 下载 `install.sh`（Windows PowerShell 用 `install.ps1`）；
@@ -57,12 +63,18 @@ GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/workloom ./cmd/workloom
 GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/workloom.exe ./cmd/workloom
 ```
 
-### 1d. npm（可选，尚未发布）
+### 1d. npm（Windows x64 推荐，一条命令）
 
-不替代 1a–1c。包名是 `@jayy513/workloom`，npm bin 只有 `workloom`。
-unscoped `workloom` 在 registry 上是 404，但已有无关的 workloom 站点族，不能当成可注册；
-`@jayy513/workloom` 同样未占用，npm 用户尚未确认，所以这里不执行 `npm publish`。
-`scripts/pack-npm.sh` 用已构建的 Release 二进制打平台包，安装时不下载 exe。
+```bash
+npm install -g @kaki317/workloom   # 需要 Node.js >= 18
+workloom --version
+```
+
+不替代 1a–1c。包名是 `@kaki317/workloom`（scoped），npm bin 只有 `workloom`；平台二进制随平台包一起装（`optionalDependencies`），安装时不下载 exe。
+
+**当前只发布了 `win32-x64`**：macOS / Linux / Windows ARM64 上安装会缺少平台二进制，运行时被明确拒绝（不会去下载）——这些平台先用 1a–1c，等对应平台包发布后同一条命令即可用。其余平台包的 tgz 一直随 Release 附发（`dist/npm/*.tgz`），发布步骤见 [docs/发布流程.md](docs/发布流程.md) §5b。
+
+`npx` 不作为主安装路径（冷启动要联网、版本随 npx 缓存漂移）；MCP 片段里的 npx 行只是可选补充。
 
 ## §2 接入项目（每个项目一次）
 

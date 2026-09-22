@@ -147,7 +147,12 @@ The agent learns the operating rules from `AGENTS.md` and `.agents/skills/devsys
 The full install-and-onboard flow (verification, fallback, troubleshooting) lives
 in [INSTALL.md](../INSTALL.md); the essentials are below.
 
-**① Release scripts (recommended, ~10 seconds)**. Open the
+**Which one**: Windows x64 with Node.js ≥ 18 → go straight to ④
+(`npm install -g @kaki317/workloom` — one command, and upgrading is the same
+command again); every other platform → ①. Go installed, or you want to build it
+yourself → ② / ③.
+
+**① Release scripts (default on macOS / Linux / Windows ARM64, ~10 seconds)**. Open the
 [Releases page](https://github.com/JAYY513/Workloom/releases/latest), download
 `install.sh` (on Windows PowerShell use `install.ps1`), verify it against
 `checksums.txt` from the same page, then run:
@@ -188,10 +193,11 @@ GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/workloom ./cmd/workloom
 GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/workloom.exe ./cmd/workloom
 ```
 
-**④ npm (optional, not published)**. This does not replace ①–③. The intended
-package is `@jayy513/workloom`; the npm bin is only `workloom`, and install
-does not download an exe. The package is not on the registry — do not run
-`npm install`. See [INSTALL.md](../INSTALL.md) §1d.
+**④ npm (recommended on Windows x64, one command)**. This does not replace ①–③.
+`npm install -g @kaki317/workloom` (Node.js ≥ 18); the npm bin is only
+`workloom`, and install does not download an exe — the platform binary ships in
+a platform package. macOS / Linux / Windows ARM64 have no platform package yet,
+so use ①–③ there. See [INSTALL.md](../INSTALL.md) §1d.
 
 > Renaming compatibility: the primary command used to be `devsys`, which now
 > remains as a compatibility alias for the same binary (install scripts ship

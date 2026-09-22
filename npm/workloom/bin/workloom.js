@@ -9,12 +9,12 @@ const fs = require("fs");
 const path = require("path");
 
 const targets = {
-  "darwin-arm64": "@jayy513/workloom-darwin-arm64",
-  "darwin-x64": "@jayy513/workloom-darwin-x64",
-  "linux-arm64": "@jayy513/workloom-linux-arm64",
-  "linux-x64": "@jayy513/workloom-linux-x64",
-  "win32-arm64": "@jayy513/workloom-win32-arm64",
-  "win32-x64": "@jayy513/workloom-win32-x64",
+  "darwin-arm64": "@kaki317/workloom-darwin-arm64",
+  "darwin-x64": "@kaki317/workloom-darwin-x64",
+  "linux-arm64": "@kaki317/workloom-linux-arm64",
+  "linux-x64": "@kaki317/workloom-linux-x64",
+  "win32-arm64": "@kaki317/workloom-win32-arm64",
+  "win32-x64": "@kaki317/workloom-win32-x64",
 };
 
 function packageFor(platform, arch) {
@@ -39,7 +39,7 @@ function resolveBinary(platform, arch) {
     throw new Error(
       "platform package " +
         name +
-        " is not installed; reinstall @jayy513/workloom without --omit=optional. This package does not download a binary.",
+        " is not installed; reinstall @kaki317/workloom without --omit=optional. This package does not download a binary.",
     );
   }
   const bin = path.join(path.dirname(pkgJson), binaryName(platform));

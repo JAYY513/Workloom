@@ -4,6 +4,12 @@
 
 ## Unreleased
 
+### Added
+
+- npm 首发：`@kaki317/workloom@0.1.10` 与平台包 `@kaki317/workloom-win32-x64@0.1.10` 已发布到 registry（当前只发 Windows x64；其余平台包仍只随 Release 附发）。装 CLI：`npm install -g @kaki317/workloom`。
+- `scripts/publish-npm.sh`：把已打包的 tgz 发到 npm registry 的显式步骤（不构建、不 pack、不下载）。平台包先于 wrapper，已存在同版本则跳过，可重跑；`--dry-run` 只做本地校验。默认发布范围是 Windows x64（`--platforms win32-x64`），其余平台包继续只随 Release 附发。`make npm-publish` 是同一入口。
+- npm 包模板增 `publishConfig.access = "public"`：scoped 包默认 restricted，缺这一项首次发布会被拒。
+
 ## v0.1.10 — 2026-09-22
 
 ### Fixed
@@ -16,7 +22,7 @@
 
 - `workloom setup`：一条命令完成项目接入（init → 起手工作流 → wire → config check → wire --check → prime → 蓝图检查 → doctor），幂等、失败即停；已有文件一律保留。底层命令不变。
 - `workloom mcp install`：把 devsys 注册进 MCP 客户端（Codex / Claude Code / OpenCode，user/project 两种 scope）。默认只预览；`--apply` 才写；已有 `devsys` 条目不覆盖，`--force` 才替换该条目。写入前打印目标路径。严格 JSON / TOML 外科式写入，无法安全合并时拒绝并指向 `wire --print-mcp`。
-- npm 分发层：`@jayy513/workloom` 包装现有 Go 二进制（平台包走 optionalDependencies，无 postinstall 下载）。尚未 `npm publish`。npm bin 只有 `workloom`。Release 附带 `dist/npm/*.tgz`。
+- npm 分发层：`@kaki317/workloom` 包装现有 Go 二进制（平台包走 optionalDependencies，无 postinstall 下载）。尚未 `npm publish`。npm bin 只有 `workloom`。Release 附带 `dist/npm/*.tgz`。
 
 ### Changed
 

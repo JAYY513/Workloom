@@ -5,7 +5,7 @@ BIN := bin/workloom.exe
 endif
 ALIAS_BIN := $(subst workloom,devsys,$(BIN))
 
-.PHONY: build install smoke release clean
+.PHONY: build install smoke release npm-publish clean
 
 build: $(BIN) $(ALIAS_BIN)
 
@@ -26,6 +26,10 @@ smoke:
 release:
 	@echo "usage: make release VERSION=<tag> [OUT=dist]"; test -n "$(VERSION)"
 	bash scripts/build-release.sh --version "$(VERSION)" --out "$${OUT:-dist}"
+
+npm-publish:
+	@echo "usage: make npm-publish [DIR=dist/npm]"
+	bash scripts/publish-npm.sh --dir "$${DIR:-dist/npm}"
 
 clean:
 	rm -rf bin/workloom bin/workloom.exe bin/devsys bin/devsys.exe dist

@@ -15,7 +15,7 @@ import (
 func TestNPMPackagesDoNotDownloadAndExposeOneCommand(t *testing.T) {
 	root := repoRoot(t)
 	wrapper := readPackageJSON(t, filepath.Join(root, "npm", "workloom", "package.json"))
-	if wrapper["name"] != "@jayy513/workloom" {
+	if wrapper["name"] != "@kaki317/workloom" {
 		t.Fatalf("wrapper name = %v", wrapper["name"])
 	}
 	bin, _ := wrapper["bin"].(map[string]any)
@@ -30,7 +30,7 @@ func TestNPMPackagesDoNotDownloadAndExposeOneCommand(t *testing.T) {
 		t.Fatalf("optionalDependencies = %d, want 6", len(opts))
 	}
 	for name := range opts {
-		rel := strings.TrimPrefix(name, "@jayy513/workloom-")
+		rel := strings.TrimPrefix(name, "@kaki317/workloom-")
 		pkg := readPackageJSON(t, filepath.Join(root, "npm", "platforms", rel, "package.json"))
 		if pkg["name"] != name {
 			t.Errorf("%s name = %v", rel, pkg["name"])
@@ -76,7 +76,7 @@ func TestPackNPMEmbedsReleaseBinaries(t *testing.T) {
 	if raw, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("pack-npm: %v\n%s", err, raw)
 	}
-	tarball := filepath.Join(out, "jayy513-workloom-win32-x64-0.0.1.tgz")
+	tarball := filepath.Join(out, "kaki317-workloom-win32-x64-0.0.1.tgz")
 	body := readTarballFile(t, tarball, "package/workloom.exe")
 	if !bytes.Equal(body, payload) {
 		t.Fatalf("packed binary = %q, want the release fixture", body)
@@ -95,15 +95,21 @@ func TestPackNPMEmbedsReleaseBinaries(t *testing.T) {
 	if scripts, ok := doc["scripts"].(map[string]any); ok && scripts["postinstall"] != nil {
 		t.Fatal("packed platform package has postinstall")
 	}
-	wrapperTar := filepath.Join(out, "jayy513-workloom-0.0.1.tgz")
+	if cfg, ok := doc["publishConfig"].(map[string]any); !ok || cfg["access"] != "public" {
+		t.Fatalf("packed platform publishConfig = %v, want access=public", doc["publishConfig"])
+	}
+	wrapperTar := filepath.Join(out, "kaki317-workloom-0.0.1.tgz")
 	wrapperManifest := readTarballFile(t, wrapperTar, "package/package.json")
 	var wrapper map[string]any
 	if err := json.Unmarshal(wrapperManifest, &wrapper); err != nil {
 		t.Fatal(err)
 	}
 	opts, _ := wrapper["optionalDependencies"].(map[string]any)
-	if opts["@jayy513/workloom-win32-x64"] != "0.0.1" {
-		t.Fatalf("wrapper optionalDependency version = %v", opts["@jayy513/workloom-win32-x64"])
+	if opts["@kaki317/workloom-win32-x64"] != "0.0.1" {
+		t.Fatalf("wrapper optionalDependency version = %v", opts["@kaki317/workloom-win32-x64"])
+	}
+	if cfg, ok := wrapper["publishConfig"].(map[string]any); !ok || cfg["access"] != "public" {
+		t.Fatalf("packed wrapper publishConfig = %v, want access=public (scoped packages default to restricted)", wrapper["publishConfig"])
 	}
 	bin, _ := wrapper["bin"].(map[string]any)
 	if len(bin) != 1 || bin["workloom"] == nil {
@@ -144,8 +150,8 @@ func TestNPMWrapperExecsPlantedBinaryAndRefusesToDownload(t *testing.T) {
 	}
 
 	home := t.TempDir()
-	pkgName := "@jayy513/workloom-" + platform + "-" + arch
-	pkgDir := filepath.Join(home, "node_modules", "@jayy513", "workloom-"+platform+"-"+arch)
+	pkgName := "@kaki317/workloom-" + platform + "-" + arch
+	pkgDir := filepath.Join(home, "node_modules", "@kaki317", "workloom-"+platform+"-"+arch)
 	if err := os.MkdirAll(pkgDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -171,6 +177,68 @@ func TestNPMWrapperExecsPlantedBinaryAndRefusesToDownload(t *testing.T) {
 		t.Fatal("planted binary did not receive the forwarded exit code")
 	} else if exitErr, ok := err.(*exec.ExitError); !ok || exitErr.ExitCode() != 7 {
 		t.Fatalf("exit = %v, want 7", err)
+	}
+}
+
+// publish-npm.sh is the operator step that puts already-packed tarballs on the
+// registry. The stub npm records the calls, so the test pins the publish order
+// (platform package first, wrapper last) without touching the network.
+func TestPublishNPMOrdersPlatformsBeforeWrapper(t *testing.T) {
+	bashExe := gitBash(t)
+	root := repoRoot(t)
+	stub := t.TempDir()
+	logPath := filepath.Join(stub, "npm.log")
+	script := "#!/usr/bin/env bash\nprintf '%s\\n' \"$*\" >> \"" + filepath.ToSlash(logPath) + "\"\n"
+	if err := os.WriteFile(filepath.Join(stub, "npm"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	const platformTar = "kaki317-workloom-win32-x64-0.0.1.tgz"
+	const wrapperTar = "kaki317-workloom-0.0.1.tgz"
+	for _, name := range []string{platformTar, wrapperTar} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("fixture-tarball"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	run := func() ([]byte, error) {
+		cmd := exec.Command(bashExe, "scripts/publish-npm.sh", "--dir", filepath.ToSlash(dir), "--dry-run")
+		cmd.Dir = root
+		cmd.Env = append(os.Environ(), "PATH="+filepath.ToSlash(stub)+":/usr/bin:/bin")
+		return cmd.CombinedOutput()
+	}
+
+	out, err := run()
+	if err != nil {
+		t.Fatalf("publish-npm --dry-run: %v\n%s", err, out)
+	}
+	raw, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("no npm call was made: %v", err)
+	}
+	lines := strings.Split(strings.TrimSpace(string(raw)), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("npm calls = %q, want one publish per package", lines)
+	}
+	if !strings.Contains(lines[0], "publish") || !strings.Contains(lines[0], platformTar) {
+		t.Fatalf("first call = %q, want the platform package before the wrapper", lines[0])
+	}
+	if !strings.Contains(lines[1], "publish") || !strings.Contains(lines[1], "/"+wrapperTar) {
+		t.Fatalf("second call = %q, want the wrapper last", lines[1])
+	}
+	if !strings.Contains(lines[1], "--access public") {
+		t.Fatalf("wrapper publish call = %q, want --access public", lines[1])
+	}
+
+	// A missing tarball is an operator error, never a download.
+	if err := os.Remove(filepath.Join(dir, platformTar)); err != nil {
+		t.Fatal(err)
+	}
+	out, err = run()
+	if err == nil {
+		t.Fatalf("publish-npm with a missing tarball exited 0: %s", out)
+	}
+	if !strings.Contains(string(out), "does not download") {
+		t.Fatalf("stderr = %s, want a refusal that does not download", out)
 	}
 }
 

@@ -142,7 +142,9 @@ Agent 会从仓库中的 `AGENTS.md` 和 `.agents/skills/devsys/` 获得操作�
 
 完整安装与接入流程（含校验、回退与排障）见 [INSTALL.md](INSTALL.md)；下面是要点速查。
 
-**① Release 脚本（推荐，约 10 秒）**。打开 [Releases 页](https://github.com/JAYY513/Workloom/releases/latest)，下载 `install.sh`（Windows PowerShell 用 `install.ps1`），用同页 `checksums.txt` 校验后执行：
+**选哪条**：Windows x64 且有 Node.js ≥ 18 → 直接看 ④（`npm install -g @kaki317/workloom`，一条命令，升级就是重跑同一条）；其他平台 → ①。已装 Go、或要自己构建 → ② / ③。
+
+**① Release 脚本（macOS / Linux / Windows ARM64 的默认路径，约 10 秒）**。打开 [Releases 页](https://github.com/JAYY513/Workloom/releases/latest)，下载 `install.sh`（Windows PowerShell 用 `install.ps1`），用同页 `checksums.txt` 校验后执行：
 
 ```bash
 # Linux / macOS（Git Bash）
@@ -171,7 +173,7 @@ GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/workloom ./cmd/workloom
 GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/workloom.exe ./cmd/workloom
 ```
 
-**④ npm（可选，尚未发布）**。不替代 ①–③。包名预定 `@jayy513/workloom`，npm bin 只有 `workloom`，安装时不下载 exe。registry 上还没有这个包，不要执行 `npm install`。原因与打包方式见 [INSTALL.md](INSTALL.md) §1d。
+**④ npm（Windows x64 推荐，一条命令）**。不替代 ①–③。`npm install -g @kaki317/workloom`（Node.js ≥ 18），bin 只有 `workloom`，安装时不下载 exe——平台二进制随平台包安装。macOS / Linux / Windows ARM64 暂无平台包，请用 ①–③。细节见 [INSTALL.md](INSTALL.md) §1d。
 
 > 改名兼容：早期版本的主命令叫 `devsys`。`devsys` 现在是指向同一程序的兼容别名（安装脚本会同时装入两个名字），旧脚本与文档里的 `devsys …` 命令照常可用；状态目录仍是 `.devsys/`，MCP 注册名仍是 `devsys`。新用法一律写 `workloom`。
 

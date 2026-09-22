@@ -1,8 +1,11 @@
 {
-  "name": "@jayy513/workloom-linux-arm64",
+  "name": "@kaki317/workloom-linux-arm64",
   "version": "0.0.0",
-  "description": "linux-arm64 binary for @jayy513/workloom. Not a command.",
+  "description": "linux-arm64 binary for @kaki317/workloom. Not a command.",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "os": ["linux"],
   "cpu": ["arm64"],
   "files": ["workloom"],

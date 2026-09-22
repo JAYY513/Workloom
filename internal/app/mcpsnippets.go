@@ -21,7 +21,7 @@ import (
 func MCPSnippet(name, devsysBin, projectRoot string) (string, error) {
 	const coreNote = `Default --tier core is the 19-tool daily subset. ` +
 		`run_update / run_fail / workitem_block need the CLI or --tier standard.`
-	const npxNote = "\n# Optional npx form (cold start, needs a network; not a replacement for the local binary above):\n# npx --yes @jayy513/workloom mcp serve --profile session,executor --tier core\n"
+	const npxNote = "\n# Optional npx form (cold start, needs a network; not a replacement for the local binary above):\n# npx --yes @kaki317/workloom mcp serve --profile session,executor --tier core\n"
 	bin := filepath.ToSlash(strings.TrimSpace(devsysBin))
 	cwd := strings.TrimSpace(projectRoot)
 	if cwd == "" {

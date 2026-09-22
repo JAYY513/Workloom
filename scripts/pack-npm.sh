@@ -88,4 +88,4 @@ workloom-windows-amd64.exe win32-x64 workloom.exe
 MATRIX
 
 (cd -- "$stage/workloom" && npm pack --ignore-scripts --pack-destination "$out" >/dev/null)
-echo "packed @jayy513/workloom ${npm_version} into ${out}"
+echo "packed @kaki317/workloom ${npm_version} into ${out}"
