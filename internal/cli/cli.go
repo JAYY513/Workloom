@@ -465,7 +465,7 @@ func runWire(stdout io.Writer, opts options, rest []string) error {
 			return err
 		}
 		if *printMCP != "" {
-			snippet, err := app.MCPSnippet(*printMCP, os.Args[0], svc.Root)
+			snippet, err := app.MCPSnippet(*printMCP, app.MCPCommandFor(os.Args[0]), svc.Root)
 			if err != nil {
 				return err
 			}

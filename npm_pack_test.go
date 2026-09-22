@@ -115,6 +115,11 @@ func TestPackNPMEmbedsReleaseBinaries(t *testing.T) {
 	if len(bin) != 1 || bin["workloom"] == nil {
 		t.Fatalf("packed wrapper bin = %v", bin)
 	}
+	// The npm page is where a newcomer meets this package: the packed tarball
+	// has to carry the README that page renders.
+	if len(readTarballFile(t, wrapperTar, "package/README.md")) == 0 {
+		t.Fatal("packed wrapper has no README; the npm page would render empty")
+	}
 }
 
 func TestNPMWrapperExecsPlantedBinaryAndRefusesToDownload(t *testing.T) {

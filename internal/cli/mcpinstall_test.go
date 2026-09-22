@@ -6,7 +6,23 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/JAYY513/Workloom/internal/app"
 )
+
+// The report has to distinguish "checked and working" from "not checked": an
+// operator reading the line must never take a skipped probe for a pass.
+func TestProbeLineDistinguishesSkippedFromWorking(t *testing.T) {
+	if got := probeLine(&app.MCPProbeResult{Skipped: true, Detail: "skipped (DEVSYS_MCP_PROBE=0)"}); !strings.Contains(got, "skipped") {
+		t.Fatalf("skipped probe rendered as %q", got)
+	}
+	if got := probeLine(&app.MCPProbeResult{OK: true, Tools: 19, DurationMS: 120}); !strings.HasPrefix(got, "ok (19 tools") {
+		t.Fatalf("working probe rendered as %q", got)
+	}
+	if got := probeLine(&app.MCPProbeResult{Detail: "boom"}); got != "failed: boom" {
+		t.Fatalf("failed probe rendered as %q", got)
+	}
+}
 
 // TestMCPInstallProjectScope covers the productized registration path:
 // `workloom mcp install --apply --scope project` writes .mcp.json /

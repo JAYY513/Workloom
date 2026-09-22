@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -118,7 +119,7 @@ func TestInstallCodexTOMLAppendAndIdempotence(t *testing.T) {
 	if err := os.WriteFile(p, []byte(existing), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	changed, detail, err := installCodexTOML(p, "C:/bin/devsys.exe", false, false)
+	changed, detail, err := installCodexTOML(p, MCPCommand{Command: "C:/bin/devsys.exe"}, false, false)
 	if err != nil || !changed {
 		t.Fatalf("changed=%v err=%v detail=%s", changed, err, detail)
 	}
@@ -129,10 +130,10 @@ func TestInstallCodexTOMLAppendAndIdempotence(t *testing.T) {
 	if !strings.HasPrefix(string(got), existing) {
 		t.Fatalf("existing content not preserved:\n%s", got)
 	}
-	if !strings.Contains(string(got), "[mcp_servers.devsys]\ncommand = \"C:/bin/devsys.exe\"\nargs = [\"mcp\", \"serve\", \"--profile\", \"session,executor\", \"--tier\", \"core\"]\n") {
+	if !strings.Contains(string(got), "[mcp_servers.devsys]\ncommand = \"C:/bin/devsys.exe\"\nargs = [\"mcp\",\"serve\",\"--profile\",\"session,executor\",\"--tier\",\"core\"]\n") {
 		t.Fatalf("block missing or malformed:\n%s", got)
 	}
-	changed, _, err = installCodexTOML(p, "C:/bin/devsys.exe", false, false)
+	changed, _, err = installCodexTOML(p, MCPCommand{Command: "C:/bin/devsys.exe"}, false, false)
 	if err != nil || changed {
 		t.Fatalf("rerun changed=%v err=%v, want idempotent skip", changed, err)
 	}
@@ -144,7 +145,7 @@ func TestInstallCodexTOMLRefusesInlineTable(t *testing.T) {
 	if err := os.WriteFile(p, []byte("mcp_servers = { other = 1 }\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := installCodexTOML(p, "C:/bin/devsys.exe", false, true); err == nil {
+	if _, _, err := installCodexTOML(p, MCPCommand{Command: "C:/bin/devsys.exe"}, false, true); err == nil {
 		t.Fatal("expected refusal for inline mcp_servers table")
 	}
 }
@@ -156,14 +157,14 @@ func TestInstallCodexTOMLForceReplacesTable(t *testing.T) {
 	if err := os.WriteFile(p, []byte(existing), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	changed, _, err := installCodexTOML(p, "C:/bin/new.exe", false, false)
+	changed, _, err := installCodexTOML(p, MCPCommand{Command: "C:/bin/new.exe"}, false, false)
 	if err != nil || changed {
 		t.Fatalf("without force changed=%v err=%v", changed, err)
 	}
 	if got, _ := os.ReadFile(p); string(got) != existing {
 		t.Fatalf("file changed without force:\n%s", got)
 	}
-	changed, _, err = installCodexTOML(p, "C:/bin/new.exe", false, true)
+	changed, _, err = installCodexTOML(p, MCPCommand{Command: "C:/bin/new.exe"}, false, true)
 	if err != nil || !changed {
 		t.Fatalf("force changed=%v err=%v", changed, err)
 	}
@@ -219,9 +220,13 @@ func TestMCPInstallUserScopeEndToEnd(t *testing.T) {
 		HomeDir: home,
 		Bin:     "C:/bin/devsys.exe",
 		Apply:   true,
+		probe:   stubProbe(MCPProbeResult{OK: true, Tools: 19}),
 	})
 	if err != nil {
 		t.Fatalf("MCPInstall: %v", err)
+	}
+	if view.Probe == nil || !view.Probe.OK {
+		t.Fatalf("probe = %+v, want the reported success", view.Probe)
 	}
 	if len(view.Results) != 3 {
 		t.Fatalf("results = %d, want 3", len(view.Results))
@@ -245,7 +250,7 @@ func TestMCPInstallUserScopeEndToEnd(t *testing.T) {
 		t.Fatalf("opencode config wrong:\n%s", opencode)
 	}
 	// Rerun: everything already registered, byte-identical.
-	view2, err := svc.MCPInstall(t.Context(), MCPInstallRequest{Scope: "user", Clients: []string{"codex", "claude", "opencode"}, HomeDir: home, Bin: "C:/bin/devsys.exe", Apply: true})
+	view2, err := svc.MCPInstall(t.Context(), MCPInstallRequest{Scope: "user", Clients: []string{"codex", "claude", "opencode"}, HomeDir: home, Bin: "C:/bin/devsys.exe", Apply: true, probe: stubProbe(MCPProbeResult{OK: true, Tools: 19})})
 	if err != nil {
 		t.Fatalf("rerun MCPInstall: %v", err)
 	}
@@ -322,6 +327,43 @@ func TestMCPInstallDefaultDoesNotWrite(t *testing.T) {
 	}
 }
 
+// A registration that cannot start is reported as such: the config the
+// operator asked for is written, but `--apply` does not claim success. Dry
+// runs report the same probe and stay read-only.
+func TestMCPInstallApplyReportsAProbeFailure(t *testing.T) {
+	svc, _ := newTestService(t)
+	home := t.TempDir()
+	view, err := svc.MCPInstall(t.Context(), MCPInstallRequest{
+		Scope: "user", Clients: []string{"claude"}, HomeDir: home, Bin: "C:/bin/devsys.exe", Apply: true,
+		probe: stubProbe(MCPProbeResult{Detail: "fork/exec: no such file"}),
+	})
+	if err == nil {
+		t.Fatal("want a failure when the registered command cannot start")
+	}
+	var appErr *Error
+	if !errors.As(err, &appErr) || appErr.Class() != KindPrecondition {
+		t.Fatalf("error = %v, want a precondition failure", err)
+	}
+	if view == nil || view.Probe == nil || view.Probe.OK {
+		t.Fatalf("view = %+v, want the failed probe reported", view)
+	}
+	written, readErr := os.ReadFile(filepath.Join(home, ".claude.json"))
+	if readErr != nil || !strings.Contains(string(written), `"devsys"`) {
+		t.Fatalf("config = %s (err %v), want the registration written", written, readErr)
+	}
+
+	dry, err := svc.MCPInstall(t.Context(), MCPInstallRequest{
+		Clients: []string{"claude"}, HomeDir: home, Bin: "C:/bin/devsys.exe", DryRun: true,
+		probe: stubProbe(MCPProbeResult{Detail: "fork/exec: no such file"}),
+	})
+	if err != nil {
+		t.Fatalf("dry run must stay read-only: %v", err)
+	}
+	if dry.Probe == nil || dry.Probe.OK {
+		t.Fatalf("dry-run probe = %+v", dry.Probe)
+	}
+}
+
 func TestMCPInstallForceReplacesEntry(t *testing.T) {
 	svc, _ := newTestService(t)
 	home := t.TempDir()
@@ -332,6 +374,7 @@ func TestMCPInstallForceReplacesEntry(t *testing.T) {
 	}
 	view, err := svc.MCPInstall(t.Context(), MCPInstallRequest{
 		Scope: "user", Clients: []string{"claude"}, HomeDir: home, Bin: "C:/bin/new.exe", Apply: true,
+		probe: stubProbe(MCPProbeResult{OK: true, Tools: 19}),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -344,6 +387,7 @@ func TestMCPInstallForceReplacesEntry(t *testing.T) {
 	}
 	view, err = svc.MCPInstall(t.Context(), MCPInstallRequest{
 		Scope: "user", Clients: []string{"claude"}, HomeDir: home, Bin: "C:/bin/new.exe", Apply: true, Force: true,
+		probe: stubProbe(MCPProbeResult{OK: true, Tools: 19}),
 	})
 	if err != nil {
 		t.Fatal(err)

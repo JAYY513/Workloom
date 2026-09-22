@@ -234,7 +234,13 @@ Once the binary is in place, `workloom mcp install` registers devsys with the
 detected MCP clients (Codex / Claude Code / OpenCode; `--client` forces one).
 The default is a dry-run. `--apply` writes; an existing `devsys` entry is left
 alone unless `--force` replaces that entry. JSONC and an inline Codex
-`mcp_servers` table are refused even with `--force`; use `wire --print-mcp`.
+`mcp_servers` table are refused, not rewritten; use `wire --print-mcp` to paste
+the entry by hand. After `--apply`, `mcp install` starts the registered server
+once as a startup check (MCP handshake + tool list) and reports
+`probe: ok (N tools in Tms)`; if it cannot start, the report says so and the
+command exits 3 — the config is written, but nothing would connect. Use
+`DEVSYS_MCP_PROBE=0` to skip the check where child processes are not allowed
+(the report then reads `skipped`, never a pass).
 
 The underlying commands remain for step-by-step use or a different template:
 

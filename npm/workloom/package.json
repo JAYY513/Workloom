@@ -10,7 +10,16 @@
     "workloom": "bin/workloom.js"
   },
   "files": [
-    "bin/workloom.js"
+    "bin/workloom.js",
+    "README.md"
+  ],
+  "keywords": [
+    "workloom",
+    "devsys",
+    "cli",
+    "mcp",
+    "ai-agents",
+    "developer-tools"
   ],
   "engines": {
     "node": ">=18"

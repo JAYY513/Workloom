@@ -108,6 +108,11 @@ workloom mcp install --apply --force             # 只替换已有 devsys 条目
 无法安全合并（JSONC，或 Codex 行内 `mcp_servers` 表）时拒绝，即使用 `--force`。
 改用 `workloom wire --print-mcp <codex|claude|opencode>` 手贴。
 
+`--apply` 写完会**现场起一次** `mcp serve` 做启动检查（完成 MCP 握手并列工具面），报告形如
+`probe: ok (19 tools in 320ms)`；起不来时报 `probe: failed: …` 并**以退出码 3 结束**——配置已写入，
+但注册的服务器起不来，等于没接上。环境不允许起子进程时用 `DEVSYS_MCP_PROBE=0` 显式跳过
+（报告写 `skipped`，不会被当成通过）。
+
 之后检查项目蓝图：已配置则继续；**未配置则询问项目目标，不要假设**——
 蓝图写入命令是 `workloom project update --blueprint-artifact <artifact-id>`。
 

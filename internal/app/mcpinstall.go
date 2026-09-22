@@ -31,6 +31,9 @@ type MCPInstallRequest struct {
 	Bin      string
 	HomeDir  string
 	Announce func(client, path string)
+
+	// probe is a test hook: nil runs the real startup probe.
+	probe func(context.Context, MCPCommand, []string, string) MCPProbeResult
 }
 
 // MCPInstallResult is one client's outcome. Status is one of installed,
@@ -42,10 +45,13 @@ type MCPInstallResult struct {
 	Path   string `json:"path"`
 }
 
-// MCPInstallView is the `workloom mcp install` report.
+// MCPInstallView is the `workloom mcp install` report. Probe is the result of
+// starting the registered command once: writing a config is not evidence that
+// the server runs, so both are reported.
 type MCPInstallView struct {
 	Scope   string             `json:"scope"`
 	Results []MCPInstallResult `json:"results"`
+	Probe   *MCPProbeResult    `json:"probe,omitempty"`
 }
 
 // mcpClientOrder is the registration order shown to the operator.
@@ -68,14 +74,15 @@ func (s *Service) MCPInstall(ctx context.Context, req MCPInstallRequest) (*MCPIn
 	if scope != "user" && scope != "project" {
 		return nil, Usagef("unknown scope %q (expected user or project)", req.Scope)
 	}
-	bin := strings.TrimSpace(req.Bin)
-	if bin == "" {
-		exe, err := os.Executable()
+	exe := strings.TrimSpace(req.Bin)
+	if exe == "" {
+		resolved, err := os.Executable()
 		if err != nil {
 			return nil, Internalf("locate workloom binary: %v", err)
 		}
-		bin = filepath.ToSlash(exe)
+		exe = filepath.ToSlash(resolved)
 	}
+	cmd := ResolveMCPCommand(exe, exec.LookPath)
 	home := strings.TrimSpace(req.HomeDir)
 	if home == "" {
 		h, err := os.UserHomeDir()
@@ -109,6 +116,7 @@ func (s *Service) MCPInstall(ctx context.Context, req MCPInstallRequest) (*MCPIn
 	writing := req.Apply && !req.DryRun
 
 	view := &MCPInstallView{Scope: scope}
+	touched := false
 	for _, name := range mcpClientOrder {
 		if !want[name] {
 			continue
@@ -136,11 +144,11 @@ func (s *Service) MCPInstall(ctx context.Context, req MCPInstallRequest) (*MCPIn
 		)
 		switch name {
 		case "codex":
-			changed, detail, err = installCodexTOML(res.Path, bin, !writing, req.Force)
+			changed, detail, err = installCodexTOML(res.Path, cmd, !writing, req.Force)
 		case "claude":
-			changed, detail, err = installClientJSON(res.Path, "mcpServers", claudeMCPInstallEntry(bin), !writing, req.Force)
+			changed, detail, err = installClientJSON(res.Path, "mcpServers", claudeMCPInstallEntry(cmd), !writing, req.Force)
 		case "opencode":
-			changed, detail, err = installClientJSON(res.Path, "mcp", opencodeMCPInstallEntry(bin), !writing, req.Force)
+			changed, detail, err = installClientJSON(res.Path, "mcp", opencodeMCPInstallEntry(cmd), !writing, req.Force)
 		}
 		switch {
 		case err != nil:
@@ -157,6 +165,20 @@ func (s *Service) MCPInstall(ctx context.Context, req MCPInstallRequest) (*MCPIn
 			res.Detail = detail
 		}
 		view.Results = append(view.Results, res)
+		touched = true
+	}
+	if touched {
+		probe := ProbeMCPServer
+		if req.probe != nil {
+			probe = req.probe
+		}
+		view.Probe = new(probe(ctx, cmd, mcpServeArgs(), s.Root))
+	}
+	// A registration that cannot start is not a success. Dry runs report the
+	// probe and stay read-only; `--apply` that wrote a config nobody can use
+	// has to say so out loud (the config is kept — the operator decides).
+	if writing && view.Probe != nil && !view.Probe.OK && !view.Probe.Skipped {
+		return view, Preconditionf("registration written, but `workloom mcp serve` did not start: %s", view.Probe.Detail)
 	}
 	return view, nil
 }
@@ -186,7 +208,7 @@ func mcpClientPath(name, scope, home, root string) string {
 // table is refused even with force: sub-table syntax cannot merge into it.
 // force replaces an existing [mcp_servers.devsys] table and its
 // [mcp_servers.devsys.*] subtables, leaving every other byte in place.
-func installCodexTOML(path, bin string, dryRun, force bool) (bool, string, error) {
+func installCodexTOML(path string, cmd MCPCommand, dryRun, force bool) (bool, string, error) {
 	data, err := os.ReadFile(path)
 	exists := true
 	switch {
@@ -196,8 +218,8 @@ func installCodexTOML(path, bin string, dryRun, force bool) (bool, string, error
 	default:
 		return false, "", err
 	}
-	block := "[mcp_servers.devsys]\ncommand = " + jsonString(bin) +
-		"\nargs = [\"mcp\", \"serve\", \"--profile\", \"session,executor\", \"--tier\", \"core\"]\n"
+	block := "[mcp_servers.devsys]\ncommand = " + jsonString(cmd.Command) +
+		"\nargs = " + jsonStringList(cmd.ServeArgs(mcpServeArgs())...) + "\n"
 	if exists {
 		for _, line := range bytes.Split(data, []byte("\n")) {
 			t := bytes.TrimSpace(line)
@@ -372,11 +394,11 @@ func installClientJSON(path, objectKey string, entry []byte, dryRun, force bool)
 }
 
 // claudeMCPInstallEntry is the ~/.claude.json / .mcp.json member shape.
-func claudeMCPInstallEntry(bin string) []byte {
+func claudeMCPInstallEntry(cmd MCPCommand) []byte {
 	b, err := json.Marshal(map[string]any{
 		"type":    "stdio",
-		"command": bin,
-		"args":    mcpServeArgs(),
+		"command": cmd.Command,
+		"args":    cmd.ServeArgs(mcpServeArgs()),
 	})
 	if err != nil {
 		return []byte(`{"type":"stdio"}`)
@@ -386,10 +408,10 @@ func claudeMCPInstallEntry(bin string) []byte {
 
 // opencodeMCPInstallEntry is the opencode.json member shape (command array,
 // type local).
-func opencodeMCPInstallEntry(bin string) []byte {
+func opencodeMCPInstallEntry(cmd MCPCommand) []byte {
 	b, err := json.Marshal(map[string]any{
 		"type":    "local",
-		"command": append([]string{bin}, mcpServeArgs()...),
+		"command": append([]string{cmd.Command}, cmd.ServeArgs(mcpServeArgs())...),
 	})
 	if err != nil {
 		return []byte(`{"type":"local","command":[]}`)

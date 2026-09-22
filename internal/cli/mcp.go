@@ -102,7 +102,7 @@ func runMCPInstall(stdout io.Writer, opts options, rest []string) error {
 		}
 		return nil
 	}
-	if err != nil {
+	if err != nil && view == nil {
 		return err
 	}
 	if !opts.quiet {
@@ -110,8 +110,23 @@ func runMCPInstall(stdout io.Writer, opts options, rest []string) error {
 		for _, r := range view.Results {
 			fmt.Fprintf(stdout, "[%s] %s: %s (%s)\n", mcpMark(r.Status), r.Client, r.Detail, r.Path)
 		}
+		if view.Probe != nil {
+			fmt.Fprintf(stdout, "probe: %s\n", probeLine(view.Probe))
+		}
 	}
-	return nil
+	return err
+}
+
+// probeLine renders the startup probe: the answer a client gets on connect.
+func probeLine(p *app.MCPProbeResult) string {
+	switch {
+	case p.Skipped:
+		return p.Detail
+	case p.OK:
+		return fmt.Sprintf("ok (%d tools in %dms)", p.Tools, p.DurationMS)
+	default:
+		return "failed: " + p.Detail
+	}
 }
 
 // mcpMark maps a result status onto the tree marks the other reports use.

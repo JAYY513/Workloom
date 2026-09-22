@@ -2,6 +2,18 @@
 
 格式参照 Keep a Changelog；pre-release 阶段遵循语义化版本。发版步骤与回退见 [docs/发布流程.md](docs/发布流程.md)。
 
+## v0.1.12 — 2026-09-22
+
+### Added
+
+- `workloom mcp install` 写入后做**启动检查**：按写入的 command/args 现场起一次 `mcp serve`，完成 MCP initialize 握手并列工具面，报告 `probe: ok (N tools in Tms)` / `probe: failed: …`（`--json` 信封里是 `probe{ok,skipped,tools,duration_ms,detail}`）。`--apply` 下探针失败**以退出码 3 结束**并明确「配置已写入，但注册的服务器起不来」；`--dry-run` 只报告、不写盘。环境不允许起子进程时用 `DEVSYS_MCP_PROBE=0` 显式跳过（结果为 `skipped`，不会被当成通过）。
+- npm 渠道的 MCP 命令改为**稳定入口**：CLI 运行在 npm 安装树里时，写入客户端的 command 是 `node <wrapper>/bin/workloom.js`（跨版本、跨包管理器布局不变），而不是 `node_modules` 里嵌套的平台二进制路径；Release 脚本 / `go install` / 源码构建仍写二进制绝对路径。`workloom wire --print-mcp` 同步。
+- npm 包装包加 README 与 `keywords`：npmjs.com 的包页此前是空的（`files` 也列出 README）。
+
+### Changed
+
+- `app.MCPSnippet(name, cmd, projectRoot)`：`devsysBin string` 参数改为解析后的 `app.MCPCommand`（`Command` + 前置 `Args`）；CLI 调用方用 `app.MCPCommandFor(os.Args[0])`。同一份解析也决定 `mcp install` 写进三个客户端的命令。
+
 ## v0.1.11 — 2026-09-22
 
 ### Added

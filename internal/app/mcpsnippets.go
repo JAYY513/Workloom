@@ -18,11 +18,12 @@ import (
 // Snippets pin `--tier core` (the daily subset). Progress / failure / block
 // tools (`run_update`, `run_fail`, `workitem_block`) live at `--tier standard`
 // or the CLI — core stays an explicit opt-in surface.
-func MCPSnippet(name, devsysBin, projectRoot string) (string, error) {
+func MCPSnippet(name string, cmd MCPCommand, projectRoot string) (string, error) {
 	const coreNote = `Default --tier core is the 19-tool daily subset. ` +
 		`run_update / run_fail / workitem_block need the CLI or --tier standard.`
 	const npxNote = "\n# Optional npx form (cold start, needs a network; not a replacement for the local binary above):\n# npx --yes @kaki317/workloom mcp serve --profile session,executor --tier core\n"
-	bin := filepath.ToSlash(strings.TrimSpace(devsysBin))
+	bin := filepath.ToSlash(strings.TrimSpace(cmd.Command))
+	serve := cmd.ServeArgs([]string{"mcp", "serve", "--profile", "session,executor", "--tier", "core"})
 	cwd := strings.TrimSpace(projectRoot)
 	if cwd == "" {
 		cwd = "<project-root>"
@@ -41,8 +42,8 @@ func MCPSnippet(name, devsysBin, projectRoot string) (string, error) {
 		envTOML = "\n# [mcp_servers.devsys.env]\n# DEVSYS_CONFIG_DIR = " + jsonString(dir)
 		envCodex = " -c mcp_servers.devsys.env.DEVSYS_CONFIG_DIR=" + jsonString(dir)
 	}
-	args := `["mcp", "serve", "--profile", "session,executor", "--tier", "core"]`
-	commandArr := jsonStringList(bin, "mcp", "serve", "--profile", "session,executor", "--tier", "core")
+	args := jsonStringList(serve...)
+	commandArr := jsonStringList(append([]string{bin}, serve...)...)
 	switch strings.ToLower(strings.TrimSpace(name)) {
 	case "codex":
 		return `# Codex: ephemeral injection (verified with codex-cli 0.144.1, no user config touched):

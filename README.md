@@ -201,6 +201,7 @@ workloom setup
 装好二进制后，`workloom mcp install` 把 devsys 注册进检测到的 MCP 客户端（服务器名仍为 `devsys`，兼容既有客户端配置）
 （Codex / Claude Code / OpenCode；显式 `--client` 可强制）。默认只预览不写；`--apply` 才写入，
 已有条目不覆盖，`--force` 才替换。无法安全合并时拒绝并指向 `wire --print-mcp`。
+`--apply` 之后会现场起一次 `mcp serve` 做启动检查（`probe: ok (N tools)`；起不来则 `probe: failed` 并以退出码 3 结束，配置已写入但没接上；沙箱里不能起子进程时用 `DEVSYS_MCP_PROBE=0` 跳过）。
 
 想逐步执行或换模板时，底层命令仍然都在：
 

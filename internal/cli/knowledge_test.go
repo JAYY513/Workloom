@@ -41,6 +41,11 @@ func TestMain(m *testing.M) {
 		generatorStub()
 		return
 	}
+	// `mcp install` probes the registered server by starting it. Inside `go
+	// test` the resolved executable is the test binary, which cannot serve
+	// MCP, so the CLI tests take the documented escape hatch; the probe itself
+	// is exercised against a real stdio server in internal/app.
+	os.Setenv("DEVSYS_MCP_PROBE", "0")
 	os.Exit(m.Run())
 }
 

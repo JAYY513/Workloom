@@ -10,7 +10,7 @@ func TestMCPSnippetClaudeJSONAcceptsWindowsPaths(t *testing.T) {
 	t.Setenv("DEVSYS_CONFIG_DIR", `C:\Users\tester\.devsys`)
 	bin := `C:\Users\tester\AppData\Local\devsys\devsys.exe`
 	root := `C:\Source\CodeSource\ai\demo`
-	snippet, err := MCPSnippet("claude", bin, root)
+	snippet, err := MCPSnippet("claude", MCPCommand{Command: bin}, root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +45,7 @@ func filepathToSlashForTest(p string) string {
 }
 
 func TestMCPSnippetUnknownHarness(t *testing.T) {
-	if _, err := MCPSnippet("nope", "devsys", "."); err == nil {
+	if _, err := MCPSnippet("nope", MCPCommand{Command: "devsys"}, "."); err == nil {
 		t.Fatal("expected usage error")
 	}
 }
