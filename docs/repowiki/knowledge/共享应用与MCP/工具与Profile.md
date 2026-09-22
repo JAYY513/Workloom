@@ -34,7 +34,7 @@ triggers:
   - workloom setup 不注册 MCP
 description: "MCP 服务端的四种 profile（session / executor / reviewer / admin）暴露规则、默认组合与 `visible` 的注册期过滤语义；本批（#301）在 profile 之上叠加 **tier 档**——`TierCore` 是默认 CLI `--tier core` / 缺省值（20 项「日常子集」工具），`TierStandard` 含 profile 全量（66 项工具面），二者与 profile 合取（visible(spec.profiles, cfg.Profiles) && visibleTier(spec.tier, tier)）。`toolSpec` 新增 `tier` 字段（空 = standard，显式 `TierCore` 才进 core 档）；`server.go` 新增 `ParseTier`（拒绝未知名）/ `tierLevel`（core=0 / 其它=1）/ `visibleTier`；`tools_health.go` 的 `health` 响应回传当前 `tier`；CLI `workloom mcp serve --tier core|standard` 直接转 `mcp.ParseTier`。`project_blueprint_get`（session 档 / standard tier）补注册入口由 `tools.go` 与 `tools_project.go:56` 共同组成，未声明蓝图时 `artifact: null`。本批（#336/#337，project_update 蓝图字段+mcp 启动前过滤）：project_update 输入增 blueprint_artifact_id（empty string clears，id must already be registered）；internal/mcp/server.go 新导出 VisibleTools(cfg) []string，让 CLI mcp serve 在 0 工具时拒绝启动（exit 2，提示 --tier standard），是注册期过滤之外的\"启用前\"二次检查。；本轮（ca58d27→19b9149，setup/mcp install 与注册名）：workloom mcp install 写入的条目统一调用 mcp serve --profile session,executor --tier core（与 DefaultProfiles / DefaultTier 默认一致），目标客户端 codex / claude / opencode 支持 user / project scope；注册名保持 devsys（二进制改名 workloom，配置键仍是 mcp_servers.devsys / mcpServers.devsys / mcp.devsys）；workloom setup 不注册 MCP（只报告 mcp 行）；MCP run_verify 的返回体随 CompletionCheck 增 skipped 字段（非 Git 项目 / 目录工作区），Advanced 仍为 false。"
 generated: true
-source_commit: 238e30c
+source_commit: 7cdd918
 generator: repowiki-gen
 ---
 
@@ -192,7 +192,7 @@ tier 维度的矩阵（core 藏 `workitem_update` / `workflow_step_complete` / `
 - 字面量只接受 `core` / `standard`，未知名直接报错。
 - 错误原文：`unknown tier %q (expected core or standard)`。
 
-CLI 入口：`workloom mcp serve --tier core` / `--tier standard`（[internal/cli/mcp.go:133-160](file://internal/cli/mcp.go#L133-L160)）。CLI 层只把字面量原样传给 `mcp.ParseTier`，不重复实现 tier 解析。
+CLI 入口：`workloom mcp serve --tier core` / `--tier standard`（[internal/cli/mcp.go:172-175](file://internal/cli/mcp.go#L172-L175)）。CLI 层只把字面量原样传给 `mcp.ParseTier`，不重复实现 tier 解析。
 
 `DefaultTier()` 与 `DefaultProfiles()` 互相独立——`DefaultProfiles()` 是 `session + executor`，`DefaultTier()` 是 `core`（最小可用子集）。CLI 不显式 `--tier` 也不显式 `--profile` 时，两层默认同时生效，结果就是「core 档 + session/executor 全暴露」的常用组合。
 
@@ -207,7 +207,7 @@ CLI 入口：`workloom mcp serve --tier core` / `--tier standard`（[internal/cl
 
 ### `VisibleTools` 与 0 工具拒绝（本批新增）
 
-`internal/mcp/server.go:149-163` 新导出 `VisibleTools(cfg Config) []string`，沿用 `NewServer` 内同一 `visible(...) && visibleTier(...)` 过滤——返回值为「当前 cfg 启动时会注册的工具名集合」。`internal/cli/mcp.go:173-186` 的 `runMCPServe` 在 `len(VisibleTools(cfg)) == 0` 时返回 `errUsage("mcp serve: %s %s %s no tools in tier %s; use --tier standard", …)`：
+`internal/mcp/server.go:149-163` 新导出 `VisibleTools(cfg Config) []string`，沿用 `NewServer` 内同一 `visible(...) && visibleTier(...)` 过滤——返回值为「当前 cfg 启动时会注册的工具名集合」。`internal/cli/mcp.go:188-201` 的 `runMCPServe` 在 `len(VisibleTools(cfg)) == 0` 时返回 `errUsage("mcp serve: %s %s %s no tools in tier %s; use --tier standard", …)`：
 
 ```text
 mcp serve: profile "reviewer" has no tools in tier core; use --tier standard
@@ -218,18 +218,22 @@ mcp serve: profiles "a", "b" have no tools in tier core; use --tier standard
 
 ### `mcp install` 写出的注册条目（本轮新增）
 
-`workloom mcp install` 与 `mcp serve` 共用同一份默认值——条目 argv 由 `mcpServeArgs()`（[internal/app/mcpinstall.go:55-57](file://internal/app/mcpinstall.go#L55-L57)）给出：
+`workloom mcp install` 与 `mcp serve` 共用同一份默认值——条目 argv 由 `mcpServeArgs()`（[internal/app/mcpinstall.go:61-63](file://internal/app/mcpinstall.go#L61-L63)）给出：
 
 ```text
 ["mcp", "serve", "--profile", "session,executor", "--tier", "core"]
 ```
 
 - profile / tier 与 `DefaultProfiles()` / `DefaultTier()` 完全一致：任何客户端注册出来的 server 就是「core 档 20 项 + session/executor」的默认面，不存在第二套默认。
-- **条目名仍是 `devsys`**（`mcp_servers.devsys` / `mcpServers.devsys` / `mcp.devsys`），而命令里的二进制名是 `workloom`——本轮改名只动命令面，不动注册名与配置键：user scope 路径仍在 `mcpClientPath`（[internal/app/mcpinstall.go:167-182](file://internal/app/mcpinstall.go#L167-L182)）里，Claude 成员形状 `{"type":"stdio","command":<bin>,"args":mcpServeArgs()}`（[:375-385](file://internal/app/mcpinstall.go#L375-L385)）与 OpenCode 的 `{"type":"local","command":[<bin>, …]}`（[:389-398](file://internal/app/mcpinstall.go#L389-L398)）键名与结构不变。
+- **条目名仍是 `devsys`**（`mcp_servers.devsys` / `mcpServers.devsys` / `mcp.devsys`），而命令里的二进制名是 `workloom`——本轮改名只动命令面，不动注册名与配置键：user scope 路径仍在 `mcpClientPath`（[internal/app/mcpinstall.go:189-204](file://internal/app/mcpinstall.go#L189-L204)）里，Claude 成员形状 `{"type":"stdio","command":<cmd.Command>,"args":mcpServeArgs()}`（[:397-407](file://internal/app/mcpinstall.go#L397-L407)）与 OpenCode 的 `{"type":"local","command":[<cmd.Command>, …]}`（[:411-420](file://internal/app/mcpinstall.go#L411-L420)）键名与结构不变。
+- **可执行形态（本批）**：条目里的 `command`/`args` 来自 `ResolveMCPCommand`（[internal/app/mcpcommand.go:53-74](file://internal/app/mcpcommand.go#L53-L74)）——非 npm 安装原样写二进制路径；npm 安装（路径含 `node_modules/`）写 `node` + wrapper 脚本 `bin/workloom.js`，覆盖全局嵌套（`wrapper/node_modules/@kaki317/workloom-win32-x64`）与项目提升（同一 `node_modules` 下的 `@kaki317/workloom`）两种布局；`node` 不在 PATH 时回退原二进制路径。
+- **启动探针（本批）**：只要有一个客户端被处理（`not-detected` 之外的都算）就探一次——`ProbeMCPServer` 真起一次注册出来的命令（initialize + `ListTools`，`MCPProbeTimeout = 10s`），结果放在 `MCPInstallView.Probe`（JSON 字段 `probe`，[internal/app/mcpinstall.go:48-55](file://internal/app/mcpinstall.go#L48-L55)）。`--dry-run` 也探但不写盘；`--apply` 且探针失败 → `Preconditionf`（exit 3，配置保留）；`DEVSYS_MCP_PROBE=0` → `Skipped`（不 spawn，绝不当作通过——`internal/cli` 的 `TestMain` 就设这个值，[internal/cli/knowledge_test.go:48](file://internal/cli/knowledge_test.go#L48)）。CLI 报告行由 `probeLine`（[internal/cli/mcp.go:121-130](file://internal/cli/mcp.go#L121-L130)）渲染 `probe: ok (N tools in Tms)` / `probe: failed: …`，人类输出**先**打印报告再返回错误。
 - 工具面不受 `mcp install` 影响：注册期过滤仍在 `mcp serve` 进程内生效；`install` 只写客户端配置，`setup` **完全不注册**（只报告 `wire --check` 的 `mcp` 行）。
 - `run_verify` 的返回体随 `app.CompletionCheck` 增 `skipped` 字段（非 Git 项目 / 目录工作区，`advanced` 仍为 false，`reason` 为 `git completion check is not applicable`）——MCP 客户端与 CLI 看到同一份判定。
 
 - **本批（v0.1.11 / npm 首发）**：本页口径不变——四种 profile、`toolSpec` 注册表、tier 档（core 20 项 / standard 全量）与 `mcp install` 写出的注册条目都没有变化；npm 首发只落在分发包（`@kaki317/workloom`，当前只发 Windows x64），`source_commit` 跟进至 `238e30c`。
+
+- **本批（v0.1.12 / MCP 接入闭环）**：本页的 profile / tier 暴露面与工具清单不变；`mcp install` 侧两处变化——写出的条目命令由 `ResolveMCPCommand` 决定（npm 安装改成 `node` + wrapper 脚本 `bin/workloom.js`，[internal/app/mcpcommand.go:53-74](file://internal/app/mcpcommand.go#L53-L74)），并新增启动探针（`MCPInstallView.Probe` / JSON `probe`：`--dry-run` 也探不写、`--apply` 失败 → `Preconditionf` exit 3 且配置保留、`DEVSYS_MCP_PROBE=0` → `Skipped`）；`MCPSnippet` 第二参由 `devsysBin string` 换成 `cmd MCPCommand`；`source_commit` 跟进至 `7cdd918`。
 
 ## 与其他层的关系
 

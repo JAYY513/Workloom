@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "generated_at": "2026-09-22T07:32:29.419Z",
+  "generated_at": "2026-09-22T08:29:18.473Z",
   "files": [
     {
       "path": ".agents/skills/devsys/references/cli.md",
@@ -53,10 +53,10 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 7130,
-      "hash": "85024498af8b63998ff4a10ff62975387679385ed24b5f5f208fc231440442d3",
+      "size": 8491,
+      "hash": "1810adb113e0c3e22fae5ea6b463b06876365ca241cd2268a49ee49774f89464",
       "language": "markdown",
-      "lines": 124
+      "lines": 136
     },
     {
       "path": "cmd/devsys/main.go",
@@ -81,8 +81,8 @@
     },
     {
       "path": "docs/发布流程.md",
-      "size": 13260,
-      "hash": "f088dee67dc0ae5a859e6d14d8e839f42ba021816aca823fa7fa921f6011ec8d",
+      "size": 13764,
+      "hash": "be9d0ba8718742a7c09e51ae85041d89cde89948f4e5b0dd081426f48c41bcc5",
       "language": "markdown",
       "lines": 119
     },
@@ -95,10 +95,10 @@
     },
     {
       "path": "docs/使用手册.md",
-      "size": 15384,
-      "hash": "37d87879fd5c22ee8c3adc0f2bf2d3678711edbe5cd351a6a750012aafea5d7d",
+      "size": 15727,
+      "hash": "afd2b5dec382c2c008516a134ade174c304c54573e18e668d6e152f2d56d0b46",
       "language": "markdown",
-      "lines": 207
+      "lines": 211
     },
     {
       "path": "docs/assets/workloom-architecture.svg",
@@ -242,10 +242,10 @@
     },
     {
       "path": "docs/README.en.md",
-      "size": 18435,
-      "hash": "0bee0a304934d853395df7b89812f75634cf8762f908f681c81de03d5933b2d3",
+      "size": 18858,
+      "hash": "d98736d2c0b6b801410d69081ac1e5074568ea6a4cb7a7b3be6761f6c4377a22",
       "language": "markdown",
-      "lines": 361
+      "lines": 367
     },
     {
       "path": "go.mod",
@@ -263,10 +263,10 @@
     },
     {
       "path": "INSTALL.md",
-      "size": 6418,
-      "hash": "f9a9ebe3e8b3e6294b1890a5325ff814b615e7e034f6ff778ae41e8db8cd5d18",
+      "size": 6835,
+      "hash": "cbe503cb5bbd30d1fe2eb95702bdb0ff7daf52d9f8b8d8bd83413953058a8dd5",
       "language": "markdown",
-      "lines": 127
+      "lines": 132
     },
     {
       "path": "installmd_test.go",
@@ -353,32 +353,60 @@
       "lines": 763
     },
     {
-      "path": "internal/app/mcpinstall_test.go",
-      "size": 13933,
-      "hash": "a2d37788c1f95cf104f7053e6ae644c3f2714f86e43435c837343e278ae25e13",
+      "path": "internal/app/mcpcommand_test.go",
+      "size": 5591,
+      "hash": "cc9e18fdf36f43144f80adaf932e6f925584c130bf287f22b5c2d2bd0fada761",
       "language": "go",
-      "lines": 387
+      "lines": 145
+    },
+    {
+      "path": "internal/app/mcpcommand.go",
+      "size": 3634,
+      "hash": "4e442ada90bde402c9a8fb7d95b36efaec650a42b45bf6a1baa35383a7ee37d8",
+      "language": "go",
+      "lines": 106
+    },
+    {
+      "path": "internal/app/mcpinstall_test.go",
+      "size": 15898,
+      "hash": "b8a2e64923ecbe885bc9a1870d164d6fb5421a486cb2f34d1e7bd71c70928e5a",
+      "language": "go",
+      "lines": 431
     },
     {
       "path": "internal/app/mcpinstall.go",
-      "size": 17633,
-      "hash": "5d971618f5d5eca199c19589012a1c5f3114ecea04779ceab6c50a3abf13bfdd",
+      "size": 18676,
+      "hash": "544f1c0a097dbc9abc896982c6997a31fe069565bb9dcae02413bf796d7864e5",
       "language": "go",
-      "lines": 605
+      "lines": 627
+    },
+    {
+      "path": "internal/app/mcpprobe_test.go",
+      "size": 3472,
+      "hash": "ff27957f2989f8ff66986b9eb5bfdf5103f8d24929ca78bfc2364741ccad56f2",
+      "language": "go",
+      "lines": 91
+    },
+    {
+      "path": "internal/app/mcpprobe.go",
+      "size": 3050,
+      "hash": "a022362d9e46b795a1c24ab58922e0f662ba5e9aa33f6d1e7f484c689817ba82",
+      "language": "go",
+      "lines": 92
     },
     {
       "path": "internal/app/mcpsnippets_test.go",
-      "size": 1561,
-      "hash": "0015b971e77b653cde577cb0e76c3f3520f13c32544fee47d1de4427e0cec722",
+      "size": 1603,
+      "hash": "2d9c5320c72a5561ab793aa31548287945b445aa2e51827da280a84f02d7d0da",
       "language": "go",
       "lines": 51
     },
     {
       "path": "internal/app/mcpsnippets.go",
-      "size": 3638,
-      "hash": "bff5c34d153bd044f0063de32fa3caede7fa670c30aaf4f958e35f60000eed1f",
+      "size": 3672,
+      "hash": "504ddd3708591adc37d73045b5529540db996840a35a7c9039d6049fbc1a6782",
       "language": "go",
-      "lines": 103
+      "lines": 104
     },
     {
       "path": "internal/app/next.go",
@@ -592,8 +620,8 @@
     },
     {
       "path": "internal/cli/cli.go",
-      "size": 63025,
-      "hash": "93c4f626b5375cd63bc7b58ffd8f52e4ca404ae7a72aa1222c9df7c94d89dd4c",
+      "size": 63044,
+      "hash": "ad6dce1cacb55440d8c32ea4caebc1cc72578f53903a8262a6ff298cfb3b056e",
       "language": "go",
       "lines": 1728
     },
@@ -641,10 +669,10 @@
     },
     {
       "path": "internal/cli/knowledge_test.go",
-      "size": 40886,
-      "hash": "49c9ff99fe3a99b49c48c021923abae3672764f43d9f3e9e19192f40b926d9ae",
+      "size": 41208,
+      "hash": "6b5c8261896a47011ccbe481207a5cbd833950283ee18a75d7cce8f71687fd81",
       "language": "go",
-      "lines": 1125
+      "lines": 1130
     },
     {
       "path": "internal/cli/mcp_test.go",
@@ -655,17 +683,17 @@
     },
     {
       "path": "internal/cli/mcp.go",
-      "size": 6979,
-      "hash": "1fdea61bb8a4448883c9fa225acb66309a2a65d62e1d76d99a4a547200141632",
+      "size": 7381,
+      "hash": "cc6a1464c2d795dc9f98e33bfea43b4d12e432543d7da0cc9beb773f0d15286a",
       "language": "go",
-      "lines": 202
+      "lines": 217
     },
     {
       "path": "internal/cli/mcpinstall_test.go",
-      "size": 6798,
-      "hash": "f948d393f67c42a7667713edec91fcc3bf90e06052ceab04b8ba3cfa518c403d",
+      "size": 7555,
+      "hash": "e4256560244eac36f9835f0a372108ca9100ff022b534debe684347e28e74f3f",
       "language": "go",
-      "lines": 197
+      "lines": 213
     },
     {
       "path": "internal/cli/p1_test.go",
@@ -1943,10 +1971,10 @@
     },
     {
       "path": "npm_pack_test.go",
-      "size": 10148,
-      "hash": "fa80e10cec2d07223e74505ab0f28b6622f0ce4b48755c0a89a6f5f97b6b6cfc",
+      "size": 10417,
+      "hash": "e1f9e2e4e0ad0b4f1734672febb1de4a3f04883fb920bea9e7bea04eae37cf1d",
       "language": "go",
-      "lines": 320
+      "lines": 325
     },
     {
       "path": "npm/platforms/darwin-arm64/package.json",
@@ -1999,17 +2027,24 @@
     },
     {
       "path": "npm/workloom/package.json",
-      "size": 783,
-      "hash": "366a3ef984244434bb649856f9b9dc0b584d5c5871dab6ab6d0aea749cbf2d9b",
+      "size": 912,
+      "hash": "23a0d7d739446069135fb4c9da8d6f21f0f40687ae79ded512a1913afef4867d",
       "language": "json",
-      "lines": 31
+      "lines": 40
+    },
+    {
+      "path": "npm/workloom/README.md",
+      "size": 1603,
+      "hash": "9c235eae5683447445340736542e07fcce8dae2d24ebf24d541187a0ec6977a6",
+      "language": "markdown",
+      "lines": 33
     },
     {
       "path": "README.md",
-      "size": 16852,
-      "hash": "f0a5d597ee045a23e6106626590609812c1bfceb3c29f0170dfe8648b12585e2",
+      "size": 17095,
+      "hash": "bcf4b3c419a5f0a03ae7ea77b194047ed6b74cc35adabf4266cfc07c4e3879fd",
       "language": "markdown",
-      "lines": 323
+      "lines": 324
     },
     {
       "path": "readmemd_test.go",
@@ -2230,13 +2265,13 @@
     }
   ],
   "stats": {
-    "total_files": 318,
-    "total_size": 2337831,
-    "total_lines": 66617,
+    "total_files": 323,
+    "total_size": 2363454,
+    "total_lines": 67229,
     "languages": {
       "other": 7,
-      "markdown": 18,
-      "go": 245,
+      "markdown": 19,
+      "go": 249,
       "makefile": 1,
       "powershell": 10,
       "shell": 13,

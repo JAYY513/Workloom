@@ -19,7 +19,7 @@ triggers:
   - wire --check git 能力缺失
 description: "M4 `workloom wire` 把 devsys 纪律块注入 AGENTS.md；`<!-- devsys:begin/end -->` 标记、幂等（三次运行字节一致）、区段外字节保留（含其它工具的管理块）、`--dry-run` 预览；P1 起 `wire --check`（只读环境报告）/ `wire --skill`（写 `.agents/skills/devsys/{SKILL.md,references/cli.md,references/troubleshooting.md}`）/ `wire --print-mcp <codex|claude|opencode>`（生成 MCP 客户端 stdio 片段）；本轮（ca58d27→19b9149，v0.1.9 发布链 + 主命令改名 workloom + Git 可选能力）：纪律块标题与示例命令改名 `workloom`（标记常量仍为 `<!-- devsys:begin/end -->`）、`wire --check` 的 git 项记为可选能力缺失（`OK: true`）、`setup` 默认调用 `wire` + `WriteSkill`"
 generated: true
-source_commit: 238e30c
+source_commit: 7cdd918
 ---
 
 
@@ -77,7 +77,7 @@ P1（6bd253c）把 `workloom wire` 从「只写纪律块」扩展为「agent 接
 
 - `wire --check`（**只读**，exit 0）：调 `svc.WireCheck()`（[internal/app/wirecheck.go:22-40](file://internal/app/wirecheck.go#L22-L40) `WireCheckView{Lines []WireCheckLine}`）报告八项环境就绪状态：`go` / `git` / `.devsys` / `schema` / `registry` / `AGENTS.md` / `skill` / `mcp`。人类输出 `[v] <name>: <detail>` 或 `[x] <name>: <detail>`；`--json` 信封 `{ok, ...WireCheckView}`。
 - `wire --skill`（**写操作**）：调 `svc.WriteSkill()`（[internal/app/skill.go](file://internal/app/skill.go)）写 `.agents/skills/devsys/{SKILL.md, references/cli.md, references/troubleshooting.md}` 三文件，每文件带 `<!-- devsys-skill -->` 标记。**手写无 marker 的文件不覆盖**（已存在且无 marker → 跳过，报告 `hand-written`）；重复运行 → `skill: already installed (no change)`。
-- `wire --print-mcp <codex|claude|opencode>`：调 `app.MCPSnippet(name, os.Args[0], svc.Root)`（[internal/app/mcpsnippets.go:21-87](file://internal/app/mcpsnippets.go#L21-L87)）stdout 打印 stdio MCP 客户端片段。codex 走 `-c mcp_servers.devsys.*` 注入；claude 走 `.mcp.json` 的 `mcpServers.devsys`；opencode 走 `opencode.json` 的 `mcp.devsys`。`--json` 信封 `{ok, harness, snippet}`。未知 harness → `app.Usagef("unknown harness %q (expected codex, claude or opencode)")` → `CodeUsage = 2`。
+- `wire --print-mcp <codex|claude|opencode>`：调 `app.MCPSnippet(name, app.MCPCommandFor(os.Args[0]), svc.Root)`（[internal/app/mcpsnippets.go:21-88](file://internal/app/mcpsnippets.go#L21-L88)）stdout 打印 stdio MCP 客户端片段。codex 走 `-c mcp_servers.devsys.*` 注入；claude 走 `.mcp.json` 的 `mcpServers.devsys`；opencode 走 `opencode.json` 的 `mcp.devsys`。`--json` 信封 `{ok, harness, snippet}`。未知 harness → `app.Usagef("unknown harness %q (expected codex, claude or opencode)")` → `CodeUsage = 2`。**v0.1.12 起** 第二参是解析后的 `app.MCPCommand`（[internal/cli/cli.go:468](file://internal/cli/cli.go#L468)）：npm 安装树内片段写 `command = "node"` + `args = ["<wrapper>/bin/workloom.js", "mcp", "serve", …]`，源码/Release/`go install` 装机仍是二进制绝对路径（[internal/app/mcpcommand.go:53-74](file://internal/app/mcpcommand.go#L53-L74)）；args 统一由 `cmd.ServeArgs(...)` 生成，`Optional npx form` 注释行保留（[internal/app/mcpsnippets.go:26](file://internal/app/mcpsnippets.go#L26)、[internal/app/mcpsnippets.go:24](file://internal/app/mcpsnippets.go#L24)）。
 
 互斥矩阵：`--check` / `--skill` / `--print-mcp` 三选一；`--check` 与 `--print-mcp` 不接受任何其它 flag（`--dry-run` / `--skill`）；`--skill` 与 `--dry-run` 互斥。互斥规则在 `runWire` 顶部集中校验（[internal/cli/cli.go:453-462](file://internal/cli/cli.go#L453-L462)）。
 
@@ -128,7 +128,7 @@ type WireView struct {
 
 ## 本批（M9 #336/#337 提交 362b637 / 7e08e3d）
 
-- `wire --print-mcp <codex|claude|opencode>` 调用的 `app.MCPSnippet` 从双参签名改为三参 `MCPSnippet(name, devsysBin, projectRoot)`（[internal/app/mcpsnippets.go:21](file://internal/app/mcpsnippets.go#L21)）：新增 `projectRoot string` 参数（`internal/cli/cli.go` 传入 `svc.Root`）；`bin` 与 `cwd` 都走 `filepath.ToSlash(strings.TrimSpace(…))` 归一 Windows `\` 为 `/`（[internal/app/mcpsnippets.go:25-31](file://internal/app/mcpsnippets.go#L25-L31)）；`jsonString` 内部统一走 `encoding/json` 编字符串（不再手写 `\\"` 转义，避免 Windows 路径里偶发的 `\"` 截断）。codex 走 `-c mcp_servers.devsys.*` 注入；claude 走 `.mcp.json` 的 `mcpServers.devsys`；opencode 走 `opencode.json` 的 `mcp.devsys`；`cwd` 填真实项目根（不是 `<project-root>` 占位），agent 拉起时不需再二次改 snippet。
+- `wire --print-mcp <codex|claude|opencode>` 调用的 `app.MCPSnippet` 从双参签名改为三参 `MCPSnippet(name, devsysBin, projectRoot)`（[internal/app/mcpsnippets.go:21](file://internal/app/mcpsnippets.go#L21)）：新增 `projectRoot string` 参数（`internal/cli/cli.go` 传入 `svc.Root`）；`bin` 与 `cwd` 都走 `filepath.ToSlash(strings.TrimSpace(…))` 归一 Windows `\` 为 `/`（[internal/app/mcpsnippets.go:25-32](file://internal/app/mcpsnippets.go#L25-L32)）；`jsonString` 内部统一走 `encoding/json` 编字符串（不再手写 `\\"` 转义，避免 Windows 路径里偶发的 `\"` 截断）。codex 走 `-c mcp_servers.devsys.*` 注入；claude 走 `.mcp.json` 的 `mcpServers.devsys`；opencode 走 `opencode.json` 的 `mcp.devsys`；`cwd` 填真实项目根（不是 `<project-root>` 占位），agent 拉起时不需再二次改 snippet。
 - `DEVSYS_CONFIG_DIR` 已设时三片段（codex / claude / opencode）都带 `env`：`codex` 走 `-c mcp_servers.devsys.env.DEVSYS_CONFIG_DIR=…`；`claude` 走 `.mcp.json` 的 `env.DEVSYS_CONFIG_DIR`；`opencode` 走 `opencode.json` 的 `environment.DEVSYS_CONFIG_DIR`。`internal/cli/cli.go` 的 `wire --print-mcp` 仍是只读、不写盘、不发 RPC；agent 复制到客户端配置文件即生效。
 
 ## 与其他层的关系
@@ -145,3 +145,4 @@ type WireView struct {
 - **本批（#398）**：`workloom --help` 顶层命令表补回 `init` 与 `sync status` 两行（[internal/cli/cli.go:65](file://internal/cli/cli.go#L65)、[internal/cli/cli.go:83](file://internal/cli/cli.go#L83)）——两条命令一直可路由（`setup` 第一步就是 `init`，`sync status` 是 M8.1 只读接力判定），e4f1a9e 重写命令表时漏列；纯文案、无行为变更。本页引用的 `internal/cli/cli.go` 行号已按 +2 位移重算（`init` 之前不变，`init` 与 `sync status` 之间 +1，其后 +2）。
 - **本批（v0.1.10）**：补丁版本发布（`--help` 顶层命令表修复，无行为变更）；本页口径不变，`source_commit` 跟进至 `21a9e71`。
 - **本批（v0.1.11 / npm 首发）**：`wire --print-mcp` 生成的片段里，npx 可选注释行的包名同步为 `@kaki317/workloom`（[internal/app/mcpsnippets.go:24](file://internal/app/mcpsnippets.go#L24)）——本地二进制行不变，npx 仍只是可选补充（冷启动要联网、版本随缓存漂移）；本页其余口径不变，`source_commit` 跟进至 `238e30c`。
+- **本批（v0.1.12 / MCP 接入闭环）**：`wire --print-mcp` 的第二参从「二进制路径字符串」变成解析后的 `app.MCPCommand`——CLI 传 `app.MCPCommandFor(os.Args[0])`（[internal/cli/cli.go:468](file://internal/cli/cli.go#L468)），`ResolveMCPCommand` 在 npm 安装树内返回 `node` + `<wrapper>/bin/workloom.js`、其余装机形态原样返回二进制路径（[internal/app/mcpcommand.go:53-74](file://internal/app/mcpcommand.go#L53-L74)）；片段里的 `command` / `args` 因此随安装渠道变化，`args` 统一由 `cmd.ServeArgs(...)` 生成（[internal/app/mcpsnippets.go:26](file://internal/app/mcpsnippets.go#L26)）。`Optional npx form` 注释行仍保留。`mcp install` 写出的三个客户端条目与片段同源（[internal/app/mcpinstall.go:85](file://internal/app/mcpinstall.go#L85)），且写入后会现场探一次服务（`probe:` 行，`--apply` 失败 exit 3、配置保留）。`source_commit` 跟进至 `7cdd918`。
