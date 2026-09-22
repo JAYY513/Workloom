@@ -3,9 +3,9 @@
   "partition": {
     "locale": "zh"
   },
-  "generated_at": "2026-09-22T06:05:14.412Z",
+  "generated_at": "2026-09-22T06:21:33.728Z",
   "git": {
-    "commit": "71db9ebeba36a3f519cbc53d4f7ad52949ae89ae",
+    "commit": "21a9e71b94f9ba114245e29c6631b85abe2fa751",
     "branch": "master"
   },
   "pages": {
@@ -75,7 +75,7 @@
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "de29f2483b21cc95128f087a903c864da2f5f8595878a8ed9c62b73c212f3782"
+      "content_hash": "35ca25727239420c905121689ea72b5d88e59113ee2f3d5c82f074beef25b72f"
     },
     "content/快速开始.md": {
       "sources": [
@@ -141,7 +141,7 @@
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "576bf15a355301a99dcb01e938536d96d6a0185b0f937b0ea820bfa22f9f112a"
+      "content_hash": "5a8a14ab6371c075dbd5ed0150affc3eba365bb8519379dfd6f0e43eadb2426c"
     },
     "content/项目总览.md": {
       "sources": [
@@ -207,11 +207,11 @@
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "63ed82af94b70c74b797fb92f61993abdfb463303d4e88edc7abd11bcf823df4"
+      "content_hash": "d7fcca8b3cc2b854d87921097ffe33afd61ffc9ef8af5c34b16804c85694d507"
     },
     "index.md": {
       "sources": [],
-      "content_hash": "c7be27507247b1d072bb0603af2caad7148e82b2dcd393bd1449505c3cd17861"
+      "content_hash": "b2dfed10ce36d7c99a346136f51272950ecc7eadf5f1b65f7e218cc6a7397356"
     },
     "knowledge/共享应用与MCP/完成校验与人工复核.md": {
       "sources": [
@@ -753,7 +753,7 @@
         "npm/**",
         ".agents/skills/devsys/**"
       ],
-      "content_hash": "6e35602fe5e76b1630108c6b99210fbcdd143bdc8d85284c25436c6f0eb2087c"
+      "content_hash": "079a0f524ca434af204e1d96cc2333ea68800aaa181d257173d2ae1fb520cfdb"
     },
     "knowledge/项目接入与配置/CLI渲染与交换协议.md": {
       "sources": [
@@ -791,7 +791,7 @@
         "npm/**",
         ".agents/skills/devsys/**"
       ],
-      "content_hash": "3ca6ed95ea52619bc3f435bf32ca8ceed46d47285e676835a9a0402be2da587e"
+      "content_hash": "6c93bce949beaddb6f499d57f785bb0ea5f789d757aa1856f7dc4aa2c4b75d4e"
     },
     "knowledge/项目接入与配置/Schema与错误契约.md": {
       "sources": [
@@ -829,7 +829,7 @@
         "npm/**",
         ".agents/skills/devsys/**"
       ],
-      "content_hash": "0c2c6e190edeefd98a65c27634fe7847a925eec3bfdeaa121811d00ac2678d45"
+      "content_hash": "de9d2988fba74c05619d4347e988511bc5155fe17f7c26eb4cab4296dfa72031"
     },
     "knowledge/项目接入与配置/执行命令与DEVSYS_PROJECT_ROOT.md": {
       "sources": [
@@ -867,7 +867,7 @@
         "npm/**",
         ".agents/skills/devsys/**"
       ],
-      "content_hash": "4645877c9bcee039bcacf15ef952b274c323d57612cd0aa6f91ff5af12f68f81"
+      "content_hash": "f01367ce095d8089f346e872e85fa380488aef660677b1297df8092000239504"
     },
     "knowledge/项目接入与配置/技术栈.md": {
       "sources": [
@@ -905,7 +905,7 @@
         "npm/**",
         ".agents/skills/devsys/**"
       ],
-      "content_hash": "804dc3059f6bfbaa397e84661317452b207379f22d3a5a56dc08dea3e6c628a5"
+      "content_hash": "685fdd2fd8c4f40a89e73042311215f7a2b4ab0415942351ae8b7dfe7de061cd"
     },
     "knowledge/项目接入与配置/架构设计.md": {
       "sources": [
@@ -943,7 +943,7 @@
         "npm/**",
         ".agents/skills/devsys/**"
       ],
-      "content_hash": "4ac20f8c0c5170ee23ba6329d8f477b8bccefccb8d7f7071b909afe9f731a0e4"
+      "content_hash": "b1f924638db25a229a68731cdb236aa857e7f83ba32d13318c59f89283b52a72"
     },
     "knowledge/项目接入与配置/概述.md": {
       "sources": [
@@ -981,7 +981,7 @@
         "npm/**",
         ".agents/skills/devsys/**"
       ],
-      "content_hash": "2bbe607658749351f66bcca3be1fdc41f2b36a12470d8963ec1a971f98e4dd99"
+      "content_hash": "62f0f78711d83eac7d27cf75d0d4d0f36759b469fd94c046b13edbdbee209b0a"
     },
     "knowledge/项目接入与配置/特殊配置与命令.md": {
       "sources": [
@@ -1019,7 +1019,7 @@
         "npm/**",
         ".agents/skills/devsys/**"
       ],
-      "content_hash": "648206a921e643de2c59225a72ff5b0826cd68d7086a7047914eefd591deadb3"
+      "content_hash": "8cc26aa80b7c5145b8b539af428b92a875048c864ce1e6ae05e95e9faa99dce8"
     },
     "knowledge/项目接入与配置/编码规范.md": {
       "sources": [
@@ -1057,11 +1057,11 @@
         "npm/**",
         ".agents/skills/devsys/**"
       ],
-      "content_hash": "5e5a071d7ab76dbbe4552d32602bc1cd4950fe0a298167d966dbbb55575b0688"
+      "content_hash": "bf9870396e7d4e99b6d8e2502fadc3a83fd7f2c17eb75827b24a8422b3638c6d"
     },
     "log.md": {
       "sources": [],
-      "content_hash": "f12bff3d02e365ea3ac7c6ac81f14233bf69197f43fbd96b27d8785494698631"
+      "content_hash": "7bee6edb14d7a74baa6e858ff6c7b45d9ccdc2ba0fc72e978dc08cd1511252d8"
     }
   },
   "snapshot_digest": "9e8de38c95b6f9585aceb2df5f29bec13e1a3b554e0945f2cfc543caf2fd5bc5",
@@ -1069,8 +1069,8 @@
   "last_run": {
     "status": "success",
     "phase": "finalize",
-    "started_at": "2026-09-22T06:05:14.412Z",
-    "finished_at": "2026-09-22T06:05:14.412Z",
+    "started_at": "2026-09-22T06:21:33.728Z",
+    "finished_at": "2026-09-22T06:21:33.728Z",
     "error": ""
   }
 }

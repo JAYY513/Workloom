@@ -1,3 +1,12 @@
+## 2026-09-22 · 21a9e71 v0.1.10 发布（`--help` 命令表修复）+ 安装口径同步
+
+- 源码基线：`98c291c` → `21a9e71`（产品改动仍是 `--help` 顶层命令表两行；`21a9e71` 是版本与安装指引提交——CHANGELOG 的 Unreleased 收口为 v0.1.10、README / docs/README.en.md / docs/使用手册.md 的安装示例与「或更新版本」口径提到 v0.1.10）。任务 #398 的发布收尾。
+- 发布实跑：CI run `35694102114`，2m11s 全绿、非草稿，**16 资产**（与 v0.1.9 同集合：6 个 `workloom-*` 平台二进制 + `install.sh` + `install.ps1` + `checksums.txt` + 7 个 `dist/npm/*.tgz`）；下载 Release 的 windows 二进制实测 `workloom v0.1.10 (21a9e71)`；匿名拉取 `install.sh` / `workloom-linux-amd64` 均 302；Release notes 已按发布流程 §2 换成用户视角三行；`docs/发布流程.md` §5 实跑记录同步。
+- 受影响 12 页（3 篇文章 + project-access 9 卡）追加「本批（v0.1.10）」注记、`source_commit` → `21a9e71`；其中 4 页有实质更新：`content/项目总览.md` 增 v0.1.10 版本条目、`content/开发与故障诊断.md` 实跑记录表增 v0.1.10 行、`content/快速开始.md` 安装段改指 v0.1.10 实跑（保留 v0.1.9 事实）、`项目接入与配置/特殊配置与命令.md` 的 `--version` 实测样例改 v0.1.10。另有 `index.md` 的「正式 tag」与 `content/快速开始.md` 的 `--tag` 示例改 v0.1.10。
+- 校验：`repowiki validate` = 55 files / 0 errors / 0 warnings；自建审计 = 2109 条 `file://` 引注 0 越界 / 0 缺失、324 条 bundle 相对链接 0 死链、frontmatter 55/55 YAML 合法、0 CRLF、0 围栏失衡。
+- 收尾：`repowiki state --update` 基线 → `21a9e71`；`repowiki status` 余 1 个自指提交。
+- 验证边界：本轮改 `docs/repowiki/**`、`.repowiki/**`、`docs/发布流程.md` 与三份用户文档的版本号；产品代码零改动（`98c291c` 之后无源码变更），全量 `go test ./... -count=1` 在该代码树上绿。
+
 ## 2026-09-22 · 98c291c `--help` 命令表补回 init 与 sync status（#398）
 
 - 源码基线：`1ffb4a5` → `98c291c`（一次纯文案改动：`internal/cli/cli.go` 的 `usage` 常量补 `init` 与 `sync status` 两行——e4f1a9e 重写命令表时漏列，两条命令一直可路由、`setup` 与 M8.1 接力判定都依赖它们；`CHANGELOG.md` Unreleased 登记一条）。任务 #398。
