@@ -23,7 +23,7 @@ triggers:
   - workloom --version
 description: "M4 CLI 的 `--json` / `--jsonl` 两种结构化输出形态与退出码/MCP 错误对应；M7.1–M7.4 workspace 子命令族 view/build/serve（信封差异 + hint 行），人类输出一行一事实；M8 sync status / repair conflict notes / archive events|runs / dispatch merge gate 的 `--json` 信封与人类输出约定；本批（#336/#337）workitem/workflow list 空集合统一 `[]`、doctor `INVALID` 行 + exit 4、`mcp serve` 0 工具 exit 2、`workflow init --template` 与 `--blueprint-artifact` flaggenerated: true；本轮（ca58d27→19b9149，v0.1.9 发布链 + 主命令改名 workloom + Git 可选能力）：usage 文本与错误行前缀改 `workloom`、`--version` 输出 `workloom <version> (<commit>)`；新增 `setup` / `mcp install` 两条命令的信封（`{ok, ready, template, steps[], next?}` 与 `{ok, scope, results[]}`，均沿用 `--json` 单文档信封、不走 `--jsonl`）"
 generated: true；
-source_commit: 19b9149
+source_commit: 98c291c
 ---
 
 # CLI 渲染与交换协议 · 项目接入与配置
@@ -48,7 +48,7 @@ usage:
 - 全局开关必须**前置**（解析器遇首个非选项参数即停）。
 ## `writeJSONL[T]` 泛型
 
-`internal/cli/cli.go:178-186`：
+`internal/cli/cli.go:180-188`：
 
 ```go
 func writeJSONL[T any](w io.Writer, items []T) error {
@@ -339,17 +339,17 @@ dispatch tick 在 `recover` **之前**跑 `mergeConflict(root)`（[internal/app/
 
 **`workloom prime`（P2）** 与 `workloom session start --compact` 输出同源：人类模式打印 `project: <name> (<id>)` / `phase` / `state:` / `workitem:` 行 + `next: <action> <id>: <reason>` + 可选 `command:`；`--json` 信封 `{ok: true, ...SessionView}` 与 `session start` 同字段名。
 
-**`--latest`（c150007）** 与 `--expect` 互斥：`checkLatest` 在 CLI 层升为 `CodeUsage = 2` + `(pass --expect or --latest, not both)`（[internal/cli/cli.go:590-596](file://internal/cli/cli.go#L590-L596)）。所有写命令的 `usage:` 文本同步改为 `[--expect <hash> | --latest]`。
+**`--latest`（c150007）** 与 `--expect` 互斥：`checkLatest` 在 CLI 层升为 `CodeUsage = 2` + `(pass --expect or --latest, not both)`（[internal/cli/cli.go:592-598](file://internal/cli/cli.go#L592-L598)）。所有写命令的 `usage:` 文本同步改为 `[--expect <hash> | --latest]`。
 
 **`mcp serve --tier core|standard`（P1）** 未知 tier → `errUsage("`workloom mcp serve`: unknown tier %q (expected core or standard)")`（[internal/mcp/server.go:47-60](file://internal/mcp/server.go#L47-L60) `ParseTier`）→ `CodeUsage = 2`。`--json` 输出受 `tierLevel` 影响（core 是 daily 子集，standard 暴露所选 profile 下完整工具集）。
 
 
-**`wire --check` / `--skill` / `--print-mcp`（P1）** 三选一互斥（[internal/cli/cli.go:443-582](file://internal/cli/cli.go#L443-L582)）；`--check` / `--print-mcp` 是只读，exit 0；`--skill` 是写操作。**v0.1.4 起** `--check` 增 `--strict`（任一检查项失败 → `CodePrecondition = 3`），默认 `wire` 在写纪律块同时一并写 skill 三文件（`skill_changed` 字段）。`--print-mcp <harness>` 未知 → `app.Usagef("unknown harness %q (expected codex, claude or opencode)")` → `CodeUsage = 2`；`--check` 八项 `go` / `git` / `.devsys` / `schema` / `registry` / `AGENTS.md` / `skill` / `mcp` → 人类输出 `[v]/[x] <name>: <detail>`；`--skill` 重复调用 → `skill: already installed (no change)`。
+**`wire --check` / `--skill` / `--print-mcp`（P1）** 三选一互斥（[internal/cli/cli.go:445-584](file://internal/cli/cli.go#L445-L584)）；`--check` / `--print-mcp` 是只读，exit 0；`--skill` 是写操作。**v0.1.4 起** `--check` 增 `--strict`（任一检查项失败 → `CodePrecondition = 3`），默认 `wire` 在写纪律块同时一并写 skill 三文件（`skill_changed` 字段）。`--print-mcp <harness>` 未知 → `app.Usagef("unknown harness %q (expected codex, claude or opencode)")` → `CodeUsage = 2`；`--check` 八项 `go` / `git` / `.devsys` / `schema` / `registry` / `AGENTS.md` / `skill` / `mcp` → 人类输出 `[v]/[x] <name>: <detail>`；`--skill` 重复调用 → `skill: already installed (no change)`。
 
-**`project blueprint`（b89ffae）** 未声明蓝图 → `svc.ProjectBlueprint` 返回 `(nil, nil)`；CLI 打印 `no blueprint declared (project.yaml blueprint_artifact_id is empty)` 并 `exit 0`（[internal/cli/cli.go:686-711](file://internal/cli/cli.go#L686-L711)）；`--json` 模式 `{ok: true, artifact: null}`。与 `project status` / `next` 同一族只读路径。
+**`project blueprint`（b89ffae）** 未声明蓝图 → `svc.ProjectBlueprint` 返回 `(nil, nil)`；CLI 打印 `no blueprint declared (project.yaml blueprint_artifact_id is empty)` 并 `exit 0`（[internal/cli/cli.go:688-713](file://internal/cli/cli.go#L688-L713)）；`--json` 模式 `{ok: true, artifact: null}`。与 `project status` / `next` 同一族只读路径。
 
 
-**`approval list` / `approval get`（d726ed4）** 第二列由原始 `apr.Status` 改为 `approvalState(apr)`（[internal/cli/cli.go:1508-1517](file://internal/cli/cli.go#L1508-L1517)）：已 `consumed_at` → `consumed`，已 `invalidated_at` → `invalidated`，否则原 `Status`；`--json` 模式仍带原始 `consumed_at` / `invalidated_at` 字段。
+**`approval list` / `approval get`（d726ed4）** 第二列由原始 `apr.Status` 改为 `approvalState(apr)`（[internal/cli/cli.go:1510-1519](file://internal/cli/cli.go#L1510-L1519)）：已 `consumed_at` → `consumed`，已 `invalidated_at` → `invalidated`，否则原 `Status`；`--json` 模式仍带原始 `consumed_at` / `invalidated_at` 字段。
 
 **`storage: version conflict`（c150007 + b89ffae）** 经 `app.storeError`（[internal/app/workitem.go:447-484](file://internal/app/workitem.go#L447-L484)）补充出路文本：重新读取后重试，或用 `--latest` 直接基于当前版本写入。`--json` 信封走 M4 `{ok:false, error:{code:4, kind:"invalid", message:"...", problems?}}` 标准格式。
 
@@ -361,7 +361,7 @@ dispatch tick 在 `recover` **之前**跑 `mergeConflict(root)`（[internal/app/
 
 ### 列表命令空集合：稳定 `[]`，禁止 `null`
 
-- `workitem list --json` / `workflow list --json` 在结果为 `nil` 时显式补 `[]` 再 encode——[internal/cli/cli.go:859-861](file://internal/cli/cli.go#L859-L861) `if items == nil { items = []*domain.WorkItem{} }` 与 [internal/cli/cli.go:1292-1294](file://internal/cli/cli.go#L1292-L1294) `if policies == nil { policies = []app.PolicySummary{} }`。`internal/workitem/workitem.go` 的 `List` 也返回非 nil `[]`。调用方按行解析时不需要为「空 vs null」二态做分支；`jq '.items | length'` 永远返回数字。
+- `workitem list --json` / `workflow list --json` 在结果为 `nil` 时显式补 `[]` 再 encode——[internal/cli/cli.go:861-863](file://internal/cli/cli.go#L861-L863) `if items == nil { items = []*domain.WorkItem{} }` 与 [internal/cli/cli.go:1294-1296](file://internal/cli/cli.go#L1294-L1296) `if policies == nil { policies = []app.PolicySummary{} }`。`internal/workitem/workitem.go` 的 `List` 也返回非 nil `[]`。调用方按行解析时不需要为「空 vs null」二态做分支；`jq '.items | length'` 永远返回数字。
 
 ### `CodeInvalid = 4` 不可信路径：doctor / next / prime / session / project status
 
@@ -371,12 +371,12 @@ dispatch tick 在 `recover` **之前**跑 `mergeConflict(root)`（[internal/app/
 ### `CodeUsage = 2` 新增：`mcp serve` 0 工具 / `workflow init --template` / `project update --blueprint-artifact`
 
 - `workloom mcp serve` 在构造 cfg 后调 `mcp.VisibleTools(cfg)` 拿到空 slice 走 `errUsage("mcp serve: %s %s %s no tools in tier %s; use --tier standard", word, strings.Join(quoted, ", "), verb, tier)`（单 profile 渲染为 `mcp serve: profile "session" has no tools in tier core; use --tier standard`）（[internal/cli/mcp.go:79-91](file://internal/cli/mcp.go#L79-L91)）——多 profile 时单复数与动词变 `profiles %s have`。零工具的 silent server 是隐藏陷阱（只读 profile + core tier），文案直接给出 `--tier standard` 出路。
-- `workloom workflow init --template <id>`（[internal/cli/cli.go:1210-1241](file://internal/cli/cli.go#L1210-L1241)）：usage 文本 `strings.Join(app.WorkflowTemplates(), "|")` 动态生成（`internal/app/workflow_init.go` + 仓库根 `templates.go`）；未知 id / 已存在 → `Usagef`（已存在：`edit it in place`，提示直接编辑已生成的策略文件）。
-- `workloom project update --blueprint-artifact <artifact-id>`（fs.Visit 模式，[internal/cli/cli.go:719-745](file://internal/cli/cli.go#L719-L745)）：empty string clears；非空须 `record.KindArtifact.ValidID`（形态错 → `Usagef` / `CodeUsage = 2`），未注册（`GetArtifact` ErrNotFound → `Preconditionf` / `CodePrecondition = 3` + 出路 `workloom artifact register`）。MCP `project_update` 输入增 `blueprint_artifact_id`（[internal/mcp/tools_project.go](file://internal/mcp/tools_project.go)）。
+- `workloom workflow init --template <id>`（[internal/cli/cli.go:1212-1243](file://internal/cli/cli.go#L1212-L1243)）：usage 文本 `strings.Join(app.WorkflowTemplates(), "|")` 动态生成（`internal/app/workflow_init.go` + 仓库根 `templates.go`）；未知 id / 已存在 → `Usagef`（已存在：`edit it in place`，提示直接编辑已生成的策略文件）。
+- `workloom project update --blueprint-artifact <artifact-id>`（fs.Visit 模式，[internal/cli/cli.go:721-747](file://internal/cli/cli.go#L721-L747)）：empty string clears；非空须 `record.KindArtifact.ValidID`（形态错 → `Usagef` / `CodeUsage = 2`），未注册（`GetArtifact` ErrNotFound → `Preconditionf` / `CodePrecondition = 3` + 出路 `workloom artifact register`）。MCP `project_update` 输入增 `blueprint_artifact_id`（[internal/mcp/tools_project.go](file://internal/mcp/tools_project.go)）。
 
 ### `workloom init` 人类输出增「next:」四步
 
-- [internal/cli/cli.go:429-435](file://internal/cli/cli.go#L429-L435) 把 init 完成的人类输出从单行路径汇总升级到「next:」四步引导：`workflow init --template quick-fix (also: feature-development, architecture-change, reference-template), then adapt it` → `workloom wire --skill` → `next.CreateWorkitemCommand` (`workloom workitem create --title "…" --actor <you> --reason "first task"`) → `workloom workspace view`。
+- [internal/cli/cli.go:431-437](file://internal/cli/cli.go#L431-L437) 把 init 完成的人类输出从单行路径汇总升级到「next:」四步引导：`workflow init --template quick-fix (also: feature-development, architecture-change, reference-template), then adapt it` → `workloom wire --skill` → `next.CreateWorkitemCommand` (`workloom workitem create --title "…" --actor <you> --reason "first task"`) → `workloom workspace view`。
 
 ### `next` 在空项目 + 无蓝图下的双 remedy 文案
 
@@ -384,9 +384,9 @@ dispatch tick 在 `recover` **之前**跑 `mergeConflict(root)`（[internal/app/
 
 ### 主命令改名对输出契约的影响
 
-- `usage` 文本首行与用法行改为 `workloom`；`--version` 输出 `workloom <version> (<commit>)`（[internal/cli/cli.go:59-62](file://internal/cli/cli.go#L59-L62)、[internal/cli/cli.go:239](file://internal/cli/cli.go#L239)）。人类模式错误行前缀由 `devsys: <msg>` 改为 `workloom: <msg>`（[internal/cli/cli.go:379-383](file://internal/cli/cli.go#L379-L383)）。
+- `usage` 文本首行与用法行改为 `workloom`；`--version` 输出 `workloom <version> (<commit>)`（[internal/cli/cli.go:59-62](file://internal/cli/cli.go#L59-L62)、[internal/cli/cli.go:241](file://internal/cli/cli.go#L241)）。人类模式错误行前缀由 `devsys: <msg>` 改为 `workloom: <msg>`（[internal/cli/cli.go:381-385](file://internal/cli/cli.go#L381-L385)）。
 - **错误信封不变**：`--json` 仍是 stderr 上的 `{ok:false, error:{code, kind, message, problems?}}`；退出码仍是 0/1/2/3/4，`knowledge status` 保留 10/11。改名只动前缀与文本，不动字段名、不动 JSON 结构——按字段解析的脚本不需要改。
-- `usage` 里 `3  precondition error (...)` 的括注从「not a git repository」改为「nested project, wrong directory, permissions, digest mismatch」（[internal/cli/cli.go:104](file://internal/cli/cli.go#L104)）——git 不再是入场券。
+- `usage` 里 `3  precondition error (...)` 的括注从「not a git repository」改为「nested project, wrong directory, permissions, digest mismatch」（[internal/cli/cli.go:106](file://internal/cli/cli.go#L106)）——git 不再是入场券。
 
 ### `workloom setup` 的 `--json` 信封
 
@@ -400,3 +400,4 @@ dispatch tick 在 `recover` **之前**跑 `mergeConflict(root)`（[internal/app/
 
 - `workloom run verify --json` 的 `CompletionCheck` 增 `skipped`（`json:"skipped,omitempty"`）字段：非 Git 项目 / 目录工作区返回 `{advanced: false, skipped: true, reason: "git completion check is not applicable"}`（[internal/app/runverify.go:19-56](file://internal/app/runverify.go#L19-L56)）。
 - `workloom wire --check --json` 的 `git` 行在 git 不在 PATH 时是 `{name: "Git", ok: true, detail: "not on PATH (optional: worktree, sync, knowledge freshness unavailable)"}`——**不**把整次检查打成失败（[internal/app/wirecheck.go:49-54](file://internal/app/wirecheck.go#L49-L54)）。
+- **本批（#398）**：`workloom --help` 顶层命令表补回 `init` 与 `sync status` 两行（[internal/cli/cli.go:65](file://internal/cli/cli.go#L65)、[internal/cli/cli.go:83](file://internal/cli/cli.go#L83)）——两条命令一直可路由（`setup` 第一步就是 `init`，`sync status` 是 M8.1 只读接力判定），e4f1a9e 重写命令表时漏列；纯文案、无行为变更。本页引用的 `internal/cli/cli.go` 行号已按 +2 位移重算（`init` 之前不变，`init` 与 `sync status` 之间 +1，其后 +2）。

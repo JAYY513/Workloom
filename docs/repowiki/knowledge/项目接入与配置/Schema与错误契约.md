@@ -37,7 +37,7 @@ triggers:
   - setup 退出码
   - mcp install 退出码
 description: "devsys 受管 YAML 文件的严格 schema：每文件白名单 + schema_version 闸门 + 行号定位 + Problems 错误结构（含 SeverityWarning） + 退出码 4 的语义边界 + M1 完整 Project 模型 + 嵌套字段校验；M2 新增退出码 3/4 在 workitem 与 repair 中的扩展语义、--expect 64-hex sha256 + fail-closed、--confirm 摘要格式、写命令 --actor/--reason 必填；M3 新增 workflow/approval/next 的 kind 与 code 语义、workitem.TransitionRequest.Guard 签名、policy issue 与 LKG 报错；M4 收口到 *app.Error.Class() 四类（映射 CLI 退出码 + MCP tool error code）、--jsonl 列表流、知识层 10/11 退出码预留；M5 新增 KnowledgePages / KnowledgeGenerator 配置键、kindStrings（接受 null 与空列表）+ kindMilestones 双路径、warning severity、KindKnowledge 错误类、knowledge_pages / knowledge_generator 字段解析；M6 增 workspace_root / dispatch_command 配置键、HookEnv 注入、run exec / run complete 在执行层的扩展退出码语义；M7.1 增 workspace view 在视图域的退出码语义（沿用 0/2/3/1，10/11 仍专属 knowledge status）、workspace view 的 --limit 与子命令缺失 → 2、缺 .devsys/ → 3、view.Build 失败 → 1、advisory_unlocked 是事实标签不是失败码。；**本批**：`config.yaml` 增 `default_policy` 键（未绑定实例的工作项按其过门禁；键值非法或指向缺失策略时 claim fail closed）、`project blueprint` 未声明蓝图 exit 0、非法 workitem id 归 usage/exit 2、`storage: version conflict` 附「重新读取重试 / `--latest`」出路。；本轮（ca58d27→19b9149，v0.1.9 发布链 + 主命令改名 workloom + Git 可选能力）：退出码 3 的「非 git 仓库」用法作废（`init` 允许非 Git 目录与 git 子目录，禁止自动 `git init`），`workspace.ErrGitMissing` 只在 worktree 操作上保留；`run verify` / `run complete` 的非 Git 路径以 `CompletionCheck.skipped=true` 跳过 Git 证据（不标 `Advanced`），`wire --check` 的 git 行改记能力缺失；CLI 退出码与 JSON 错误信封结构不变（仅前缀/文本改 `workloom`）"
-source_commit: 19b9149
+source_commit: 98c291c
 generated: true
 generator: repowiki-gen
 ---
@@ -230,7 +230,7 @@ workitem.parent_id            string (optional)
 
 ## 退出码契约
 
-`CodeInvalid = 4`（[internal/cli/cli.go:44-56](file://internal/cli/cli.go#L44-L56)）的语义在 `usage` 文本里写明（[internal/cli/cli.go:100-106](file://internal/cli/cli.go#L100-L106)）：
+`CodeInvalid = 4`（[internal/cli/cli.go:44-56](file://internal/cli/cli.go#L44-L56)）的语义在 `usage` 文本里写明（[internal/cli/cli.go:102-108](file://internal/cli/cli.go#L102-L108)）：
 
 ```text
 0  success
@@ -242,14 +242,14 @@ workitem.parent_id            string (optional)
 
 ### `CodeInvalid = 4`：受管状态存在但不可信
 
-它**只**由 `errInvalid(config.Problems)` 触发（[internal/cli/cli.go:139-150](file://internal/cli/cli.go#L139-L150)）。写命令在拿到 `Problems` 时返回 `CodeInvalid` 并**不**修改磁盘。
+它**只**由 `errInvalid(config.Problems)` 触发（[internal/cli/cli.go:141-152](file://internal/cli/cli.go#L141-L152)）。写命令在拿到 `Problems` 时返回 `CodeInvalid` 并**不**修改磁盘。
 
-M2 起 `CodeInvalid = 4` 还覆盖 workitem / reconcile 写路径下的领域错误：非 `storage.ErrNotInitialized` / `workitem.ErrNotFound` 的领域错误升为带 `kind="workitem"` 的 `codedError{Code: CodeInvalid}`（M4 起统一由 `toCoded` 翻译，现行实现见 [internal/cli/cli.go:154-173](file://internal/cli/cli.go#L154-L173)）。
+M2 起 `CodeInvalid = 4` 还覆盖 workitem / reconcile 写路径下的领域错误：非 `storage.ErrNotInitialized` / `workitem.ErrNotFound` 的领域错误升为带 `kind="workitem"` 的 `codedError{Code: CodeInvalid}`（M4 起统一由 `toCoded` 翻译，现行实现见 [internal/cli/cli.go:156-175](file://internal/cli/cli.go#L156-L175)）。
 
 M3 起又扩展：
 
-- `kind="approval"`：`approval.ErrInvalidInput` 走 `errUsage`；`storage.ErrNotInitialized` 走 `errPrecondition`；其余 `ErrNotFound` / `ErrNotPending` / `ErrNotApproved` / `ErrAlreadyConsumed` / `ErrInvalidated` / `ErrMismatch` 升为带 `kind="approval"` 的 `CodeInvalid`（M4 起统一由 `toCoded` 翻译，现行实现见 [internal/cli/cli.go:154-173](file://internal/cli/cli.go#L154-L173)）。
-- `kind="workflow"`：workflow 实例操作的拒绝（含 `WorkflowStepError` + `Resolve` 失败 + `Render` 错误）升为带 `kind="workflow"` 的 `CodeInvalid`（M4 起统一由 `toCoded` 翻译，现行实现见 [internal/cli/cli.go:154-173](file://internal/cli/cli.go#L154-L173)）。
+- `kind="approval"`：`approval.ErrInvalidInput` 走 `errUsage`；`storage.ErrNotInitialized` 走 `errPrecondition`；其余 `ErrNotFound` / `ErrNotPending` / `ErrNotApproved` / `ErrAlreadyConsumed` / `ErrInvalidated` / `ErrMismatch` 升为带 `kind="approval"` 的 `CodeInvalid`（M4 起统一由 `toCoded` 翻译，现行实现见 [internal/cli/cli.go:156-175](file://internal/cli/cli.go#L156-L175)）。
+- `kind="workflow"`：workflow 实例操作的拒绝（含 `WorkflowStepError` + `Resolve` 失败 + `Render` 错误）升为带 `kind="workflow"` 的 `CodeInvalid`（M4 起统一由 `toCoded` 翻译，现行实现见 [internal/cli/cli.go:156-175](file://internal/cli/cli.go#L156-L175)）。
 - `workflow check` 把策略文件的结构/类型/必填/交叉引用错误升为 `CodeInvalid`（同 `config check` 路径）。
 
 ### `CodePrecondition = 3`：前提不满足
@@ -273,7 +273,7 @@ M3 起又扩展：
 M3 新增触发：
 
 - `approval list --status` 取值不在 `{pending, approved, rejected}` → exit 2。
-- `workflow` / `approval` 子命令缺失 → stdout 打印用法文本 + **exit 0**（v0.1.4 起统一走 `familyUsage`，[internal/cli/cli.go:345-351](file://internal/cli/cli.go#L345-L351)）；子命令不在已知集合 → `errUsage` → exit 2。
+- `workflow` / `approval` 子命令缺失 → stdout 打印用法文本 + **exit 0**（v0.1.4 起统一走 `familyUsage`，[internal/cli/cli.go:347-353](file://internal/cli/cli.go#L347-L353)）；子命令不在已知集合 → `errUsage` → exit 2。
 
 M7.1–M7.4 在 `CodeUsage = 2` 与 `CodePrecondition = 3` / `CodeInternal = 1` 下扩展 `workloom workspace` 子命令面（视图域只读，与 §4.8 `worktree` 子命令独立）：
 - `workloom workspace` 子命令缺失 → stdout 打印用法 + **exit 0**（`familyUsage`）；子命令不在 `{view, build, serve}` → exit 2：`errUsage("unknown `workloom workspace` subcommand %q", rest[0])`（[internal/cli/workspace.go:24-38](file://internal/cli/workspace.go#L24-L38)）。
@@ -293,7 +293,7 @@ M7.1–M7.4 在 `CodeUsage = 2` 与 `CodePrecondition = 3` / `CodeInternal = 1` 
 ### `CodeUsage = 2` 新增触发点
 
 - `workloom mcp serve` 在构造 cfg 后调 `mcp.VisibleTools(cfg)` 拿到 `0` 工具时走 `errUsage("mcp serve: %s %s %s no tools in tier %s; use --tier standard", word, strings.Join(quoted, ", "), verb, tier)`（单 profile 渲染为 `mcp serve: profile "session" has no tools in tier core; use --tier standard`）（[internal/cli/mcp.go:79-91](file://internal/cli/mcp.go#L79-L91)）——多 profile 时单复数与动词变 `profiles %s have`。零工具的 silent server 是最常见的隐藏陷阱（只读 profile + core tier），文案直接给出 `--tier standard` 出路。
-- `workloom workflow init --template <id>`（[internal/cli/cli.go:1210-1241](file://internal/cli/cli.go#L1210-L1241)）：usage 列四模板 `quick-fix / feature-development / architecture-change / reference-template`；未知 id / 已存在 → `Usagef`。`workloom project update --blueprint-artifact <artifact-id>`（fs.Visit 模式，[internal/cli/cli.go:719-745](file://internal/cli/cli.go#L719-L745)）：empty string clears；非空须 `record.KindArtifact.ValidID`（形态错 → `Usagef` / exit 2），未注册（`GetArtifact` ErrNotFound → `Preconditionf` / exit 3 + 出路 `workloom artifact register`）。
+- `workloom workflow init --template <id>`（[internal/cli/cli.go:1212-1243](file://internal/cli/cli.go#L1212-L1243)）：usage 列四模板 `quick-fix / feature-development / architecture-change / reference-template`；未知 id / 已存在 → `Usagef`。`workloom project update --blueprint-artifact <artifact-id>`（fs.Visit 模式，[internal/cli/cli.go:721-747](file://internal/cli/cli.go#L721-L747)）：empty string clears；非空须 `record.KindArtifact.ValidID`（形态错 → `Usagef` / exit 2），未注册（`GetArtifact` ErrNotFound → `Preconditionf` / exit 3 + 出路 `workloom artifact register`）。
 
 ### 新增 schema 字段
 
@@ -301,7 +301,7 @@ M7.1–M7.4 在 `CodeUsage = 2` 与 `CodePrecondition = 3` / `CodeInternal = 1` 
 
 ## `--expect`：64-hex sha256 + fail-closed
 
-`workitem transition` / `claim` / `workflow start` / `step-complete` / `pause` / `resume` / `cancel` 的 `--expect` 是调用方持有的"工作项快照版本哈希"，由 `workitem get` 在 `--json` 模式下的 `version` 字段给出（[internal/cli/cli.go:884-892](file://internal/cli/cli.go#L884-L892)）。
+`workitem transition` / `claim` / `workflow start` / `step-complete` / `pause` / `resume` / `cancel` 的 `--expect` 是调用方持有的"工作项快照版本哈希"，由 `workitem get` 在 `--json` 模式下的 `version` 字段给出（[internal/cli/cli.go:886-894](file://internal/cli/cli.go#L886-L894)）。
 
 格式与解析：
 
@@ -341,18 +341,18 @@ bin/workloom.exe repair --apply --confirm "$DIGEST" --actor alice --reason "M3 a
 
 | 命令 | 必填参数 | 来源 |
 |---|---|---|
-| `workitem create` | `--title` `--actor` `--reason`（`--prefix` 可选） | [internal/cli/cli.go:896-909](file://internal/cli/cli.go#L896-L909) |
-| `workitem transition` | `--id` `--to` `--actor` `--reason` `--expect` | [internal/cli/cli.go:963-987](file://internal/cli/cli.go#L963-L987) |
-| `workitem claim` | `--id` `--owner` `--reason`（`--expect` 可选但建议必带） | [internal/cli/cli.go:989-1021](file://internal/cli/cli.go#L989-L1021) |
+| `workitem create` | `--title` `--actor` `--reason`（`--prefix` 可选） | [internal/cli/cli.go:898-911](file://internal/cli/cli.go#L898-L911) |
+| `workitem transition` | `--id` `--to` `--actor` `--reason` `--expect` | [internal/cli/cli.go:965-989](file://internal/cli/cli.go#L965-L989) |
+| `workitem claim` | `--id` `--owner` `--reason`（`--expect` 可选但建议必带） | [internal/cli/cli.go:991-1023](file://internal/cli/cli.go#L991-L1023) |
 | `recover` | `--actor` `--reason` | [internal/cli/diagnostics.go:183-190](file://internal/cli/diagnostics.go#L183-L190) |
 | `repair --dry-run` | `--actor` `--reason` | [internal/cli/diagnostics.go:223-232](file://internal/cli/diagnostics.go#L223-L232) |
 | `repair --apply --confirm <digest>` | `--actor` `--reason` `--confirm` | [internal/cli/diagnostics.go:223-232](file://internal/cli/diagnostics.go#L223-L232) |
-| `workflow start` | `--id` `--policy` `--actor` `--reason` `--expect`（租约活跃时 `--owner` `--token`） | [internal/cli/cli.go:1376-1420](file://internal/cli/cli.go#L1376-L1420) |
-| `workflow step-complete` | `--id` `--actor` `--reason` `--expect`（`--to` 可选；租约活跃时 `--owner` `--token`） | [internal/cli/cli.go:1422-1452](file://internal/cli/cli.go#L1422-L1452) |
-| `workflow pause` / `resume` / `cancel` | `--id` `--actor` `--reason` `--expect`（租约活跃时 `--owner` `--token`） | [internal/cli/cli.go:1453-1482](file://internal/cli/cli.go#L1453-L1482) |
-| `approval request` | `--id` `--stage`（`scope=stage_gate`） `--actor` `--reason`（`--scope`、`--run` 可选） | [internal/cli/cli.go:1593-1619](file://internal/cli/cli.go#L1593-L1619) |
-| `approval approve` | `--id` `--by`（`--comment` 可选） | [internal/cli/cli.go:1621-1648](file://internal/cli/cli.go#L1621-L1648) |
-| `approval reject` | `--id` `--by` `--reason`（`scope=stage_gate` 时随状态变更走 `rejectStageGate`） | [internal/cli/cli.go:1621-1670](file://internal/cli/cli.go#L1621-L1670) |
+| `workflow start` | `--id` `--policy` `--actor` `--reason` `--expect`（租约活跃时 `--owner` `--token`） | [internal/cli/cli.go:1378-1422](file://internal/cli/cli.go#L1378-L1422) |
+| `workflow step-complete` | `--id` `--actor` `--reason` `--expect`（`--to` 可选；租约活跃时 `--owner` `--token`） | [internal/cli/cli.go:1424-1454](file://internal/cli/cli.go#L1424-L1454) |
+| `workflow pause` / `resume` / `cancel` | `--id` `--actor` `--reason` `--expect`（租约活跃时 `--owner` `--token`） | [internal/cli/cli.go:1455-1484](file://internal/cli/cli.go#L1455-L1484) |
+| `approval request` | `--id` `--stage`（`scope=stage_gate`） `--actor` `--reason`（`--scope`、`--run` 可选） | [internal/cli/cli.go:1595-1621](file://internal/cli/cli.go#L1595-L1621) |
+| `approval approve` | `--id` `--by`（`--comment` 可选） | [internal/cli/cli.go:1623-1650](file://internal/cli/cli.go#L1623-L1650) |
+| `approval reject` | `--id` `--by` `--reason`（`scope=stage_gate` 时随状态变更走 `rejectStageGate`） | [internal/cli/cli.go:1623-1672](file://internal/cli/cli.go#L1623-L1672) |
 
 ## `workloom next` 判定输出
 
@@ -367,7 +367,7 @@ bin/workloom.exe repair --apply --confirm "$DIGEST" --actor alice --reason "M3 a
 
 ## JSON 错误结构（`--json`）
 
-`render` 在 `--json` 时输出（[internal/cli/cli.go:355-386](file://internal/cli/cli.go#L355-L386)）：
+`render` 在 `--json` 时输出（[internal/cli/cli.go:357-388](file://internal/cli/cli.go#L357-L388)）：
 
 ```json
 {
@@ -451,7 +451,7 @@ func (e *Error) Class() string {
 
 ### CLI 翻译：`toCoded`
 
-[internal/cli/cli.go:154-173](file://internal/cli/cli.go#L154-L173)：
+[internal/cli/cli.go:156-175](file://internal/cli/cli.go#L156-L175)：
 
 ```go
 func toCoded(err error) *codedError {
@@ -529,7 +529,7 @@ type toolError struct {
 - 列表子命令：`workitem list` / `decision list` / `finding list` / `event list` / `artifact list` / `run list` / `approval list` / `workflow list` 都支持 `--jsonl`。
 - 详情子命令（`get` / `create` / `update` 等）只支持 `--json`，不支持 `--jsonl`。
 
-实现：[internal/cli/cli.go:178-186](file://internal/cli/cli.go#L178-L186) 的 `writeJSONL[T]` 泛型。
+实现：[internal/cli/cli.go:180-188](file://internal/cli/cli.go#L180-L188) 的 `writeJSONL[T]` 泛型。
 
 ## M4 知识层退出码（10/11 预留）
 
@@ -598,7 +598,7 @@ M6 在 `CodePrecondition = 3` 与 `CodeInvalid = 4` 下扩展执行层错误语�
 | `workloom dispatch --watch` Ctrl-C | `signal.NotifyContext` cancel | exit 0 |
 
 | **P1** `mcp serve --tier <unknown>` | `mcp.ParseTier` 失败（[internal/mcp/server.go:47-60](file://internal/mcp/server.go#L47-L60)）→ `app.Usagef` | `CodeUsage` |
-| **c150007** 写命令同时给 `--expect` 与 `--latest` | `checkLatest`（[internal/cli/cli.go:590-596](file://internal/cli/cli.go#L590-L596)）→ `errUsage` | `CodeUsage` |
+| **c150007** 写命令同时给 `--expect` 与 `--latest` | `checkLatest`（[internal/cli/cli.go:592-598](file://internal/cli/cli.go#L592-L598)）→ `errUsage` | `CodeUsage` |
 | **d726ed4** `workitem <cmd> --id <malformed>`（路径穿越 / 多行 / 含换行） | `app.storeError`（[internal/app/workitem.go:447-484](file://internal/app/workitem.go#L447-L484)）`workitem.ReadSnapshot` id 形状校验 → `app.Usagef("invalid workitem id <id>")` | `CodeUsage` |
 | **b89ffae** `claim` 时 `config.yaml` 非法 / 默认策略缺失 | `policyForWorkItem`（[internal/app/workitem.go:505-516](file://internal/app/workitem.go#L505-L516)）→ `fmt.Errorf("config.yaml is invalid: ...; claims stay blocked until the file is fixed (\`workloom config check\`)")` 经 `app.Classify` 包装 | `CodeInvalid` |
 
@@ -640,3 +640,4 @@ M6 在 `CodePrecondition = 3` 与 `CodeInvalid = 4` 下扩展执行层错误语�
 - **`workloom setup`**（[internal/cli/setup.go:17-58](file://internal/cli/setup.go#L17-L58)）：未知 template → `Usagef` / exit 2；`init` / 起手工作流 / `wire` 失败 → 原样透传（多为 1 或 3）；`config check` 有问题 → `Invalidf(KindInvalid, problems, …)` / exit 4；`wire --check` 自检不过 → `Preconditionf("setup wrote state that wire --check still rejects: …")` / exit 3；doctor 有不可读文件 → `Invalidf(KindInvalid, nil, "unreadable managed files (%d)")` / exit 4（[internal/app/setup.go:43-198](file://internal/app/setup.go#L43-L198)）。蓝图未声明 / MCP 未注册**不是**错误：只在 `steps` 与 `next` 里报告。
 - **`workloom mcp install`**（[internal/cli/mcp.go:54-113](file://internal/cli/mcp.go#L54-L113)）：`--scope` 非法 → `Usagef("unknown scope %q (expected user or project)")`；`--client` 非法 → `Usagef("unknown client %q (expected codex, claude or opencode)")`；`--apply` 与 `--dry-run` 同时给 → exit 2；单客户端配置不可解析（非严格 JSON / Codex 行内 `mcp_servers` 表）**不算致命**——该客户端记 `status="failed"` + detail 指向 `workloom wire --print-mcp`，其余客户端照常处理（[internal/app/mcpinstall.go:63-162](file://internal/app/mcpinstall.go#L63-L162)）。人类 mark：`installed`/`planned` → `v`，`skipped` → `=`，`not-detected` → `?`，`failed` → `x`（[internal/cli/mcp.go:118-127](file://internal/cli/mcp.go#L118-L127)）。
 - 两条命令的成功/失败信封与既有约定一致：`--json` 单文档信封（`ok` + 数据，失败加 `error{code,kind,message}`，走 stderr 语义由 `render`/`exitWithCode` 承载）；**不**使用 `--jsonl`。
+- **本批（#398）**：`workloom --help` 顶层命令表补回 `init` 与 `sync status` 两行（[internal/cli/cli.go:65](file://internal/cli/cli.go#L65)、[internal/cli/cli.go:83](file://internal/cli/cli.go#L83)）——两条命令一直可路由（`setup` 第一步就是 `init`，`sync status` 是 M8.1 只读接力判定），e4f1a9e 重写命令表时漏列；纯文案、无行为变更。本页引用的 `internal/cli/cli.go` 行号已按 +2 位移重算（`init` 之前不变，`init` 与 `sync status` 之间 +1，其后 +2）。

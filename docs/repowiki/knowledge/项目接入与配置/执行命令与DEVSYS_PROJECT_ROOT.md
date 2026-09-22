@@ -38,7 +38,7 @@ triggers:
   - Git 可选能力
   - run verify skipped
 description: M6 执行层（harness/workspace/dispatch/retry/prompt）到 CLI/MCP 的接线：`workloom worktree/dispatch/run exec|prompt|verify|complete|fail|cancel` 与 MCP `run_prompt/verify/complete/fail/cancel` 的对应；`DEVSYS_PROJECT_ROOT` 与 `HookEnv` 注入规则；`config.workspace_root` / `config.dispatch_command` 解析与默认；M7.1 视图域 `workloom workspace view` 的接线（不经 internal/app、调 internal/view.Build 与 storage.Inspect）与 §4.8 `worktree`（执行工作区）严格分开的边界。；本轮（ca58d27→19b9149，v0.1.9 发布链 + 主命令改名 workloom + Git 可选能力）：非 Git 项目走目录工作区（`ensureDirectory`，`Workspace.Branch` 为空）、`HookEnv` 的 `DEVSYS_BRANCH` 仅在 worktree 形态注入、`run verify` / `run complete` 对非 Git 路径 `Skipped=true` 跳过 Git 证据、`workspace.ErrGitMissing` 只留给 worktree 操作
-source_commit: 19b9149
+source_commit: 98c291c
 generated: true
 generator: repowiki-gen
 ---
@@ -83,7 +83,7 @@ dispatch_command: "workloom run exec --id {run_id} --actor dispatch --reason tic
 | `dispatch_command` | `"workloom run exec --id {run_id} --actor dispatch --reason tick"`（由 `app.dispatchCommandLine` 渲染） | `app.dispatchOne` 选 `spawn` 策略时；任何 workitem 的 `assigned_harness` 为空时使用 | `internal/app.dispatchCommandLine` |
 
 ## DEVSYS_PROJECT_ROOT
-`internal/cli/cli.go:194-196` 的 `appService()` 读取顺序（**P1 起** 委托 `resolveService`，[internal/cli/roots.go:44-50](file://internal/cli/roots.go#L44-L50)）：
+`internal/cli/cli.go:196-198` 的 `appService()` 读取顺序（**P1 起** 委托 `resolveService`，[internal/cli/roots.go:44-50](file://internal/cli/roots.go#L44-L50)）：
 
 ```text
 1. 命令行 --project-root <abs path>   (CLI 显式开关，未来扩展)
@@ -181,12 +181,12 @@ M7.1 把方案 §17「视图域」落在 `internal/view` 包 + `internal/cli/wor
 
 ## 本批（M9 #336/#337 提交 362b637 / 7e08e3d）
 
-- `workloom workflow init --template <id>`（[internal/cli/cli.go:1210-1241](file://internal/cli/cli.go#L1210-L1241)）：usage 文本由 `strings.Join(app.WorkflowTemplates(), "|")` 动态生成（`internal/app/workflow_init.go` + 仓库根 `templates.go`）；CLI 路由调用 `svc.WorkflowInitTemplate(ctx, id)`——存储 `Write` 的 `ExpectAbsent` 保证不覆盖已有策略文件；返回值 `WorkflowInitView{Template, Path}` 暴露写到的相对路径。
-- `workloom project update --blueprint-artifact <artifact-id>`（[internal/cli/cli.go:719-745](file://internal/cli/cli.go#L719-L745)）fs.Visit 模式 flag：empty string clears；非空须 `record.KindArtifact.ValidID`（形态错 → `Usagef` / `CodeUsage = 2`），未注册（`GetArtifact` ErrNotFound → `Preconditionf` / `CodePrecondition = 3` + 出路 `workloom artifact register`）。MCP `project_update` 输入增 `blueprint_artifact_id`（[internal/mcp/tools_project.go](file://internal/mcp/tools_project.go)）。接线链：CLI flag → `app.ProjectUpdate` → `UpdateProjectRequest.BlueprintArtifactID *string` → storage 写事务。
+- `workloom workflow init --template <id>`（[internal/cli/cli.go:1212-1243](file://internal/cli/cli.go#L1212-L1243)）：usage 文本由 `strings.Join(app.WorkflowTemplates(), "|")` 动态生成（`internal/app/workflow_init.go` + 仓库根 `templates.go`）；CLI 路由调用 `svc.WorkflowInitTemplate(ctx, id)`——存储 `Write` 的 `ExpectAbsent` 保证不覆盖已有策略文件；返回值 `WorkflowInitView{Template, Path}` 暴露写到的相对路径。
+- `workloom project update --blueprint-artifact <artifact-id>`（[internal/cli/cli.go:721-747](file://internal/cli/cli.go#L721-L747)）fs.Visit 模式 flag：empty string clears；非空须 `record.KindArtifact.ValidID`（形态错 → `Usagef` / `CodeUsage = 2`），未注册（`GetArtifact` ErrNotFound → `Preconditionf` / `CodePrecondition = 3` + 出路 `workloom artifact register`）。MCP `project_update` 输入增 `blueprint_artifact_id`（[internal/mcp/tools_project.go](file://internal/mcp/tools_project.go)）。接线链：CLI flag → `app.ProjectUpdate` → `UpdateProjectRequest.BlueprintArtifactID *string` → storage 写事务。
 - `workloom mcp serve` 0 工具分支（[internal/cli/mcp.go:79-91](file://internal/cli/mcp.go#L79-L91)）：构造 cfg 后调 `mcp.VisibleTools(cfg)`，拿到空 slice 走 `errUsage("mcp serve: %s %s %s no tools in tier %s; use --tier standard", word, strings.Join(quoted, ", "), verb, tier)`（单 profile 渲染为 `mcp serve: profile "session" has no tools in tier core; use --tier standard`） → `CodeUsage = 2`。多 profile 时单复数与动词变 `profiles %s have`。避免 silent server 的隐藏陷阱。
 - `app.MCPSnippet` 三参签名（[internal/app/mcpsnippets.go:19](file://internal/app/mcpsnippets.go#L19)）：`MCPSnippet(name, devsysBin, projectRoot)`；`bin` 与 `cwd` 都 `filepath.ToSlash(strings.TrimSpace(…))`；`jsonString` 走 `encoding/json` 编字符串。`internal/cli/cli.go` 旧 `MCPSnippet(name, os.Args[0])` 替换为 `(name, os.Args[0], svc.Root)`。
-- `workloom next` / `prime` / `session start` / `project status` 在 `len(doc.InvalidFiles) > 0` 时（[internal/app/next.go:28-46](file://internal/app/next.go#L28-L46)）→ `Invalidf(KindInvalid, nil, "next: managed state unreadable: <file>: <err>…")`，调用 `next.Evaluate` 之前短路。`next` 调度入口（`runNext` [internal/cli/cli.go:1677-1726](file://internal/cli/cli.go#L1677-L1726)）的 `verdict` / `reasons` / `risks` 在不可信路径下整体被替换为 untrusted state 消息，调用脚本按 `code == 4` 分支触发 `workloom recover --actor … --reason …`。
-- `RiskEmptyProject = "empty_project"`（[internal/next/evaluate.go:52](file://internal/next/evaluate.go#L52)）+ `CreateWorkitemCommand` 常量（[internal/next/evaluate.go:64-66](file://internal/next/evaluate.go#L64-L66)）：空项目 + `!HasBlueprint` 时 `next` 推荐两条 remedy——先 `workloom workitem create --title "…" --actor <you> --reason "first task"`，再 `workloom project update --blueprint-artifact <artifact-id>`。同一文案被 `workloom init` 在 `runInit` 人类输出的「next:」四步里复用（[internal/cli/cli.go:429-435](file://internal/cli/cli.go#L429-L435)）。
+- `workloom next` / `prime` / `session start` / `project status` 在 `len(doc.InvalidFiles) > 0` 时（[internal/app/next.go:28-46](file://internal/app/next.go#L28-L46)）→ `Invalidf(KindInvalid, nil, "next: managed state unreadable: <file>: <err>…")`，调用 `next.Evaluate` 之前短路。`next` 调度入口（`runNext` [internal/cli/cli.go:1679-1728](file://internal/cli/cli.go#L1679-L1728)）的 `verdict` / `reasons` / `risks` 在不可信路径下整体被替换为 untrusted state 消息，调用脚本按 `code == 4` 分支触发 `workloom recover --actor … --reason …`。
+- `RiskEmptyProject = "empty_project"`（[internal/next/evaluate.go:52](file://internal/next/evaluate.go#L52)）+ `CreateWorkitemCommand` 常量（[internal/next/evaluate.go:64-66](file://internal/next/evaluate.go#L64-L66)）：空项目 + `!HasBlueprint` 时 `next` 推荐两条 remedy——先 `workloom workitem create --title "…" --actor <you> --reason "first task"`，再 `workloom project update --blueprint-artifact <artifact-id>`。同一文案被 `workloom init` 在 `runInit` 人类输出的「next:」四步里复用（[internal/cli/cli.go:431-437](file://internal/cli/cli.go#L431-L437)）。
 
 ## 本批（v0.1.9，ca58d27→19b9149）
 
@@ -201,3 +201,4 @@ M7.1 把方案 §17「视图域」落在 `internal/view` 包 + `internal/cli/wor
 ### `run verify` / `run complete` 的跳过语义
 
 `verifyCompletion` 先判定「目录工作区（`Workspace.Path != "" && Branch == ""`）或项目不在 git work tree 内」，命中即返回 `CompletionCheck{Skipped: true, Advanced: false, Reason: "git completion check is not applicable"}`——**skip 不是 verified advance**（[internal/app/runverify.go:45-56](file://internal/app/runverify.go#L45-L56)）。`run complete`（`Outcome == RunSucceeded`）的守卫分支是 `case check.Advanced, req.Force, check.Skipped:`——**`Skipped` 放行**，所以非 Git 项目 / 目录工作区可以正常完成 attempt（[internal/app/run.go:318-325](file://internal/app/run.go#L318-L325)）。放行时刻意留痕：记录里 `verification.advanced = false`、`head_sha_at_complete` 为空，事件类型仍是普通 `run_finished`（只在真正 verified 时才是 `completion_verified`），事件内容后缀是 `(git check not applicable, head none)`（[internal/app/run.go:356-372](file://internal/app/run.go#L356-L372)）。Git + 已绑定 worktree 的完成门禁**完全不变**：未 advance 且无 `--force` → exit 4 + run `failed` + workitem 进 `review`。
+- **本批（#398）**：`workloom --help` 顶层命令表补回 `init` 与 `sync status` 两行（[internal/cli/cli.go:65](file://internal/cli/cli.go#L65)、[internal/cli/cli.go:83](file://internal/cli/cli.go#L83)）——两条命令一直可路由（`setup` 第一步就是 `init`，`sync status` 是 M8.1 只读接力判定），e4f1a9e 重写命令表时漏列；纯文案、无行为变更。本页引用的 `internal/cli/cli.go` 行号已按 +2 位移重算（`init` 之前不变，`init` 与 `sync status` 之间 +1，其后 +2）。

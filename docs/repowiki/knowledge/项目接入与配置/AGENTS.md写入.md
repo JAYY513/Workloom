@@ -19,7 +19,7 @@ triggers:
   - wire --check git 能力缺失
 description: "M4 `workloom wire` 把 devsys 纪律块注入 AGENTS.md；`<!-- devsys:begin/end -->` 标记、幂等（三次运行字节一致）、区段外字节保留（含其它工具的管理块）、`--dry-run` 预览；P1 起 `wire --check`（只读环境报告）/ `wire --skill`（写 `.agents/skills/devsys/{SKILL.md,references/cli.md,references/troubleshooting.md}`）/ `wire --print-mcp <codex|claude|opencode>`（生成 MCP 客户端 stdio 片段）；本轮（ca58d27→19b9149，v0.1.9 发布链 + 主命令改名 workloom + Git 可选能力）：纪律块标题与示例命令改名 `workloom`（标记常量仍为 `<!-- devsys:begin/end -->`）、`wire --check` 的 git 项记为可选能力缺失（`OK: true`）、`setup` 默认调用 `wire` + `WriteSkill`"
 generated: true
-source_commit: 19b9149
+source_commit: 98c291c
 ---
 
 
@@ -73,13 +73,13 @@ devsys 只拥有这两个标记**之间**的字节。其它工具的同类管理
 
 ## P1 增量：`wire --check` / `--skill` / `--print-mcp`
 
-P1（6bd253c）把 `workloom wire` 从「只写纪律块」扩展为「agent 接入三件套」：三种新形态走同一 `runWire`（[internal/cli/cli.go:443-582](file://internal/cli/cli.go#L443-L582)），与原 `--dry-run` **互斥**。
+P1（6bd253c）把 `workloom wire` 从「只写纪律块」扩展为「agent 接入三件套」：三种新形态走同一 `runWire`（[internal/cli/cli.go:445-584](file://internal/cli/cli.go#L445-L584)），与原 `--dry-run` **互斥**。
 
 - `wire --check`（**只读**，exit 0）：调 `svc.WireCheck()`（[internal/app/wirecheck.go:22-40](file://internal/app/wirecheck.go#L22-L40) `WireCheckView{Lines []WireCheckLine}`）报告八项环境就绪状态：`go` / `git` / `.devsys` / `schema` / `registry` / `AGENTS.md` / `skill` / `mcp`。人类输出 `[v] <name>: <detail>` 或 `[x] <name>: <detail>`；`--json` 信封 `{ok, ...WireCheckView}`。
 - `wire --skill`（**写操作**）：调 `svc.WriteSkill()`（[internal/app/skill.go](file://internal/app/skill.go)）写 `.agents/skills/devsys/{SKILL.md, references/cli.md, references/troubleshooting.md}` 三文件，每文件带 `<!-- devsys-skill -->` 标记。**手写无 marker 的文件不覆盖**（已存在且无 marker → 跳过，报告 `hand-written`）；重复运行 → `skill: already installed (no change)`。
 - `wire --print-mcp <codex|claude|opencode>`：调 `app.MCPSnippet(name, os.Args[0], svc.Root)`（[internal/app/mcpsnippets.go:21-87](file://internal/app/mcpsnippets.go#L21-L87)）stdout 打印 stdio MCP 客户端片段。codex 走 `-c mcp_servers.devsys.*` 注入；claude 走 `.mcp.json` 的 `mcpServers.devsys`；opencode 走 `opencode.json` 的 `mcp.devsys`。`--json` 信封 `{ok, harness, snippet}`。未知 harness → `app.Usagef("unknown harness %q (expected codex, claude or opencode)")` → `CodeUsage = 2`。
 
-互斥矩阵：`--check` / `--skill` / `--print-mcp` 三选一；`--check` 与 `--print-mcp` 不接受任何其它 flag（`--dry-run` / `--skill`）；`--skill` 与 `--dry-run` 互斥。互斥规则在 `runWire` 顶部集中校验（[internal/cli/cli.go:451-460](file://internal/cli/cli.go#L451-L460)）。
+互斥矩阵：`--check` / `--skill` / `--print-mcp` 三选一；`--check` 与 `--print-mcp` 不接受任何其它 flag（`--dry-run` / `--skill`）；`--skill` 与 `--dry-run` 互斥。互斥规则在 `runWire` 顶部集中校验（[internal/cli/cli.go:453-462](file://internal/cli/cli.go#L453-L462)）。
 
 **v0.1.4（#338/#342）增量**：`wire --check` 增 `--strict`——任一检查项失败时 exit `CodePrecondition = 3`（缺省 `--check` 恒 exit 0）；`--strict` 不带 `--check` → `errUsage`。默认 `workloom wire`（无 flag）在写纪律块的同时**一并写 skill 三文件**（`skillChanged` 并入 `WireView` JSON 的 `skill_changed` 字段与人类输出 `skill: wrote …` 行）——AGENTS.md 块指向缺失的 SKILL.md 是破损安装（#338 C1），默认形态必须落到块所声称的状态；`--dry-run` 仍只预览纪律块 diff。
 
@@ -133,7 +133,7 @@ type WireView struct {
 
 ## 与其他层的关系
 
-- [架构设计](./架构设计.md) — `wire` 命令在 CLI 层的入口（`runWire`，[internal/cli/cli.go:443-582](file://internal/cli/cli.go#L443-L582)）
+- [架构设计](./架构设计.md) — `wire` 命令在 CLI 层的入口（`runWire`，[internal/cli/cli.go:445-584](file://internal/cli/cli.go#L445-L584)）
 - [共享应用与 MCP 概述](../共享应用与MCP/概述.md) — `app.Wire` 是 MCP 不暴露的工具之一（CLI-only operator 行为；`方案 §8.2` 无 MCP 对应）
 
 ## 本批（v0.1.9，ca58d27→19b9149）
@@ -142,3 +142,4 @@ type WireView struct {
 - **拒绝形态的文案带新命令名**：`AGENTS.md carries more than one devsys begin marker; … rerun \`workloom wire\``、`AGENTS.md carries a malformed devsys block …`、`AGENTS.md has the devsys end marker before its begin marker …`（[internal/app/wire.go:110-146](file://internal/app/wire.go#L110-L146)）；错误码仍是 `CodePrecondition = 3` / `kind="precondition"`。
 - **`wire --check` 的 git 项改为能力缺失而非失败**：新增 `checkGit()`——`git` 不在 PATH 时返回 `OK: true` + detail `not on PATH (optional: worktree, sync, knowledge freshness unavailable)`；其余项文案中的出路命令也改成 `workloom init` / `workloom wire --skill` / `workloom wire --print-mcp …`（[internal/app/wirecheck.go:49-54](file://internal/app/wirecheck.go#L49-L54)、[internal/app/wirecheck.go:64](file://internal/app/wirecheck.go#L64)、[internal/app/wirecheck.go:114-134](file://internal/app/wirecheck.go#L114-L134)）。
 - **`workloom setup` 复用同一写路径**：setup 的 wire 步骤调 `Service.Wire(ctx, false)` + `Service.WriteSkill()`，detail 形如 `created AGENTS.md; skill wrote N files` / `already wired; skill already installed`（[internal/app/setup.go:84-106](file://internal/app/setup.go#L84-L106)）；skill 三文件内容同步改写为 `workloom`（[internal/app/skill.go:26-104](file://internal/app/skill.go#L26-L104)，`.agents/skills/devsys/` 路径与 `<!-- devsys-skill -->` 标记不变）。
+- **本批（#398）**：`workloom --help` 顶层命令表补回 `init` 与 `sync status` 两行（[internal/cli/cli.go:65](file://internal/cli/cli.go#L65)、[internal/cli/cli.go:83](file://internal/cli/cli.go#L83)）——两条命令一直可路由（`setup` 第一步就是 `init`，`sync status` 是 M8.1 只读接力判定），e4f1a9e 重写命令表时漏列；纯文案、无行为变更。本页引用的 `internal/cli/cli.go` 行号已按 +2 位移重算（`init` 之前不变，`init` 与 `sync status` 之间 +1，其后 +2）。
