@@ -109,13 +109,14 @@ Coding Agents
 ```text
 帮我在当前项目接入 Workloom（https://github.com/JAYY513/Workloom）：
 
-1. 若 workloom 未安装（workloom --version 无输出）：按该仓库 INSTALL.md 的
-   §1 安装（releases/latest 下载脚本，校验 checksums.txt 后执行），装完自证版本。
+1. 若 workloom 未安装（workloom --version 无输出）：优先
+   `npm install -g @kaki317/workloom`（Node.js ≥ 18）；平台不支持或失败时
+   按该仓库 INSTALL.md 的 §1 安装，装完自证版本。
 2. 在目标项目目录执行 init → `workloom setup`（该目录已是 git 仓则建议在仓库根；
    非 Git 原型可直接 init）。`setup` 一步完成接入并自检（init → 工作流模板 →
    wire → wire --check → prime → 蓝图检查 → doctor），失败即停。
 
-任一步失败就停下报告，不要跳过哈希校验；不要直接修改 .devsys/ 内的
+任一步失败就停下报告；走脚本安装路径时不要跳过哈希校验；不要直接修改 .devsys/ 内的
 受管文件（所有写入走 workloom CLI 或 MCP）；若某一步必须我手动操作，
 只告诉我那一步，然后继续完成剩余工作。
 ```
@@ -140,50 +141,19 @@ Agent 会从仓库中的 `AGENTS.md` 和 `.agents/skills/devsys/` 获得操作�
 
 ### 1. 安装
 
-完整安装与接入流程（含校验、回退与排障）见 [INSTALL.md](INSTALL.md)；下面是要点速查。
-
-**选哪条**：Windows x64 且有 Node.js ≥ 18 → 直接看 ④（`npm install -g @kaki317/workloom`，一条命令，升级就是重跑同一条）；其他平台 → ①。已装 Go、或要自己构建 → ② / ③。
-
-**① Release 脚本（macOS / Linux / Windows ARM64 的默认路径，约 10 秒）**。打开 [Releases 页](https://github.com/JAYY513/Workloom/releases/latest)，下载 `install.sh`（Windows PowerShell 用 `install.ps1`），用同页 `checksums.txt` 校验后执行：
+完整安装与接入流程（含校验、回退与排障）见 [INSTALL.md](INSTALL.md)；下面是最短路径。
 
 ```bash
-# Linux / macOS（Git Bash）
-bash install.sh --tag v0.1.11
-
-# Windows PowerShell
-powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1 -Tag v0.1.11 -AddToPath
+npm install -g @kaki317/workloom   # 需要 Node.js ≥ 18
+workloom --version                 # 自证
 ```
 
-装完用 `workloom --version` 自证（应输出 `workloom v0.1.11 (…)`）。本仓库为公开仓库：已登录 `gh` 时脚本优先用它下载，否则匿名拉取 Release 资产；下载或校验失败才回退 `git clone --branch <tag> + go build`（本机需 Go + Git）。私有 fork 才需要先 `gh auth login`。`install.ps1` 装到 `%LOCALAPPDATA%\workloom\` 并只改 User PATH。
+就这么一条：升级就是重跑同一条命令，平台二进制与完整性由 npm 处理。当前平台包只发布了
+Windows x64；macOS / Linux / Windows ARM64，以及 Release 脚本、`go install`、源码构建等
+其余安装方式见 [INSTALL.md](INSTALL.md) §1。
 
-**② 已装 Go**：一行直装。公开模块不要设 `GOPRIVATE`（那会跳过公共校验和数据库；只有私有 fork 才需要）：
-
-```bash
-go install github.com/JAYY513/Workloom/cmd/workloom@v0.1.11
-```
-
-**③ 源码构建**（兜底，仓库已提交 `vendor/`，可离线）：
-
-```bash
-git clone https://github.com/JAYY513/Workloom.git
-cd Workloom
-# Linux / macOS
-GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/workloom ./cmd/workloom
-# Windows（产物带 .exe 扩展名，Git Bash / PowerShell / cmd 均可直接执行）
-GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/workloom.exe ./cmd/workloom
-```
-
-**④ npm（Windows x64 推荐，一条命令）**。不替代 ①–③。`npm install -g @kaki317/workloom`（Node.js ≥ 18），bin 只有 `workloom`，安装时不下载 exe——平台二进制随平台包安装。macOS / Linux / Windows ARM64 暂无平台包，请用 ①–③。细节见 [INSTALL.md](INSTALL.md) §1d。
-
-> 改名兼容：早期版本的主命令叫 `devsys`。`devsys` 现在是指向同一程序的兼容别名（安装脚本会同时装入两个名字），旧脚本与文档里的 `devsys …` 命令照常可用；状态目录仍是 `.devsys/`，MCP 注册名仍是 `devsys`。新用法一律写 `workloom`。
-
-> 说明：`v0.1.0` 起提供 Release 二进制（Linux/macOS/Windows × amd64/arm64，SHA-256 校验，GNU
-> 格式 `checksums.txt` 由 CI 发布）。Windows 上跑 `install.sh` 与上面的构建命令请用 **Git Bash**；
-> 若 `bash.exe` 解析到 WSL 会按 Linux 分支处理（WSL 内通常没有 Go/Git），不是脚本故障。版本
-> 沿革（core 档 20 项、token 侧车、CJK 质量门、`workflow init --template` 等）见各 Release
-> 说明；想要与本文档一致的行为，请用 `v0.1.11` 或更新版本。
-
-Release 构建覆盖 Linux、macOS 与 Windows 的 `amd64` / `arm64`。
+> 改名兼容：旧版主命令 `devsys` 仍可用（同一程序的兼容别名）；状态目录仍是 `.devsys/`。
+> npm 包只装 `workloom` 一个 bin；装安装脚本才同时装入 `devsys`。
 
 ### 2. 初始化项目
 

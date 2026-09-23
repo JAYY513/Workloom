@@ -109,17 +109,19 @@ You do not need to learn the Workloom commands first. Open Codex, Claude Code, O
 ```text
 Help me set up Workloom (https://github.com/JAYY513/Workloom) in the current project:
 
-1. If workloom is not installed (`workloom --version` prints nothing): install it per
-   §1 of the repository's INSTALL.md (download the script from releases/latest,
-   verify it against checksums.txt, run it), then confirm the version.
+1. If workloom is not installed (`workloom --version` prints nothing): try
+   `npm install -g @kaki317/workloom` (Node.js >= 18) first; if the platform
+   is unsupported or it fails, install it per §1 of the repository's
+   INSTALL.md, then confirm the version.
 2. Run init in the target project directory (if it is already a git
    repository, prefer the repository root; a non-git prototype may init
    directly). Then complete onboarding per §2 of INSTALL.md (init →
    starter workflow → wire → wire --check → prime → blueprint check).
 
-Stop and report on any failure; never skip the hash verification; never edit managed
-files under .devsys/ directly (all writes go through the workloom CLI or MCP). If one
-step genuinely needs me, name that step and continue with the rest.
+Stop and report on any failure; never skip the hash verification when you
+take the script install path; never edit managed files under .devsys/ directly
+(all writes go through the workloom CLI or MCP). If one step genuinely needs
+me, name that step and continue with the rest.
 ```
 
 After setup, you can work with your agent in plain language:
@@ -144,77 +146,23 @@ The agent learns the operating rules from `AGENTS.md` and `.agents/skills/devsys
 
 ### 1. Install
 
-The full install-and-onboard flow (verification, fallback, troubleshooting) lives
-in [INSTALL.md](../INSTALL.md); the essentials are below.
-
-**Which one**: Windows x64 with Node.js ≥ 18 → go straight to ④
-(`npm install -g @kaki317/workloom` — one command, and upgrading is the same
-command again); every other platform → ①. Go installed, or you want to build it
-yourself → ② / ③.
-
-**① Release scripts (default on macOS / Linux / Windows ARM64, ~10 seconds)**. Open the
-[Releases page](https://github.com/JAYY513/Workloom/releases/latest), download
-`install.sh` (on Windows PowerShell use `install.ps1`), verify it against
-`checksums.txt` from the same page, then run:
+The full install-and-onboard flow (verification, fallback, troubleshooting)
+lives in [INSTALL.md](../INSTALL.md); the shortest path is below.
 
 ```bash
-# Linux / macOS (Git Bash)
-bash install.sh --tag v0.1.11
-
-# Windows PowerShell
-powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1 -Tag v0.1.11 -AddToPath
+npm install -g @kaki317/workloom   # Node.js >= 18
+workloom --version                 # confirm
 ```
 
-Confirm with `workloom --version` (expect `workloom v0.1.11 (…)`). This repository
-is public: when `gh` is logged in the scripts prefer it, otherwise they
-download the release asset anonymously. A failed download falls back to
-`git clone --branch <tag> + go build` (requires Go + Git). A private fork
-needs `gh auth login` first. `install.ps1` installs to
-`%LOCALAPPDATA%\workloom\` and only edits the User PATH.
+That is the whole install: upgrading is running the same command again, and
+npm handles the platform binary and integrity. The platform package is
+currently published for Windows x64 only; for macOS / Linux / Windows ARM64,
+the release scripts, `go install`, and building from source, see
+[INSTALL.md](../INSTALL.md) §1.
 
-**② With Go installed**: one-line install. Do not set `GOPRIVATE` for this
-public module (that skips the public checksum database; only a private fork
-needs it):
-
-```bash
-go install github.com/JAYY513/Workloom/cmd/workloom@v0.1.11
-```
-
-**③ Build from source** (fallback; the repository includes `vendor/`, so the
-build runs offline):
-
-```bash
-git clone https://github.com/JAYY513/Workloom.git
-cd Workloom
-# Linux / macOS
-GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/workloom ./cmd/workloom
-# Windows (the .exe suffix matters: Git Bash / PowerShell / cmd all refuse to
-# execute an extensionless PE binary)
-GOPROXY=off GOFLAGS=-mod=vendor go build -o bin/workloom.exe ./cmd/workloom
-```
-
-**④ npm (recommended on Windows x64, one command)**. This does not replace ①–③.
-`npm install -g @kaki317/workloom` (Node.js ≥ 18); the npm bin is only
-`workloom`, and install does not download an exe — the platform binary ships in
-a platform package. macOS / Linux / Windows ARM64 have no platform package yet,
-so use ①–③ there. See [INSTALL.md](../INSTALL.md) §1d.
-
-> Renaming compatibility: the primary command used to be `devsys`, which now
-> remains as a compatibility alias for the same binary (install scripts ship
-> both names), so existing scripts and docs calling `devsys …` keep working.
-> The state directory stays `.devsys/` and the MCP registration name stays
-> `devsys`. Write `workloom` in new usage.
-
-> Note: release binaries are available starting from `v0.1.0` (Linux/macOS/Windows
-> × amd64/arm64, SHA-256 verified, GNU-format `checksums.txt` published by CI).
-> On Windows run `install.sh` and the build above from **Git Bash**; if `bash.exe`
-> resolves to WSL the script takes the Linux branch (WSL usually has neither Go
-> nor Git) — a shell routing issue, not a script bug. The version history (20-tool
-> core tier, token sidecars, CJK-aware quality gate, `workflow init --template`,
-> …) lives in each Release's notes; for the behavior described here, use
-> `v0.1.11` or newer.
-
-Release builds target Linux, macOS, and Windows on `amd64` and `arm64`.
+> Renaming compatibility: the old primary command `devsys` still works as an
+> alias for the same binary, and the state directory stays `.devsys/`. The npm
+> package ships only the `workloom` bin; the install scripts ship both names.
 
 ### 2. Initialize a Project
 

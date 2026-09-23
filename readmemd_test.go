@@ -32,8 +32,7 @@ func TestReadmeKeepsDecisionPageShape(t *testing.T) {
 	// 方式 B：权威流程指向 INSTALL.md，安装命令形态在。
 	for _, want := range []string{
 		"完整安装与接入流程（含校验、回退与排障）见 [INSTALL.md]",
-		"bash install.sh --tag",
-		"-File install.ps1 -Tag",
+		"npm install -g @kaki317/workloom",
 		"完整模板列表见该命令的用法输出", // 模板清单单源化
 		"见《使用手册》",
 	} {
@@ -50,8 +49,7 @@ func TestReadmeKeepsDecisionPageShape(t *testing.T) {
 	for _, want := range []string{
 		"Help me set up Workloom",
 		"INSTALL.md",
-		"bash install.sh --tag",
-		"-File install.ps1 -Tag",
+		"npm install -g @kaki317/workloom",
 		"full list: the command's own usage output",
 		"lives in the handbook",
 	} {

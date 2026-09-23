@@ -123,8 +123,9 @@ README「方式 A」与此处同款的稳定指针（不随版本变化）：
 ```text
 帮我在当前项目接入 Workloom（https://github.com/JAYY513/Workloom）：
 
-1. 若 workloom 未安装（workloom --version 无输出）：按该仓库 INSTALL.md 的
-   §1 安装（releases/latest 取脚本，校验 checksums.txt 后执行），装完自证版本。
+1. 若 workloom 未安装（workloom --version 无输出）：优先
+   `npm install -g @kaki317/workloom`（Node.js ≥ 18）；平台不支持或失败时按
+   本文 §1 安装（releases/latest 取脚本，校验 checksums.txt 后执行），装完自证版本。
 2. 在目标项目目录执行 `workloom setup`（该目录已是 git 仓则建议在仓库根；
    非 Git 原型也可直接接入；一步完成接入并自检，失败即停）。
 任一步失败就停下报告，不要跳过哈希校验，不要直接修改 .devsys/ 内的受管文件
