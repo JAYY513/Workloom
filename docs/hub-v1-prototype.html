@@ -7,169 +7,450 @@
 <style>
   :root {
     color-scheme: light;
-    --bg: #efece6; --ink: #1c1915; --muted: #6e675e; --line: #ddd6ca;
-    --card: #fffdf9; --soft: #f3eee6; --on: #1c1915; --on-ink: #f7f4ee;
-    --wait: #8a4b08; --wait-bg: #fbf0dc; --bad: #9b2c2c; --bad-bg: #f8e6e4;
-    --focus: #0b57d0;
-    --sans: system-ui, "Segoe UI", "Noto Sans SC", sans-serif;
-    --mono: ui-monospace, Consolas, monospace;
+    --bg: #efece6; --rail: #f5f2ec; --card: #fffdf9; --soft: #f3eee6;
+    --ink: #1c1915; --ink-2: #3d3832; --muted: #6e675e;
+    --line: #e3dccd; --line-strong: #cfc6b7;
+    --on: #1c1915; --on-ink: #f7f4ee; --on-soft: #c8c0b4;
+    --wait: #8a4b08; --wait-bg: #faf0dd; --wait-line: #ecd9b4;
+    --bad: #9b2c2c; --bad-bg: #f8e7e5; --bad-line: #eccfcd;
+    --ok: #567a39; --ok-bg: #eef2e4;
+    --accent: #2050c0; --accent-bg: #e9eefb;
+    --focus: var(--accent);
+    --shadow-1: 0 1px 2px rgba(28,25,21,.05);
+    --r-sm: 6px; --r-md: 8px; --r-lg: 10px;
+    --dur: 140ms; --ease: cubic-bezier(.2,.6,.2,1);
+    --sans: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
-  body { font-family: var(--sans); color: var(--ink); background: var(--bg); font-size: 14px; }
+  body { display: flex; flex-direction: column; }
+  body { font-family: var(--sans); color: var(--ink); background: var(--bg); font-size: 14px; line-height: 1.55; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  ::selection { background: #e7dfd2; }
   button, select { font: inherit; color: inherit; }
   button { cursor: pointer; }
   :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-  .app { height: 100%; display: grid; grid-template-columns: 260px minmax(0, 1fr); }
-  nav { background: var(--card); border-right: 1px solid var(--line); padding: 12px; overflow: auto; }
+  @media (prefers-reduced-motion: no-preference) {
+    button, select { transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease), border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
+  }
+  .app { flex: 1; min-height: 0; display: grid; grid-template-columns: 236px minmax(0, 1fr); }
+  nav { background: var(--rail); border-right: 1px solid var(--line); padding: 14px 10px; overflow: auto; }
   nav header { padding: 4px 6px 10px; }
-  h1 { margin: 0; font-size: 15px; }
+  h1 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: .02em; }
+  .path-row { display: flex; align-items: center; gap: 6px; }
   .path { margin: 3px 0 8px; color: var(--muted); font-family: var(--mono); font-size: 11px; overflow-wrap: anywhere; }
-  select { width: 100%; height: 32px; border: 1px solid #c9c0b2; border-radius: 8px; background: var(--bg); padding: 0 8px; }
+  .nav-head { display: flex; gap: 8px; align-items: center; }
+  .nav-head select { flex: 1; min-width: 0; }
+  select {
+    width: 100%; height: 34px; appearance: none; -webkit-appearance: none;
+    border: 1px solid var(--line); border-radius: var(--r-md);
+    background: var(--card) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' fill='none' stroke='%236e675e' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 10px center;
+    padding: 0 30px 0 10px; font-family: var(--mono); font-size: 12.5px;
+    box-shadow: var(--shadow-1);
+  }
+  select:hover { border-color: var(--line-strong); }
+  select:focus-visible { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(32,80,192,.18); outline: none; }
   #nav { display: flex; flex-direction: column; }
-  .group { display: flex; flex-direction: column; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
-  .nav-label {
-    margin: 0 8px 6px; color: var(--muted); font-size: 11px; font-weight: 650; letter-spacing: .04em;
-  }
+  .group { display: flex; flex-direction: column; margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .nav-label { margin: 0 8px 4px; color: var(--muted); font-size: 11px; font-weight: 650; letter-spacing: .06em; }
   .group > button, .sub button {
-    display: flex; justify-content: space-between; align-items: center; gap: 8px;
-    width: 100%; text-align: left; border: 0; background: transparent; min-height: 36px;
+    position: relative; display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    width: 100%; text-align: left; border: 0; background: transparent; min-height: 34px;
   }
-  .group > button { border-radius: 8px; padding: 7px 8px; font-weight: 650; }
-  .sub { display: flex; flex-direction: column; margin-left: 8px; padding-left: 10px; border-left: 2px solid var(--line); }
-  .sub button { border-radius: 6px; padding: 6px 8px; font-weight: 450; color: #3d3832; }
-  #nav button[aria-current="true"] { background: var(--on); color: var(--on-ink); font-weight: 650; }
+  .group > button { border-radius: var(--r-md); padding: 6px 8px; font-weight: 550; }
+  .sub { display: flex; flex-direction: column; padding-left: 8px; }
+  .sub button { border-radius: var(--r-sm); padding: 6px 8px; font-weight: 450; color: var(--ink-2); min-height: 32px; }
+  #nav button:hover { background: var(--soft); }
+  #nav button:active { background: var(--line); }
+  #nav button[aria-current="true"] { background: var(--soft); color: var(--ink); font-weight: 650; }
+  #nav button[aria-current="true"]::before {
+    content: ""; position: absolute; left: -10px; top: 8px; bottom: 8px; width: 3px;
+    border-radius: 0 3px 3px 0; background: var(--on);
+  }
+  .sub button[aria-current="true"]::before { left: -8px; }
   #nav button small { color: var(--muted); font-family: var(--mono); font-size: 12px; font-weight: 450; }
-  #nav button[aria-current="true"] small { color: #c8c0b4; }
-  main { min-width: 0; overflow: auto; padding: 22px 28px 48px; }
-  main h2 { margin: 0 0 4px; font-size: 22px; }
+  #nav button small.cnt {
+    background: var(--bg); border: 1px solid var(--line); border-radius: 99px;
+    padding: 1px 7px; min-width: 22px; text-align: center; font-size: 11px;
+  }
+  #nav button:hover small.cnt { border-color: var(--line-strong); }
+  #nav button[aria-current="true"] small.cnt { background: var(--card); color: var(--ink); }
+  main { min-width: 0; overflow: auto; padding: 24px 32px 64px; }
+  main h2 { margin: 0 0 4px; font-size: 20px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.3; }
   .meta { margin: 0 0 16px; color: var(--muted); font-size: 13px; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .card { background: var(--card); border-radius: 12px; padding: 14px; }
-  .card h3 { margin: 0 0 8px; font-size: 13px; color: var(--muted); }
-  ul { margin: 0; padding-left: 18px; }
-  li { margin: 3px 0; }
-  .row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
-  .row b { font-weight: 650; }
-  .flag { display: inline-block; margin-top: 8px; padding: 2px 8px; border-radius: 99px; background: var(--wait-bg); color: var(--wait); font-size: 12px; }
-  .flag.bad { background: var(--bad-bg); color: var(--bad); }
-  .track { display: flex; flex-wrap: wrap; gap: 6px; }
-  .step { font-size: 12px; padding: 3px 8px; border-radius: 99px; background: var(--soft); color: var(--muted); }
-  .step.now { background: var(--on); color: var(--on-ink); }
-  .note { color: var(--muted); font-size: 13px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-1); padding: 16px; }
+  .card h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; letter-spacing: .03em; color: var(--muted); }
+  .card ul { list-style: none; padding-left: 0; margin: 0; }
+  .card li { position: relative; margin: 7px 0; padding-left: 16px; line-height: 1.55; font-size: 13px; }
+  .card li::before { content: ""; position: absolute; left: 0; top: .68em; width: 5px; height: 5px; border-radius: 99px; background: var(--muted); }
+  .card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+  .card-head h3 { margin: 0; font-size: 13px; font-weight: 650; color: var(--ink); letter-spacing: 0; }
+  .card-count { font-family: var(--mono); font-size: 11px; color: var(--muted); font-weight: 450; }
+  .stack { display: flex; flex-direction: column; gap: 12px; }
+  .row-sub { color: var(--muted); font-size: 12px; }
+  /* status dot + label */
+  .status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+  .status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+  .status.st-wait { color: var(--wait); }
+  .status.st-bad { color: var(--bad); }
+  .status.st-ok { color: var(--ok); }
+  .status.st-run { color: var(--wait); }
+  .status.st-run::before { animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .3; } }
+  @media (prefers-reduced-motion: reduce) { .status.st-run::before { animation: none; } }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 14%, transparent); }
+  .dot.ok { color: var(--ok); background: var(--ok); }
+  .dot.warn { color: var(--wait); background: var(--wait); }
+  .dot.bad { color: var(--bad); background: var(--bad); }
+  .dot.open { color: var(--wait); background: var(--wait); }
+  .dot.done { color: var(--on); background: var(--on); }
+  .dot.idle { color: var(--line-strong); background: var(--line-strong); }
+  /* id chip */
+  .rid { font-family: var(--mono); font-size: 12px; color: var(--muted); background: var(--soft); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 1px 6px; white-space: nowrap; user-select: all; line-height: 1.5; }
+  /* task chip replaces underlined links */
+  .facts { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 0; color: var(--muted); font-size: 12px; }
+  .facts strong { color: var(--ink); font-weight: 600; }
+  .facts code, .evidence code { font-family: var(--mono); overflow-wrap: anywhere; }
+  .evidence { margin: 10px 0 0; padding-left: 18px; color: var(--ink-2); font-size: 12.5px; }
+  .evidence li { margin: 5px 0; }
+  .detail .facts { padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .list .row .row-sub { display: block; overflow-wrap: anywhere; }
+  .list .row > span { min-width: 0; }
+  .dashboard { max-width: 1120px; }
+  .dash-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 18px; }
+  .dash-head .meta { margin: 0; }
+  .dash-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .stat-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 13px 14px; box-shadow: var(--shadow-1); }
+  .stat-card b { display: block; margin-top: 4px; font-size: 22px; line-height: 1; }
+  .stat-card span { color: var(--muted); font-size: 11px; }
+  .project-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .project-card { cursor: pointer; }
+  .project-card:hover { border-color: var(--line-strong); background: #fffefa; }
+  .project-card[aria-disabled="true"] { cursor: default; }
+  .project-card .card-head { align-items: flex-start; }
+  .project-path { margin: -3px 0 12px; color: var(--muted); font: 11px var(--mono); overflow-wrap: anywhere; }
+  .project-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
+  .project-stats span { display: block; color: var(--muted); font-size: 11px; }
+  .project-stats strong { display: block; margin-top: 2px; font-size: 15px; }
+  @media (max-width: 900px) { .project-grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 800px) { .dash-head { display: block; } .dash-summary { grid-template-columns: repeat(2, 1fr); } .project-grid { grid-template-columns: 1fr; } }
+  .taskchip { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--bg); color: var(--ink); font-size: 12.5px; font-weight: 550; text-decoration: none; }
+  .taskchip:hover { border-color: var(--muted); background: var(--soft); }
+  /* list container */
+  .list { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-1); overflow: hidden; }
+  .list-head { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; gap: 12px; padding: 8px 14px; border-bottom: 1px solid var(--line); font-size: 11px; font-weight: 650; color: var(--muted); letter-spacing: .05em; }
+  .list .row { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 9px 14px; border-bottom: 1px solid var(--line); transition: background-color var(--dur) var(--ease); }
+  .list .row:last-child { border-bottom: 0; }
+  .list .row:hover { background: var(--soft); }
+  .list .subhead { padding: 7px 14px; border-bottom: 1px solid var(--line); background: var(--rail); font-size: 11px; font-weight: 650; color: var(--muted); letter-spacing: .05em; }
+  /* empty state */
+  .empty { border: 1.5px dashed var(--line); border-radius: var(--r-lg); padding: 26px 16px; text-align: center; color: var(--muted); font-size: 13px; line-height: 1.6; }
+  .empty b { display: block; color: var(--ink); font-weight: 650; margin-bottom: 2px; }
+  /* degraded banner */
+  .degraded { display: flex; gap: 12px; align-items: flex-start; padding: 12px 16px; background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--bad); border-radius: var(--r-lg); margin: 0 0 16px; }
+  .degraded svg { flex: none; margin-top: 2px; color: var(--bad); }
+  .degraded .d-title { font-size: 13px; font-weight: 650; }
+  .degraded .d-sub { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  /* task detail */
+  .detail { display: flex; flex-direction: column; max-width: 780px; }
+  .detail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .detail-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .detail-title h2 { margin: 0; }
+  .strip { display: flex; flex-wrap: wrap; margin: 16px 0 8px; padding: 10px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .strip .cell { display: flex; flex-direction: column; gap: 3px; padding: 2px 24px 2px 0; }
+  .strip .cell + .cell { border-left: 1px solid var(--line); padding-left: 24px; }
+  .strip .clabel { font-size: 11px; color: var(--muted); letter-spacing: .04em; }
+  .strip .cvalue { font-size: 13px; font-weight: 600; }
+  .strip .cvalue.sm { font-size: 13px; font-weight: 450; color: var(--ink-2); }
+  .flowzone { margin-top: 16px; }
+  .flowzone h3 { margin: 0 0 14px; font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .flowzone svg { display: block; width: 100%; max-width: 780px; height: auto; }
+  .flownote { margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+  /* blueprint */
+  .bp-head { margin: 0 0 20px; }
+  .bp-eyebrow { margin-bottom: 8px; }
+  .pill-solid { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 650; background: var(--on); color: var(--on-ink); }
+  .bp-title { margin: 0; font-size: 24px; font-weight: 650; letter-spacing: .01em; }
+  .bp-lead { margin: 8px 0 0; max-width: 620px; font-size: 15px; line-height: 1.65; color: var(--ink); }
+  .section-label { margin: 20px 0 10px; font-size: 12px; font-weight: 650; letter-spacing: .06em; color: var(--muted); }
+  .bp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 800px) { .bp-grid { grid-template-columns: 1fr; } }
+  .bp-grid .card li.dim::before { background: var(--line-strong); }
+  .ms-track { height: 4px; border-radius: 99px; background: var(--soft); overflow: hidden; margin: 2px 0 12px; }
+  .ms-track i { display: block; height: 100%; background: var(--on); border-radius: 99px; }
+  .ms-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line); }
+  .ms-row:first-of-type { border-top: 0; }
+  .ms-name { font-weight: 600; font-size: 13px; }
+  .ms-id { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  /* state */
+  .state-summary { margin: 0 0 16px; padding: 14px 18px; background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--on); border-radius: var(--r-lg); box-shadow: var(--shadow-1); font-size: 15px; line-height: 1.5; }
+  .state-alerts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .alert-card { border-radius: var(--r-lg); padding: 12px 16px; }
+  .alert-card h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; letter-spacing: .03em; }
+  .alert-card p { margin: 0 0 4px; font-size: 13px; }
+  .alert-card.warn { background: var(--wait-bg); border: 1px solid var(--wait-line); border-left: 4px solid var(--wait); }
+  .alert-card.warn h3 { color: var(--wait); }
+  .alert-card.bad { background: var(--bad-bg); border: 1px solid var(--bad-line); border-left: 4px solid var(--bad); }
+  .alert-card.bad h3 { color: var(--bad); }
+  .state-next { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 800px) { .state-alerts, .state-next { grid-template-columns: 1fr; } }
+  /* knowledge */
+  .k-head { display: flex; align-items: center; gap: 10px; }
+  .k-head b { font-size: 13px; font-weight: 650; }
+  .k-time { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .k-pages { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 4px; }
+  .k-page { display: flex; align-items: center; gap: 10px; padding: 6px 2px; border-radius: var(--r-sm); font-size: 13px; }
+  .k-page:hover { background: var(--soft); }
+  /* refresh */
+  #refresh { margin: 0 0 12px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  #refresh.bad { color: var(--bad); }
+  #nav-toggle { display: none; width: 34px; height: 34px; flex: none; padding: 0; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--card); color: var(--muted); box-shadow: var(--shadow-1); }
+  #nav-toggle svg { transition: transform .15s; display: block; margin: auto; }
+  #nav-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
   @media (max-width: 800px) {
     .app { grid-template-columns: 1fr; }
     nav { border-right: 0; border-bottom: 1px solid var(--line); }
-    .grid { grid-template-columns: 1fr; }
+    #nav-toggle { display: block; }
+    nav.collapsed #nav { display: none; }
+    .strip .cell + .cell { border-left: 0; padding-left: 0; }
+    .strip .cell { padding-right: 16px; }
+    .list-head, .list .row { grid-template-columns: 78px minmax(0, 1fr); }
+    .list-head span:last-child, .list .row > span:last-child { grid-column: 2; }
+    .k-head { flex-wrap: wrap; }
   }
 </style>
 </head>
 <body>
+<div class="prototype-note" style="padding:6px 12px;background:#e6dfd2;color:#3d3832;font-size:11px;text-align:center">静态原型 · 以下仓库与状态均为演示数据，不连接本机项目</div>
 <div class="app">
-  <nav>
+  <nav class="collapsed">
     <header>
       <h1>workloom</h1>
-      <p class="path" id="path"></p>
-      <select id="repo" aria-label="仓库">
-        <option value="workloom">workloom</option>
-        <option value="notes">notes · 缺失</option>
-      </select>
+      <div class="path-row"><p class="path" id="path"></p></div>
+      <div class="nav-head">
+        <select id="repo" aria-label="仓库">
+          <option value="workloom">workloom</option>
+          <option value="notes">notes · 缺失</option>
+          <option value="recovery">recovery · 待恢复</option>
+        </select>
+        <button type="button" id="nav-toggle" aria-expanded="false" aria-label="切换导航">
+          <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
     </header>
-
     <div id="nav"></div>
   </nav>
   <main id="main"></main>
 </div>
 <script>
 const FLOWS = {
-  "feature-development": { name: "功能开发", steps: ["检查", "澄清", "计划", "实施", "验证", "完成"] },
-  "quick-fix": { name: "快速修复", steps: ["检查", "实施", "验证", "完成"] },
-  "architecture-change": { name: "架构变更", steps: ["分析", "比较", "决定", "实施", "验证", "完成"] }
+  "feature-development": { name: "功能开发", steps: [
+    { id: "检查", type: "inspect", required: true },
+    { id: "澄清", type: "clarify", required: false },
+    { id: "计划", type: "plan", required: true, status: "就绪" },
+    { id: "实施", type: "implement", required: true, status: "进行中" },
+    { id: "验证", type: "verify", required: true, status: "验证" },
+    { id: "完成", type: "done", required: true, status: "完成" }
+  ], edges: { "检查": ["澄清"], "澄清": ["计划"], "计划": ["实施"], "实施": ["验证"], "验证": ["完成", "实施"] } },
+  "quick-fix": { name: "快速修复", steps: [
+    { id: "检查", type: "inspect", required: true },
+    { id: "实施", type: "implement", required: true, status: "进行中" },
+    { id: "验证", type: "verify", required: true, status: "验证" },
+    { id: "完成", type: "done", required: true, status: "完成" }
+  ], edges: { "检查": ["实施"], "实施": ["验证"], "验证": ["完成"] } },
+  "architecture-change": { name: "架构变更", steps: [
+    { id: "分析", type: "inspect", required: true },
+    { id: "比较", type: "clarify", required: true },
+    { id: "决定", type: "decide", required: true, status: "就绪" },
+    { id: "实施", type: "implement", required: true, status: "进行中" },
+    { id: "验证", type: "verify", required: true, status: "验证" },
+    { id: "完成", type: "done", required: true, status: "完成" }
+  ], edges: { "分析": ["比较"], "比较": ["决定", "分析"], "决定": ["实施"], "实施": ["验证"], "验证": ["完成", "实施"] } }
 };
 const DATA = {
   workloom: {
     path: "C:/Source/CodeSource/ai/Workloom",
-    blueprint: { name: "Workloom", phase: "多仓只读视图", goals: ["本机登记多个仓库", "打开才读取"], in: ["注册表", "只读装配"], out: ["不改任务", "不审批"], milestones: [["m-hub", "本地多仓视图", "open"]] },
+    blueprint: { name: "Workloom", status: "进行中", phase: "多仓只读视图", description: "本地多仓库只读视图进程：登记路径、打开才读、浏览器渲染。", goals: ["本机登记多个仓库", "打开才读取"], in: ["注册表", "只读装配"], out: ["不改任务", "不审批"], constraints: ["事实仍在各仓 .devsys/，本进程不写", "只绑环回地址"], milestones: [["m-hub", "本地多仓视图", "open"]] },
+    trust: { state: "ok" }, baseline: { branch: "master", commit: "a8f29d1", dirty: true, changedFiles: 2 },
     state: { summary: "方案已定，页面未实现", risks: ["待审批"], blockers: [], next: ["先做 hub serve"] },
+    readiness: { verdict: "CONCERNS", risks: ["view-bind 的评审等待 approval-1"], fixes: [], action: "处理 view-bind 的批准，再做 hub-poll。" },
     items: [
-      { id: "hub-serve", title: "只绑本机并嵌入页面", status: "进行中", flow: "feature-development", step: "实施", who: "agent-a" },
-      { id: "reg-delete", title: "注册表按 id 删除", status: "阻塞", flow: "feature-development", step: "计划", paused: true },
-      { id: "hub-poll", title: "当前仓两秒刷新", status: "就绪", flow: "quick-fix", step: "检查" },
-      { id: "view-bind", title: "打开仓库时带上 etag", status: "评审", flow: "architecture-change", step: "决定", who: "agent-b", approval: "离开评审需要批准，还没批" },
-      { id: "hub-docs", title: "命令说明写入 help", status: "待办", flow: "" }
+      { id: "hub-serve", title: "只绑本机并嵌入页面", status: "进行中", priority: 8, flow: "feature-development", step: "实施", who: "agent-a", harness: "shell", scheduling: "running", leaseOwner: "agent-a", leaseUntil: "2026-09-23 12:30", activeRun: "run-18", deps: [] },
+      { id: "reg-delete", title: "注册表按 id 删除", status: "待办", priority: 5, flow: "feature-development", step: "检查", who: "", deps: ["hub-serve"] },
+      { id: "hub-poll", title: "轮询当前仓 .devsys/", status: "就绪", priority: 5, flow: "quick-fix", step: "检查", who: "", deps: ["hub-serve"] },
+      { id: "view-bind", title: "视图绑定工作流实例", status: "评审", priority: 8, flow: "architecture-change", step: "决定", who: "agent-b", deps: ["hub-serve"], approval: "审批 approval-1 卡着「评审 → 完成」", paused: true },
+      { id: "hub-docs", title: "补命令和端口文档", status: "完成", priority: 2, flow: null, step: null, who: "", deps: ["hub-serve", "hub-poll"] }
     ],
-    approvals: [["approval-1", "view-bind", "申请中"]],
-    records: { decisions: [["d-12", "用轮询，不监听文件"]], findings: [["f-4", "注册表没有删除"]], artifacts: [["a-3", "hub-v1.md"]] },
-    runs: [["run-18", "hub-serve", "进行中"], ["run-17", "view-bind", "完成"], ["run-16", "reg-delete", "失败"]],
-    knowledge: { status: "过期", pages: ["视图数据模型", "工作区命令"] },
-    next: "先处理 view-bind 的批准"
+    approvals: [["approval-1", "view-bind", "评审 → 完成", "申请中"]],
+    records: { decisions: [["d-12", "用轮询，不监听文件", "已采纳 · hub-serve"]], findings: [["f-4", "注册表损坏要能启动失败", "高 · 待处理"]], artifacts: [["a-3", "hub-v1.md", "v2 · hub-serve"]] },
+    runs: [["run-18", "hub-serve", "进行中", "agent-a · 第 2 次 · shell"], ["run-17", "view-bind", "失败", "agent-b · 第 1 次 · 配置错误"], ["run-16", "reg-delete", "完成", "agent-a · 第 1 次"]],
+    knowledge: { status: "过期", reason: "2 个页面受源码变更影响", pages: ["docs/view-model.md", "docs/commands.md"], unverifiable: [], changedFiles: 2, indexReady: true }
   },
-  notes: { path: "D:/archive/notes", missing: true }
+  notes: {
+    path: "D:/archive/notes",
+    blueprint: { name: "notes", phase: "", description: "", goals: [], in: [], out: [], constraints: [], milestones: [] },
+    missing: true,
+    state: { summary: "读不到", risks: [], blockers: [], next: [] },
+    items: [],
+    approvals: [],
+    records: { decisions: [], findings: [], artifacts: [] },
+    runs: [],
+    knowledge: { status: "无法评估", pages: [] },
+    next: "恢复目录路径后重新加载。"
+  },
+  recovery: {
+    path: "D:/repos/recovery", trust: { state: "pending_transaction", pending: ["tx-41"], note: "检测到未完成写入" },
+    blueprint: { name: "recovery" }, state: { summary: "待恢复事务", risks: [], blockers: [], next: [] }, items: [], approvals: [], records: { decisions: [], findings: [], artifacts: [] }, runs: [], knowledge: { status: "无法评估", pages: [] }
+  }
 };
-let repo = "workloom", section = "tasks", selected = "hub-serve";
+let repo = "workloom", section = "task", selected = "hub-serve";
 const $ = (s) => document.querySelector(s);
 const d = () => DATA[repo];
 
+const STATUS_DOT = { "进行中": "st-run", "评审": "st-wait", "有风险": "st-wait", "申请中": "st-wait", "待办": "", "就绪": "st-ok", "验证": "st-wait", "重试排队": "st-wait", "阻塞": "st-bad", "失败": "st-bad", "超时": "st-bad", "停滞": "st-bad", "取消": "", "已拒绝": "st-bad", "完成": "st-ok", "通过": "st-ok", "已批准": "st-ok" };
+function statusDot(s) { return `<span class="status ${STATUS_DOT[s] || ""}">${s}</span>`; }
+function taskChip(id, title) { return `<button type="button" class="taskchip" data-task="${id}">${title}</button>`; }
+
 function navButton(id, label, count, current) {
-  return `<button type="button" data-section="${id}" aria-current="${current}"><span>${label}</span><small>${count}</small></button>`;
+  const cnt = count === "" ? "" : `<small class="cnt">${count}</small>`;
+  return `<button type="button" data-section="${id}" aria-current="${current}"><span>${label}</span>${cnt}</button>`;
 }
 function renderNav() {
   const x = d();
-  $("#path").textContent = x.path;
-  if (x.missing) { $("#nav").innerHTML = ""; return; }
-  const items = x.items.map((it) => `<button class="item" type="button" data-task="${it.id}" aria-current="${section === "task" && selected === it.id}"><span>${it.title}</span></button>`).join("");
+  const items = x.items.map((it) => `<button class="item" type="button" data-task="${it.id}" aria-current="${section === "task" && selected === it.id}"><span>${it.title}</span><small>${it.status}</small></button>`).join("");
   const rec = x.records.decisions.length + x.records.findings.length + x.records.artifacts.length;
-  $("#nav").innerHTML = `<div class="group"><div class="nav-label">项目</div>${navButton("blueprint", "蓝图", "", section === "blueprint")}${navButton("state", "当前状态", "", section === "state")}</div><div class="group"><div class="nav-label">任务 ${x.items.length}</div><div class="sub">${items}</div></div><div class="group"><div class="nav-label">其它</div>${navButton("flows", "工作流", Object.keys(FLOWS).length, section === "flows")}${navButton("approvals", "审批", x.approvals.length, section === "approvals")}${navButton("records", "记录", rec, section === "records")}${navButton("runs", "运行", x.runs.length, section === "runs")}${navButton("knowledge", "知识", x.knowledge.status, section === "knowledge")}</div>`;
+  const unavailable = x.missing || x.trust?.state === "pending_transaction";
+  const pathDot = x.missing ? `<span class="dot bad" style="align-self:flex-start;margin-top:6px"></span>` : x.trust?.state === "pending_transaction" ? `<span class="dot warn" style="align-self:flex-start;margin-top:6px"></span>` : "";
+  document.querySelector(".path-row").innerHTML = `<p class="path" id="path">${x.path}</p>${pathDot}`;
+  const count = (value) => unavailable ? "—" : value;
+  $("#nav").innerHTML = `${navButton("dashboard", "项目总览", "", section === "dashboard")}<div class="group"><div class="nav-label">项目</div>${navButton("blueprint", "蓝图", "", section === "blueprint")}${navButton("state", "当前状态", "", section === "state")}</div><div class="group"><div class="nav-label">任务 ${unavailable ? "· 读不到" : x.items.length}</div><div class="sub">${items || `<p class="row-sub" style="margin:0 8px">${unavailable ? "读不到" : "还没有任务"}</p>`}</div></div><div class="group"><div class="nav-label">其它</div>${navButton("flows", "工作流", count(Object.keys(FLOWS).length), section === "flows")}${navButton("approvals", "审批", count(x.approvals.length), section === "approvals")}${navButton("records", "记录", count(rec), section === "records")}${navButton("runs", "运行", count(x.runs.length), section === "runs")}${navButton("knowledge", "知识", "", section === "knowledge")}</div>`;
+}
+function depLinks(deps) {
+  if (!deps || !deps.length) return "无";
+  return deps.map((id) => {
+    const t = d().items.find((it) => it.id === id);
+    return taskChip(id, t ? t.title : id);
+  }).join(" ");
+}
+function flowTrack(flow, current) {
+  const curIdx = current ? flow.steps.findIndex((s) => s.id === current) : -1;
+  const W = 780, H = 120, R = 16, pad = 40, cy = 42;
+  const n = flow.steps.length;
+  const gap = n > 1 ? (W - pad * 2) / (n - 1) : 0;
+  const parts = [];
+  parts.push(`<defs><marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="var(--muted)"/></marker></defs>`);
+  parts.push(`<line x1="${pad}" y1="${cy}" x2="${W - pad}" y2="${cy}" stroke="var(--line)" stroke-width="1.5" stroke-linecap="round"/>`);
+  if (curIdx > 0) parts.push(`<line x1="${pad}" y1="${cy}" x2="${pad + curIdx * gap}" y2="${cy}" stroke="var(--on)" stroke-width="2" stroke-linecap="round"/>`);
+  flow.steps.forEach((s, i) => {
+    const outs = (flow.edges[s.id] || []).filter((t) => t !== (flow.steps[i + 1] || {}).id);
+    outs.forEach((t) => {
+      const ti = flow.steps.findIndex((x) => x.id === t);
+      if (ti < 0) return;
+      const x1 = pad + i * gap, x2 = pad + ti * gap;
+      const above = ti < i;
+      const yOff = above ? -26 : 26;
+      const midX = (x1 + x2) / 2;
+      parts.push(`<path d="M${x1},${cy} Q${midX},${cy + yOff * 2} ${x2},${cy}" fill="none" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3" opacity="0.55" marker-end="url(#arr)"><title>${s.id} → ${t}</title></path>`);
+    });
+  });
+  flow.steps.forEach((s, i) => {
+    const x = pad + i * gap;
+    const past = i < curIdx;
+    const now = i === curIdx;
+    if (now) parts.push(`<circle cx="${x}" cy="${cy}" r="${R + 6}" fill="var(--on)" opacity="0.08"/>`);
+    const fill = past ? "var(--on)" : "var(--card)";
+    const stroke = past ? "none" : now ? "var(--on)" : "var(--line)";
+    const strokeW = past ? 0 : now ? 2.5 : 1.5;
+    parts.push(`<circle cx="${x}" cy="${cy}" r="${R}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeW}"><title>${s.type || s.id}</title></circle>`);
+    if (past) parts.push(`<path d="M-4.5,-0.5 L-1.5,3.5 L4.5,-3.5" stroke="var(--card)" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round" transform="translate(${x},${cy})"/>`);
+    if (now) parts.push(`<circle cx="${x}" cy="${cy}" r="4" fill="var(--on)"/>`);
+    const ly = cy + R + 14;
+    parts.push(`<text x="${x}" y="${ly}" text-anchor="middle" font-size="12" fill="${now ? "var(--on)" : past ? "var(--muted)" : "var(--ink)"}" font-weight="${now ? 600 : 450}">${s.id}</text>`);
+    const sub = [s.status ? `需${s.status}` : "", s.required ? "" : "可选"].filter(Boolean).join(" · ");
+    if (sub) parts.push(`<text x="${x}" y="${ly + 13}" text-anchor="middle" font-size="10" fill="var(--muted)">${sub}</text>`);
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${parts.join("")}</svg>`;
 }
 function taskDetail(it) {
   const flow = FLOWS[it.flow];
-  const flowCard = flow
-    ? `<p><b>${flow.name}</b> · 现在在「${it.step}」</p><div class="track">${flow.steps.map((s) => `<span class="step${s === it.step ? " now" : ""}">${s}</span>`).join("")}</div>${it.paused ? `<span class="flag bad">工作流已暂停</span>` : `<p class="note">推进步骤不会改状态。</p>`}`
-    : `<p>没绑定。状态仍然可以改。</p>`;
-  return `<h2>${it.title}</h2><p class="meta">${it.id}</p><div class="grid">
-    <section class="card"><h3>任务状态</h3><p><b>${it.status}</b></p>${it.approval ? `<span class="flag">${it.approval}</span>` : `<p class="note">${it.who ? "领取人 " + it.who + "。" : ""}改状态不会移动步骤。</p>`}</section>
-    <section class="card"><h3>工作流</h3>${flowCard}</section></div>
-    <p class="note">两边各自改，互不带动。</p>`;
+  const approvalBanner = it.approval ? `<section class="alert-card bad" style="margin:14px 0 0"><h3>等待批准</h3><p>${it.approval}</p></section>` : "";
+  const strip = `<div class="strip">
+    <div class="cell"><span class="clabel">状态</span><span class="cvalue">${statusDot(it.status)}</span></div>
+    <div class="cell"><span class="clabel">优先级</span><span class="cvalue sm" style="${it.priority >= 8 ? "font-weight:600" : ""}">${it.priority >= 8 ? "高" : it.priority >= 5 ? "中" : "低"}</span></div>
+    ${it.who ? `<div class="cell"><span class="clabel">领取人</span><span class="cvalue sm">${it.who}</span></div>` : ""}
+    <div class="cell"><span class="clabel">依赖</span><span class="cvalue sm">${depLinks(it.deps)}</span></div>
+  </div>`;
+  const details = [["父任务", it.parent], ["Harness", it.harness], ["调度", it.scheduling], ["租约持有人", it.leaseOwner], ["租约到期", it.leaseUntil], ["下次重试", it.nextAttempt], ["活动运行", it.activeRun]].filter(([, value]) => value);
+  const flowHtml = flow
+    ? `<div class="flowzone"><h3>工作流 · ${flow.name}${it.paused ? '<span class="status" style="color:var(--muted)"><span class="dot idle" style="box-shadow:none"></span>已暂停</span>' : ""}</h3>${flowTrack(flow, it.step)}<p class="flownote">推进步骤不会改状态；改状态不会移动步骤。</p></div>`
+    : `<div class="flowzone"><h3>工作流</h3><p class="row-sub">没绑定。状态仍然可以改。</p></div>`;
+  return `<div class="detail"><div class="detail-head"><div class="detail-title"><h2>${it.title}</h2><span class="rid">${it.id}</span>${statusDot(it.status)}</div></div>${approvalBanner}${strip}${details.length ? `<div class="facts">${details.map(([key, value]) => `<span>${key} <strong>${value}</strong></span>`).join("")}</div>` : ""}${flowHtml}</div>`;
 }
+function projectStats(id, x) {
+  const unavailable = x.missing || x.trust?.state === "pending_transaction";
+  const counts = unavailable ? {} : x.items.reduce((out, it) => { out[it.status] = (out[it.status] || 0) + 1; return out; }, {});
+  return { id, name: x.blueprint?.name || id, unavailable, tasks: unavailable ? "—" : x.items.length, active: unavailable ? "—" : (counts["进行中"] || 0) + (counts["评审"] || 0) + (counts["验证"] || 0), risks: unavailable ? "—" : (x.state?.risks?.length || 0) + (x.state?.blockers?.length || 0), runs: unavailable ? "—" : x.runs.length, knowledge: unavailable ? "读不到" : (x.knowledge?.status || "—") };
+}
+function renderDashboard() {
+  const rows = Object.entries(DATA).map(([id, x]) => projectStats(id, x));
+  const available = rows.filter((p) => !p.unavailable);
+  const totalTasks = available.reduce((n, p) => n + p.tasks, 0);
+  const active = available.reduce((n, p) => n + p.active, 0);
+  const risks = available.reduce((n, p) => n + p.risks, 0);
+  const stale = available.filter((p) => p.knowledge === "过期").length;
+  return `<div class="dashboard"><header class="dash-head"><div><h2>项目总览</h2><p class="meta">已登记项目的只读状态快照 · 点击项目卡进入详情</p></div><span class="rid">${rows.length} 个项目</span></header><div class="dash-summary"><div class="stat-card"><span>项目</span><b>${rows.length}</b></div><div class="stat-card"><span>任务</span><b>${totalTasks}</b></div><div class="stat-card"><span>进行中</span><b>${active}</b></div><div class="stat-card"><span>风险 / 阻塞</span><b>${risks}</b></div></div><h3 class="section-label">项目状态</h3><div class="project-grid">${rows.map((p) => { const x = DATA[p.id]; const state = x.trust?.state === "pending_transaction" ? "待恢复" : x.missing ? "缺失" : p.knowledge === "过期" ? "有风险" : "可查看"; const tone = state === "可查看" ? "st-ok" : state === "待恢复" ? "st-wait" : "st-bad"; return `<button type="button" class="card project-card" data-repo="${p.id}" aria-disabled="${p.unavailable}"><div class="card-head"><h3>${p.name}</h3><span class="status ${tone}">${state}</span></div><p class="project-path">${x.path}</p><div class="project-stats"><div><span>任务</span><strong>${p.tasks}</strong></div><div><span>风险</span><strong>${p.risks}</strong></div><div><span>知识</span><strong>${p.knowledge}</strong></div></div><p class="row-sub" style="margin:12px 0 0">${p.unavailable ? "打开查看降级状态" : `${p.active} 个任务正在推进 · ${p.runs} 次运行`}</p></button>`; }).join("")}</div></div>`;
+}
+
 function renderMain() {
   const x = d();
   const box = $("#main");
-  if (x.missing) { box.innerHTML = `<h2>仓库缺失</h2><p>路径还在，目录没了。不显示任务和蓝图。</p>`; return; }
-  if (section === "task") { box.innerHTML = taskDetail(x.items.find((it) => it.id === selected)); return; }
+  const missingBanner = x.missing ? `<div class="degraded"><div><div class="d-title">目录缺失</div><div class="d-sub">${x.path} 不存在 · 这里只保留注册表残留信息</div></div></div>` : "";
+  if (section === "dashboard") { box.innerHTML = renderDashboard(); return; }
+  const pending = x.trust?.state === "pending_transaction";
+  const trustBanner = pending ? `<div class="degraded" style="border-left-color:var(--wait)"><div><div class="d-title">待恢复事务 · 不显示业务事实</div><div class="d-sub">${x.trust.note || "检测到未完成写入"} · 请先运行 <code>workloom recover</code></div></div></div>` : "";
+  if (pending) { box.innerHTML = trustBanner + `<h2>${x.blueprint.name}</h2><div class="empty"><b>状态暂不可用</b>恢复事务后，任务、审批、记录和知识会重新读取。</div>`; return; }
+  if (section === "task") { const t = x.items.find((it) => it.id === selected); box.innerHTML = missingBanner + (t ? taskDetail(t) : `<h2>任务读不到</h2><div class="empty"><b>任务不可用</b>目录缺失，任务列表读不到。</div>`); return; }
   if (section === "blueprint") {
     const b = x.blueprint;
-    box.innerHTML = `<h2>${b.name}</h2><p class="meta">当前阶段：${b.phase}</p><div class="grid">
-      <section class="card"><h3>目标</h3><ul>${b.goals.map((g) => `<li>${g}</li>`).join("")}</ul></section>
-      <section class="card"><h3>里程碑</h3><ul>${b.milestones.map((m) => `<li>${m[1]} · ${m[2]}</li>`).join("")}</ul></section>
-      <section class="card"><h3>范围内</h3><ul>${b.in.map((g) => `<li>${g}</li>`).join("")}</ul></section>
-      <section class="card"><h3>范围外</h3><ul>${b.out.map((g) => `<li>${g}</li>`).join("")}</ul></section></div>`;
+    if (x.missing && !b.description && !b.milestones?.length) { box.innerHTML = missingBanner + `<h2 class="bp-title">${b.name}</h2><div class="empty" style="margin-top:16px"><b>蓝图不可用</b>恢复路径后自动重新加载。</div>`; return; }
+    const milestones = b.milestones?.length ? `<section class="card"><div class="card-head"><h3>里程碑</h3><span class="card-count">${b.milestones.filter((m) => m[2] === "open").length} 开启 · ${b.milestones.filter((m) => m[2] !== "open").length} 完成</span></div><div class="ms-track"><i style="width:${Math.round(b.milestones.filter((m) => m[2] !== "open").length / b.milestones.length * 100)}%"></i></div>${b.milestones.map((m) => `<div class="ms-row"><span class="dot ${m[2] === "open" ? "open" : "done"}"></span><span class="ms-name">${m[1]}</span><code class="ms-id">${m[0]}</code></div>`).join("")}</section>` : "";
+    const li = (g, dim) => `<li${dim ? ' class="dim"' : ""}>${g}</li>`;
+    box.innerHTML = missingBanner + `<header class="bp-head">${b.phase ? `<div class="bp-eyebrow"><span class="pill-solid">${b.phase}</span></div>` : ""}<h2 class="bp-title">${b.name}</h2>${b.status ? `<p class="meta">项目状态 · ${statusDot(b.status)}</p>` : ""}${b.description ? `<p class="bp-lead">${b.description}</p>` : ""}</header>${milestones}${b.goals ? `<h3 class="section-label">方向</h3><div class="bp-grid"><section class="card"><h3>目标</h3><ul>${b.goals.map((g) => li(g)).join("") || '<li class="row-sub">无</li>'}</ul></section><section class="card"><h3>范围内</h3><ul>${b.in.map((g) => li(g)).join("") || '<li class="row-sub">无</li>'}</ul></section><section class="card"><h3>范围外</h3><ul>${b.out.map((g) => li(g, true)).join("") || '<li class="row-sub">无</li>'}</ul></section><section class="card"><h3>约束</h3><ul>${(b.constraints || []).map((g) => li(g, true)).join("") || '<li class="row-sub">无</li>'}</ul></section></div>` : ""}`;
     return;
   }
   if (section === "state") {
-    const s = x.state;
-    box.innerHTML = `<h2>当前状态</h2><p class="meta">${s.summary}</p><div class="grid">
-      <section class="card"><h3>风险</h3>${s.risks.map((r) => `<p>${r}</p>`).join("") || "<p class='note'>无</p>"}</section>
-      <section class="card"><h3>阻塞</h3>${s.blockers.map((r) => `<p>${r}</p>`).join("") || "<p class='note'>无</p>"}</section>
-      <section class="card"><h3>下一步重点</h3><ul>${s.next.map((r) => `<li>${r}</li>`).join("")}</ul></section>
-      <section class="card"><h3>下一步建议</h3><p>${x.next}</p></section></div>`;
+    const s = x.state, r = x.readiness || {};
+    const issues = (s.risks?.length || s.blockers?.length) ? `<div class="state-alerts">${s.risks?.length ? `<section class="alert-card warn"><h3>风险</h3>${s.risks.map((v) => `<p>${v}</p>`).join("")}</section>` : ""}${s.blockers?.length ? `<section class="alert-card bad"><h3>阻塞</h3>${s.blockers.map((v) => `<p>${v}</p>`).join("")}</section>` : ""}</div>` : "";
+    const readiness = r.verdict ? `<section class="card"><div class="card-head"><h3>就绪判断</h3>${statusDot(r.verdict === "PASS" ? "通过" : r.verdict === "FAIL" ? "失败" : "有风险")}</div>${r.risks?.length ? `<ul>${r.risks.map((v) => `<li>${v}</li>`).join("")}</ul>` : `<p class="row-sub">没有额外风险</p>`}${r.fixes?.length ? `<ul>${r.fixes.map((v) => `<li>${v}</li>`).join("")}</ul>` : ""}<p style="margin:10px 0 0;font-size:13px">${r.action || x.next || "暂无建议"}</p></section>` : "";
+    box.innerHTML = missingBanner + `<h2>当前状态</h2><div class="state-summary">${s.summary}</div>${issues}<div class="state-next"><section class="card"><h3>下一步重点</h3><ul>${s.next?.map((v) => `<li>${v}</li>`).join("") || "<li class='row-sub'>无</li>"}</ul></section>${readiness || `<section class="card"><h3>下一步建议</h3><p style="margin:0;font-size:13px">${x.next || "暂无建议"}</p></section>`}</div>${x.baseline ? `<div class="facts"><span>Git 基线 <strong><code>${x.baseline.branch} · ${x.baseline.commit}</code></strong></span><span>工作区 <strong>${x.baseline.dirty ? `有 ${x.baseline.changedFiles} 个变更文件` : "干净"}</strong></span></div>` : ""}`;
     return;
   }
   if (section === "flows") {
-    box.innerHTML = `<h2>这个仓的工作流</h2><p class="meta">一份流程可被多个任务共用。</p>` + Object.entries(FLOWS).map(([id, f]) => {
-      const users = x.items.filter((it) => it.flow === id);
-      return `<section class="card" style="margin-bottom:10px"><h3>${f.name}</h3><div class="track">${f.steps.map((s) => `<span class="step">${s}</span>`).join("")}</div><p class="note">${users.length ? "正在用：" + users.map((it) => it.title).join("、") : "还没有任务使用"}</p></section>`;
-    }).join("");
+    if (x.missing) { box.innerHTML = missingBanner + `<h2>工作流</h2><div class="empty"><b>读不到工作流</b>目录缺失，不能判断流程定义。</div>`; return; }
+    box.innerHTML = `<h2>这个仓的工作流</h2><p class="meta">一份流程可被多个任务共用。虚线弧线标注分叉。</p><div class="stack">${Object.entries(FLOWS).map(([id, f]) => { const users = x.items.filter((it) => it.flow === id); return `<section class="card"><div class="card-head"><h3>${f.name}</h3><span class="card-count">${users.length} 个任务使用 · ${f.steps.length} 步</span></div>${flowTrack(f, null)}<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">${users.length ? users.map((it) => taskChip(it.id, it.title)).join("") : '<span class="row-sub">还没有任务使用</span>'}</div></section>`; }).join("")}</div>`;
     return;
   }
+  const unavailable = x.missing;
+  const emptyBox = (title, sub) => `<div class="empty"><b>${title}</b>${sub}</div>`;
+  const listHead = `<div class="list-head"><span>ID</span><span>内容</span><span>状态</span></div>`;
   const tables = {
-    approvals: [`<h2>审批</h2>`, x.approvals.map((a) => `<div class="row"><b>${a[0]}</b><span>${a[1]} · ${a[2]}</span></div>`).join("")],
-    records: [`<h2>记录</h2>`, ["决策", "发现", "产物"].map((name, i) => `<section class="card" style="margin-bottom:10px"><h3>${name}</h3>${Object.values(x.records)[i].map((r) => `<p>${r[0]} · ${r[1]}</p>`).join("")}</section>`).join("")],
-    runs: [`<h2>运行</h2>`, x.runs.map((r) => `<div class="row"><b>${r[0]}</b><span>${r[1]} · ${r[2]}</span></div>`).join("") + `<p class="note">事件正文这版不展开。</p>`],
-    knowledge: [`<h2>知识</h2><p class="meta">${x.knowledge.status}</p>`, x.knowledge.pages.map((p) => `<div class="row"><span>${p}</span></div>`).join("")]
+    approvals: [`<h2>审批</h2><p class="meta">每条审批卡着一个任务的状态流转。</p>`, unavailable ? emptyBox("审批读不到", "目录缺失，不能判断审批状态") : x.approvals.length ? `<div class="list">${listHead}${x.approvals.map((a) => { const t = x.items.find((it) => it.id === a[1]); return `<div class="row"><span class="rid">${a[0]}</span><span>${t ? taskChip(t.id, t.title) : `<span class="rid">${a[1]}</span>`} <span class="row-sub">${a[2]}</span></span><span>${statusDot(a[3])}</span></div>`; }).join("")}</div>` : emptyBox("还没有审批", "任务状态需要批准时会出现在这里")],
+    records: [`<h2>记录</h2><p class="meta">决策、发现和产物的归档。</p>`, unavailable ? emptyBox("记录读不到", "目录缺失，不能判断记录状态") : (() => { const groups = [["决策", x.records.decisions], ["发现", x.records.findings], ["产物", x.records.artifacts]]; if (!groups.some(([, rows]) => rows.length)) return emptyBox("还没有记录", "决策、发现和产物会归档到这里"); return `<div class="list">${groups.filter(([, rows]) => rows.length).map(([name, rows]) => `<div class="subhead">${name}</div>${rows.map((r) => `<div class="row"><span class="rid">${r[0]}</span><span>${r[1]}<span class="row-sub">${r[2] || ""}</span></span><span></span></div>`).join("")}`).join("")}</div>`; })()],
+    runs: [`<h2>运行</h2><p class="meta">每次本地运行的留痕。</p>`, unavailable ? emptyBox("运行读不到", "目录缺失，不能判断运行状态") : x.runs.length ? `<div class="list">${listHead}${x.runs.map((r) => { const t = x.items.find((it) => it.id === r[1]); return `<div class="row"><span class="rid">${r[0]}</span><span>${t ? taskChip(t.id, t.title) : `<span class="rid">${r[1]}</span>`}<span class="row-sub">${r[3] || ""}</span></span><span>${statusDot(r[2])}</span></div>`; }).join("")}</div>` : emptyBox("还没有运行", "本地命令执行后会留下记录")],
+    knowledge: [`<h2>知识</h2><p class="meta">repowiki 页面相对代码的新鲜度。</p>`, unavailable ? emptyBox("知识读不到", "目录缺失，新鲜度无法判断") : (() => { const k = x.knowledge || {}; const dotCls = k.status === "新鲜" ? "ok" : k.status === "过期" ? "warn" : "bad"; const label = k.status === "新鲜" ? "知识新鲜" : k.status === "过期" ? "知识已过期" : "无法评估"; return `<section class="card"><div class="k-head"><span class="dot ${dotCls}"></span><b>${label}</b>${k.indexReady ? `<span class="k-time">索引可用 · 变更 ${k.changedFiles || 0} 个文件</span>` : ""}</div>${k.reason ? `<p class="row-sub" style="margin:10px 0 0">${k.reason}</p>` : ""}${k.pages?.length ? `<div class="k-pages">${k.pages.map((p) => `<div class="k-page"><span>受影响页面</span><span class="rid" style="margin-left:auto">${p}</span></div>`).join("")}</div>` : `<p class="row-sub" style="margin:10px 0 0">没有受影响的页面。</p>`}</section>`; })()]
   };
-  box.innerHTML = tables[section].join("");
+  box.innerHTML = missingBanner + tables[section].join("");
 }
-function paint() { renderNav(); renderMain(); }
+function refreshBar() {
+  const el = $("#refresh");
+  if (el) el.textContent = "演示快照 · 不自动刷新";
+}
+function paint() {
+  renderNav();
+  renderMain();
+  $("#main").insertAdjacentHTML("afterbegin", '<p id="refresh"></p>');
+  refreshBar();
+}
 $("#nav").addEventListener("click", (e) => {
   const task = e.target.closest("[data-task]");
   const sec = e.target.closest("[data-section]");
@@ -178,7 +459,19 @@ $("#nav").addEventListener("click", (e) => {
   else return;
   paint();
 });
-$("#repo").addEventListener("change", () => { repo = $("#repo").value; section = "blueprint"; paint(); });
+$("#main").addEventListener("click", (e) => {
+  const project = e.target.closest("[data-repo]");
+  if (project) { repo = project.dataset.repo; section = "blueprint"; selected = d().items[0]?.id || ""; paint(); return; }
+  const chip = e.target.closest(".taskchip[data-task]");
+  if (!chip) return;
+  section = "task"; selected = chip.dataset.task; paint();
+});
+$("#nav-toggle").addEventListener("click", () => {
+  const nav = document.querySelector("nav");
+  const open = nav.classList.toggle("collapsed");
+  $("#nav-toggle").setAttribute("aria-expanded", String(!open));
+});
+$("#repo").addEventListener("change", () => { repo = $("#repo").value; section = "blueprint"; selected = d().items[0]?.id || ""; paint(); });
 paint();
 </script>
 </body>
