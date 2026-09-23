@@ -1,0 +1,13 @@
+schema_version: 1
+title: 执行层
+scope:
+    - internal/harness/**
+    - internal/workspace/**
+    - internal/dispatch/**
+    - internal/retry/**
+    - internal/prompt/**
+source_files:    []
+depends_on:
+    []
+related_to:    []
+children:    []

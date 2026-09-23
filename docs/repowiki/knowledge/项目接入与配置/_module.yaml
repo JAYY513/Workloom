@@ -1,0 +1,41 @@
+schema_version: 1
+title: 项目接入与配置
+scope:
+    - cmd/**
+    - internal/cli/**
+    - internal/config/**
+    - internal/project/**
+    - internal/registry/**
+    - internal/version/**
+    - internal/domain/**
+    - README.md
+    - internal/cli/records.go
+    - internal/cli/diagnostics.go
+    - internal/cli/mcp.go
+    - internal/cli/worktree.go
+    - internal/cli/dispatch.go
+    - scripts/m4helper
+    - scripts/smoke-m4.sh
+    - scripts/smoke-m4.ps1
+    - scripts/exchange-demo.sh
+    - scripts/smoke-m5.sh
+    - scripts/smoke-m6.sh
+    - scripts/smoke-m6.ps1
+    - scripts/smoke-m7.sh
+    - scripts/smoke-m7.ps1
+    - internal/syncstatus/**
+    - internal/archive/**
+    - scripts/smoke-m8.sh
+    - scripts/smoke-m8.ps1
+    - scripts/contrabass/**
+    - INSTALL.md
+    - CHANGELOG.md
+    - Makefile
+    - .github/workflows/release.yml
+    - npm/**
+    - .agents/skills/devsys/**
+source_files:    []
+depends_on:
+    - "共享应用与MCP"
+related_to:    []
+children:    []

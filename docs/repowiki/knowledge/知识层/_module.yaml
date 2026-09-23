@@ -1,0 +1,12 @@
+schema_version: 1
+title: 知识层
+scope:
+    - internal/knowledge/**
+    - .devsys/knowledge/**
+    - .repowikiignore
+    - internal/knowledge/syncgit.go
+source_files:    []
+depends_on:
+    []
+related_to:    []
+children:    []

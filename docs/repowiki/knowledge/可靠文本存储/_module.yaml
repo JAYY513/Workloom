@@ -1,0 +1,25 @@
+schema_version: 1
+title: 可靠文本存储
+scope:
+    - internal/storage/**
+    - internal/workitem/**
+    - internal/events/**
+    - internal/run/**
+    - internal/record/**
+    - internal/search/**
+    - internal/reconcile/**
+    - internal/workflow/**
+    - internal/approval/**
+    - internal/next/**
+    - scripts/**
+    - docs/examples/m1-devsys/**
+    - docs/examples/workflows/**
+    - go.mod
+    - go.sum
+    - internal/syncstatus/**
+    - internal/archive/**
+source_files:    []
+depends_on:
+    []
+related_to:    []
+children:    []

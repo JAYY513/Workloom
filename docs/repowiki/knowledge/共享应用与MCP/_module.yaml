@@ -1,0 +1,14 @@
+schema_version: 1
+title: 共享应用与MCP
+scope:
+    - internal/app/**
+    - internal/mcp/**
+    - internal/syncstatus/**
+    - internal/archive/**
+source_files:    []
+depends_on:
+    - "可靠文本存储"
+    - "执行层"
+    - "知识层"
+related_to:    []
+children:    []

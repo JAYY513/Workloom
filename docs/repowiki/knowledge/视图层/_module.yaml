@@ -1,0 +1,10 @@
+schema_version: 1
+title: 视图层
+scope:
+    - internal/view/**
+    - internal/sitestatic/**
+source_files:    []
+depends_on:
+    - "可靠文本存储"
+related_to:    []
+children:    []

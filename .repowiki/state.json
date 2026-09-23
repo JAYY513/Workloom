@@ -3,9 +3,9 @@
   "partition": {
     "locale": "zh"
   },
-  "generated_at": "2026-09-22T13:07:41.339Z",
+  "generated_at": "2026-09-23T01:05:37.209Z",
   "git": {
-    "commit": "705cb18165fcfaa28688dcd2b25721efb43ba60f",
+    "commit": "1a15b6a89abdf7cb20a8e156e47494d07809d727",
     "branch": "master"
   },
   "pages": {
@@ -213,6 +213,15 @@
       "sources": [],
       "content_hash": "778e3f8bf9278228e493732ae6bfc736a2feee8c06c5118ef3181440990062e4"
     },
+    "knowledge/共享应用与MCP/_module.yaml": {
+      "sources": [
+        "internal/app/**",
+        "internal/mcp/**",
+        "internal/syncstatus/**",
+        "internal/archive/**"
+      ],
+      "content_hash": "5d1e04dae29fd1e718364f862173f67cf8f87233d99901f2eb73fa9ffe4cd2f6"
+    },
     "knowledge/共享应用与MCP/完成校验与人工复核.md": {
       "sources": [
         "internal/app/**",
@@ -266,6 +275,28 @@
         "internal/archive/**"
       ],
       "content_hash": "0965d0ae9c63c05b502daad5d26cbd7e8a3bf43325e11532c387a54bee942a09"
+    },
+    "knowledge/可靠文本存储/_module.yaml": {
+      "sources": [
+        "internal/storage/**",
+        "internal/workitem/**",
+        "internal/events/**",
+        "internal/run/**",
+        "internal/record/**",
+        "internal/search/**",
+        "internal/reconcile/**",
+        "internal/workflow/**",
+        "internal/approval/**",
+        "internal/next/**",
+        "scripts/**",
+        "docs/examples/m1-devsys/**",
+        "docs/examples/workflows/**",
+        "go.mod",
+        "go.sum",
+        "internal/syncstatus/**",
+        "internal/archive/**"
+      ],
+      "content_hash": "e5e347a217648cea76bcceb4a5a85de36d340db2d0e854197eda9741fd1ed192"
     },
     "knowledge/可靠文本存储/事务与恢复.md": {
       "sources": [
@@ -509,6 +540,16 @@
       ],
       "content_hash": "b65a3b3d219a39f43b1aee20b022562a244ed57c26979f4e104b75ce3ceca93e"
     },
+    "knowledge/执行层/_module.yaml": {
+      "sources": [
+        "internal/harness/**",
+        "internal/workspace/**",
+        "internal/dispatch/**",
+        "internal/retry/**",
+        "internal/prompt/**"
+      ],
+      "content_hash": "ae478890774ddf145c9a71d4461b12954a5273466bd87f004733593ea157be07"
+    },
     "knowledge/执行层/技术栈.md": {
       "sources": [
         "internal/harness/**",
@@ -568,6 +609,15 @@
         "internal/prompt/**"
       ],
       "content_hash": "0cbb744b0474298f3a713b2e06029619c0973803d00477aabadca0186fffba6d"
+    },
+    "knowledge/知识层/_module.yaml": {
+      "sources": [
+        "internal/knowledge/**",
+        ".devsys/knowledge/**",
+        ".repowikiignore",
+        "internal/knowledge/syncgit.go"
+      ],
+      "content_hash": "0527d99a5a7a0590a6c281d356977b0fdfe9f424c6da61c3305996bdf7f1fb4e"
     },
     "knowledge/知识层/上下文快照.md": {
       "sources": [
@@ -667,6 +717,13 @@
         "internal/knowledge/syncgit.go"
       ],
       "content_hash": "0dc07fd9b594041f64345bd4d97c75260465c31a68ae88e913bdcd7af3378fed"
+    },
+    "knowledge/视图层/_module.yaml": {
+      "sources": [
+        "internal/view/**",
+        "internal/sitestatic/**"
+      ],
+      "content_hash": "5d1031aae1f729620fc0533934f4d733cf2fea825c49316c36e02925f32bbec6"
     },
     "knowledge/视图层/技术栈.md": {
       "sources": [
@@ -830,6 +887,44 @@
         ".agents/skills/devsys/**"
       ],
       "content_hash": "40b4a30a33dfb01082470369fe9ed3f22f3906fd2c1a5cf0504a2087d393daf0"
+    },
+    "knowledge/项目接入与配置/_module.yaml": {
+      "sources": [
+        "cmd/**",
+        "internal/cli/**",
+        "internal/config/**",
+        "internal/project/**",
+        "internal/registry/**",
+        "internal/version/**",
+        "internal/domain/**",
+        "README.md",
+        "internal/cli/records.go",
+        "internal/cli/diagnostics.go",
+        "internal/cli/mcp.go",
+        "internal/cli/worktree.go",
+        "internal/cli/dispatch.go",
+        "scripts/m4helper",
+        "scripts/smoke-m4.sh",
+        "scripts/smoke-m4.ps1",
+        "scripts/exchange-demo.sh",
+        "scripts/smoke-m5.sh",
+        "scripts/smoke-m6.sh",
+        "scripts/smoke-m6.ps1",
+        "scripts/smoke-m7.sh",
+        "scripts/smoke-m7.ps1",
+        "internal/syncstatus/**",
+        "internal/archive/**",
+        "scripts/smoke-m8.sh",
+        "scripts/smoke-m8.ps1",
+        "scripts/contrabass/**",
+        "INSTALL.md",
+        "CHANGELOG.md",
+        "Makefile",
+        ".github/workflows/release.yml",
+        "npm/**",
+        ".agents/skills/devsys/**"
+      ],
+      "content_hash": "7c7e377f6c8ea0b59c4db11771af08a0a613b7a1239b1bd3440899926fc22395"
     },
     "knowledge/项目接入与配置/执行命令与DEVSYS_PROJECT_ROOT.md": {
       "sources": [
@@ -1069,8 +1164,8 @@
   "last_run": {
     "status": "success",
     "phase": "finalize",
-    "started_at": "2026-09-22T13:07:41.339Z",
-    "finished_at": "2026-09-22T13:07:41.339Z",
+    "started_at": "2026-09-23T01:05:37.209Z",
+    "finished_at": "2026-09-23T01:05:37.209Z",
     "error": ""
   }
 }

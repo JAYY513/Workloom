@@ -1,3 +1,10 @@
+## 2026-09-23 · 工具对齐 ccead63（形状纠正 + _module.yaml 锚）
+
+- 背景：LoomWiki 仓 `ccead63`（2026-09-23 08:41）纠正 `#420` 的单文件误读——恢复「一模块一目录多文档 + 五维卡 + dimension」形状（与本仓 bundle 同构），新增 `_module.yaml` 目录锚（title/scope/关系只进 yaml）；全局 CLI 副本已同步，`repowiki validate` 对本仓恢复 0 errors（此前 50× `missing 'module'` 系校验器领先 bundle，非内容错误）。
+- 本仓动作：6 个模块目录各补 `knowledge/<dir>/_module.yaml`（scope 照 `plan.json` 逐字；`depends_on` 只写实锤边：项目接入与配置→共享应用与MCP；共享应用与MCP→可靠文本存储/执行层/知识层；视图层→可靠文本存储）。任务 #423（形状迁移）随之关闭——目标形状即现状，无迁移必要。
+- 校验：`repowiki validate` = 61 files（55 页 + 6 yaml）/ 0 errors / 0 warnings；`state --update` 基线随本提交刷新。
+- 上一批（`1a15b6a` / #422）的 validate 漂移记录仍有效：漂移根因已由上游形状纠正消除，本批为收口。
+
 ## 2026-09-22 · 705cb18 v0.1.13（#414 dispatch 解析统一 + #416 npm OIDC trusted publishing）repowiki 增量刷新
 
 - 源码基线：`6bd1cf1` → `705cb18`（8 commits / 10 文件：`internal/app/dispatch.go` +17、`dispatch_spawn_test.go` 新增、`mcpsnippets.go` coreNote 去 19 计数；`release.yml` id-token: write + Node 24 + Publish npm packages 步骤；`publish-npm.sh` OIDC 多包 token 清理；`build-release.sh` `sha256sum -t`；`docs/发布流程.md` §5b 重写 + v0.1.13 实跑记录；`CHANGELOG.md` / `CONTRIBUTING.md` / `INSTALL.md` 探针 19→20）。任务 #422。
