@@ -8,6 +8,27 @@
 - `make build`；`go test ./...`；`go vet ./...`；gofmt 格式化。
 - 端到端剧本：`scripts/smoke-m*.{sh,ps1}`。
 
+## 本地开发与正式版切换
+
+作者可以直接复用 npm 全局安装目录，避免 Agent 同时看到 `workloom` 与另一个开发命令：
+
+```powershell
+npm install -g @kaki317/workloom
+$npmRoot = npm root -g
+$npmExe = Get-ChildItem -Path $npmRoot -Filter workloom.exe -Recurse -File |
+  Where-Object FullName -match "workloom-win32-x64" |
+  Select-Object -First 1 -ExpandProperty FullName
+
+cd C:\Source\CodeSource\ai\Workloom
+go test ./...
+go build -o $npmExe .\cmd\workloom
+workloom --version
+```
+
+这样开发版仍通过标准 `workloom` 命令和 MCP 使用。修改代码后重新 `go build -o $npmExe` 即可；关闭并重启 MCP 客户端以加载新进程。恢复正式版时重跑 `npm install -g @kaki317/workloom --force`。不要修改 npm wrapper 或 `package.json`，只替换平台二进制；npm 更新会覆盖本地开发版。
+
+此方式仅用于作者本地 dogfood，不是普通用户的安装步骤；正式发布前仍须用干净环境验证 npm 包。
+
 ## 提交前
 
 1. 先阅读[设计文档](docs/design.md)的设计原则与边界约束。
