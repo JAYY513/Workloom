@@ -173,6 +173,18 @@ workloom setup
 已有条目不覆盖，`--force` 才替换。无法安全合并时拒绝并指向 `wire --print-mcp`。
 `--apply` 之后会现场起一次 `mcp serve` 做启动检查（`probe: ok (N tools)`；起不来则 `probe: failed` 并以退出码 3 结束，配置已写入但没接上；沙箱里不能起子进程时用 `DEVSYS_MCP_PROBE=0` 跳过）。
 
+如果客户端没有被自动检测，或你想手动接入其他支持 stdio MCP 的 Agent，可先打印对应客户端片段：
+
+```bash
+workloom wire --print-mcp codex
+workloom wire --print-mcp claude
+workloom wire --print-mcp opencode
+```
+
+把输出粘贴到该 Agent 的 MCP 配置中。通用 MCP 语义是启动本地命令
+`workloom mcp serve --profile session,executor --tier core`，服务器名使用 `devsys`；不要把
+`npx` 作为长期 MCP 命令。客户端找不到 `workloom` 时，把 `command` 换成 `workloom.exe` 的绝对路径，或使用生成片段中的 npm wrapper 命令。
+
 想逐步执行或换模板时，底层命令仍然都在：
 
 ```bash

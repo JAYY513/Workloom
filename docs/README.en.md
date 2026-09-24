@@ -190,6 +190,20 @@ command exits 3 — the config is written, but nothing would connect. Use
 `DEVSYS_MCP_PROBE=0` to skip the check where child processes are not allowed
 (the report then reads `skipped`, never a pass).
 
+If a client is not detected automatically, or you are using another Agent that supports stdio MCP, print the client-specific snippet:
+
+```bash
+workloom wire --print-mcp codex
+workloom wire --print-mcp claude
+workloom wire --print-mcp opencode
+```
+
+Paste the output into that Agent's MCP configuration. The generic MCP command is
+`workloom mcp serve --profile session,executor --tier core`, with the server name
+`devsys`; do not use `npx` as a long-lived MCP command. If the client cannot find
+`workloom`, use the absolute path to `workloom.exe`, or use the npm wrapper command
+printed by Workloom.
+
 The underlying commands remain for step-by-step use or a different template:
 
 ```bash
