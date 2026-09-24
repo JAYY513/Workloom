@@ -206,31 +206,29 @@ printed by Workloom.
 
 ### Generic stdio MCP configuration
 
-For another Agent that accepts the common `mcpServers` JSON shape, copy this template and replace `<node.exe>`, `<workloom.js>`, and `<project-root>`:
+For an Agent that accepts the common `mcpServers` JSON shape, copy this configuration directly:
 
 ```json
 {
   "mcpServers": {
     "devsys": {
       "type": "stdio",
-      "command": "<node.exe>",
+      "command": "workloom",
       "args": [
-        "<workloom.js>",
         "mcp", "serve",
         "--profile", "session,executor",
         "--tier", "core"
-      ],
-      "cwd": "<project-root>"
+      ]
     }
   }
 }
 ```
 
-For a Windows npm install, `<workloom.js>` is typically under
-`%APPDATA%\\npm\\node_modules\\@kaki317\\workloom\\bin\\workloom.js`.
-If the client can execute `workloom.exe` directly, use that as `command` and
-start `args` at `mcp`. The project root must be the actual `cwd`; other clients
-may use different config keys or locations, so adapt the equivalent stdio fields.
+This assumes `npm install -g @kaki317/workloom` has been run and `workloom` is
+on `PATH`. Put the configuration in the target project's Agent configuration,
+or launch the Agent from the project root; Workloom searches upward for
+`.devsys/`. If the Agent does not inherit `PATH`, replace `command` with the
+absolute path to `workloom.exe` on that machine.
 
 The underlying commands remain for step-by-step use or a different template:
 
