@@ -185,6 +185,37 @@ workloom wire --print-mcp opencode
 `workloom mcp serve --profile session,executor --tier core`，服务器名使用 `devsys`；不要把
 `npx` 作为长期 MCP 命令。客户端找不到 `workloom` 时，把 `command` 换成 `workloom.exe` 的绝对路径，或使用生成片段中的 npm wrapper 命令。
 
+### 通用 stdio MCP 配置模板
+
+其他支持 `mcpServers` JSON 格式的 Agent 可复制下面的模板，只替换三个占位值：`<node.exe>`、`<workloom.js>` 和 `<project-root>`：
+
+```json
+{
+  "mcpServers": {
+    "devsys": {
+      "type": "stdio",
+      "command": "<node.exe>",
+      "args": [
+        "<workloom.js>",
+        "mcp", "serve",
+        "--profile", "session,executor",
+        "--tier", "core"
+      ],
+      "cwd": "<project-root>"
+    }
+  }
+}
+```
+
+Windows npm 安装的典型路径是：
+
+```text
+command: C:\\Program Files\\nodejs\\node.exe
+workloom.js: C:\\Users\\<user>\\AppData\\Roaming\\npm\\node_modules\\@kaki317\\workloom\\bin\\workloom.js
+```
+
+如果 Agent 支持直接执行命令，也可以把 `command` 改成 `workloom.exe`，并把 `args` 从 `mcp` 开始。`cwd` 必须是实际项目根目录；不同 Agent 对字段名和配置文件位置可能不同，无法识别该模板时使用其文档要求的等价 stdio 字段。
+
 想逐步执行或换模板时，底层命令仍然都在：
 
 ```bash
