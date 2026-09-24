@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -53,6 +54,23 @@ func TestCreateAssignsSequentialIDsAndRetriesOnConflict(t *testing.T) {
 	}
 	if first != "WLM-1" || second != "WLM-2" {
 		t.Fatalf("ids = %s, %s", first, second)
+	}
+}
+
+func TestClaimDraftExplainsReadyTransition(t *testing.T) {
+	ctx := context.Background()
+	s := newStore(t)
+	id, err := s.Create(ctx, sample(""), "WLM")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = s.Claim(ctx, id, ClaimOptions{Owner: "agent", Actor: "agent", Reason: "start"})
+	var transition *domain.TransitionError
+	if !errors.As(err, &transition) {
+		t.Fatalf("error = %v, want transition error", err)
+	}
+	if !strings.Contains(transition.Reason, "transition this draft work item to ready") {
+		t.Fatalf("reason = %q, want draft remediation", transition.Reason)
 	}
 }
 

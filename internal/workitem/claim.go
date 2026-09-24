@@ -189,6 +189,13 @@ type RetryResult struct {
 // Concurrency: the lease file is created with ExpectAbsent; two Claims on
 // the same work item see exactly one winner. The loser sees
 // ErrAlreadyClaimed (storage.ErrConflict is mapped).
+func claimReason(status string) string {
+	if status == domain.StatusDraft {
+		return "claim requires status=ready; transition this draft work item to ready before claiming it"
+	}
+	return "claim requires status=ready, retry_queued, or post-review/verification re-claim"
+}
+
 func (s *Store) Claim(ctx context.Context, id string, opts ClaimOptions) (ClaimResult, error) {
 	if err := requiredFields(opts.Owner, opts.Actor, opts.Reason); err != nil {
 		return ClaimResult{}, err
@@ -242,7 +249,7 @@ func (s *Store) Claim(ctx context.Context, id string, opts ClaimOptions) (ClaimR
 		return ClaimResult{}, &domain.TransitionError{
 			From: cur.Status, To: domain.StatusInProgress,
 			Allowed: domain.AllowedFrom(cur.Status),
-			Reason:  "claim requires status=ready, retry_queued, or post-review/verification re-claim",
+			Reason:  claimReason(cur.Status),
 		}
 	}
 

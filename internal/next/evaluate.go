@@ -28,12 +28,13 @@ const (
 
 // Recommendation actions, in the fixed §7.4 priority order.
 const (
-	ActionRecoverClaim    = "recover_claim"
-	ActionReview          = "review"
-	ActionStart           = "start"
-	ActionStartBacklog    = "start_backlog"
-	ActionMilestoneReview = "milestone_review"
-	ActionReportDone      = "report_done"
+	ActionRecoverClaim     = "recover_claim"
+	ActionReview           = "review"
+	ActionStart            = "start"
+	ActionStartBacklog     = "start_backlog"
+	ActionMilestoneReview  = "milestone_review"
+	ActionDeclareBlueprint = "declare_blueprint"
+	ActionReportDone       = "report_done"
 )
 
 // Risk kinds.
@@ -249,9 +250,9 @@ func Evaluate(in Input) Report {
 		rep.Risks = append(rep.Risks, Risk{Kind: RiskInspectionLimited, Detail: in.InspectionNote})
 	}
 	if in.emptyProject() {
-		detail := "no work items; create one with `" + CreateWorkitemCommand + "`"
+		detail := "no work items yet; create one with `" + CreateWorkitemCommand + "`"
 		if !in.HasBlueprint {
-			detail += "; no blueprint declared (declare one: workloom project update --blueprint-artifact <artifact-id>)"
+			detail = "no blueprint declared; create and bind a blueprint before creating work items (then use `" + CreateWorkitemCommand + "`)"
 		}
 		rep.Risks = append(rep.Risks, Risk{Kind: RiskEmptyProject, Detail: detail})
 	}
@@ -349,6 +350,9 @@ func recommend(in Input) Recommendation {
 	}
 	reason := "no runnable work item remains"
 	if in.emptyProject() {
+		if !in.HasBlueprint {
+			return Recommendation{Action: ActionDeclareBlueprint, Reason: "no blueprint declared; create and bind a blueprint before creating work items"}
+		}
 		reason = "no work items yet; create one with `" + CreateWorkitemCommand + "`"
 	}
 	if queue := retryQueue(in); len(queue) > 0 {

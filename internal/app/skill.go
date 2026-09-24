@@ -31,9 +31,11 @@ available; otherwise use ` + "`workloom --json`" + ` through the shell.
 
 ## Start
 
-1. Run ` + "`workloom prime`" + ` (or ` + "`workloom session start`" + `) — one call: project facts, work in flight, recommended action.
-2. Read the recommended work item (` + "`workitem get`" + ` / ` + "`context get --task <id>`" + `).
-3. If the item carries a workflow, read its steps: ` + "`workloom workflow get --id <workitem>`" + `.
+1. Run workloom prime (or workloom session start) at the start of a new session — one call: project facts, work in flight, recommended action.
+2. For a new project, handle “no blueprint declared” before “no work items”: ask for confirmed goals, create and bind the blueprint, then create the first work item.
+3. A newly created work item starts as draft; read it, transition it to ready, then claim it. Never claim draft directly.
+4. Read the recommended work item with workitem get or context get --task <id>.
+5. If the item carries a workflow, read its steps with workloom workflow get --id <workitem>.
 
 ## Claim
 

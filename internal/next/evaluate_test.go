@@ -45,11 +45,11 @@ func TestEmptyProjectConcerns(t *testing.T) {
 	if !kinds(rep)[RiskEmptyProject] {
 		t.Fatalf("risks = %+v, want empty_project", rep.Risks)
 	}
-	if !strings.Contains(rep.Risks[0].Detail, CreateWorkitemCommand) {
-		t.Fatalf("detail = %q, want the create command", rep.Risks[0].Detail)
+	if !strings.Contains(rep.Risks[0].Detail, "no blueprint declared") || !strings.Contains(rep.Risks[0].Detail, CreateWorkitemCommand) {
+		t.Fatalf("detail = %q, want blueprint-first guidance and create command", rep.Risks[0].Detail)
 	}
-	if rep.Next.Action != ActionReportDone || !strings.Contains(rep.Next.Reason, CreateWorkitemCommand) {
-		t.Fatalf("next = %+v, want report_done naming create", rep.Next)
+	if rep.Next.Action != ActionDeclareBlueprint || !strings.Contains(rep.Next.Reason, "before creating work items") {
+		t.Fatalf("next = %+v, want declare_blueprint before create", rep.Next)
 	}
 }
 
@@ -170,7 +170,7 @@ func TestNextPriorityLadder(t *testing.T) {
 		{"ready before backlog", Input{Now: t0, InspectionOK: true, WorkItems: []*domain.WorkItem{ready, backlog}}, ActionStart, "WLM-10"},
 		{"backlog last", Input{Now: t0, InspectionOK: true, WorkItems: []*domain.WorkItem{backlog}}, ActionStartBacklog, "WLM-12"},
 		{"milestone review", Input{Now: t0, InspectionOK: true, Milestones: []domain.Milestone{{ID: "M1", Name: "M1", Status: "pending"}}}, ActionMilestoneReview, ""},
-		{"report done", Input{Now: t0, InspectionOK: true, Milestones: []domain.Milestone{{ID: "M1", Status: "done"}}}, ActionReportDone, ""},
+		{"report done", Input{Now: t0, InspectionOK: true, HasBlueprint: true, Milestones: []domain.Milestone{{ID: "M1", Status: "done"}}}, ActionReportDone, ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -214,6 +214,8 @@ func sessionAction(rec next.Recommendation) SessionAction {
 		if rec.WorkitemID != "" {
 			action.Command = "workloom workitem transition --id " + rec.WorkitemID + " --to ready --actor <actor> --reason <reason>"
 		}
+	case "declare_blueprint":
+		action.Command = "workloom project update --blueprint-artifact <artifact-id>"
 	case "milestone_review", "report_done":
 		action.Command = "workloom project status"
 	}
