@@ -40,6 +40,26 @@ If agent-comm is available, coordinate task work with other agents:
 - **Editing shared files** — use `comm_state_set("locks", "path/to/file", "my-name")` before editing, `comm_state_delete` when done
 - **Finishing work** — post a summary to "general" before stopping
 
+## 作者本地 Workloom 调试
+
+作者在真实项目中试用 Workloom 时，保持 Agent 使用标准 `workloom` 命令，不使用 `wld` 别名。修改 Workloom 源码后：
+
+```powershell
+cd C:\Source\CodeSource\ai\Workloom
+go test ./...
+$npmRoot = npm root -g
+$npmExe = Get-ChildItem -Path $npmRoot -Filter workloom.exe -Recurse -File |
+  Where-Object FullName -match "workloom-win32-x64" |
+  Select-Object -First 1 -ExpandProperty FullName
+go build -o $npmExe .\cmd\workloom
+workloom --version
+```
+
+然后重启 Agent 的 MCP 会话，使其加载新的本地二进制。恢复 npm 正式版：
+`npm install -g @kaki317/workloom --force --include=optional`。不要修改 npm wrapper 或 `package.json`；npm 更新会覆盖本地开发版。
+
+作者可直接指示：**“更新 Workloom 本地开发版：运行 `go test ./...`，编译并替换 npm 平台二进制，验证 `workloom --version`，然后重启 MCP 会话。”**
+
 <!-- repowiki:begin | 由 repowiki 管理：运行 `repowiki init` 原位更新本区块；手写内容请放在标记之外 -->
 
 ## repowiki
