@@ -48,6 +48,7 @@ try {
   & go build -o (Join-Path $workspace 'workloom.exe') ./cmd/workloom; Assert-Exit 'go build devsys' 0
   Pop-Location
   $devsys = Join-Path $workspace 'workloom.exe'
+$workloom = $devsys
 
   # The stub stands in for the real CLI: the adapter chain (prompt on stdin,
   # workspace cwd, exit code) is pinned without a provider.
@@ -90,7 +91,7 @@ limits:
     $out = & $workloom workitem create --title $Title --actor me --reason demo
     Assert-Exit "workitem create $Title" 0
     $id = ($out | Select-Object -First 1).Split("`t")[0]
-    & $workloom workitem update --id $id --priority $Priority | Out-Null; Assert-Exit 'workitem update' 0
+    & $workloom workitem update --id $id --priority $Priority --actor me --reason demo | Out-Null; Assert-Exit 'workitem update' 0
     & $workloom workflow start --id $id --policy task --actor me --reason demo | Out-Null; Assert-Exit 'workflow start' 0
     foreach ($target in @('backlog', 'ready')) {
       & $workloom workitem transition --id $id --to $target --actor me --reason demo | Out-Null; Assert-Exit "transition $target" 0
@@ -161,12 +162,13 @@ print("PASS: the refusal routed", item["id"], "to", item["status"])
   $leasePy = New-Py 'lease' @"
 import json, subprocess, sys
 item = json.loads(subprocess.run(["workloom.exe", "--json", "workitem", "get", sys.argv[1]], capture_output=True, text=True).stdout)["item"]
-print(item.get("lease_owner", ""), item.get("lease_token", ""))
+print(item.get("lease_owner", ""))
 "@
-  $lease = (Invoke-Py $leasePy @($high)) -split ' '
-  & $workloom workitem release --id $high --owner $lease[0] --token $lease[1] --actor ops --reason 'free the slot' | Out-Null; Assert-Exit 'release' 0
+  $owner = (Invoke-Py $leasePy @($high)).Trim()
+  $token = (Get-Content (Join-Path $project ".devsys/local/leases/$high.token") -Raw).Trim()
+  & $workloom workitem release --id $high --owner $owner --token $token --actor ops --reason 'free the slot' --latest | Out-Null; Assert-Exit 'release' 0
   $failId = New-Item '会失败的尝试' 1
-  & $workloom workitem update --id $failId --assigned-harness codex | Out-Null; Assert-Exit 'assign harness' 0
+  & $workloom workitem update --id $failId --assigned-harness codex --actor me --reason demo | Out-Null; Assert-Exit 'assign harness' 0
   & git add -A; Assert-Exit 'git add' 0
   & git -c user.email=devsys@test -c user.name=devsys commit -q -m 'fixture: failing item'; Assert-Exit 'git commit' 0
   $env:STUB_CODEX_FAIL = '1'

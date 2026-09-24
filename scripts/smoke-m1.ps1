@@ -9,6 +9,7 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 $workspace = Join-Path ([IO.Path]::GetTempPath()) ('smoke-m1-' + [guid]::NewGuid().ToString('N'))
 $project = Join-Path $workspace 'demo-project'
 $devsys = Join-Path $workspace 'workloom.exe'
+$workloom = $devsys
 $helper = Join-Path $workspace 'smoke-helper.exe'
 $originalLocation = Get-Location
 $originalConfig = $env:DEVSYS_CONFIG_DIR

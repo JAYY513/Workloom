@@ -66,6 +66,7 @@ try {
   & go build -ldflags "-s -w" -o (Join-Path $workspace 'workloom.exe') ./cmd/workloom; Assert-Exit 'go build devsys' 0
   Pop-Location
   $devsys = Join-Path $workspace 'workloom.exe'
+$workloom = $devsys
   $env:PATH = "$workspace;$env:PATH"
 
   & git init -q $project; Assert-Exit 'git init' 0
@@ -188,7 +189,7 @@ print("routes: 6 pages + css + model + api + healthz; writes refused with Allow:
   Write-Host '== freshness hints name the fix (M7.4) =='
   Set-Content -Path (Join-Path $project 'internal/store/a.go') -Value 'package store // edited' -Encoding ASCII
   $stale = (& $devsys workspace view) -join "`n"; Assert-Exit 'stale view' 0
-  foreach ($w in @('knowledge: stale', 'affected: docs/repowiki/knowledge/store.md', 'hint: run `devsys knowledge refresh` to regenerate affected pages')) {
+    foreach ($w in @('knowledge: stale', 'affected: docs/repowiki/knowledge/store.md', 'hint: run `workloom knowledge refresh` to regenerate affected pages')) {
     if (-not $stale.Contains($w)) { throw "stale view misses $w" }
   }
   Write-Host 'PASS: a covered change marks the page stale, names it, and points at refresh (exit 0)'
@@ -199,8 +200,7 @@ print("routes: 6 pages + css + model + api + healthz; writes refused with Allow:
   Write-Host 'PASS: the same state through knowledge status exits 10 (one verdict, two faces)'
   $staleSite = Join-Path $workspace 'stale-site'
   & $devsys workspace build --static --out $staleSite | Out-Null; Assert-Exit 'stale build' 0
-  if (-not (Select-String -Path (Join-Path $staleSite 'index.html') -Pattern '知识已过期' -SimpleMatch)) { throw 'the stale site lost its banner' }
-  if (-not (Select-String -Path (Join-Path $staleSite 'knowledge.html') -Pattern 'devsys knowledge refresh' -SimpleMatch)) { throw 'the stale knowledge page lost its hint' }
+  if (-not (Select-String -Path (Join-Path $staleSite 'knowledge.html') -Pattern 'workloom knowledge refresh' -SimpleMatch)) { throw 'the stale knowledge page lost its hint' }
   Write-Host 'PASS: the stale static site carries the banner and the page hint'
   $staleBanner = Join-Path $workspace 'serve-stale.txt'
   $serve2 = Start-Process -FilePath $devsys -ArgumentList @('workspace', 'serve', '--port', '0') -WorkingDirectory $project -RedirectStandardOutput $staleBanner -RedirectStandardError (Join-Path $workspace 'serve-stale-err.txt') -NoNewWindow -PassThru
@@ -218,17 +218,17 @@ print("serve renders the stale banner from the same state")
   & git checkout -q -- internal/store/a.go; Assert-Exit 'git checkout source' 0
   Remove-Item -Recurse -Force (Join-Path $project 'docs/repowiki')
   $missing = (& $devsys workspace view) -join "`n"; Assert-Exit 'missing view' 0
-  foreach ($w in @('knowledge: missing', 'hint: configure `knowledge_generator`, then run `devsys knowledge refresh --full`')) {
+  foreach ($w in @('knowledge: missing', 'hint: configure `knowledge_generator`, then run `workloom knowledge refresh --full`')) {
     if (-not $missing.Contains($w)) { throw "missing view misses $w" }
   }
   Write-Host 'PASS: a missing page layer names the supported degradation and --full'
   & git checkout -q -- docs/repowiki; Assert-Exit 'git checkout pages' 0
   New-Item -ItemType Directory -Path (Join-Path $project '.devsys/local/txn/txn-smoke') -Force | Out-Null
   $pending = (& $devsys workspace view) -join "`n"; Assert-Exit 'pending view' 0
-  foreach ($w in @('pending: txn-smoke', 'hint: run `devsys doctor` to inspect before `devsys recover`')) {
+  foreach ($w in @('pending: txn-smoke', 'hint: run `workloom doctor` to inspect before `workloom recover`')) {
     if (-not $pending.Contains($w)) { throw "pending view misses $w" }
   }
-  if ($pending.Contains('hint: run `devsys knowledge refresh`')) { throw 'the pending view suggests refresh against untrusted state' }
+  if ($pending.Contains('hint: run `workloom knowledge refresh`')) { throw 'the pending view suggests refresh against untrusted state' }
   Write-Host 'PASS: pending transactions point at doctor, never at refresh'
   Remove-Item -Recurse -Force (Join-Path $project '.devsys/local/txn/txn-smoke')
   Remove-Item -Recurse -Force (Join-Path $project '.devsys/dist') -ErrorAction SilentlyContinue

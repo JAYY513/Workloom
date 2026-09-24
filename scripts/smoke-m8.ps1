@@ -9,6 +9,7 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 $workspace = Join-Path ([IO.Path]::GetTempPath()) ('smoke-m8-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
 $project = Join-Path $workspace 'demo-project'
 $devsys = Join-Path $workspace 'workloom.exe'
+$workloom = $devsys
 $originalLocation = Get-Location
 $originalConfig = $env:DEVSYS_CONFIG_DIR
 $originalEncoding = [Console]::OutputEncoding
@@ -89,8 +90,8 @@ try {
     $leased = (& $devsys sync status) -join "`n"
     if (-not $leased.Contains('blocked [active-leases]')) { throw "lease not classified: $leased" }
     if (-not $leased.Contains('handoff: NOT ready')) { throw 'leased tree reported ready' }
-    $token = (Get-Content (Join-Path $project ".devsys/scheduling/$itemId.yaml") | Where-Object { $_ -like 'token:*' }).Split(':')[1].Trim()
-    & $workloom workitem release --id $itemId --owner old-device --token $token --actor me --reason handoff-done --expect (Get-Version $itemId) | Out-Null
+    $token = $claim.token
+    & $workloom workitem release --id $itemId --owner old-device --token $token --actor me --reason handoff-done --latest | Out-Null
     Assert-Exit 'release'
     git add -A
     git -c user.email=devsys@test -c user.name=devsys commit -q -m "chore(workloom): claim and release $itemId"
@@ -181,8 +182,8 @@ try {
     $ErrorActionPreference = $oldErr2
     if (-not $refusal.Contains('only terminal runs may be archived')) { throw "refusal unexplained: $refusal" }
     Write-Output 'PASS: a running stream is refused with only-terminal-runs'
-    $gtoken = (Get-Content (Join-Path $project ".devsys/scheduling/$guardId.yaml") | Where-Object { $_ -like 'token:*' }).Split(':')[1].Trim()
-    & $workloom workitem release --id $guardId --owner archivist --token $gtoken --actor me --reason runs-guard-done --expect (Get-Version $guardId) | Out-Null
+    $gtoken = (Get-Content (Join-Path $project ".devsys/local/leases/$guardId.token") -Raw).Trim()
+    & $workloom workitem release --id $guardId --owner archivist --token $gtoken --actor me --reason runs-guard-done --latest | Out-Null
     Assert-Exit 'guard release'
     git add -A
     git -c user.email=devsys@test -c user.name=devsys commit -q -m "chore(workloom): archive segment $itemId"

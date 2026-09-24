@@ -226,21 +226,24 @@ func seed(root string) {
 	exit(err)
 	fmt.Printf("run %s\n", runID)
 
-	// 6. ReadSnapshot → Update 把 WorkItem 推到终态。说明：本步只走存储层
-	// 乐观并发（方案 §15.2），不代表 M2 工作项状态机的合法转换。M1 阶段
-	// 不做状态机校验，所以这里只是把"done"字样写进文件，不校验转移合法性。
-	snap, raw, err := items.ReadSnapshot(ctx, wiID)
-	exit(err)
-	if snap.Status == "done" {
-		fmt.Fprintln(os.Stderr, "smoke-m1-helper: work item already marked done before update")
-		os.Exit(1)
+	// 6. 推进 WorkItem through the public state machine. Plain Update now
+	// intentionally rejects status mutation; keep this fixture aligned with M2+
+	// invariants while preserving the final done assertion.
+	for _, target := range []string{"backlog", "ready", "in_progress", "review", "verification", "done"} {
+		_, raw, err := items.ReadSnapshot(ctx, wiID)
+		exit(err)
+		if _, err := items.Transition(ctx, wiID, workitem.TransitionRequest{
+			TargetStatus: target,
+			Actor:        "smoke-script",
+			Reason:       "advance fixture",
+			Now:          now.Add(4 * time.Second),
+		}, raw); err != nil {
+			exit(err)
+		}
 	}
-	snap.Status = "done"
-	snap.UpdatedAt = now.Add(4 * time.Second)
-	exit(items.Update(ctx, snap, raw))
 }
 
-// loadProjectID reads the project ID from .devsys/project.yaml via the public
+// loadProjectID reads the seeded project ID from project.yaml.
 // config loader. The smoke helper must work against any initialized project,
 // not a hard-coded literal.
 func loadProjectID(root string) string {

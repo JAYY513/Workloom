@@ -12,6 +12,7 @@ $success = $false
 $oldConfig = $env:DEVSYS_CONFIG_DIR
 $oldLocation = Get-Location
 
+$OutputEncoding = [System.Text.UTF8Encoding]::new()
 function Assert-Exit([string]$What, [int]$Code) {
   if ($LASTEXITCODE -ne $Code) { throw "$What exited $LASTEXITCODE, want $Code" }
 }
@@ -50,6 +51,7 @@ try {
   & go build -o (Join-Path $workspace 'm4helper.exe') ./scripts/m4helper; Assert-Exit 'go build m4helper' 0
   Pop-Location
   $devsys = Join-Path $workspace 'workloom.exe'
+$workloom = $devsys
   $helper = Join-Path $workspace 'm4helper.exe'
   & git init -q $project; Assert-Exit 'git init' 0
   Set-Location $project
@@ -68,11 +70,12 @@ try {
   if (-not $cliVersion) { throw 'CLI could not read the MCP-created decision' }
   Write-Host "PASS: CLI reads the MCP-created decision $decisionId (version $cliVersion)"
 
-  Write-Host '== session =='
-  $sessionJson = & $workloom --json session start --harness smoke --agent smoke --intent acceptance
-  Assert-Exit 'session start' 0
-  $actionPy = New-Py 'action' "import json,sys`nv=json.load(sys.stdin)`nassert v['ok'] is True`nassert v['recommended_next_action']['type']`nprint(v['recommended_next_action']['type'])"
-  $action = Run-Py $actionPy $sessionJson
+  $sessionPath = Join-Path $workspace 'session.json'
+  $sessionProc = Start-Process -FilePath $workloom -ArgumentList @('--json', 'session', 'start', '--harness', 'smoke', '--agent', 'smoke', '--intent', 'acceptance') -WorkingDirectory $project -RedirectStandardOutput $sessionPath -NoNewWindow -Wait -PassThru
+  if ($sessionProc.ExitCode -ne 0) { throw "session start exited $($sessionProc.ExitCode)" }
+  $actionPy = New-Py 'action' "import json,sys`nv=json.load(open(sys.argv[1],encoding='utf-8'))`nassert v['ok'] is True`nassert v['recommended_next_action']['type']`nprint(v['recommended_next_action']['type'])"
+  $action = & python $actionPy $sessionPath
+  if ($LASTEXITCODE -ne 0) { throw 'session JSON validation failed' }
   Write-Host "PASS: session start recommends $($action.Trim())"
 
   Write-Host '== exchange =='
@@ -113,10 +116,12 @@ try {
   Write-Host 'PASS: wire is idempotent and preserves hand-written content'
 
   Write-Host '== knowledge =='
-  $knowledge = & $workloom --json knowledge status
-  Assert-Exit 'knowledge status' 0
-  $knowledgePy = New-Py 'knowledge' "import json,sys`nv=json.load(sys.stdin)`nassert v['ok'] is True`nassert v['status']=='unavailable', v`nprint('PASS: knowledge status degrades honestly')"
-  Run-Py $knowledgePy $knowledge | Write-Host
+  $knowledgePath = Join-Path $workspace 'knowledge.json'
+  $knowledgeProc = Start-Process -FilePath $workloom -ArgumentList @('--json', 'knowledge', 'status') -WorkingDirectory $project -RedirectStandardOutput $knowledgePath -NoNewWindow -Wait -PassThru
+  if ($knowledgeProc.ExitCode -ne 11) { throw "knowledge status exited $($knowledgeProc.ExitCode), want 11" }
+  $knowledgePy = New-Py 'knowledge' "import json,sys`nv=json.load(open(sys.argv[1],encoding='utf-8'))`nassert v['ok'] is True, v`nassert v['status']=='missing', v`nprint('PASS: knowledge status reports missing pages honestly')"
+  & python $knowledgePy $knowledgePath | Write-Host
+  if ($LASTEXITCODE -ne 0) { throw 'knowledge JSON validation failed' }
 
   Write-Host 'PASS: M4 MCP surface / write parity / session / exchange / wire / knowledge.'
   $success = $true
