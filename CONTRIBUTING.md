@@ -29,6 +29,8 @@ workloom --version
 
 此方式仅用于作者本地 dogfood，不是普通用户的安装步骤；正式发布前仍须用干净环境验证 npm 包。
 
+如果 npm 安装后提示平台包未安装，重跑 `npm install -g @kaki317/workloom --force --include=optional`；不要使用 `--omit=optional`。
+
 ## 提交前
 
 1. 先阅读[设计文档](docs/design.md)的设计原则与边界约束。

@@ -70,11 +70,16 @@ npm install -g @kaki317/workloom   # 需要 Node.js >= 18
 workloom --version
 ```
 
-不替代 1a–1c。包名是 `@kaki317/workloom`（scoped），npm bin 只有 `workloom`；平台二进制随平台包一起装（`optionalDependencies`），安装时不下载 exe。
+不应使用 `--omit=optional`。如果安装后提示 `platform package ... is not installed`，npm 没有落盘可选平台依赖时，重跑：
 
-**当前只发布了 `win32-x64`**：macOS / Linux / Windows ARM64 上安装会缺少平台二进制，运行时被明确拒绝（不会去下载）——这些平台先用 1a–1c，等对应平台包发布后同一条命令即可用。其余平台包的 tgz 一直随 Release 附发（`dist/npm/*.tgz`），发布步骤见 [docs/发布流程.md](docs/发布流程.md) §5b。
+```bash
+npm install -g @kaki317/workloom --force --include=optional
+workloom --version
+```
 
-`npx` 不作为主安装路径（冷启动要联网、版本随 npx 缓存漂移）；MCP 片段里的 npx 行只是可选补充。
+安装时不下载 exe——平台二进制随平台包一起装（`optionalDependencies`）。
+**当前只发布了 `win32-x64`**：macOS / Linux / Windows ARM64 上安装会缺少平台二进制、运行时被明确拒绝（不会去下载），这些平台先用 1a–1c，等对应平台包发布后同一条命令即可用。`npx` 不作为主安装路径（冷启动要联网、版本随 npx 缓存漂移）。
+
 
 ## §2 接入项目（每个项目一次）
 
