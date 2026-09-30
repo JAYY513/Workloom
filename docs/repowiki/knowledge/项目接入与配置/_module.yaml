@@ -9,11 +9,12 @@ scope:
     - internal/version/**
     - internal/domain/**
     - README.md
-    - internal/cli/records.go
-    - internal/cli/diagnostics.go
-    - internal/cli/mcp.go
-    - internal/cli/worktree.go
-    - internal/cli/dispatch.go
+    - INSTALL.md
+    - CHANGELOG.md
+    - Makefile
+    - .github/workflows/release.yml
+    - npm/**
+    - .agents/skills/devsys/**
     - scripts/m4helper
     - scripts/smoke-m4.sh
     - scripts/smoke-m4.ps1
@@ -23,19 +24,16 @@ scope:
     - scripts/smoke-m6.ps1
     - scripts/smoke-m7.sh
     - scripts/smoke-m7.ps1
-    - internal/syncstatus/**
-    - internal/archive/**
     - scripts/smoke-m8.sh
     - scripts/smoke-m8.ps1
     - scripts/contrabass/**
-    - INSTALL.md
-    - CHANGELOG.md
-    - Makefile
-    - .github/workflows/release.yml
-    - npm/**
-    - .agents/skills/devsys/**
+    - internal/syncstatus/**
+    - internal/archive/**
+    - docs/hub-v1.md
+    - docs/hub-v1-prototype.html
 source_files:    []
 depends_on:
     - "共享应用与MCP"
-related_to:    []
+related_to:
+    - "视图域只读聚合"
 children:    []

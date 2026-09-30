@@ -8,6 +8,8 @@ scope:
     - internal/prompt/**
 source_files:    []
 depends_on:
-    []
-related_to:    []
+    - "可靠文本存储"
+    - "共享应用与MCP"
+related_to:
+    - "项目接入与配置"
 children:    []

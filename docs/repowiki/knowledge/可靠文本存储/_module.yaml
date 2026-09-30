@@ -20,6 +20,12 @@ scope:
     - internal/archive/**
 source_files:    []
 depends_on:
-    []
-related_to:    []
+    - internal/domain/**
+related_to:
+    - internal/app/**
+    - internal/cli/**
+    - internal/mcp/**
+    - internal/config/**
+    - internal/project/**
+    - internal/workspace/**
 children:    []

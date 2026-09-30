@@ -32,9 +32,29 @@ triggers:
   - mcp serve --profile session,executor --tier core
   - run_verify skipped
   - workloom setup 不注册 MCP
-description: "MCP 服务端的四种 profile（session / executor / reviewer / admin）暴露规则、默认组合与 `visible` 的注册期过滤语义；本批（#301）在 profile 之上叠加 **tier 档**——`TierCore` 是默认 CLI `--tier core` / 缺省值（20 项「日常子集」工具），`TierStandard` 含 profile 全量（66 项工具面），二者与 profile 合取（visible(spec.profiles, cfg.Profiles) && visibleTier(spec.tier, tier)）。`toolSpec` 新增 `tier` 字段（空 = standard，显式 `TierCore` 才进 core 档）；`server.go` 新增 `ParseTier`（拒绝未知名）/ `tierLevel`（core=0 / 其它=1）/ `visibleTier`；`tools_health.go` 的 `health` 响应回传当前 `tier`；CLI `workloom mcp serve --tier core|standard` 直接转 `mcp.ParseTier`。`project_blueprint_get`（session 档 / standard tier）补注册入口由 `tools.go` 与 `tools_project.go:56` 共同组成，未声明蓝图时 `artifact: null`。本批（#336/#337，project_update 蓝图字段+mcp 启动前过滤）：project_update 输入增 blueprint_artifact_id（empty string clears，id must already be registered）；internal/mcp/server.go 新导出 VisibleTools(cfg) []string，让 CLI mcp serve 在 0 工具时拒绝启动（exit 2，提示 --tier standard），是注册期过滤之外的\"启用前\"二次检查。；本轮（ca58d27→19b9149，setup/mcp install 与注册名）：workloom mcp install 写入的条目统一调用 mcp serve --profile session,executor --tier core（与 DefaultProfiles / DefaultTier 默认一致），目标客户端 codex / claude / opencode 支持 user / project scope；注册名保持 devsys（二进制改名 workloom，配置键仍是 mcp_servers.devsys / mcpServers.devsys / mcp.devsys）；workloom setup 不注册 MCP（只报告 mcp 行）；MCP run_verify 的返回体随 CompletionCheck 增 skipped 字段（非 Git 项目 / 目录工作区），Advanced 仍为 false。"
+  - workitem_follow_up
+  - 跟进任务
+  - 受控派生 follow-up
+  - workflow_recommend
+  - 策略推荐
+  - project_blueprint_import
+  - import-blueprint
+  - bound_id
+  - blueprint warnings
+  - 工具总数 69
+  - 66 → 69
+  - dynamicFollowUpTypes
+  - CreateFollowUpRequest
+  - 新增工具
+  - executor 写工具
+  - admin 蓝图导入
+  - followup
+  - 不再隐式 init
+  - session start
+  - hub 注册表
+description: "\"\"\"\"MCP 服务端的四种 profile（session / executor / reviewer / admin）暴露规则、默认组合与 `visible` 的注册期过滤语义；本批（#301）在 profile 之上叠加 **tier 档**——`TierCore` 是默认 CLI `--tier core` / 缺省值（20 项「日常子集」工具），`TierStandard` 含 profile 全量（66 项工具面），二者与 profile 合取（visible(spec.profiles, cfg.Profiles) && visibleTier(spec.tier, tier)）。`toolSpec` 新增 `tier` 字段（空 = standard，显式 `TierCore` 才进 core 档）；`server.go` 新增 `ParseTier`（拒绝未知名）/ `tierLevel`（core=0 / 其它=1）/ `visibleTier`；`tools_health.go` 的 `health` 响应回传当前 `tier`；CLI `workloom mcp serve --tier core|standard` 直接转 `mcp.ParseTier`。`project_blueprint_get`（session 档 / standard tier）补注册入口由 `tools.go` 与 `tools_project.go:58` 共同组成，未声明蓝图时 `artifact: null`。本批（#336/#337，project_update 蓝图字段+mcp 启动前过滤）：project_update 输入增 blueprint_artifact_id（empty string clears，id must already be registered）；internal/mcp/server.go 新导出 VisibleTools(cfg) []string，让 CLI mcp serve 在 0 工具时拒绝启动（exit 2，提示 --tier standard），是注册期过滤之外的\"启用前\"二次检查。；本轮（ca58d27→19b9149，setup/mcp install 与注册名）：workloom mcp install 写入的条目统一调用 mcp serve --profile session,executor --tier core（与 DefaultProfiles / DefaultTier 默认一致），目标客户端 codex / claude / opencode 支持 user / project scope；注册名保持 devsys（二进制改名 workloom，配置键仍是 mcp_servers.devsys / mcpServers.devsys / mcp.devsys）；workloom setup 不注册 MCP（只报告 mcp 行）；MCP run_verify 的返回体随 CompletionCheck 增 skipped 字段（非 Git 项目 / 目录工作区），Advanced 仍为 false。；**本批（d07638c→9d7ed6c，13 commit / 124 文件：Hub 网页 + 工作流推荐 + 跟进任务 + 契约测试）**：工具面 **66 → 69 项，core 档仍 20 项**（四个 profile × standard 的全量从 66 增到 69；默认 `session+executor`+core 仍是恰好 20）。三个新工具都落在**既有** profile 上，不引入新 profile、不新增 tier 维度：`workitem_follow_up`（**executor**，[tools.go:47](file://internal/mcp/tools.go#L47)，处理器 [tools_workitem.go:104-118](file://internal/mcp/tools_workitem.go#L104-L118)，输入 [tools_workitem.go:94-102](file://internal/mcp/tools_workitem.go#L94-L102)）——从既有工作项派生**受控**草稿子项，描述明写 \"arbitrary workflow YAML is not accepted\"（[:107](file://internal/mcp/tools_workitem.go#L107)），类型白名单是 app 层的 `dynamicFollowUpTypes`（[followup.go:12-18](file://internal/app/followup.go#L12-L18)）；`workflow_recommend`（**session**，[tools.go:63](file://internal/mcp/tools.go#L63)，处理器 [tools_workflow.go:15-27](file://internal/mcp/tools_workflow.go#L15-L27)，标 `readOnly()`，[tools_workflow.go:19](file://internal/mcp/tools_workflow.go#L19)）——解释确定性策略推荐与当前已选策略的 mismatch，只读，零写入；`project_blueprint_import`（**admin**，[tools.go:38](file://internal/mcp/tools.go#L38)，处理器 [tools_project.go:140-151](file://internal/mcp/tools_project.go#L140-L151)）——把 `product-blueprint.yaml` 里显式声明的字段单事务导入 project.yaml，需 `expect` + `actor` + `reason`。「推荐是 session 只读、派生是 executor 写、导入是 admin 写」这条分档与 `方案 §8.6`「危险条目必须显式」一致。`project_blueprint_get` 的结果体同时扩为 `{bound_id, artifact, warnings}`（[tools_project.go:52-72](file://internal/mcp/tools_project.go#L52-L72)）——`bound_id` 是 project.yaml 声明的 id，`artifact` 是沿版本链解析到的最新版本，两者不等即 stale，`warnings` 汇总 `BlueprintWarnings`（[project.go:320-332](file://internal/app/project.go#L320-L332)）+ `BlueprintStaleNotice`（[project.go:352-360](file://internal/app/project.go#L352-L360)），此前这条 stale 信号只在 CLI 可见。`server_test.go` 的工具计数断言同步到 69（[server_test.go:405-406](file://internal/mcp/server_test.go#L405-L406)、[:492-493](file://internal/mcp/server_test.go#L492-L493)）。core 档 20 项**不变**：本批没有把任何新工具标成 `TierCore`——`workflow_recommend` 虽属日常读路径，但需要先有 `workflow_list` 的策略上下文，留在 standard 与既有 `context_get` 同档的处理一致。"
 generated: true
-source_commit: 705cb18
+source_commit: 9d7ed6c6518781e2d15288de947672785137fa57
 generator: repowiki-gen
 ---
 
@@ -44,7 +64,7 @@ M4 把 MCP 工具的暴露面拆成四种 profile。`DefaultProfiles = [session,
 
 ## Profile 默认组合
 
-`internal/mcp/server.go:32-37`：
+`internal/mcp/server.go:30-40`（profile 常量块）：
 
 ```go
 const (
@@ -68,7 +88,7 @@ func DefaultProfiles() []string { return []string{ProfileSession, ProfileExecuto
 
 ## `toolSpec` 注册表
 
-`internal/mcp/tools.go:28-115` 的 `allTools()` 是唯一的工具清单；每一个工具的 `profiles` 字段决定它在哪些 profile 下被注册，本批新增的 `tier` 字段决定它出现在哪个 tier 档里（**显式 `TierCore` 才进 core 档**，空 = standard）。
+`internal/mcp/tools.go:27-113` 的 `allTools()` 是唯一的工具清单；每一个工具的 `profiles` 字段决定它在哪些 profile 下被注册，本批新增的 `tier` 字段决定它出现在哪个 tier 档里（**显式 `TierCore` 才进 core 档**，空 = standard）。
 
 ```go
 type toolSpec struct {
@@ -82,7 +102,7 @@ type toolSpec struct {
 
 `tier` 字段值域：`""`（= standard）或 `mcp.TierCore`；`mcp.TierStandard` 仅作 CLI `--tier standard` 字面量（不在 `toolSpec` 里出现，空字符串已隐式等价）。
 
-注册逻辑（`internal/mcp/server.go:137-145`，本批把 tier 维度的过滤也并入同一循环）：
+注册逻辑（`internal/mcp/server.go:133-145`，本批把 tier 维度的过滤也并入同一循环）：
 
 ```go
 tier := cfg.Tier
@@ -120,9 +140,9 @@ for _, spec := range allTools() {
 | 族 | session 暴露 | executor 额外暴露 | reviewer 额外暴露 | admin 额外暴露 |
 |---|---|---|---|---|
 | health | `health` | — | — | — |
-| project | `project_list` / `project_get` / `project_status` / `project_blueprint_get`（standard tier） | — | — | `project_create` / `project_update` / `project_state_update` |
-| workitem | `workitem_list` / `workitem_get` / `workitem_next` | `workitem_create` / `workitem_update` / `workitem_transition` / `workitem_claim` / `workitem_release` / `workitem_start` / `workitem_block` / `workitem_complete` / `workitem_comment` / `workitem_add_dependency` / `workitem_remove_dependency` | — | — |
-| workflow | `workflow_list` / `workflow_get` / `workflow_step_next` | `workflow_start` / `workflow_step_complete` / `workflow_pause` / `workflow_resume` / `workflow_cancel` | — | — |
+| project | `project_list` / `project_get` / `project_status` / `project_blueprint_get`（standard tier，返回 `{bound_id, artifact, warnings}`） | — | — | `project_create` / `project_update` / `project_state_update` / **`project_blueprint_import`**（本批） |
+| workitem | `workitem_list` / `workitem_get` / `workitem_next` | `workitem_create` / `workitem_update` / `workitem_transition` / `workitem_claim` / `workitem_release` / `workitem_start` / `workitem_block` / `workitem_complete` / `workitem_comment` / `workitem_add_dependency` / `workitem_remove_dependency` / **`workitem_follow_up`**（本批） | — | — |
+| workflow | `workflow_list` / `workflow_get` / `workflow_step_next` / **`workflow_recommend`**（本批，readOnly） | `workflow_start` / `workflow_step_complete` / `workflow_pause` / `workflow_resume` / `workflow_cancel` | — | — |
 | approval | `approval_list` / `approval_get` | `approval_request` | `approval_decide` | — |
 | decision | `decision_list` / `decision_get` | `decision_create` | `decision_approve` | — |
 | finding | `finding_list` / `finding_get` | `finding_create` / `finding_resolve` | — | — |
@@ -135,10 +155,11 @@ for _, spec := range allTools() {
 
 说明：
 
-- `project_blueprint_get`（session + standard tier）走 `internal/mcp/tools_project.go:56 registerProjectBlueprint`；未声明蓝图时返回 `artifact: null`（`ProjectBlueprint` 在 `internal/app/project.go:204` 返回 `(nil, nil)`），CLI `project blueprint` 与 MCP 都按 exit 0 处理。
+- `project_blueprint_get`（session + standard tier）走 `internal/mcp/tools_project.go:58 registerProjectBlueprint`；未声明蓝图时返回 `artifact: null`（`ProjectBlueprint` 在 `internal/app/project.go:366-374` 返回零值 `BlueprintResult`），CLI `project blueprint` 与 MCP 都按 exit 0 处理。**本批**该工具的返回体从裸 `artifact` 扩为 `blueprintResult{BoundID, Artifact, Warnings}`（[internal/mcp/tools_project.go:52-56](file://internal/mcp/tools_project.go#L52-L56)）：`BoundID` 是 project.yaml 里声明的 id **原样**，`Artifact` 是 `ArtifactLatest` 沿 `previous_id` 链解析到的最新版本——两者不等说明声明落在旧版本上（[internal/app/project.go:347-350](file://internal/app/project.go#L347-L350)），`BlueprintStaleNotice` 把重绑命令写进 `warnings`（[tools_project.go:68-71](file://internal/mcp/tools_project.go#L68-L71)）。
+- **本批三个新工具的分档理由**：`workflow_recommend` 是 session + `readOnly()`（[internal/mcp/tools_workflow.go:15-19](file://internal/mcp/tools_workflow.go#L15-L19)）——推荐本身是纯读，不创建也不改 workflow 实例，agent 拿它来解释「为什么该走 intake」；`workitem_follow_up` 是 executor——它会**写**一个新工作项 + 一条事件，因此归写档（[internal/mcp/tools_workitem.go:104-118](file://internal/mcp/tools_workitem.go#L104-L118)），工具描述明写 "arbitrary workflow YAML is not accepted"，把「受控」这条约束暴露在工具面上而不只藏在实现里；`project_blueprint_import` 是 admin——它过 `expect` 改写项目级 `project.yaml`（[internal/mcp/tools_project.go:140-151](file://internal/mcp/tools_project.go#L140-L151)），与同族的 `project_update` / `project_state_update` 同档。**三档都留在 standard tier**，`--tier core` 的默认 20 项不受影响。
 - `workitem_update` / `workflow_step_complete` / `run_update` / `run_fail` / `run_cancel` / `workitem_block` / `context_for_workitem` / `context_refresh` / `context_compact` 等「日常以外的扩展项」均为 **standard tier**（`toolSpec.tier = ""`）——core 档不暴露。`event_record` 是 TierCore（日常子集）。
 - `health` 在两种 tier 都暴露（`TierCore`），并把当前 `tier` 字段回写到响应里（[internal/mcp/tools_health.go:52-72](file://internal/mcp/tools_health.go#L52-L72)）。
-- 工具总数：`allTools()` 共 **66 项**（含 20 项 `TierCore` + 46 项 `TierStandard`）；默认 profile（`session + executor`）+ core 档暴露 **恰好 20 项**。`run_complete` / `run_fail` / `run_cancel` 各有自己的 register（`registerRunComplete` / `registerRunFail` / `registerRunCancel`；后两者共用 `registerRunFinish` helper，每次只登记一个名字），因此 tier 门不会把 standard 条目带进 core（v0.1.2 / ba342b0 拆 `registerRunFinish` 的修复；v0.1.4 / 9aab68f 把 `workitem_release` 补进 core 档，19→20——claim 与 release 成对，agent 能 claim 就必须能在 core 档 let go）。`--tier standard` 时补齐当前 profile 的全量（四 profile 合计 66）。进度/失败/受阻（`run_update` / `run_fail` / `run_cancel` / `workitem_block`）留在 standard，MCP 优先路径用 CLI 或 `--tier standard`。
+- 工具总数：`allTools()` 共 **69 项**（含 20 项 `TierCore` + 49 项 `TierStandard`；**本批从 66 项增至 69 项**，新增 `workitem_follow_up` / `workflow_recommend` / `project_blueprint_import`，三者的 `tier` 字段都留空 = standard）；默认 profile（`session + executor`）+ core 档暴露 **恰好 20 项**（`TestAllToolsAreUniqueAndCounted` 与 `TestTierCoreIsTheDailySubset` 分别断言 69 与 20，[internal/mcp/server_test.go:405-406](file://internal/mcp/server_test.go#L405-L406)、[:422-423](file://internal/mcp/server_test.go#L422-L423)；四 profile + standard 合计断言在 [:492-493](file://internal/mcp/server_test.go#L492-L493)）。`run_complete` / `run_fail` / `run_cancel` 各有自己的 register（`registerRunComplete` / `registerRunFail` / `registerRunCancel`；后两者共用 `registerRunFinish` helper，每次只登记一个名字），因此 tier 门不会把 standard 条目带进 core（v0.1.2 / ba342b0 拆 `registerRunFinish` 的修复；v0.1.4 / 9aab68f 把 `workitem_release` 补进 core 档，19→20——claim 与 release 成对，agent 能 claim 就必须能在 core 档 let go）。`--tier standard` 时补齐当前 profile 的全量（四 profile 合计 69）。进度/失败/受阻（`run_update` / `run_fail` / `run_cancel` / `workitem_block`）留在 standard，MCP 优先路径用 CLI 或 `--tier standard`。
 
 ### Core 档（20 项）
 
@@ -236,6 +257,8 @@ mcp serve: profiles "a", "b" have no tools in tier core; use --tier standard
 - **本批（v0.1.12 / MCP 接入闭环）**：本页的 profile / tier 暴露面与工具清单不变；`mcp install` 侧两处变化——写出的条目命令由 `ResolveMCPCommand` 决定（npm 安装改成 `node` + wrapper 脚本 `bin/workloom.js`，[internal/app/mcpcommand.go:53-74](file://internal/app/mcpcommand.go#L53-L74)），并新增启动探针（`MCPInstallView.Probe` / JSON `probe`：`--dry-run` 也探不写、`--apply` 失败 → `Preconditionf` exit 3 且配置保留、`DEVSYS_MCP_PROBE=0` → `Skipped`）；`MCPSnippet` 第二参由 `devsysBin string` 换成 `cmd MCPCommand`；`source_commit` 跟进至 `7cdd918`。
 
 - **本批（v0.1.13 / #414+#416）**：本页 profile / tier 暴露面与工具清单不变（core 20 项 / standard 66 项口径照旧）；`internal/app/mcpsnippets.go` 的 `coreNote` 去掉硬编码「19-tool」（[internal/app/mcpsnippets.go:22-23](file://internal/app/mcpsnippets.go#L22-L23)），只保留「`--tier core` 是日常子集；`run_update` / `run_fail` / `workitem_block` 需 CLI 或 `--tier standard`」——snippet 文案不再携带会漂移的工具数，注册 / 暴露语义不变；#416 的 npm OIDC 发布链只影响分发包，不触及工具面；`source_commit` 跟进至 `705cb18`。
+
+- **本批（d07638c→9d7ed6c / 13 commit）**：工具面 **66 → 69 项**（core 仍 20）。三个新工具分别是 `workitem_follow_up`（executor）、`workflow_recommend`（session + `readOnly()`）、`project_blueprint_import`（admin），全部 `tier=""`（standard）；`project_blueprint_get` 的返回体增 `bound_id` + `warnings`（[internal/mcp/tools_project.go:52-72](file://internal/mcp/tools_project.go#L52-L72)）。分档纪律不变：危险写操作只在 executor / admin 显式 profile 下出现，`reviewer` / `admin` 仍须 `--profile reviewer,admin` 显式取用；`workflow_recommend` 落在 session 档正说明「只读 = 日常可读」，写路径不因新增能力而放宽。`internal/mcp/server_test.go` 的三处计数断言（69 / 20 / 69）随之更新，是本批唯一需要跟改的测试面（[internal/mcp/server_test.go:405-406](file://internal/mcp/server_test.go#L405-L406)、[:422-423](file://internal/mcp/server_test.go#L422-L423)、[:492-493](file://internal/mcp/server_test.go#L492-L493)）。`source_commit` 跟进至 `9d7ed6c`。
 
 ## 与其他层的关系
 

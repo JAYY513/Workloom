@@ -10,5 +10,6 @@ depends_on:
     - "可靠文本存储"
     - "执行层"
     - "知识层"
+    - "项目接入与配置"
 related_to:    []
 children:    []

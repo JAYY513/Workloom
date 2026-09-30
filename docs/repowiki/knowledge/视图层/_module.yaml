@@ -3,8 +3,10 @@ title: 视图层
 scope:
     - internal/view/**
     - internal/sitestatic/**
+    - internal/hubstatic/**
 source_files:    []
 depends_on:
     - "可靠文本存储"
 related_to:    []
-children:    []
+children:
+    - "Hub静态资源"

@@ -1,3 +1,26 @@
+## 2026-09-30 · 9d7ed6c repowiki 增量刷新（13 commit / 124 文件：Hub 网页 + 工作流推荐 + 跟进任务 + npm PowerShell shim + 记录传播移除）
+
+- 源码基线：`d07638c` → `9d7ed6c`（13 commits / 124 文件）。主力改动集中在 `internal/app`（20）、`internal/cli`（17）、`internal/mcp`（7）、`internal/workflow`（6）、`internal/workitem`（5）、`npm/workloom`（4）、**新增 `internal/hubstatic`（4）**、`.agents/skills`（15）、`.devsys`（9，首次入库）。
+- 档位与范围：模块树（367 源文件 / 264 Go）。`status` 判定 `affected_pages` = 47 页 = 5 个模块的全部受管页 + 3 篇文章；**知识层 9 张卡 scope 无变更，保持原样**（`source_commit` 仍 `690b294`，符合增量纪律）。plan 变更仅三处：view-layer scope 增 `internal/hubstatic/**`、project-access scope 增 `docs/hub-v1.md` + `docs/hub-v1-prototype.html`、coverage 按新快照重算（367 → covered 329 / uncovered 38）。
+- **新增文章** `content/内容关系与归属.md`（type=domain，跨全部 6 模块，29 条引注）：按「项目级全局 / 任务级强绑定 / 任务级可选关联」三档梳理 `.devsys/` 全部实体的磁盘位置、ID 格式、外键字段与必填性，并区分硬外键（Run→WorkItem、Approval→WorkItem）、软关联（Artifact 主归属 + `related` 双写，Decision/Finding **只有** related）、纯状态汇总（**Milestone 与 WorkItem 之间无外键**）三类强度；覆盖工作流模板全局 vs 实例按任务 + `default_policy` 回落、follow-up 五条硬约束、ContextSnapshot 按值冻结。已登记进 `plan.json` 的 `articles[]` 与 `custom[]`。
+- 实质内容更新（本批变更点全部落卡）：
+  - **Hub 多项目网页**：新增 `workloom hub serve`（`internal/cli/hub_serve.go`，缺省 `127.0.0.1:18080`，可从任意目录启动，按用户级注册表聚合 `.devsys` 项目，**添加项目只写注册表不改项目业务状态**）+ 新增自定义主题卡 `knowledge/视图层/Hub静态资源.md`（`internal/hubstatic` 4 文件 go:embed，资源内无项目数据，与 sitestatic 零 JS 离线站的对照写进 概述/架构/技术栈/特殊配置与命令 四卡）。
+  - **工作流策略推荐**：`internal/workflow/recommend.go`（explicit/rule/default 三来源 + 高/中/低置信度 + `requires_triage`，不调模型不生成策略数据）。
+  - **跟进任务**：`internal/app/followup.go`（`ParentID` 必填、五类白名单、`draft`+`pending` 起步、只有 `decision` 类带 `approval_required`、写 `follow_up_workitem_created`、不改父任务与父的活跃 run）。
+  - **记录传播移除**：`internal/workitem/propagate.go`（225 行）整文件删除，契约反转为不传播，回归测试改名 `TestCompletionDoesNotPropagateProjectRecords`。三处死链引注（`开发与故障诊断.md` 文件清单 + 正文、`项目总览.md` 路径串）已清理/改为删除说明。
+  - **租约拒绝面**：撞活跃租约的普通状态命令由 `ErrLeaseTokenMismatch` 改为 `ErrAlreadyClaimed` + holder API 文案（`state.go:118-137` / `165-171`）。
+  - **git 超时**：`gitOutput` 改 `context.WithTimeout` + `exec.CommandContext`，`gitCommandTimeout = 10s`，超时返回 `*GitError` 不与 `ErrGitMissing` 合并（执行层 6 卡 + 文章）。
+  - **npm PowerShell shim**：新增 `bin/workloom.ps1` + `WORKLOOM_BIN`（`bin` 字段仍 `workloom.js`，MCP 注册不变）。
+  - **MCP 工具面 66 → 69**（`project_blueprint_import` / `workitem_follow_up` / `workflow_recommend`，均非 core 档；core 仍 20）。`index.md` 与文章里的「66 项工具」已改 69；历史条目里的 19/20 是版本史实，**按史实保留不改**。
+  - 新增 3 个对外表面契约测试（`help_contract_test.go` / `json_contract_test.go` / `diagnostics_contract_test.go`）+ `npm_pack_test.go` 扩充。
+  - `.gitattributes` 增 `.devsys/** text eol=lf` 与 `.agents/** text eol=lf`（文章同步）。
+- 保护：D4 hash 比对 61/61 全匹配，**0 人工修改页、0 跳过、0 强制覆盖**。`知识层` 9 卡与 `执行层/适配器协议契约.md`（所引 7 个源文件本轮零改动，已逐一核验）属「在受影响集合内但内容无影响」，未做无意义重写。
+- 执行粒度：模块树档位，按模块并行 4 个 worker（shared-app-mcp / durable-storage / project-access / view-layer）+ 主 agent 直做执行层（仅 `prompt.go` + `git.go` 两文件，146 引注自校验全绿）+ 直做 3 篇文章与链接整理/校验/收尾。**view-layer 子代理中途耗尽 token 配额**，已完成 4 卡 + 新建 Hub静态资源卡，主 agent 接手补完 `技术栈` / `特殊配置与命令` / `读取纪律与信任语义` 的 `source_commit` 与正文。
+- 过程事故与修复（如实记录）：主 agent 在同步「显示行号 ↔ 链接行号」时写出有缺陷的 `[regex]::Replace` 回调，只返回显示文本、吞掉了 `](file://…)` 链接标记，**一次性破坏 3 篇文章共 481 处链接**。发现后未打补丁掩盖，而是 `git checkout -- docs/repowiki/content/` 回到基线，再按可复现脚本重做（line_shift 53/53 重新应用 → 5 处内容编辑用精确 `edit` 重放 → 改用保留完整匹配的回调重做行号同步），最终 3 篇文章 510 条引注 0 问题。子代理侧独立撞到同类正则陷阱并自行发现修复。
+- 校验：`repowiki validate` = **63 files / 0 errors / 0 warnings**。自建机械审计：**2706 条 `file://` 引注 0 缺失 / 0 越界**、显示行号与链接行号 **0 不一致**、bundle 相对链接 **0 死链**（代码块内链接已跳过）、**57 页全部可从 index.md 到达**（log.md 按规范豁免）、6 个模块卡片导航 **0 缺失**。`Hub静态资源.md` 初次 validate 报 4 错 1 警（校验器按知识卡要求 `status/type/triggers/description/dimension`，与技能文档的自定义主题卡写法冲突），按「不合格项回炉修正」补齐知识卡字段并保留 `kind/name/category/scope/source_files` 后通过。
+- 收尾：`repowiki state --update` = 63 pages / coverage 329/367 / phase finalize(success)；`run.json` 由 CLI 自动清除。
+- 验证边界：本轮只改 `docs/repowiki/**` 与 `.repowiki/**`，**产品代码零改动**；`go test ./...` 在 `9d7ed6c` 树上退出码 0（全绿，`internal/cli` 320s / `internal/app` 183s 为最慢两包）。
+
 ## 2026-09-23 · 工具对齐 ccead63（形状纠正 + _module.yaml 锚）
 
 - 背景：LoomWiki 仓 `ccead63`（2026-09-23 08:41）纠正 `#420` 的单文件误读——恢复「一模块一目录多文档 + 五维卡 + dimension」形状（与本仓 bundle 同构），新增 `_module.yaml` 目录锚（title/scope/关系只进 yaml）；全局 CLI 副本已同步，`repowiki validate` 对本仓恢复 0 errors（此前 50× `missing 'module'` 系校验器领先 bundle，非内容错误）。
