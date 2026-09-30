@@ -1,0 +1,4 @@
+interface:
+  display_name: "Visual Frontend Design"
+  short_description: "Compose and verify distinctive, resilient frontend UI"
+  default_prompt: "Use $design-visual-frontend to design or review this interface and verify it across mobile, desktop, and wide viewports."
