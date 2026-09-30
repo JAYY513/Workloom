@@ -1,0 +1,3 @@
+# workloom 项目配置（方案 §14.2/§14.3）；可选项见 `workloom config check` 校验的白名单：
+# workspace_root、dispatch_command、knowledge_pages、knowledge_generator、default_policy。
+schema_version: 1

@@ -2,3 +2,6 @@
 # writes LF files (.devsys/, skill files), and without this rule Windows
 # Git warns about CRLF conversion on every status/diff (#342).
 * text=auto
+# workloom 写的文件保持 LF：消除 Windows 换行噪音。
+.devsys/** text eol=lf
+.agents/** text eol=lf

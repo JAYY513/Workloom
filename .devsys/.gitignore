@@ -1,0 +1,4 @@
+# workloom 本地文件（方案 §14.2）：不提交，可删除。
+local/
+.cache/
+workspaces/

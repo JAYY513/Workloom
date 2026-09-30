@@ -11,6 +11,14 @@ dist/
 # Go test binaries
 *.test
 
+# Locally built CLI binary (go build -o workloom.EXE .)
+# npm platform binaries live in npm/workloom/ and stay tracked.
+/workloom.exe
+/workloom.EXE
+
+# Manual smoke-test screenshots
+/smoke-artifacts/
+
 # Editor / OS noise
 .DS_Store
 Thumbs.db
