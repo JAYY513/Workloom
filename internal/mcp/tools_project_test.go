@@ -31,6 +31,8 @@ func TestProjectUpdateBlueprintArtifactField(t *testing.T) {
 		Arguments: map[string]any{
 			"blueprint_artifact_id": artifactID,
 			"expect":                "",
+			"actor":                 "tester",
+			"reason":                "bind blueprint",
 		},
 	})
 	if err != nil || res.IsError {
@@ -45,6 +47,8 @@ func TestProjectUpdateBlueprintArtifactField(t *testing.T) {
 		Arguments: map[string]any{
 			"blueprint_artifact_id": "artifact-404",
 			"expect":                "",
+			"actor":                 "tester",
+			"reason":                "bind missing blueprint",
 		},
 	})
 	if err != nil {

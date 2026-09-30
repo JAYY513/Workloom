@@ -66,23 +66,23 @@ commands:
   setup         one-command onboarding: init + starter workflow + wire + checks (idempotent)
   config check  validate the managed metadata files (read-only)
   search <text> search project-local text records
-  project       list | get | status | blueprint | update | state-update
+  project       list | get | status | blueprint | import-blueprint | update | state-update
   workitem      list | get | create | update | transition | claim | release | start | block | complete | comment | dep
   workflow check  validate workflow policy files (read-only)
-  workflow list|get|start|next|step-complete|pause|resume|cancel  drive a work item's workflow instance
+  workflow list|get|start|next|step-complete|pause|resume|cancel|init  drive a work item's workflow instance
   next          readiness verdict and the recommended next action (read-only)
   approval      list | get | request | approve | reject governance approvals
   decision      list | get | create | approve decision records
   finding       list | get | create | resolve finding records
   event         list | record project events (append-only)
   artifact      list | get | register | update | history artifact records
-  run           list | get | log | create | update | heartbeat | exec | prompt | complete | fail | cancel
+  run           list | get | log | create | update | heartbeat | exec | prompt | verify | complete | fail | cancel
   worktree      prepare | remove | list execution workspaces (方案 §4.8)
   dispatch      one scheduling tick: recover, reconcile, dispatch (--watch loops; refused while a merge conflicts)
   archive       events --before <YYYY-MM> | runs --id <id,...> move JSONL streams to .devsys/archive/ (conservative, no delete)
   sync status   read-only handoff readiness (no fetch, no locks; a blocked handoff is a verdict, exit 0)
   workspace     view [--limit N] | build --static [--out DIR] [--limit N] | serve [--host 127.0.0.1] [--port N] read-only project view / offline site / local service (方案 §17)
-  knowledge         status | scan | validate [dir|page.md...] | refresh
+  hub           serve [--host 127.0.0.1] [--port N] multi-project read-only Hub
   prime         alias for session start --compact (minimal orientation for agents)
   session start  one-shot session orientation (project, work in flight, next action)
   wire          AGENTS.md block [--dry-run] | --check | --skill | --print-mcp <codex|claude|opencode>
@@ -105,6 +105,29 @@ exit codes:
   2  usage error
   3  precondition error (nested project, wrong directory, permissions, digest mismatch)
   4  invalid managed state (parse, field or schema_version problems)
+`
+
+const projectUpdateHelp = `workloom project update
+
+Update project metadata. Only supplied fields change; actor and reason are required for the audit trail. Use expect or latest for the project.yaml version guard.
+
+options:
+  --name N
+  --description D
+  --status S
+  --phase P
+  --blueprint-artifact <artifact-id>   bind only; does not import blueprint fields. To import declared fields and bind, use project import-blueprint
+  --actor <a>                          operator identity
+  --reason <r>                         why the update happens
+  --expect <64-hex> | --latest         project.yaml version guard
+
+example:
+  workloom project update --name "My Project" --actor me --reason "rename project" --latest
+  workloom artifact register --name "product-blueprint.yaml" --path product-blueprint.yaml --status draft --actor me --reason "register project blueprint"
+  workloom artifact update --id <artifact-id> --status active --actor me --reason "approve blueprint" --expect <version-hash>
+  workloom project get
+  workloom project update --blueprint-artifact <artifact-id> --actor me --reason "bind approved blueprint" --expect <project-version>
+  workloom project import-blueprint --artifact <artifact-id> --actor me --reason "import declared fields and bind" --latest
 `
 
 type options struct {
@@ -136,6 +159,57 @@ func errInternal(format string, a ...any) *codedError {
 
 func errPrecondition(format string, a ...any) *codedError {
 	return &codedError{code: CodePrecondition, kind: "precondition", msg: fmt.Sprintf(format, a...)}
+}
+
+// onceFlag records a string flag and refuses a second Set. workitem create
+// uses it so a repeated --description cannot silently discard the first value.
+type onceFlag struct {
+	name  string
+	value string
+	sets  int
+}
+
+func (o *onceFlag) String() string { return o.value }
+func (o *onceFlag) Set(v string) error {
+	o.sets++
+	if o.sets > 1 {
+		return fmt.Errorf("--%s provided more than once; pass --description once, or use --description-file <path>", o.name)
+	}
+	o.value = v
+	return nil
+}
+func (o *onceFlag) present() bool { return o.sets > 0 }
+
+const workitemCreateUsage = "workitem create --title <title> --actor <actor> --reason <reason> [--prefix WLM] [--description D | --description-file <path>] [--acceptance a,b] [--type T] [--priority N] [--parent <id>]"
+
+// readCreateDescription loads a project-relative description file. The path
+// must stay inside the project; a missing file is a precondition, not a
+// partial create.
+func readCreateDescription(root, rel string) (string, error) {
+	rel = strings.TrimSpace(rel)
+	if rel == "" {
+		return "", errUsage("workitem create: --description-file requires a path\n%s", workitemCreateUsage)
+	}
+	cleaned := filepath.Clean(filepath.FromSlash(rel))
+	if filepath.IsAbs(cleaned) || cleaned == ".." || strings.HasPrefix(cleaned, ".."+string(os.PathSeparator)) {
+		return "", errUsage("workitem create: --description-file must be a file inside the project\n%s", workitemCreateUsage)
+	}
+	path := filepath.Join(root, cleaned)
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", errPrecondition("workitem create: description file %q does not exist", rel)
+		}
+		return "", errInternal("workitem create: read description file: %v", err)
+	}
+	if info.IsDir() {
+		return "", errUsage("workitem create: --description-file %q must be a file\n%s", rel, workitemCreateUsage)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", errInternal("workitem create: read description file: %v", err)
+	}
+	return string(data), nil
 }
 
 func errInvalid(problems []config.Problem) *codedError {
@@ -255,11 +329,14 @@ func RunWithIO(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	}
 
 	cmd, rest := args[i], args[i+1:]
-	if len(rest) > 0 && (rest[0] == "--help" || rest[0] == "-h") {
-		// Leaf commands answer --help with the top-level usage (families
-		// print their own usage inside their routers).
-		switch cmd {
-		case "init", "setup", "search", "next", "doctor", "recover", "repair", "prime", "dispatch", "wire":
+	if cmd == "project" && len(rest) >= 2 && (rest[1] == "--help" || rest[1] == "-h") {
+		fmt.Fprint(stdout, projectUpdateHelp)
+		return CodeOK
+	}
+	for _, arg := range rest {
+		if arg == "--help" || arg == "-h" {
+			// Every command level accepts help; a top-level usage is preferable
+			// to flag parsing it as an invalid parameter.
 			fmt.Fprint(stdout, usage)
 			return CodeOK
 		}
@@ -314,6 +391,8 @@ func RunWithIO(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return render(stderr, opts, runContext(stdout, opts, rest))
 	case "workspace":
 		return render(stderr, opts, runWorkspace(stdout, opts, rest))
+	case "hub":
+		return render(stderr, opts, runHub(stdout, opts, rest))
 	case "knowledge":
 		return render(stderr, opts, runKnowledge(stdout, opts, rest))
 	case "prime":
@@ -429,7 +508,7 @@ func runInit(stdout io.Writer, opts options) error {
 		}
 		fmt.Fprintf(stdout, "registry: %s\n", regPath)
 		fmt.Fprintln(stdout, "next:")
-		fmt.Fprintln(stdout, "  1. install a starter workflow: workloom workflow init --template quick-fix (also: feature-development, architecture-change, reference-template), then adapt it")
+		fmt.Fprintln(stdout, "  1. install the neutral intake workflow: workloom workflow init --template intake (also: quick-fix, feature-development, architecture-change), then adapt it")
 		fmt.Fprintln(stdout, "  2. workloom wire --skill")
 		fmt.Fprintln(stdout, "  3. "+next.CreateWorkitemCommand)
 		fmt.Fprintln(stdout, "  4. workloom workspace view")
@@ -598,7 +677,7 @@ func checkLatest(latest bool, expect, usage string) error {
 
 // runProject routes the project family (方案 §8.2 project_*).
 func runProject(stdout io.Writer, opts options, rest []string) error {
-	if familyUsage(stdout, rest, "`workloom project` needs a subcommand (list | get | status | blueprint | update | state-update)") {
+	if familyUsage(stdout, rest, "`workloom project` needs a subcommand (list | get | status | blueprint | import-blueprint | update | state-update)") {
 		return nil
 	}
 	svc, err := requireProjectRoot()
@@ -689,19 +768,23 @@ func runProject(stdout io.Writer, opts options, rest []string) error {
 		if len(rest) != 1 {
 			return errUsage("`workloom project blueprint` takes no arguments")
 		}
-		art, err := svc.ProjectBlueprint(ctx)
+		blueprint, err := svc.ProjectBlueprint(ctx)
 		if err != nil {
 			return err
+		}
+		art := blueprint.Artifact
+		warnings := app.BlueprintWarnings(art)
+		if stale := blueprint.BlueprintStaleNotice(); stale != "" {
+			warnings = append(warnings, stale)
 		}
 		if opts.json {
 			return json.NewEncoder(stdout).Encode(struct {
 				OK       bool             `json:"ok"`
 				Artifact *domain.Artifact `json:"artifact"`
-			}{OK: true, Artifact: art})
+				Warnings []string         `json:"warnings,omitempty"`
+			}{true, art, warnings})
 		}
 		if art == nil {
-			// A project that declares no blueprint is a normal state: report
-			// it as a result (exit 0), like `project status` and `next`.
 			if !opts.quiet {
 				fmt.Fprintln(stdout, "no blueprint declared (project.yaml blueprint_artifact_id is empty)")
 			}
@@ -709,6 +792,39 @@ func runProject(stdout io.Writer, opts options, rest []string) error {
 		}
 		if !opts.quiet {
 			fmt.Fprintf(stdout, "%s\t%s\tv%d\t%s\n", art.ID, art.Name, art.Version, art.Path)
+			for _, warning := range warnings {
+				fmt.Fprintf(stdout, "warning: %s\n", warning)
+			}
+		}
+		return nil
+	case "import-blueprint":
+		fs := flag.NewFlagSet("project import-blueprint", flag.ContinueOnError)
+		fs.SetOutput(io.Discard)
+		artifact := fs.String("artifact", "", "blueprint artifact id")
+		actor := fs.String("actor", "", "operator (audit trail)")
+		reason := fs.String("reason", "", "import reason (audit trail)")
+		expect := fs.String("expect", "", "version hash from project get")
+		latest := latestFlag(fs)
+		const usage = "project import-blueprint --artifact <id> --actor <a> --reason <r> [--expect <hash> | --latest]"
+		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *artifact == "" || *actor == "" || *reason == "" {
+			return errUsage(usage)
+		}
+		if err := checkLatest(*latest, *expect, usage); err != nil {
+			return err
+		}
+		view, err := svc.ImportBlueprint(ctx, app.ImportBlueprintRequest{ArtifactID: *artifact, Actor: *actor, Reason: *reason, Expect: *expect})
+		if err != nil {
+			return err
+		}
+		if opts.json {
+			return json.NewEncoder(stdout).Encode(struct {
+				OK      bool            `json:"ok"`
+				Project *domain.Project `json:"project"`
+				Version string          `json:"version"`
+			}{true, view.Project, view.Version})
+		}
+		if !opts.quiet {
+			fmt.Fprintf(stdout, "%s\t%s\t%s\nversion: %s\n", view.Project.ID, view.Project.Name, view.Project.Status, view.Version)
 		}
 		return nil
 	case "update":
@@ -719,16 +835,18 @@ func runProject(stdout io.Writer, opts options, rest []string) error {
 		status := fs.String("status", "", "project status")
 		phase := fs.String("phase", "", "current phase")
 		blueprint := fs.String("blueprint-artifact", "", "artifact id to declare as the project blueprint (empty clears; id must already be registered)")
+		actor := fs.String("actor", "", "operator (audit trail)")
+		reason := fs.String("reason", "", "update reason (audit trail)")
 		expect := fs.String("expect", "", "version hash from project get")
 		latest := latestFlag(fs)
-		const updateUsage = "project update [--name N] [--description D] [--status S] [--phase P] [--blueprint-artifact <id>] [--expect <hash> | --latest]"
-		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 {
+		const updateUsage = "project update [--name N] [--description D] [--status S] [--phase P] [--blueprint-artifact <id>] --actor <a> --reason <r> [--expect <hash> | --latest]"
+		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *actor == "" || *reason == "" {
 			return errUsage(updateUsage)
 		}
 		if err := checkLatest(*latest, *expect, updateUsage); err != nil {
 			return err
 		}
-		req := app.UpdateProjectRequest{Expect: *expect}
+		req := app.UpdateProjectRequest{Expect: *expect, Actor: *actor, Reason: *reason}
 		fs.Visit(func(f *flag.Flag) {
 			switch f.Name {
 			case "name":
@@ -753,7 +871,7 @@ func runProject(stdout io.Writer, opts options, rest []string) error {
 				OK      bool            `json:"ok"`
 				Project *domain.Project `json:"project"`
 				Version string          `json:"version"`
-			}{OK: true, Project: view.Project, Version: view.Version})
+			}{true, view.Project, view.Version})
 		}
 		if !opts.quiet {
 			fmt.Fprintf(stdout, "%s\t%s\t%s\nversion: %s\n", view.Project.ID, view.Project.Name, view.Project.Status, view.Version)
@@ -863,8 +981,9 @@ func runWorkitem(stdout io.Writer, opts options, rest []string) error {
 			}
 			return json.NewEncoder(stdout).Encode(struct {
 				OK    bool               `json:"ok"`
+				Count int                `json:"count"`
 				Items []*domain.WorkItem `json:"items"`
-			}{OK: true, Items: items})
+			}{OK: true, Count: len(items), Items: items})
 		}
 		if !opts.quiet {
 			if len(items) == 0 {
@@ -899,18 +1018,37 @@ func runWorkitem(stdout io.Writer, opts options, rest []string) error {
 		fs.SetOutput(io.Discard)
 		title := fs.String("title", "", "work item title")
 		prefix := fs.String("prefix", "WLM", "ID prefix")
-		description := fs.String("description", "", "work item description")
+		description := &onceFlag{name: "description"}
+		fs.Var(description, "description", "work item description (pass once; or use --description-file)")
+		descriptionFile := fs.String("description-file", "", "file whose contents are the description (mutually exclusive with --description)")
 		acceptance := fs.String("acceptance", "", "comma-separated acceptance criteria")
 		kind := fs.String("type", "task", "work item type")
 		priority := fs.Int("priority", 0, "numeric priority (higher first)")
 		parent := fs.String("parent", "", "parent work item id")
 		actor := fs.String("actor", "", "operator")
 		reason := fs.String("reason", "", "creation reason")
-		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *title == "" || *actor == "" || *reason == "" {
-			return errUsage("workitem create --title <title> --actor <actor> --reason <reason> [--prefix WLM] [--description D] [--acceptance a,b] [--type T] [--priority N] [--parent <id>]")
+		if err := fs.Parse(rest[1:]); err != nil {
+			if strings.Contains(err.Error(), "provided more than once") {
+				return errUsage("workitem create: --description provided more than once; pass it once, or use --description-file <path>\n%s", workitemCreateUsage)
+			}
+			return errUsage("%s", workitemCreateUsage)
+		}
+		if fs.NArg() != 0 || *title == "" || *actor == "" || *reason == "" {
+			return errUsage("%s", workitemCreateUsage)
+		}
+		if description.present() && strings.TrimSpace(*descriptionFile) != "" {
+			return errUsage("workitem create: pass --description once or --description-file <path>, not both\n%s", workitemCreateUsage)
+		}
+		body := description.value
+		if strings.TrimSpace(*descriptionFile) != "" {
+			loaded, err := readCreateDescription(svc.Root, *descriptionFile)
+			if err != nil {
+				return err
+			}
+			body = loaded
 		}
 		view, err := svc.WorkitemCreate(ctx, app.CreateWorkitemRequest{
-			Title: *title, Description: *description, Type: *kind, Prefix: *prefix,
+			Title: *title, Description: body, Type: *kind, Prefix: *prefix,
 			ParentID: *parent, Priority: *priority, Actor: *actor, Reason: *reason,
 			AcceptanceCriteria: splitList(*acceptance),
 		})
@@ -1338,12 +1476,13 @@ func runWorkflowGet(stdout io.Writer, opts options, rest []string) error {
 func outputWorkflow(stdout io.Writer, opts options, view app.WorkflowView) error {
 	if opts.json {
 		out := struct {
-			OK         bool                     `json:"ok"`
-			WorkitemID string                   `json:"workitem_id"`
-			Workflow   *domain.WorkflowInstance `json:"workflow"`
-			Candidates []workflow.StepCandidate `json:"candidates,omitempty"`
-			Notice     string                   `json:"notice,omitempty"`
-		}{OK: true, WorkitemID: view.WorkitemID, Workflow: view.Workflow, Candidates: view.Candidates, Notice: view.Notice}
+			OK          bool                     `json:"ok"`
+			WorkitemID  string                   `json:"workitem_id"`
+			Workflow    *domain.WorkflowInstance `json:"workflow"`
+			Candidates  []workflow.StepCandidate `json:"candidates,omitempty"`
+			Notice      string                   `json:"notice,omitempty"`
+			NextCommand string                   `json:"next_command,omitempty"`
+		}{OK: true, WorkitemID: view.WorkitemID, Workflow: view.Workflow, Candidates: view.Candidates, Notice: view.Notice, NextCommand: view.NextCommand}
 		return json.NewEncoder(stdout).Encode(out)
 	}
 	if !opts.quiet {
@@ -1370,6 +1509,9 @@ func outputWorkflow(stdout io.Writer, opts options, view app.WorkflowView) error
 					break
 				}
 			}
+		}
+		if view.NextCommand != "" {
+			fmt.Fprintf(stdout, "command: %s\n", view.NextCommand)
 		}
 	}
 	return nil
@@ -1443,10 +1585,10 @@ func runWorkflowStepComplete(stdout io.Writer, opts options, rest []string) erro
 		return err
 	}
 	view, err := svc.WorkflowStepComplete(context.Background(), *id, *to, *actor, *reason, *owner, *token, *expect)
-	if view.Notice != "" && !opts.quiet {
-		fmt.Fprintf(stdout, "warning: %s\n", view.Notice)
-	}
 	if err != nil {
+		if view.Notice != "" && !opts.quiet {
+			fmt.Fprintf(stdout, "warning: %s\n", view.Notice)
+		}
 		return err
 	}
 	return outputWorkflow(stdout, opts, view)
@@ -1688,19 +1830,36 @@ func runNext(stdout io.Writer, opts options, rest []string) error {
 	if err != nil {
 		return err
 	}
+	policies, policyWarnings, _ := svc.WorkflowList(context.Background())
+	md, _ := config.Diagnose(svc.Root)
+	defaultPolicy := ""
+	if md != nil && md.Config != nil {
+		defaultPolicy = md.Config.DefaultPolicy
+	}
+	workflowCatalog := app.WorkflowCatalog{DefaultPolicy: defaultPolicy, Policies: policies, Warnings: policyWarnings}
 	if opts.json {
 		out := struct {
-			OK      bool     `json:"ok"`
-			Verdict string   `json:"verdict"`
-			Reasons []string `json:"reasons"`
-			Risks   any      `json:"risks"`
-			Fixes   any      `json:"fixes,omitempty"`
-			Next    any      `json:"next"`
-		}{OK: true, Verdict: report.Verdict, Reasons: report.Reasons, Risks: report.Risks, Fixes: report.Fixes, Next: report.Next}
+			OK        bool                `json:"ok"`
+			Verdict   string              `json:"verdict"`
+			Reasons   []string            `json:"reasons"`
+			Risks     any                 `json:"risks"`
+			Fixes     any                 `json:"fixes,omitempty"`
+			Next      any                 `json:"next"`
+			Workflows app.WorkflowCatalog `json:"workflows"`
+		}{OK: true, Verdict: report.Verdict, Reasons: report.Reasons, Risks: report.Risks, Fixes: report.Fixes, Next: report.Next, Workflows: workflowCatalog}
 		return json.NewEncoder(stdout).Encode(out)
 	}
 	if !opts.quiet {
 		fmt.Fprintf(stdout, "readiness: %s\n", report.Verdict)
+		if workflowCatalog.DefaultPolicy != "" {
+			fmt.Fprintf(stdout, "workflow default: %s\n", workflowCatalog.DefaultPolicy)
+		}
+		if len(workflowCatalog.Policies) > 0 {
+			fmt.Fprintln(stdout, "workflows:")
+			for _, policy := range workflowCatalog.Policies {
+				fmt.Fprintf(stdout, "  - %s: %s\n", policy.ID, policy.Name)
+			}
+		}
 		for _, r := range report.Reasons {
 			fmt.Fprintf(stdout, "  reason: %s\n", r)
 		}

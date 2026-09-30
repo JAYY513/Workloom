@@ -35,6 +35,7 @@ func allTools() []toolSpec {
 		// project_blueprint_get answers "no blueprint declared" as a result, so
 		// it sits with the other read-only project queries (standard tier).
 		{"project_blueprint_get", []string{ProfileSession}, "", registerProjectBlueprint},
+		{"project_blueprint_import", []string{ProfileAdmin}, "", registerProjectBlueprintImport},
 		{"project_create", []string{ProfileAdmin}, "", registerProjectCreate},
 		{"project_update", []string{ProfileAdmin}, "", registerProjectUpdate},
 		{"project_state_update", []string{ProfileAdmin}, "", registerProjectStateUpdate},
@@ -43,6 +44,7 @@ func allTools() []toolSpec {
 		{"workitem_list", []string{ProfileSession}, TierCore, registerWorkitemList},
 		{"workitem_get", []string{ProfileSession}, TierCore, registerWorkitemGet},
 		{"workitem_next", []string{ProfileSession}, "", registerWorkitemNext},
+		{"workitem_follow_up", []string{ProfileExecutor}, "", registerWorkitemFollowUp},
 		{"workitem_create", []string{ProfileExecutor}, TierCore, registerWorkitemCreate},
 		{"workitem_update", []string{ProfileExecutor}, "", registerWorkitemUpdate},
 		{"workitem_transition", []string{ProfileExecutor}, TierCore, registerWorkitemTransition},
@@ -58,6 +60,7 @@ func allTools() []toolSpec {
 		{"workitem_remove_dependency", []string{ProfileExecutor}, "", registerWorkitemRemoveDependency},
 
 		// workflow (方案 §8.2 workflow_*)
+		{"workflow_recommend", []string{ProfileSession}, "", registerWorkflowRecommend},
 		{"workflow_list", []string{ProfileSession}, "", registerWorkflowList},
 		{"workflow_get", []string{ProfileSession}, "", registerWorkflowGet},
 		{"workflow_start", []string{ProfileExecutor}, "", registerWorkflowStart},

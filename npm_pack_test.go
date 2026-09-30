@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -21,6 +22,16 @@ func TestNPMPackagesDoNotDownloadAndExposeOneCommand(t *testing.T) {
 	bin, _ := wrapper["bin"].(map[string]any)
 	if len(bin) != 1 || bin["workloom"] == nil {
 		t.Fatalf("bin = %v, want only workloom", bin)
+	}
+	files, _ := wrapper["files"].([]any)
+	seenPS1 := false
+	for _, item := range files {
+		if item == "bin/workloom.ps1" {
+			seenPS1 = true
+		}
+	}
+	if !seenPS1 {
+		t.Fatalf("files = %v, want bin/workloom.ps1 shipped beside the node shim", files)
 	}
 	if scripts, ok := wrapper["scripts"].(map[string]any); ok && scripts["postinstall"] != nil {
 		t.Fatal("wrapper has a postinstall script")
@@ -322,4 +333,60 @@ func gitBash(t *testing.T) string {
 	}
 	t.Skip("bash not installed")
 	return ""
+}
+
+func TestWindowsNativeEntryHonorsWorkloomBin(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("native entry is PowerShell")
+	}
+	ps, err := exec.LookPath("powershell")
+	if err != nil {
+		t.Skip("powershell not installed")
+	}
+	root := repoRoot(t)
+	script := filepath.Join(root, "npm", "workloom", "bin", "workloom.ps1")
+	dir := t.TempDir()
+	marker := filepath.Join(dir, "args.txt")
+	stub := filepath.Join(dir, "workloom.cmd")
+	body := "@echo off\r\necho %*>\"" + marker + "\"\r\nexit /b 9\r\n"
+	if err := os.WriteFile(stub, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(ps, "-NoProfile", "-File", script, "--version")
+	cmd.Env = append(os.Environ(), "WORKLOOM_BIN="+stub)
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("stub exited 0: %s", out)
+	}
+	exitErr, ok := err.(*exec.ExitError)
+	if !ok || exitErr.ExitCode() != 9 {
+		t.Fatalf("exit = %v stderr=%s, want 9", err, out)
+	}
+	got, readErr := os.ReadFile(marker)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if !strings.Contains(string(got), "--version") {
+		t.Fatalf("forwarded args = %q", got)
+	}
+
+	missing := exec.Command(ps, "-NoProfile", "-File", script, "--version")
+	env := make([]string, 0, len(os.Environ()))
+	for _, item := range os.Environ() {
+		if strings.HasPrefix(item, "WORKLOOM_BIN=") {
+			continue
+		}
+		env = append(env, item)
+	}
+	missing.Env = env
+	missOut, missErr := missing.CombinedOutput()
+	if missErr == nil {
+		t.Fatalf("missing platform binary exited 0: %s", missOut)
+	}
+	text := string(missOut)
+	for _, want := range []string{"WORKLOOM_BIN", "Git Bash", "does not download"} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("stderr = %s, want %q", text, want)
+		}
+	}
 }

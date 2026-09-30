@@ -232,7 +232,7 @@ func (s *Store) Claim(ctx context.Context, id string, opts ClaimOptions) (ClaimR
 		return ClaimResult{}, err
 	}
 	if leaseStillHeld {
-		return ClaimResult{}, ErrAlreadyClaimed
+		return ClaimResult{}, fmt.Errorf("%w: workitem %s has an active lease; release it (`workloom workitem release --id %s --owner <owner> --token <token from .devsys/local/leases/%s.token> --actor <you> --reason <why>`) or continue through the holder API (`workitem start`, `workflow step-complete`). claim does not take a token and will not steal the lease", ErrAlreadyClaimed, id, id, id)
 	}
 
 	switch cur.Status {
@@ -253,16 +253,21 @@ func (s *Store) Claim(ctx context.Context, id string, opts ClaimOptions) (ClaimR
 		}
 	}
 
+	claimedAt := now
 	run := &domain.Run{
 		SchemaVersion: domain.SchemaVersion,
 		ProjectID:     cur.ProjectID,
 		WorkItemID:    id,
 		WorkflowID:    opts.WorkflowID,
 		Agent:         opts.Agent,
-		Status:        "running",
-		Attempt:       1,
-		Phase:         "claimed",
-		StartedAt:     now,
+		Claim: domain.Claim{
+			HeadSHA:   opts.HeadSHA,
+			ClaimedAt: &claimedAt,
+		},
+		Status:    "running",
+		Attempt:   1,
+		Phase:     "claimed",
+		StartedAt: now,
 	}
 
 	st, err := s.store()

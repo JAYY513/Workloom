@@ -8,6 +8,24 @@ import (
 	"github.com/JAYY513/Workloom/internal/app"
 )
 
+type workflowRecommendInput struct {
+	ID string `json:"id" jsonschema:"work item id"`
+}
+
+func registerWorkflowRecommend(s *mcpsdk.Server, cfg Config) {
+	mcpsdk.AddTool(s, &mcpsdk.Tool{
+		Name:        "workflow_recommend",
+		Description: "Explain the deterministic workflow policy recommendation and any mismatch with the currently selected policy.",
+		Annotations: readOnly(),
+	}, func(ctx context.Context, req *mcpsdk.CallToolRequest, in workflowRecommendInput) (*mcpsdk.CallToolResult, app.WorkflowRecommendationView, error) {
+		view, err := cfg.service().WorkflowRecommendation(ctx, in.ID)
+		if err != nil {
+			return fail[app.WorkflowRecommendationView](err)
+		}
+		return nil, view, nil
+	})
+}
+
 // --- workflow_list -------------------------------------------------------
 
 type workflowListInput struct{}

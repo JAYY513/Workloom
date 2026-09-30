@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>workloom hub</title>
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<div class="app">
+  <nav class="collapsed">
+    <header>
+      <h1>workloom</h1>
+      <div class="path-row"><p class="path" id="path"></p></div>
+      <div class="nav-head">
+        <select id="project" aria-label="项目"></select>
+        <button type="button" id="nav-toggle" aria-expanded="false" aria-label="切换导航">
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </header>
+    <div id="nav"></div>
+  </nav>
+  <main id="main"><div class="loading">正在读取项目…</div></main>
+</div>
+<script src="/assets/app.js"></script>
+</body>
+</html>

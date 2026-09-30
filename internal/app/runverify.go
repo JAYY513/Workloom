@@ -48,31 +48,76 @@ func (s *Service) verifyCompletion(ctx context.Context, r *domain.Run) Completio
 		ClaimHead: r.Claim.HeadSHA,
 	}
 	directoryWorkspace := r.Workspace.Path != "" && r.Workspace.Branch == ""
-	if directoryWorkspace || !workspace.GitProject(s.Root) {
+	if directoryWorkspace {
+		// A directory workspace with no claim head is a non-git project or a
+		// WorkspacePrepare that left the claim head empty: skip git evidence.
+		if check.ClaimHead == "" {
+			check.Skipped = true
+			check.Reason = "git completion check is not applicable"
+			return check
+		}
+		// A directory workspace with a claim head was set by WorkitemClaim on a
+		// Git project: compare the directory HEAD against the claim head.
+		current, err := workspace.HeadSHA(r.Workspace.Path)
+		if err != nil {
+			check.Reason = fmt.Sprintf("cannot read the project HEAD: %v", err)
+			return check
+		}
+		check.CurrentHead = current
+		switch {
+		case current == "":
+			check.Reason = "the current head is empty"
+		case current == check.ClaimHead:
+			check.Reason = fmt.Sprintf("the project HEAD still points at %s: nothing was committed", current)
+		default:
+			check.Advanced = true
+		}
+		return check
+	}
+	if !workspace.GitProject(s.Root) {
 		check.Skipped = true
 		check.Reason = "git completion check is not applicable"
 		return check
 	}
-	// Without a workspace there is nothing to compare against: falling back to
-	// the project root would "verify" an attempt against a branch it never
-	// worked on.
-	if r.Workspace.Path == "" {
+	// A workspace with a branch: compare branch tip against claim head.
+	if r.Workspace.Path != "" {
+		current, err := workspace.BranchSHA(r.Workspace.Path, r.Workspace.Branch)
+		if err != nil {
+			check.Reason = fmt.Sprintf("cannot read the branch head of %s: %v", r.Workspace.Branch, err)
+			return check
+		}
+		check.CurrentHead = current
+		switch {
+		case check.ClaimHead == "":
+			check.Reason = "the attempt has no claim head, so there is no evidence it advanced anything"
+		case current == "":
+			check.Reason = "the current head is empty"
+		case current == check.ClaimHead:
+			check.Reason = fmt.Sprintf("the branch still points at %s: nothing was committed", current)
+		default:
+			check.Advanced = true
+		}
+		return check
+	}
+	// No workspace: if we have a claim head (set by WorkitemClaim on a Git
+	// project), compare the project root HEAD against it. This covers the
+	// common "claim → commit on main branch → run complete" path where no
+	// worktree was created.
+	if check.ClaimHead == "" {
 		check.Reason = "the attempt has no workspace, so there is no evidence it advanced anything"
 		return check
 	}
-	current, err := workspace.BranchSHA(r.Workspace.Path, r.Workspace.Branch)
+	current, err := workspace.HeadSHA(s.Root)
 	if err != nil {
-		check.Reason = fmt.Sprintf("cannot read the branch head of %s: %v", r.Workspace.Branch, err)
+		check.Reason = fmt.Sprintf("cannot read the project HEAD: %v", err)
 		return check
 	}
 	check.CurrentHead = current
 	switch {
-	case check.ClaimHead == "":
-		check.Reason = "the attempt has no claim head, so there is no evidence it advanced anything"
 	case current == "":
 		check.Reason = "the current head is empty"
 	case current == check.ClaimHead:
-		check.Reason = fmt.Sprintf("the branch still points at %s: nothing was committed", current)
+		check.Reason = fmt.Sprintf("the project HEAD still points at %s: nothing was committed", current)
 	default:
 		check.Advanced = true
 	}

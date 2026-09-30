@@ -50,7 +50,9 @@ func registerProjectStatus(s *mcpsdk.Server, cfg Config) {
 type projectBlueprintInput struct{}
 
 type blueprintResult struct {
+	BoundID  string           `json:"bound_id,omitempty"`
 	Artifact *domain.Artifact `json:"artifact"`
+	Warnings []string         `json:"warnings,omitempty"`
 }
 
 func registerProjectBlueprint(s *mcpsdk.Server, cfg Config) {
@@ -59,11 +61,15 @@ func registerProjectBlueprint(s *mcpsdk.Server, cfg Config) {
 		Description: "Read the artifact the project declares as its blueprint.",
 		Annotations: readOnly(),
 	}, func(ctx context.Context, req *mcpsdk.CallToolRequest, _ projectBlueprintInput) (*mcpsdk.CallToolResult, blueprintResult, error) {
-		art, err := cfg.service().ProjectBlueprint(ctx)
+		blueprint, err := cfg.service().ProjectBlueprint(ctx)
 		if err != nil {
 			return fail[blueprintResult](err)
 		}
-		return nil, blueprintResult{Artifact: art}, nil
+		warnings := app.BlueprintWarnings(blueprint.Artifact)
+		if stale := blueprint.BlueprintStaleNotice(); stale != "" {
+			warnings = append(warnings, stale)
+		}
+		return nil, blueprintResult{Artifact: blueprint.Artifact, BoundID: blueprint.BoundID, Warnings: warnings}, nil
 	})
 }
 
@@ -122,6 +128,29 @@ func registerProjectCreate(s *mcpsdk.Server, cfg Config) {
 	})
 }
 
+// --- project_blueprint_import -------------------------------------------
+
+type projectBlueprintImportInput struct {
+	ArtifactID string `json:"artifact_id" jsonschema:"blueprint artifact id (required)"`
+	Expect     string `json:"expect" jsonschema:"version hash from project_get (optional)"`
+	Actor      string `json:"actor" jsonschema:"operator identity (required: audit trail)"`
+	Reason     string `json:"reason" jsonschema:"why the import happens (required: audit trail)"`
+}
+
+func registerProjectBlueprintImport(s *mcpsdk.Server, cfg Config) {
+	mcpsdk.AddTool(s, &mcpsdk.Tool{
+		Name:        "project_blueprint_import",
+		Description: "Import explicitly declared fields from a product-blueprint.yaml artifact into project metadata under the project version guard.",
+	}, func(ctx context.Context, req *mcpsdk.CallToolRequest, in projectBlueprintImportInput) (*mcpsdk.CallToolResult, app.ProjectView, error) {
+		view, err := cfg.service().ImportBlueprint(ctx, app.ImportBlueprintRequest{ArtifactID: in.ArtifactID, Expect: in.Expect, Actor: in.Actor, Reason: in.Reason})
+		if err != nil {
+			return fail[app.ProjectView](err)
+		}
+		return nil, view, nil
+	})
+}
+
+// --- project_update ------------------------------------------------------
 // --- project_update ------------------------------------------------------
 
 type projectUpdateInput struct {
@@ -131,17 +160,18 @@ type projectUpdateInput struct {
 	CurrentPhase        *string `json:"current_phase,omitempty" jsonschema:"new current phase"`
 	BlueprintArtifactID *string `json:"blueprint_artifact_id,omitempty" jsonschema:"artifact id to declare as the project blueprint (empty string clears; the id must already be registered)"`
 	Expect              string  `json:"expect" jsonschema:"version hash from project_get (required: read before you write)"`
+	Actor               string  `json:"actor" jsonschema:"operator identity (required: audit trail)"`
+	Reason              string  `json:"reason" jsonschema:"why the update happens (required: audit trail)"`
 }
 
 func registerProjectUpdate(s *mcpsdk.Server, cfg Config) {
 	mcpsdk.AddTool(s, &mcpsdk.Tool{
 		Name:        "project_update",
-		Description: "Patch project metadata under the version guard (expect from project_get). Admin operation.",
+		Description: "Patch project metadata under the version guard (expect from project_get). Admin operation; actor and reason are required.",
 	}, func(ctx context.Context, req *mcpsdk.CallToolRequest, in projectUpdateInput) (*mcpsdk.CallToolResult, app.ProjectView, error) {
 		view, err := cfg.service().ProjectUpdate(ctx, app.UpdateProjectRequest{
 			Name: in.Name, Description: in.Description, Status: in.Status, CurrentPhase: in.CurrentPhase,
-			BlueprintArtifactID: in.BlueprintArtifactID,
-			Expect:              in.Expect,
+			BlueprintArtifactID: in.BlueprintArtifactID, Expect: in.Expect, Actor: in.Actor, Reason: in.Reason,
 		})
 		if err != nil {
 			return fail[app.ProjectView](err)

@@ -332,7 +332,8 @@ const siteTemplates = `{{define "head"}}<!DOCTYPE html>
 {{if .M.Project.Description}}<p>{{.M.Project.Description}}</p>{{end}}
 {{if .M.Project.Summary}}<p>当前状态：{{.M.Project.Summary}}</p>{{end}}
 <h2>蓝图与目标</h2>
-{{if .M.Project.Goals}}<h3>目标</h3><ul class="tight">{{range .M.Project.Goals}}<li>{{.}}</li>{{end}}</ul>{{end}}
+{{if .M.Project.Blueprint}}<p class="meta">绑定蓝图：<code>{{.M.Project.Blueprint.ID}}</code> {{.M.Project.Blueprint.Name}} · {{.M.Project.Blueprint.Status}} · v{{.M.Project.Blueprint.Version}}{{if .M.Project.Blueprint.Path}} · {{.M.Project.Blueprint.Path}}{{end}}</p>{{else}}<p class="empty">未读取到绑定蓝图 artifact</p>{{end}}
+{{if .M.Project.BlueprintWarnings}}<ul class="tight">{{range .M.Project.BlueprintWarnings}}<li class="warning">{{.}}</li>{{end}}</ul>{{end}}
 {{if .M.Project.Scope.In}}<h3>范围内</h3><ul class="tight">{{range .M.Project.Scope.In}}<li>{{.}}</li>{{end}}</ul>{{end}}
 {{if .M.Project.Scope.Out}}<h3>范围外</h3><ul class="tight">{{range .M.Project.Scope.Out}}<li>{{.}}</li>{{end}}</ul>{{end}}
 {{if .M.Project.Constraints}}<h3>约束</h3><ul class="tight">{{range .M.Project.Constraints}}<li>{{.}}</li>{{end}}</ul>{{end}}

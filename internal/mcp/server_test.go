@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/JAYY513/Workloom/internal/domain"
 )
 
 // session connects an SDK client to a fresh server over the in-memory
@@ -107,6 +109,9 @@ func TestToolsListFiltersByProfile(t *testing.T) {
 	if contains(def, "workflow_step_complete") || contains(def, "project_update") || contains(def, "approval_decide") || contains(def, "project_create") || contains(def, "run_fail") || contains(def, "run_cancel") {
 		t.Fatalf("default tier exposes non-core tools: %v", def)
 	}
+	if contains(def, "workflow_recommend") || contains(def, "workitem_follow_up") {
+		t.Fatalf("default tier exposes non-core dynamic tools: %v", def)
+	}
 	admin := toolNames(t, session(t, Config{Root: t.TempDir(), ServerVersion: "test", Profiles: []string{ProfileAdmin}, Tier: TierStandard}))
 	if !contains(admin, "project_update") || !contains(admin, "project_create") || !contains(admin, "project_state_update") {
 		t.Fatalf("admin profile lacks admin tools: %v", admin)
@@ -128,6 +133,9 @@ func TestTierStandardRestoresFullSessionExecutor(t *testing.T) {
 		if !contains(names, want) {
 			t.Fatalf("standard tier lacks %s: %v", want, names)
 		}
+	}
+	if !contains(names, "workflow_recommend") || !contains(names, "workitem_follow_up") {
+		t.Fatalf("standard tier lacks dynamic workflow tools: %v", names)
 	}
 }
 
@@ -245,6 +253,47 @@ func TestSchemaRejectsUnknownArguments(t *testing.T) {
 	}
 }
 
+func TestFollowUpToolPreservesProvenanceAndRejectsUnknownType(t *testing.T) {
+	root, _ := runFixture(t)
+	cs := session(t, Config{Root: root, ServerVersion: "test", Profiles: []string{ProfileSession, ProfileExecutor}, Tier: TierStandard})
+	listed, err := cs.CallTool(context.Background(), &mcpsdk.CallToolParams{Name: "workitem_list", Arguments: map[string]any{}})
+	if err != nil || listed.IsError {
+		t.Fatalf("workitem_list: err=%v result=%+v", err, listed)
+	}
+	items := payload[struct {
+		WorkItems []*domain.WorkItem `json:"workitems"`
+	}](t, listed)
+	if len(items.WorkItems) != 1 {
+		t.Fatalf("workitems = %+v", items.WorkItems)
+	}
+	created, err := cs.CallTool(context.Background(), &mcpsdk.CallToolParams{
+		Name: "workitem_follow_up",
+		Arguments: map[string]any{
+			"parent_id": items.WorkItems[0].ID, "type": "decision", "title": "确认边界",
+			"actor": "agent", "reason": "需要架构决策",
+		},
+	})
+	if err != nil || created.IsError {
+		t.Fatalf("workitem_follow_up: err=%v result=%+v", err, created)
+	}
+	view := payload[struct {
+		Item *domain.WorkItem `json:"item"`
+	}](t, created)
+	if view.Item.CreatedFrom == nil || view.Item.CreatedFrom.ID != items.WorkItems[0].ID || !view.Item.ApprovalRequired {
+		t.Fatalf("follow-up = %+v", view.Item)
+	}
+	bad, err := cs.CallTool(context.Background(), &mcpsdk.CallToolParams{
+		Name: "workitem_follow_up",
+		Arguments: map[string]any{
+			"parent_id": items.WorkItems[0].ID, "type": "arbitrary-yaml", "title": "拒绝",
+			"actor": "agent", "reason": "test",
+		},
+	})
+	if err != nil || !bad.IsError {
+		t.Fatalf("unknown type result: err=%v result=%+v", err, bad)
+	}
+}
+
 func TestParseProfiles(t *testing.T) {
 	got, err := ParseProfiles("")
 	if err != nil || strings.Join(got, ",") != "session,executor" {
@@ -353,8 +402,8 @@ func duplicates(list []string) []string {
 
 func TestAllToolsAreUniqueAndCounted(t *testing.T) {
 	specs := allTools()
-	if len(specs) != 66 {
-		t.Fatalf("allTools() = %d, want 66", len(specs))
+	if len(specs) != 69 {
+		t.Fatalf("allTools() = %d, want 69", len(specs))
 	}
 	seen := map[string]bool{}
 	core := 0
@@ -440,8 +489,8 @@ func TestAllProfilesStandardExposesEveryTool(t *testing.T) {
 		Profiles: []string{ProfileSession, ProfileExecutor, ProfileReviewer, ProfileAdmin},
 		Tier:     TierStandard,
 	}))
-	if len(got) != 66 {
-		t.Fatalf("all profiles + standard = %d tools, want 66: %v", len(got), sortedCopy(got))
+	if len(got) != 69 {
+		t.Fatalf("all profiles + standard = %d tools, want 69: %v", len(got), sortedCopy(got))
 	}
 }
 

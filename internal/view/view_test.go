@@ -67,6 +67,18 @@ func writeFile(t *testing.T, path, content string) {
 	}
 }
 
+func TestReadBlueprintContent(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "product-blueprint.yaml"), "name: TESTWL\nstatus: active\n")
+	content, problem := readBlueprintContent(root, "product-blueprint.yaml")
+	if problem != "" || content != "name: TESTWL\nstatus: active\n" {
+		t.Fatalf("content=%q problem=%q", content, problem)
+	}
+	if _, problem := readBlueprintContent(root, "../outside.yaml"); problem == "" {
+		t.Fatal("path traversal should be rejected")
+	}
+}
+
 // projectOnly builds a project nobody has written state to since init: no lock
 // file exists, which is the read-only-copy case.
 func projectOnly(t *testing.T) string {
@@ -121,21 +133,9 @@ func fixture(t *testing.T) string {
 	writeFile(t, filepath.Join(root, ".devsys", "runs", runID+".jsonl"), "{\"type\":\"start\"}\n")
 
 	records := record.New(root)
-	if _, err := records.CreateDecision(ctx, &domain.Decision{
-		Title: "keep the view read-only", Status: "accepted",
-		RelatedWorkItems: []string{one.ID}, CreatedAt: testNow.Add(-3 * time.Hour),
-	}); err != nil {
-		t.Fatalf("create decision: %v", err)
-	}
-	if _, err := records.CreateFinding(ctx, &domain.Finding{
-		Title: "a lock file would break read-only copies", Type: "risk", Severity: "major", Status: "open",
-		RelatedWorkItems: []string{one.ID},
-	}); err != nil {
-		t.Fatalf("create finding: %v", err)
-	}
 	if _, err := records.CreateArtifact(ctx, &domain.Artifact{
-		Name: "view spec", Type: "spec", Path: "docs/spec.md", Status: "current", Version: 1,
-		RelatedWorkItems: []string{one.ID}, CreatedAt: testNow.Add(-4 * time.Hour),
+		Name: "view spec", Type: "verification", Path: "docs/spec.md", Status: "current", Version: 1,
+		WorkItemID: one.ID, RelatedWorkItems: []string{one.ID}, CreatedAt: testNow.Add(-4 * time.Hour),
 	}); err != nil {
 		t.Fatalf("create artifact: %v", err)
 	}
@@ -229,11 +229,11 @@ func TestBuildAssemblesEverySection(t *testing.T) {
 		t.Errorf("run verdict = %+v", entry)
 	}
 
-	if len(m.Records.Decisions) != 1 || len(m.Records.Findings) != 1 || len(m.Records.Artifacts) != 1 {
+	if len(m.Records.Decisions) != 0 || len(m.Records.Findings) != 0 || len(m.Records.Artifacts) != 1 {
 		t.Fatalf("records = %d/%d/%d", len(m.Records.Decisions), len(m.Records.Findings), len(m.Records.Artifacts))
 	}
-	if got := m.Records.Findings[0].Severity; got != "major" {
-		t.Errorf("finding severity = %q", got)
+	if got := m.Records.Artifacts[0].Type; got != "verification" {
+		t.Errorf("artifact type = %q", got)
 	}
 	if got := m.Records.Artifacts[0].Version; got != 1 {
 		t.Errorf("artifact version = %d", got)
@@ -275,7 +275,7 @@ func TestBuildAssemblesEverySection(t *testing.T) {
 	for _, want := range []string{
 		".devsys/project.yaml", ".devsys/state/current.yaml", ".devsys/workitems/",
 		".devsys/runs/", ".devsys/runs/" + m.Runs.Entries[0].ID + ".jsonl",
-		".devsys/decisions/", ".devsys/workflows/", ".devsys/knowledge/state.json", "docs/repowiki/",
+		".devsys/artifacts/", ".devsys/workflows/", ".devsys/knowledge/state.json", "docs/repowiki/",
 	} {
 		if !contains(m.Sources, want) {
 			t.Errorf("sources miss %q:\n%s", want, strings.Join(m.Sources, "\n"))
@@ -424,9 +424,8 @@ func TestBuildDegradesOneSectionOnly(t *testing.T) {
 	if !contains(m.Problems, "workitems/WLM-9.yaml") {
 		t.Errorf("problems = %v", m.Problems)
 	}
-	if len(m.Runs.Entries) != 1 || len(m.Records.Decisions) != 1 || m.Project.Degraded {
-		t.Errorf("other sections degraded: runs=%d decisions=%d project=%+v",
-			len(m.Runs.Entries), len(m.Records.Decisions), m.Project.Degraded)
+	if len(m.Runs.Entries) != 1 || len(m.Records.Decisions) != 0 || len(m.Records.Artifacts) != 1 || m.Project.Degraded {
+		t.Errorf("other sections degraded: runs=%d decisions=%d artifacts=%d project=%+v", len(m.Runs.Entries), len(m.Records.Decisions), len(m.Records.Artifacts), m.Project.Degraded)
 	}
 }
 
@@ -436,19 +435,19 @@ func TestBuildCapsLists(t *testing.T) {
 	ctx := context.Background()
 	records := record.New(root)
 	for i := range 3 {
-		if _, err := records.CreateFinding(ctx, &domain.Finding{Title: fmt.Sprintf("finding %d", i), Status: "open"}); err != nil {
-			t.Fatalf("create finding: %v", err)
+		if _, err := records.CreateArtifact(ctx, &domain.Artifact{Name: fmt.Sprintf("verification %d", i), Type: "verification", Status: "current"}); err != nil {
+			t.Fatalf("create artifact: %v", err)
 		}
 	}
 	m, err := Build(ctx, root, Options{Limit: 2, Now: fixedClock})
 	if err != nil {
 		t.Fatalf("build: %v", err)
 	}
-	if len(m.Records.Findings) != 2 || !m.Records.Truncated {
-		t.Fatalf("findings = %d (truncated=%v)", len(m.Records.Findings), m.Records.Truncated)
+	if len(m.Records.Artifacts) != 2 || !m.Records.Truncated {
+		t.Fatalf("artifacts = %d (truncated=%v)", len(m.Records.Artifacts), m.Records.Truncated)
 	}
-	if m.Records.Findings[0].ID > m.Records.Findings[1].ID {
-		t.Errorf("findings not in identifier order: %v", m.Records.Findings)
+	if m.Records.Artifacts[0].ID > m.Records.Artifacts[1].ID {
+		t.Errorf("artifacts not in identifier order: %v", m.Records.Artifacts)
 	}
 }
 

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -11,11 +12,17 @@ import (
 	"github.com/JAYY513/Workloom/internal/config"
 	"github.com/JAYY513/Workloom/internal/project"
 	"github.com/JAYY513/Workloom/internal/reconcile"
+	"github.com/JAYY513/Workloom/internal/storage"
+
+	"gopkg.in/yaml.v3"
 )
 
-// DefaultSetupTemplate is the starter policy `workloom setup` installs when
-// the caller does not name one. An existing file is never overwritten.
-const DefaultSetupTemplate = "quick-fix"
+// DefaultSetupTemplate is the neutral policy selected by `workloom setup`.
+const DefaultSetupTemplate = "intake"
+
+// DefaultSetupTemplates are the executable policies installed for every new
+// project. reference-template remains opt-in documentation only.
+var DefaultSetupTemplates = []string{"intake", "quick-fix", "feature-development", "architecture-change"}
 
 // SetupStep is one line of the setup report. OK false on blueprint or mcp
 // is a report, not a failure: those steps do not write and do not gate Ready.
@@ -51,6 +58,10 @@ func (s *Service) Setup(ctx context.Context, template string) (SetupView, error)
 			template, strings.Join(WorkflowTemplates(), ", "))
 	}
 
+	_, projectStatErr := os.Stat(filepath.Join(s.Root, project.DevsysDirName))
+	if projectStatErr != nil && !os.IsNotExist(projectStatErr) {
+		return view, projectStatErr
+	}
 	res, _, err := s.ProjectCreate(ctx, "")
 	if err != nil {
 		view.Steps = append(view.Steps, SetupStep{Name: "init", Detail: err.Error()})
@@ -63,22 +74,42 @@ func (s *Service) Setup(ctx context.Context, template string) (SetupView, error)
 	}
 	view.Steps = append(view.Steps, SetupStep{Name: "init", OK: true, Detail: initDetail})
 
-	policy := filepath.Join(s.Root, project.DevsysDirName, "workflows", template+".md")
-	if _, statErr := os.Stat(policy); statErr == nil {
-		view.Steps = append(view.Steps, SetupStep{
-			Name: "workflow", OK: true, Skipped: true,
-			Detail: template + " already present; left in place",
-		})
-	} else if !os.IsNotExist(statErr) {
-		view.Steps = append(view.Steps, SetupStep{Name: "workflow", Detail: statErr.Error()})
-		return view, Internalf("inspect workflow %s: %v", policy, statErr)
+	templates := append([]string(nil), DefaultSetupTemplates...)
+	if template == "reference-template" {
+		templates = []string{template}
 	} else {
-		installed, err := s.WorkflowInitTemplate(ctx, template)
-		if err != nil {
-			view.Steps = append(view.Steps, SetupStep{Name: "workflow", Detail: err.Error()})
-			return view, err
+		for i, id := range templates {
+			if id == template {
+				templates[0], templates[i] = templates[i], templates[0]
+				break
+			}
 		}
-		view.Steps = append(view.Steps, SetupStep{Name: "workflow", OK: true, Detail: "installed " + installed.Template})
+	}
+	for _, id := range templates {
+		policy := filepath.Join(s.Root, project.DevsysDirName, "workflows", id+".md")
+		if _, statErr := os.Stat(policy); statErr == nil {
+			view.Steps = append(view.Steps, SetupStep{
+				Name: "workflow", OK: true, Skipped: true,
+				Detail: id + " already present; left in place",
+			})
+		} else if !os.IsNotExist(statErr) {
+			view.Steps = append(view.Steps, SetupStep{Name: "workflow", Detail: statErr.Error()})
+			return view, Internalf("inspect workflow %s: %v", policy, statErr)
+		} else {
+			installed, err := s.WorkflowInitTemplate(ctx, id)
+			if err != nil {
+				view.Steps = append(view.Steps, SetupStep{Name: "workflow", Detail: err.Error()})
+				return view, err
+			}
+			view.Steps = append(view.Steps, SetupStep{Name: "workflow", OK: true, Detail: "installed " + installed.Template})
+		}
+	}
+
+	if changed, err := s.ensureDefaultPolicy(ctx, template, os.IsNotExist(projectStatErr)); err != nil {
+		view.Steps = append(view.Steps, SetupStep{Name: "policy", Detail: err.Error()})
+		return view, err
+	} else if changed {
+		view.Steps = append(view.Steps, SetupStep{Name: "policy", OK: true, Detail: "default_policy=\"" + template + "\""})
 	}
 
 	wired, err := s.Wire(ctx, false)
@@ -150,20 +181,27 @@ func (s *Service) Setup(ctx context.Context, template string) (SetupView, error)
 	}
 	view.Steps = append(view.Steps, SetupStep{Name: "prime", OK: true, Detail: primeDetail})
 
-	art, err := s.ProjectBlueprint(ctx)
+	blueprint, err := s.ProjectBlueprint(ctx)
 	if err != nil {
 		view.Steps = append(view.Steps, SetupStep{Name: "blueprint", Detail: err.Error()})
 		return view, err
 	}
 	var blueprintMissing bool
-	if art == nil {
+	if blueprint.Artifact == nil {
 		blueprintMissing = true
 		view.Steps = append(view.Steps, SetupStep{
 			Name:   "blueprint",
 			Detail: "no blueprint declared; ask for project goals, then `workloom project update --blueprint-artifact <artifact-id>`",
 		})
 	} else {
-		view.Steps = append(view.Steps, SetupStep{Name: "blueprint", OK: true, Detail: art.ID})
+		detail := blueprint.Artifact.ID
+		if stale := blueprint.BlueprintStaleNotice(); stale != "" {
+			detail += "; " + stale
+		}
+		if warnings := BlueprintWarnings(blueprint.Artifact); len(warnings) > 0 {
+			detail += "; " + strings.Join(warnings, "; ")
+		}
+		view.Steps = append(view.Steps, SetupStep{Name: "blueprint", OK: true, Detail: detail})
 	}
 
 	rep, err := reconcile.Doctor(ctx, s.Root, reconcile.Options{})
@@ -195,4 +233,48 @@ func (s *Service) Setup(ctx context.Context, template string) (SetupView, error)
 		view.Next = session.RecommendedNextAction.Command
 	}
 	return view, nil
+}
+
+func (s *Service) ensureDefaultPolicy(ctx context.Context, template string, fresh bool) (bool, error) {
+	if !fresh || template == "reference-template" {
+		return false, nil
+	}
+	md, problems := config.Load(s.Root)
+	if len(problems) > 0 || md == nil || md.Config == nil || md.Config.DefaultPolicy != "" {
+		return false, nil
+	}
+	st, err := storage.Open(s.Root, storage.Options{})
+	if err != nil {
+		return false, err
+	}
+	changed := false
+	err = st.Write(ctx, func(tx *storage.Tx) error {
+		raw, ok, err := tx.ReadForExpect(config.ConfigFile)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return nil
+		}
+		var document yaml.Node
+		if err := yaml.Unmarshal(raw, &document); err != nil {
+			return err
+		}
+		for i := 0; i+1 < len(document.Content[0].Content); i += 2 {
+			if document.Content[0].Content[i].Value == "default_policy" {
+				return nil // Explicit empty value is an opt-out.
+			}
+		}
+		updated := append([]byte(nil), raw...)
+		if len(updated) > 0 && !bytes.HasSuffix(updated, []byte("\n")) {
+			updated = append(updated, '\n')
+		}
+		updated = append(updated, []byte("default_policy: "+template+"\n")...)
+		if err := tx.Put(config.ConfigFile, updated, storage.ExpectHash(storage.HashBytes(raw))); err != nil {
+			return err
+		}
+		changed = true
+		return nil
+	})
+	return changed, err
 }

@@ -169,6 +169,12 @@ type Run struct {
 	RetryCount       int              `json:"retry_count" yaml:"retry_count"`
 	ContextSnapshot  *ContextSnapshot `json:"context_snapshot" yaml:"context_snapshot"`
 }
+// Artifact is one immutable version of a named project record.
+// WorkItemID is primary ownership (CLI --workitem / MCP workitem_id): the
+// work item this artifact belongs to. RelatedWorkItems is additional
+// association (CLI --related / MCP related_workitems). A stage gate treats
+// either link as evidence for that work item. require_artifacts matches Name,
+// not Type.
 type Artifact struct {
 	SchemaVersion    int       `json:"schema_version" yaml:"schema_version"`
 	ID               string    `json:"id" yaml:"id"`
@@ -177,6 +183,10 @@ type Artifact struct {
 	Name             string    `json:"name" yaml:"name"`
 	Path             string    `json:"path" yaml:"path"`
 	Source           string    `json:"source" yaml:"source"`
+	WorkItemID       string    `json:"workitem_id" yaml:"workitem_id"`
+	RunID            string    `json:"run_id" yaml:"run_id"`
+	WorkflowID       string    `json:"workflow_id" yaml:"workflow_id"`
+	Stage            string    `json:"stage" yaml:"stage"`
 	CreatedByRunID   string    `json:"created_by_run_id" yaml:"created_by_run_id"`
 	Status           string    `json:"status" yaml:"status"`
 	Version          int       `json:"version" yaml:"version"`
@@ -184,6 +194,25 @@ type Artifact struct {
 	RelatedWorkItems []string  `json:"related_workitems" yaml:"related_workitems"`
 	CreatedAt        time.Time `json:"created_at" yaml:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at" yaml:"updated_at"`
+}
+
+// BelongsTo reports whether this artifact is evidence for id.
+// Primary ownership (WorkItemID) and association (RelatedWorkItems) both
+// count. An empty id matches nothing, so a blank owner is not universal
+// evidence.
+func (a *Artifact) BelongsTo(id string) bool {
+	if a == nil || id == "" {
+		return false
+	}
+	if a.WorkItemID == id {
+		return true
+	}
+	for _, related := range a.RelatedWorkItems {
+		if related == id {
+			return true
+		}
+	}
+	return false
 }
 type Decision struct {
 	SchemaVersion    int       `json:"schema_version" yaml:"schema_version"`

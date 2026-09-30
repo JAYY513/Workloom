@@ -2,11 +2,13 @@ package workspace
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // ErrGitMissing reports that the git executable is not on PATH. Git is an
@@ -45,11 +47,15 @@ func GitProject(dir string) bool {
 	return err == nil && strings.EqualFold(out, "true")
 }
 
+const gitCommandTimeout = 10 * time.Second
+
 // gitOutput runs one git command in dir and returns its trimmed combined
 // output. Hooks and worktree commands share the process-wide environment;
 // nothing here is interactive.
 func gitOutput(dir string, args ...string) (string, error) {
-	cmd := exec.Command("git", args...)
+	ctx, cancel := context.WithTimeout(context.Background(), gitCommandTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "git", args...)
 	cmd.Dir = dir
 	var buf bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &buf, &buf

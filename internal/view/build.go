@@ -27,6 +27,43 @@ const recoverCommand = `workloom recover --actor operator --reason "recover inte
 // pendingReason explains why business sections render nothing.
 const pendingReason = "pending transactions: run `workloom recover` before trusting business state (方案 §15.4)"
 
+const maxBlueprintContent = 256 << 10
+
+func readBlueprintContent(root, rel string) (string, string) {
+	rel = strings.TrimSpace(rel)
+	if rel == "" {
+		return "", "blueprint artifact has no source path"
+	}
+	path := filepath.Clean(filepath.Join(root, filepath.FromSlash(rel)))
+	base, err := filepath.Abs(root)
+	if err != nil {
+		return "", "blueprint root is invalid"
+	}
+	target, err := filepath.Abs(path)
+	if err != nil {
+		return "", "blueprint path is invalid"
+	}
+	relTarget, err := filepath.Rel(base, target)
+	if err != nil || relTarget == ".." || strings.HasPrefix(relTarget, ".."+string(filepath.Separator)) {
+		return "", "blueprint path escapes the project root"
+	}
+	info, err := os.Stat(target)
+	if err != nil {
+		return "", "blueprint source file is unavailable"
+	}
+	if info.IsDir() {
+		return "", "blueprint source path is a directory"
+	}
+	if info.Size() > maxBlueprintContent {
+		return "", fmt.Sprintf("blueprint source exceeds %d KiB", maxBlueprintContent/1024)
+	}
+	data, err := os.ReadFile(target)
+	if err != nil {
+		return "", "blueprint source file cannot be read"
+	}
+	return string(data), ""
+}
+
 // Build assembles the view of the project at root. It reads only — see the
 // package doc for the exact contracts. A missing .devsys/ is an error
 // (storage.ErrNotInitialized): there is no state to view.
@@ -122,14 +159,14 @@ func newModel() *Model {
 			Milestones: []domain.Milestone{},
 			Risks:      []string{}, Blockers: []string{}, NextFocus: []string{},
 		},
-		Trust:   Trust{Pending: []string{}},
-		Runs:    Runs{Provenance: Provenance{Sources: []string{}}, Entries: []RunEntry{}},
-		Records: Records{Provenance: Provenance{Sources: []string{}}, Decisions: []RecordRef{}, Findings: []RecordRef{}, Artifacts: []RecordRef{}},
+		Trust:     Trust{Pending: []string{}},
+		Runs:      Runs{Provenance: Provenance{Sources: []string{}}, Entries: []RunEntry{}},
+		Records:   Records{Provenance: Provenance{Sources: []string{}}, Decisions: []RecordRef{}, Findings: []RecordRef{}, Artifacts: []RecordRef{}},
+		Workflows: []Workflow{},
 		Progress: Progress{
 			Provenance: Provenance{Sources: []string{}},
-			Counts:     map[string]int{},
-			Items:      []Item{},
-			Readiness:  next.Report{Verdict: next.VerdictPass, Reasons: []string{}, Risks: []next.Risk{}},
+			Counts:     map[string]int{}, Items: []Item{},
+			Readiness: next.Report{Verdict: next.VerdictPass, Reasons: []string{}, Risks: []next.Risk{}},
 		},
 		Knowledge: Knowledge{
 			Provenance: Provenance{Sources: []string{}},
@@ -148,6 +185,7 @@ func emptyBusiness(m *Model) {
 	m.Progress.Degraded = true
 	m.Progress.Reason = pendingReason
 	m.Records = Records{Provenance: Provenance{Sources: []string{}}, Decisions: []RecordRef{}, Findings: []RecordRef{}, Artifacts: []RecordRef{}}
+	m.Workflows = []Workflow{}
 	m.Knowledge.Status = KnowledgeUnavailable
 	m.Knowledge.Reason = pendingReason
 	m.Knowledge.Degraded = true
@@ -186,6 +224,7 @@ func (b *builder) assemble() {
 		b.problemf("%s", b.inspection)
 	}
 	b.project()
+	b.workflows()
 	items := b.progress()
 	b.runs()
 	b.records()
@@ -222,6 +261,21 @@ func (b *builder) project() {
 		p.TechStack = mp.TechStack
 		p.Milestones = mp.Milestones
 		p.CreatedAt, p.UpdatedAt = timePtr(mp.CreatedAt), timePtr(mp.UpdatedAt)
+		if id := strings.TrimSpace(mp.BlueprintArtifactID); id != "" {
+			var artifact domain.Artifact
+			if _, err := b.rd.read(filepath.ToSlash(filepath.Join("artifacts", id+".yaml")), &artifact); err != nil {
+				b.problemf("blueprint artifact %q: %v", id, err)
+			} else {
+				content, contentErr := readBlueprintContent(b.root, artifact.Path)
+				p.Blueprint = &Blueprint{ID: artifact.ID, Name: artifact.Name, Path: artifact.Path, Source: artifact.Source, Status: artifact.Status, Version: artifact.Version, Content: content, ContentError: contentErr}
+				if artifact.Status == "draft" {
+					p.BlueprintWarnings = append(p.BlueprintWarnings, "blueprint is draft; review and promote it before relying on it")
+				}
+				if strings.TrimSpace(artifact.Source) == "" && strings.TrimSpace(artifact.CreatedByRunID) == "" {
+					p.BlueprintWarnings = append(p.BlueprintWarnings, "blueprint has no source or creating run; confirm its origin")
+				}
+			}
+		}
 	}
 	var cur domain.CurrentStateFile
 	if _, err := b.rd.read(config.CurrentStateFile, &cur); err != nil {
@@ -243,6 +297,33 @@ func (b *builder) project() {
 		p.Milestones = ms.Milestones
 	}
 	p.Sources = b.rd.since(mark)
+}
+func (b *builder) workflows() {
+	results := workflow.Load(b.root)
+	for _, result := range results {
+		for _, issue := range result.Issues {
+			if issue.Severity == workflow.SeverityError {
+				b.problemf("%s", issue.String())
+			}
+		}
+		if result.Policy == nil {
+			continue
+		}
+		p := result.Policy
+		item := Workflow{ID: p.ID, Name: p.Name, File: p.File, Steps: make([]WorkflowStep, 0, len(p.Steps)), Transitions: make([]WorkflowTransition, 0, len(p.Transitions))}
+		for _, step := range p.Steps {
+			item.Steps = append(item.Steps, WorkflowStep{ID: step.ID, Type: step.Type, Required: step.Required, Status: step.Status})
+		}
+		for _, edge := range p.Transitions {
+			item.Transitions = append(item.Transitions, WorkflowTransition{From: edge.From, To: edge.To, When: edge.When})
+		}
+		for stage, gate := range p.Gates.Stages {
+			item.Gates = append(item.Gates, WorkflowGate{Stage: stage, RequireArtifacts: append([]string{}, gate.RequireArtifacts...), RequireComment: gate.RequireComment, RequireApproval: gate.RequireApproval})
+		}
+		sort.Slice(item.Gates, func(i, j int) bool { return item.Gates[i].Stage < item.Gates[j].Stage })
+		b.m.Workflows = append(b.m.Workflows, item)
+	}
+	sort.Slice(b.m.Workflows, func(i, j int) bool { return b.m.Workflows[i].ID < b.m.Workflows[j].ID })
 }
 
 // progress fills the board: every work item with its scheduling facts, plus
@@ -542,62 +623,7 @@ func (b *builder) streamLineCount(id string) int {
 func (b *builder) records() {
 	mark := b.rd.mark()
 	rec := &b.m.Records
-	truncated := false
-
-	var decisions []*domain.Decision
-	names, err := b.rd.list("decisions", ".yaml")
-	if err != nil {
-		b.problem(err)
-	}
-	for _, name := range names {
-		var d domain.Decision
-		if _, err := b.rd.read("decisions/"+name, &d); err != nil {
-			b.problem(err)
-			continue
-		}
-		decisions = append(decisions, &d)
-	}
-	sort.Slice(decisions, func(i, j int) bool {
-		if !decisions[i].CreatedAt.Equal(decisions[j].CreatedAt) {
-			return decisions[i].CreatedAt.After(decisions[j].CreatedAt)
-		}
-		return decisions[i].ID < decisions[j].ID
-	})
-	decisions, capped := capList(decisions, b.limit)
-	truncated = truncated || capped
-	for _, d := range decisions {
-		created := d.CreatedAt
-		rec.Decisions = append(rec.Decisions, RecordRef{
-			ID: d.ID, Title: d.Title, Status: d.Status,
-			RelatedWorkItems: append([]string{}, d.RelatedWorkItems...),
-			CreatedAt:        &created,
-		})
-	}
-
-	names, err = b.rd.list("findings", ".yaml")
-	if err != nil {
-		b.problem(err)
-	}
-	var findings []*domain.Finding
-	for _, name := range names {
-		var f domain.Finding
-		if _, err := b.rd.read("findings/"+name, &f); err != nil {
-			b.problem(err)
-			continue
-		}
-		findings = append(findings, &f)
-	}
-	sort.Slice(findings, func(i, j int) bool { return findings[i].ID < findings[j].ID })
-	findings, capped = capList(findings, b.limit)
-	truncated = truncated || capped
-	for _, f := range findings {
-		rec.Findings = append(rec.Findings, RecordRef{
-			ID: f.ID, Title: f.Title, Type: f.Type, Status: f.Status, Severity: f.Severity,
-			RelatedWorkItems: append([]string{}, f.RelatedWorkItems...),
-		})
-	}
-
-	names, err = b.rd.list("artifacts", ".yaml")
+	names, err := b.rd.list("artifacts", ".yaml")
 	if err != nil {
 		b.problem(err)
 	}
@@ -616,14 +642,13 @@ func (b *builder) records() {
 		}
 		return artifacts[i].ID < artifacts[j].ID
 	})
-	artifacts, capped = capList(artifacts, b.limit)
-	truncated = truncated || capped
+	artifacts, truncated := capList(artifacts, b.limit)
 	for _, a := range artifacts {
 		created := a.CreatedAt
 		rec.Artifacts = append(rec.Artifacts, RecordRef{
 			ID: a.ID, Title: a.Name, Type: a.Type, Status: a.Status, Version: a.Version,
-			RelatedWorkItems: append([]string{}, a.RelatedWorkItems...),
-			CreatedAt:        &created,
+			WorkItemID: a.WorkItemID, RunID: a.RunID, WorkflowID: a.WorkflowID, Stage: a.Stage,
+			RelatedWorkItems: append([]string{}, a.RelatedWorkItems...), CreatedAt: &created,
 		})
 	}
 	rec.Truncated = truncated

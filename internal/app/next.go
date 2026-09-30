@@ -115,6 +115,21 @@ func (s *Service) Next(ctx context.Context) (next.Report, []*domain.WorkItem, er
 				fmt.Sprintf("work item %s references missing policy %q", wi.ID, wi.Workflow.ID))
 		}
 	}
+	for _, wi := range in.WorkItems {
+		if wi.Workflow != nil && wi.Workflow.ID != "" {
+			continue
+		}
+		if wi.Status != domain.StatusReady && wi.Status != domain.StatusBacklog {
+			continue
+		}
+		rec := workflow.Recommend(wi, in.DefaultPolicy)
+		if rec.RequiresTriage {
+			in.TriageBlocks = append(in.TriageBlocks, next.TriageBlock{
+				WorkitemID: wi.ID, Recommended: rec.PolicyID, SelectedPolicy: in.DefaultPolicy,
+				Detail: fmt.Sprintf("%s requires intake classification before execution; recommended policy %q", wi.ID, rec.PolicyID),
+			})
+		}
+	}
 	// Same judgement `workitem claim` applies (§4.7 领取质量门): a ready task the
 	// gate would reject is a risk signal, never a clean PASS. The policy bodies
 	// come from the plain reads above — the last-known-good resolver refreshes a

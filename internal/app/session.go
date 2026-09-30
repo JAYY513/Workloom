@@ -70,13 +70,13 @@ type SessionAction struct {
 	Command string `json:"command,omitempty"`
 }
 
-// SessionContext is the background a session should have: the project
-// summary plus references to the decisions, findings and artifacts that
-// matter. Bodies stay one read away.
+// SessionContext is the project summary plus durable stage artifacts and
+// recent timeline events. Decision and finding semantics are represented by
+// artifact types or event records, not separate session registries.
 type SessionContext struct {
 	ProjectSummary    string      `json:"project_summary"`
-	RelevantDecisions []RecordRef `json:"relevant_decisions"`
-	RecentFindings    []RecordRef `json:"recent_findings"`
+	RelevantDecisions []RecordRef `json:"relevant_decisions,omitempty"`
+	RecentFindings    []RecordRef `json:"recent_findings,omitempty"`
 	RelevantArtifacts []RecordRef `json:"relevant_artifacts"`
 	// RecentEvents is omitted in compact mode by design (the key is absent
 	// rather than empty).
@@ -123,22 +123,12 @@ func (s *Service) SessionStart(ctx context.Context, req SessionRequest) (Session
 
 	view.RecommendedNextAction = sessionAction(report.Next)
 
-	decisions, err := recordRefs(s, ctx, record.KindDecision, limit)
-	if err != nil {
-		return SessionView{}, err
-	}
-	findings, err := recordRefs(s, ctx, record.KindFinding, limit)
-	if err != nil {
-		return SessionView{}, err
-	}
 	artifacts, err := recordRefs(s, ctx, record.KindArtifact, limit)
 	if err != nil {
 		return SessionView{}, err
 	}
 	view.Context = SessionContext{
 		ProjectSummary:    md.Project.Description,
-		RelevantDecisions: decisions,
-		RecentFindings:    findings,
 		RelevantArtifacts: artifacts,
 	}
 	if !req.Compact {
@@ -210,7 +200,7 @@ func sessionAction(rec next.Recommendation) SessionAction {
 		if rec.WorkitemID != "" {
 			action.Command = "workloom workitem claim --id " + rec.WorkitemID + " --owner <owner> --reason <reason>"
 		}
-	case "start_backlog":
+	case "start_backlog", "promote_to_ready":
 		if rec.WorkitemID != "" {
 			action.Command = "workloom workitem transition --id " + rec.WorkitemID + " --to ready --actor <actor> --reason <reason>"
 		}

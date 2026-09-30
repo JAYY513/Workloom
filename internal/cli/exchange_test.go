@@ -57,10 +57,10 @@ func TestJSONLStreamsOneRecordPerLine(t *testing.T) {
 func TestJSONLCoversEveryListCommand(t *testing.T) {
 	gatedProject(t)
 	wi := newWorkitem(t, "jsonl coverage task")
-	if code, _, errOut := run(t, "decision", "create", "--title", "d", "--decision", "d", "--by", "operator"); code != CodeOK {
+	if code, _, errOut := run(t, "decision", "create", "--title", "d", "--decision", "d", "--by", "operator", "--actor", "operator", "--reason", "jsonl coverage"); code != CodeOK {
 		t.Fatalf("decision create: %d %s", code, errOut)
 	}
-	if code, _, errOut := run(t, "finding", "create", "--title", "f", "--description", "f"); code != CodeOK {
+	if code, _, errOut := run(t, "finding", "create", "--title", "f", "--description", "f", "--actor", "operator", "--reason", "jsonl coverage"); code != CodeOK {
 		t.Fatalf("finding create: %d %s", code, errOut)
 	}
 	if code, _, errOut := run(t, "artifact", "register", "--name", "a.md", "--actor", "tester", "--reason", "coverage"); code != CodeOK {

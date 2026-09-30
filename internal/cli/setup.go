@@ -17,9 +17,9 @@ import (
 func runSetup(stdout io.Writer, opts options, rest []string) error {
 	fs := flag.NewFlagSet("setup", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
-	template := fs.String("template", app.DefaultSetupTemplate, "workflow template to install if missing")
+	template := fs.String("template", app.DefaultSetupTemplate, "workflow template to prefer and use as the new-project default")
 	if err := fs.Parse(rest); err != nil || fs.NArg() != 0 {
-		return errUsage("`workloom setup` [--template quick-fix]")
+		return errUsage("`workloom setup` [--template intake|quick-fix|feature-development|architecture-change|reference-template]")
 	}
 	svc, err := appService()
 	if err != nil {

@@ -123,31 +123,21 @@ func TestNextReportsQueuedRetry(t *testing.T) {
 	}
 }
 
-func TestClaimWarnsWhenNoPolicyGoverns(t *testing.T) {
+func TestClaimRequiresIntakeWhenPolicyIsUnknown(t *testing.T) {
 	repo, items := gatedProject(t)
 	id := createReadyWorkitem(t, items, readyItem("无策略工作项", "fixture description", ""))
 
-	code, out, errOut := run(t, "workitem", "claim", "--id", id, "--owner", "dev", "--reason", "start")
-	if code != CodeOK {
-		t.Fatalf("claim: code=%d stderr=%q", code, errOut)
-	}
-	if !strings.Contains(out, "warning: ") || !strings.Contains(out, "gates are not enforced") {
-		t.Errorf("stdout = %q, want the gates-not-enforced warning", out)
-	}
-	if !strings.Contains(out, "workloom workflow start --id "+id) {
-		t.Errorf("stdout = %q, want the binding command", out)
+	code, _, errOut := run(t, "workitem", "claim", "--id", id, "--owner", "dev", "--reason", "start")
+	if code != CodeInvalid || !strings.Contains(errOut, `recommended "intake"`) {
+		t.Fatalf("claim: code=%d stderr=%q, want intake classification", code, errOut)
 	}
 
-	// With a project default in place the same shape of item is gated, so the
-	// claim runs under a policy and there is nothing to warn about.
+	// A legacy execution default does not bypass intake for unknown work.
 	setDefaultPolicy(t, repo, "gated")
 	second := createReadyWorkitem(t, items, strongItem(""))
-	code, out, errOut = run(t, "workitem", "claim", "--id", second, "--owner", "dev", "--reason", "start")
-	if code != CodeOK {
-		t.Fatalf("claim under the default policy: code=%d stderr=%q", code, errOut)
-	}
-	if strings.Contains(out, "warning:") {
-		t.Errorf("stdout = %q, want no warning once the default policy gates the item", out)
+	code, _, errOut = run(t, "workitem", "claim", "--id", second, "--owner", "dev", "--reason", "start")
+	if code != CodeInvalid || !strings.Contains(errOut, `recommended "intake"`) {
+		t.Fatalf("claim under legacy default: code=%d stderr=%q, want intake classification", code, errOut)
 	}
 }
 
@@ -162,10 +152,10 @@ func strongItem(policyID string) *domain.WorkItem {
 	return wi
 }
 
-func TestDefaultPolicyGatesUnboundWorkitem(t *testing.T) {
+func TestExplicitPolicyGatesWorkitem(t *testing.T) {
 	repo, items := gatedProject(t)
 	setDefaultPolicy(t, repo, "gated")
-	id := createReadyWorkitem(t, items, readyItem("弱标题", "短", ""))
+	id := createReadyWorkitem(t, items, readyItem("弱标题", "短", "gated"))
 
 	code, _, errOut := run(t, "workitem", "claim", "--id", id, "--owner", "dev", "--reason", "start")
 	if code != CodeInvalid {

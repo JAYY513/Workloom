@@ -21,6 +21,7 @@ import (
 	"github.com/JAYY513/Workloom/internal/storage"
 	"github.com/JAYY513/Workloom/internal/workflow"
 	"github.com/JAYY513/Workloom/internal/workitem"
+	"github.com/JAYY513/Workloom/internal/workspace"
 )
 
 // WorkItemView is one work item plus the version hash every mutation
@@ -306,7 +307,6 @@ func (s *Service) WorkitemTransition(ctx context.Context, id, to, actor, reason,
 }
 
 // WorkitemClaim claims a ready work item after the claim quality gate, and
-// returns the fresh run credentials.
 func (s *Service) WorkitemClaim(ctx context.Context, id, owner, reason, expect string) (ClaimView, error) {
 	if owner == "" || reason == "" {
 		return ClaimView{}, Usagef("claim requires owner and reason")
@@ -318,11 +318,30 @@ func (s *Service) WorkitemClaim(ctx context.Context, id, owner, reason, expect s
 	if err := s.checkClaimQuality(ctx, wi); err != nil {
 		return ClaimView{}, err
 	}
+	// Record the current HEAD so the completion check can verify the branch
+	// advanced. HeadSHA is best-effort: a non-git project leaves it empty and
+	// verifyCompletion skips the git check gracefully.
+	headSHA, _ := workspace.HeadSHA(s.Root)
 	res, err := s.items().Claim(ctx, id, workitem.ClaimOptions{
-		Owner: owner, Actor: owner, Reason: reason, Expected: expected, Now: s.now(),
+		Owner: owner, Actor: owner, Reason: reason, Expected: expected,
+		HeadSHA: headSHA, Now: s.now(),
 	})
 	if err != nil {
 		return ClaimView{}, s.storeError(err)
+	}
+	// When there is a claim head (Git project), bind the project root as the
+	// workspace path so verifyCompletion can compare the root HEAD against it.
+	// This covers "claim → commit on project root → run complete" without a
+	// worktree. Non-git projects leave headSHA empty so this is a no-op.
+	if headSHA != "" {
+		r, raw, err := readRun(ctx, s, res.RunID)
+		if err != nil {
+			return ClaimView{}, err
+		}
+		r.Workspace = domain.Workspace{Path: s.Root}
+		if err := run.New(s.Root).Update(ctx, r, raw); err != nil {
+			return ClaimView{}, s.storeError(err)
+		}
 	}
 	return ClaimView{
 		WorkitemID: id, RunID: res.RunID, Token: res.Token, Status: res.Status,
@@ -525,13 +544,10 @@ func versionHash(raw []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// policyForWorkItem resolves the workflow policy governing a work item: the
-// policy its instance declares, else the project-level default_policy from
-// .devsys/config.yaml (方案 §4.7/§5.3 — a project-wide fallback so claiming
-// first and binding a policy later is not a way around the gates). A work item
-// under neither resolves to an empty Resolution. The current file is
-// re-validated on every call; a failing file falls back to the last-known-good
-// snapshot with the current failure reported in Resolution.Issue (实施计划 M3.5).
+// policyForWorkItem resolves the workflow policy governing a work item. An
+// explicit instance wins; otherwise a high-confidence deterministic
+// recommendation is used when its policy exists, and default_policy remains
+// the fallback for unknown work or an unavailable recommendation.
 func (s *Service) policyForWorkItem(ctx context.Context, wi *domain.WorkItem) (workflow.Resolution, error) {
 	id := ""
 	if wi.Workflow != nil {
@@ -546,16 +562,20 @@ func (s *Service) policyForWorkItem(ctx context.Context, wi *domain.WorkItem) (w
 			if p.File != config.ConfigFile {
 				continue
 			}
-			// config.yaml carries default_policy: an unreadable file would
-			// silently drop the project's gates, so refuse instead of
-			// claiming under no policy (方案 §5.3: 配置错误阻塞新任务派发).
 			return workflow.Resolution{}, fmt.Errorf(
 				"%s is invalid: %s; claims stay blocked until the file is fixed (`workloom config check`)", config.ConfigFile, p.String())
 		}
-		if md == nil || md.Config == nil {
-			return workflow.Resolution{}, nil
+		defaultPolicy := ""
+		if md != nil && md.Config != nil {
+			defaultPolicy = strings.TrimSpace(md.Config.DefaultPolicy)
 		}
-		id = strings.TrimSpace(md.Config.DefaultPolicy)
+		rec := workflow.Recommend(wi, defaultPolicy)
+		if (rec.Source == workflow.RecommendationSourceRule || rec.RequiresTriage) && rec.PolicyID != "" {
+			if res, err := workflow.Resolve(ctx, s.Root, rec.PolicyID); err == nil {
+				return res, nil
+			}
+		}
+		id = defaultPolicy
 		if id == "" {
 			return workflow.Resolution{}, nil
 		}
@@ -565,6 +585,34 @@ func (s *Service) policyForWorkItem(ctx context.Context, wi *domain.WorkItem) (w
 		return workflow.Resolution{}, err
 	}
 	return res, nil
+}
+
+func (s *Service) workflowPolicyMismatch(ctx context.Context, wi *domain.WorkItem, selected string) error {
+	if wi.Workflow != nil && wi.Workflow.ID != "" {
+		return nil
+	}
+	md, problems := config.Load(s.Root)
+	for _, p := range problems {
+		if p.File == config.ConfigFile {
+			return fmt.Errorf("%s is invalid: %s", config.ConfigFile, p.String())
+		}
+	}
+	defaultPolicy := ""
+	if md != nil && md.Config != nil {
+		defaultPolicy = strings.TrimSpace(md.Config.DefaultPolicy)
+	}
+	rec := workflow.Recommend(wi, defaultPolicy)
+	if rec.RequiresTriage && selected != "intake" {
+		return Invalidf(KindWorkflow, nil,
+			"workflow policy mismatch for %s: selected %q, recommended %q; task classification is required before execution (%s); start intake with `workloom workflow start --id %s --policy intake --actor <actor> --reason \"classify task\"`",
+			wi.ID, selected, rec.PolicyID, strings.Join(rec.Reasons, "; "), wi.ID)
+	}
+	if rec.Source != workflow.RecommendationSourceRule || rec.Confidence != workflow.ConfidenceHigh || selected == rec.PolicyID {
+		return nil
+	}
+	return Invalidf(KindWorkflow, nil,
+		"workflow policy mismatch for %s: selected %q, recommended %q (%s); signals=%s; bind the recommended policy with `workloom workflow start --id %s --policy %s --actor <actor> --reason \"accept recommendation\"`",
+		wi.ID, selected, rec.PolicyID, strings.Join(rec.Reasons, "; "), strings.Join(rec.Signals, ","), wi.ID, rec.PolicyID)
 }
 
 // policyIDs names the workflow policies a workflow.Load result carries, by
@@ -589,6 +637,8 @@ func policyIDs(policies []workflow.FileResult) []string {
 // gateEvidence collects the evidence a stage gate consumes: artifact names,
 // comment events and, for require_approval gates, the approved unconsumed
 // approval matching the stage and the work item's current status (方案 §4.9).
+// An artifact counts when its primary owner (workitem_id) is this work item
+// or its association list (related_workitems) contains this work item.
 // The matching approval id is returned so the advancing transaction can
 // consume it atomically.
 func (s *Service) gateEvidence(ctx context.Context, wi *domain.WorkItem, stage string) (workflow.GateEvidence, string, error) {
@@ -598,10 +648,8 @@ func (s *Service) gateEvidence(ctx context.Context, wi *domain.WorkItem, stage s
 	}
 	names := map[string]bool{}
 	for _, a := range artifacts {
-		for _, related := range a.RelatedWorkItems {
-			if related == wi.ID && a.Name != "" {
-				names[a.Name] = true
-			}
+		if a.Name != "" && a.BelongsTo(wi.ID) {
+			names[a.Name] = true
 		}
 	}
 	byName := make([]string, 0, len(names))
@@ -640,6 +688,7 @@ func (s *Service) gateEvidence(ctx context.Context, wi *domain.WorkItem, stage s
 		}
 	}
 	return workflow.GateEvidence{
+		WorkItemID:    wi.ID,
 		ArtifactNames: byName,
 		CommentCount:  len(comments),
 		ApprovalReady: approvalID != "",
@@ -702,6 +751,9 @@ func (s *Service) checkClaimQuality(ctx context.Context, wi *domain.WorkItem) er
 	if err != nil {
 		return s.errWorkflowPolicy(err)
 	}
+	if err := s.workflowPolicyMismatch(ctx, wi, res.ID); err != nil {
+		return err
+	}
 	if res.Policy == nil {
 		return nil
 	}
@@ -718,7 +770,7 @@ func (s *Service) checkClaimQuality(ctx context.Context, wi *domain.WorkItem) er
 	if !res.Policy.QualityGateBlocks(quality) {
 		return nil
 	}
-	return errQuality(res.Policy.File, quality.Score, res.Policy.QualityGate.MinScore, quality.Improvements)
+	return errQuality(res.Policy.File, quality.Score, res.Policy.QualityGate.MinScore, quality.Improvements, quality.Components)
 }
 
 // errWorkflowPolicy reports a workflow policy that a work item declared but
@@ -744,14 +796,18 @@ func errGate(policyFile, stage string, missing []string) error {
 }
 
 // errQuality renders a claim-time quality rejection with one problem per
-// improvement item, located at the policy's threshold.
-func errQuality(policyFile string, score, minScore int, improvements []string) error {
+// improvement item, located at the policy's threshold. The message carries
+// every component's current value, weight and threshold.
+func errQuality(policyFile string, score, minScore int, improvements, components []string) error {
 	problems := make([]config.Problem, 0, len(improvements))
 	for _, m := range improvements {
 		problems = append(problems, config.Problem{File: policyFile, Field: "quality_gate.min_score", Reason: m})
 	}
-	return Invalidf(KindQuality, problems,
-		"quality gate not satisfied: score %d is below min_score %d", score, minScore)
+	msg := fmt.Sprintf("quality gate not satisfied: score %d is below min_score %d", score, minScore)
+	if len(components) > 0 {
+		msg += "; " + strings.Join(components, "; ")
+	}
+	return Invalidf(KindQuality, problems, "%s", msg)
 }
 
 // mapWorkflowError renders domain workflow refusals: the allowed candidates

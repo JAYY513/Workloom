@@ -55,17 +55,34 @@ function resolveBinary(platform, arch) {
   return bin;
 }
 
-function main() {
-  let bin;
-  try {
-    bin = resolveBinary(process.platform, process.arch);
-  } catch (err) {
-    console.error("workloom: " + err.message);
+// WORKLOOM_BIN lets Git Bash (and any shell whose npm shim cannot find node)
+// point at the platform exe without changing the npm bin field. MCP registration
+// still uses node + bin/workloom.js.
+function overrideBinary() {
+  const override = process.env.WORKLOOM_BIN;
+  if (!override) return "";
+  if (!fs.existsSync(override)) {
+    console.error(
+      "WORKLOOM_BIN is set to " +
+        JSON.stringify(override) +
+        " but that file does not exist.\n" +
+        "Unset it, or point it at the platform workloom.exe.",
+    );
     process.exit(1);
   }
+  return override;
+}
+
+function main() {
+  const bin = overrideBinary() || resolveBinary(process.platform, process.arch);
   const child = spawn(bin, process.argv.slice(2), { stdio: "inherit" });
   child.on("error", (err) => {
     console.error("workloom: failed to start " + bin + ": " + err.message);
+    console.error(
+      "If Git Bash reports 'node: No such file or directory', Node is not on that PATH. " +
+        "Set WORKLOOM_BIN to the platform workloom.exe, or run bin/workloom.ps1 (no Node required). " +
+        "WSL bash is a different environment from Git Bash.",
+    );
     process.exit(1);
   });
   child.on("exit", (code, signal) => {

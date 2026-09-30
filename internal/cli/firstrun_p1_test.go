@@ -40,9 +40,15 @@ func registerArtifact(t *testing.T, name, path string) string {
 // blueprint 读回；空串清除。
 func TestProjectUpdateBlueprintArtifact(t *testing.T) {
 	gatedProject(t)
+	if err := os.MkdirAll("docs", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join("docs", "blueprint.md"), []byte("# blueprint\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	id := registerArtifact(t, "blueprint.md", "docs/blueprint.md")
 
-	code, _, errOut := run(t, "project", "update", "--blueprint-artifact", id, "--latest")
+	code, _, errOut := run(t, "project", "update", "--blueprint-artifact", id, "--actor", "tester", "--reason", "bind blueprint", "--latest")
 	if code != CodeOK {
 		t.Fatalf("project update --blueprint-artifact: code=%d stderr=%q", code, errOut)
 	}
@@ -51,7 +57,7 @@ func TestProjectUpdateBlueprintArtifact(t *testing.T) {
 		t.Fatalf("project blueprint: code=%d out=%q stderr=%q, want the declared artifact", code, out, errOut)
 	}
 
-	code, _, errOut = run(t, "project", "update", "--blueprint-artifact", "", "--latest")
+	code, _, errOut = run(t, "project", "update", "--blueprint-artifact", "", "--actor", "tester", "--reason", "clear blueprint", "--latest")
 	if code != CodeOK {
 		t.Fatalf("clear blueprint: code=%d stderr=%q", code, errOut)
 	}
@@ -62,10 +68,10 @@ func TestProjectUpdateBlueprintArtifact(t *testing.T) {
 
 	// Untouched fields stay untouched: a name-only update must not wipe the
 	// declaration either.
-	if code, _, errOut = run(t, "project", "update", "--blueprint-artifact", id, "--latest"); code != CodeOK {
+	if code, _, errOut = run(t, "project", "update", "--blueprint-artifact", id, "--actor", "tester", "--reason", "redeclare blueprint", "--latest"); code != CodeOK {
 		t.Fatalf("re-declare: %d %s", code, errOut)
 	}
-	if code, _, errOut = run(t, "project", "update", "--status", "active", "--latest"); code != CodeOK {
+	if code, _, errOut = run(t, "project", "update", "--status", "active", "--actor", "tester", "--reason", "activate project", "--latest"); code != CodeOK {
 		t.Fatalf("status-only update: %d %s", code, errOut)
 	}
 	code, out, _ = run(t, "--json", "project", "get")
@@ -76,14 +82,14 @@ func TestProjectUpdateBlueprintArtifact(t *testing.T) {
 
 func TestProjectUpdateBlueprintRejectsBadArtifact(t *testing.T) {
 	gatedProject(t)
-	code, _, errOut := run(t, "project", "update", "--blueprint-artifact", "artifact-404", "--latest")
+	code, _, errOut := run(t, "project", "update", "--blueprint-artifact", "artifact-404", "--actor", "tester", "--reason", "bind missing", "--latest")
 	if code != CodePrecondition {
 		t.Fatalf("unknown artifact: code=%d, want %d", code, CodePrecondition)
 	}
 	if !strings.Contains(errOut, "artifact register") {
 		t.Fatalf("stderr = %q, want the artifact register way out", errOut)
 	}
-	code, _, _ = run(t, "project", "update", "--blueprint-artifact", "not-an-id", "--latest")
+	code, _, _ = run(t, "project", "update", "--blueprint-artifact", "not-an-id", "--actor", "tester", "--reason", "bind malformed", "--latest")
 	if code != CodeUsage {
 		t.Fatalf("malformed id: code=%d, want %d", code, CodeUsage)
 	}

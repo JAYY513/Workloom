@@ -6,15 +6,16 @@ import (
 	"sort"
 	"time"
 
+	"github.com/JAYY513/Workloom/internal/config"
 	"github.com/JAYY513/Workloom/internal/domain"
 	"github.com/JAYY513/Workloom/internal/events"
 	"github.com/JAYY513/Workloom/internal/knowledge"
 	"github.com/JAYY513/Workloom/internal/record"
+	"github.com/JAYY513/Workloom/internal/workflow"
 )
 
-// ContextView is the working context an agent needs to orient without
-// reading source: project facts, progress, the recommended action and the
-// most recent records (as references — read the bodies on demand).
+// ContextView is the project summary plus current execution evidence. Durable
+// context is represented by stage artifacts; observations remain timeline events.
 type ContextView struct {
 	Project         *domain.Project     `json:"project"`
 	State           domain.CurrentState `json:"state"`
@@ -22,6 +23,7 @@ type ContextView struct {
 	Verdict         string              `json:"verdict"`
 	Next            any                 `json:"next"`
 	Risks           any                 `json:"risks,omitempty"`
+	Workflows       WorkflowCatalog     `json:"workflows"`
 	RecentDecisions []RecordRef         `json:"recent_decisions"`
 	RecentFindings  []RecordRef         `json:"recent_findings"`
 	RecentArtifacts []RecordRef         `json:"recent_artifacts"`
@@ -29,8 +31,15 @@ type ContextView struct {
 	Notices         []string            `json:"notices,omitempty"`
 }
 
-// RecordRef is a pointer to a record: identity, title, status and when it
-// changed. The body stays one read away (`decision_get`, `finding_get`, …).
+// WorkflowCatalog tells an agent what it may choose without binding a policy.
+type WorkflowCatalog struct {
+	DefaultPolicy string           `json:"default_policy,omitempty"`
+	Policies      []PolicySummary  `json:"policies"`
+	Warnings      []workflow.Issue `json:"warnings,omitempty"`
+}
+
+// RecordRef is a pointer to a durable artifact: identity, title, status and
+// when it changed. The body stays one read away through the tool surface.
 type RecordRef struct {
 	Ref       string    `json:"ref"`
 	Title     string    `json:"title"`
@@ -47,9 +56,9 @@ type EventRef struct {
 	Time    time.Time `json:"time"`
 }
 
-// WorkitemContextView is the context assembled around one work item: the
-// second layer of 方案 §11.1 (the task itself and the records that reference
-// it), plus the third layer — the knowledge pages the task touches.
+// WorkitemContextView is the task-scoped execution context: workflow, stage
+// artifacts, timeline comments and knowledge pages. It does not aggregate
+// project-wide decision or finding registries.
 type WorkitemContextView struct {
 	WorkItem  *domain.WorkItem `json:"workitem"`
 	Version   string           `json:"version"`
@@ -139,7 +148,6 @@ func (s *Service) ContextCompact(ctx context.Context) (ContextView, error) {
 	view.RecentEvents = nil
 	return view, nil
 }
-
 func (s *Service) context(ctx context.Context, limit int, withNotices bool) (ContextView, error) {
 	if limit <= 0 {
 		limit = 5
@@ -152,12 +160,19 @@ func (s *Service) context(ctx context.Context, limit int, withNotices bool) (Con
 	if err != nil {
 		return ContextView{}, err
 	}
+	policies, policyWarnings, _ := s.WorkflowList(ctx)
+	mdConfig, _ := config.Diagnose(s.Root)
+	defaultPolicy := ""
+	if mdConfig != nil && mdConfig.Config != nil {
+		defaultPolicy = mdConfig.Config.DefaultPolicy
+	}
 	view := ContextView{
-		Project: md.Project,
-		State:   md.Project.CurrentState,
-		Verdict: report.Verdict,
-		Next:    report.Next,
-		Risks:   report.Risks,
+		Project:   md.Project,
+		State:     md.Project.CurrentState,
+		Verdict:   report.Verdict,
+		Next:      report.Next,
+		Risks:     report.Risks,
+		Workflows: WorkflowCatalog{DefaultPolicy: defaultPolicy, Policies: policies, Warnings: policyWarnings},
 	}
 	if items == nil {
 		// The inspection is not trustworthy (pending transactions or no lock
@@ -171,16 +186,6 @@ func (s *Service) context(ctx context.Context, limit int, withNotices bool) (Con
 		}
 	}
 
-	decisions, err := recordRefs(s, ctx, record.KindDecision, limit)
-	if err != nil {
-		return ContextView{}, err
-	}
-	view.RecentDecisions = decisions
-	findings, err := recordRefs(s, ctx, record.KindFinding, limit)
-	if err != nil {
-		return ContextView{}, err
-	}
-	view.RecentFindings = findings
 	artifacts, err := recordRefs(s, ctx, record.KindArtifact, limit)
 	if err != nil {
 		return ContextView{}, err
@@ -230,31 +235,16 @@ func (s *Service) ContextForWorkitem(ctx context.Context, id string, paths []str
 		}
 	}
 
-	decisions, err := record.New(s.Root).ListDecisions(ctx)
-	if err != nil {
-		return WorkitemContextView{}, s.storeError(err)
-	}
-	for _, d := range decisions {
-		if references(d.RelatedWorkItems, id) {
-			out.Decisions = append(out.Decisions, RecordRef{Ref: "decision://" + d.ID, Title: d.Title, Status: d.Status})
-		}
-	}
-	findings, err := record.New(s.Root).ListFindings(ctx)
-	if err != nil {
-		return WorkitemContextView{}, s.storeError(err)
-	}
-	for _, f := range findings {
-		if references(f.RelatedWorkItems, id) {
-			out.Findings = append(out.Findings, RecordRef{Ref: "finding://" + f.ID, Title: f.Title, Status: f.Status})
-		}
-	}
 	artifacts, err := record.New(s.Root).ListArtifacts(ctx)
 	if err != nil {
 		return WorkitemContextView{}, s.storeError(err)
 	}
 	for _, a := range artifacts {
-		if references(a.RelatedWorkItems, id) {
-			out.Artifacts = append(out.Artifacts, RecordRef{Ref: "artifact://" + a.ID, Title: a.Name, Status: a.Status})
+		if a.BelongsTo(id) {
+			out.Artifacts = append(out.Artifacts, RecordRef{
+				Ref: "artifact://" + a.ID, Title: a.Name, Status: a.Status,
+				UpdatedAt: a.UpdatedAt,
+			})
 		}
 	}
 	comments, err := events.New(s.Root).Read(ctx, events.Filter{

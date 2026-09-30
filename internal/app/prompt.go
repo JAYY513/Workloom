@@ -121,7 +121,6 @@ func (s *Service) RunPrompt(ctx context.Context, req RunPromptRequest) (RunPromp
 		Policy: policyBrief,
 		State:  prompt.State{Verdict: report.Verdict, Next: report.Next.Action, Risks: riskLines(report.Risks)},
 		Context: prompt.Context{
-			Decisions: recordPromptRefs(wctx.Decisions), Findings: recordPromptRefs(wctx.Findings),
 			Artifacts: recordPromptRefs(wctx.Artifacts), Comments: eventPromptRefs(wctx.Comments),
 			Knowledge: knowledgePromptRefs(wctx.Knowledge.Pages),
 			Notes:     knowledgeNotes(wctx.Knowledge),
@@ -132,7 +131,6 @@ func (s *Service) RunPrompt(ctx context.Context, req RunPromptRequest) (RunPromp
 			ArtifactVersions:    artifactVersions(wctx.Artifacts),
 			KnowledgeRevision:   wctx.Knowledge.Baseline,
 			KnowledgePages:      knowledgePagePaths(wctx.Knowledge.Pages),
-			DecisionIDs:         decisionIDs(wctx.Decisions),
 			WorkspaceHead:       r.Claim.HeadSHA,
 			KnowledgeBehind:     knowledgeBehind(r.Claim.HeadSHA, wctx.Knowledge.Baseline),
 			KnowledgeDegraded:   wctx.Knowledge.Degraded,

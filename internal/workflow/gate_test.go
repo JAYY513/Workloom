@@ -65,6 +65,31 @@ func TestCheckGateMissingEvidenceInOrder(t *testing.T) {
 	}
 }
 
+func TestCheckGateRemediationNamesWorkItem(t *testing.T) {
+	p := gatePolicy(t, gateFixture)
+	res := p.CheckGate("verification", GateEvidence{WorkItemID: "WLM-9"})
+	if len(res.Missing) < 3 {
+		t.Fatalf("missing = %q", res.Missing)
+	}
+	for _, m := range res.Missing[:2] {
+		for _, want := range []string{
+			"WLM-9",
+			"primary ownership is --workitem (workitem_id)",
+			"association is --related (related_workitems)",
+			ArtifactRegisterUsage,
+			"workloom artifact register",
+			"--workitem WLM-9",
+		} {
+			if !strings.Contains(m, want) {
+				t.Fatalf("missing line %q lacks %q", m, want)
+			}
+		}
+	}
+	if !strings.Contains(res.Missing[2], "workitem comment --id WLM-9") {
+		t.Fatalf("comment remedy = %q", res.Missing[2])
+	}
+}
+
 func TestCheckGateAllowsOnceEvidencePresent(t *testing.T) {
 	p := gatePolicy(t, gateFixture)
 	res := p.CheckGate("verification", GateEvidence{

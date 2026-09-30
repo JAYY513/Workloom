@@ -32,6 +32,7 @@ const (
 	ActionReview           = "review"
 	ActionStart            = "start"
 	ActionStartBacklog     = "start_backlog"
+	ActionPromoteToReady   = "promote_to_ready"
 	ActionMilestoneReview  = "milestone_review"
 	ActionDeclareBlueprint = "declare_blueprint"
 	ActionReportDone       = "report_done"
@@ -45,6 +46,7 @@ const (
 	RiskStaleReview       = "stale_review"
 	RiskBlocked           = "blocked"
 	RiskQualityBlocked    = "quality_blocked"
+	RiskWorkflowTriage    = "workflow_triage_required"
 	RiskRetryPending      = "retry_pending"
 	RiskInvalidMetadata   = "invalid_metadata"
 	RiskInvalidPolicy     = "invalid_policy"
@@ -53,6 +55,7 @@ const (
 	RiskEmptyProject      = "empty_project"
 	RiskDeadAttempt       = "dead_attempt"
 	RiskInFlight          = "in_flight"
+	RiskDraftWorkitem     = "draft_workitem"
 )
 
 // ReviewStaleAfter is how long a work item may wait in review/verification
@@ -62,8 +65,11 @@ const ReviewStaleAfter = 24 * time.Hour
 // defaultRecoverCommand is the FAIL remediation hint when Input carries none.
 const defaultRecoverCommand = `workloom recover --actor operator --reason "recover interrupted state"`
 
-// CreateWorkitemCommand is the empty-project remediation `next` and `init`
-// name, so the first-use path does not invent a second create recipe.
+// BlueprintGuide is the complete first-project recipe shown when no blueprint
+// is bound. It deliberately keeps the source document format open.
+const BlueprintGuide = "no blueprint declared; first create product-blueprint.yaml, then: 1) register it with `workloom artifact register --name \"product-blueprint.yaml\" --path product-blueprint.yaml --status draft --actor <you> --reason \"register project blueprint\"`; 2) inspect with `workloom artifact get <artifact-id>` and review; 3) promote with `workloom artifact update --id <artifact-id> --status active --expect <version-hash>`; 4) read `workloom project get` for the project version; 5) bind with `workloom project update --blueprint-artifact <artifact-id> --expect <project-version>`; 6) verify with `workloom project blueprint` before creating work items"
+
+// CreateWorkitemCommand is the empty-project work item recipe.
 const CreateWorkitemCommand = `workloom workitem create --title "…" --actor <you> --reason "first task"`
 
 // Input is the observed project stateEvaluate consumes.
@@ -86,7 +92,9 @@ type Input struct {
 	// quality gate would refuse (§4.7 领取质量门). The application layer derives
 	// them with the same judgement claim applies, so a PASS verdict never
 	// recommends a claim that is certain to fail.
-	QualityBlocks []QualityBlock
+	QualityBlocks []QualityBlock `json:"quality_blocks,omitempty"`
+	// TriageBlocks are work items that must be classified before execution.
+	TriageBlocks []TriageBlock `json:"triage_blocks,omitempty"`
 	// DefaultPolicy is the project-level policy (.devsys/config.yaml) governing
 	// work items that declare no instance; PolicyIDs are the policies the
 	// project declares. Together they tell whether a recommended work item
@@ -108,14 +116,20 @@ type Input struct {
 
 // QualityBlock is a ready work item whose claim the quality gate would refuse.
 type QualityBlock struct {
-	WorkitemID string `json:"workitem_id"`
-	PolicyID   string `json:"policy_id"`
-	PolicyFile string `json:"policy_file"`
-	Score      int    `json:"score"`
-	MinScore   int    `json:"min_score"`
-	// Improvements are the scored-zero components the caller must fix; they
-	// mirror the claim rejection's problem list.
+	WorkitemID   string   `json:"workitem_id"`
+	PolicyID     string   `json:"policy_id"`
+	PolicyFile   string   `json:"policy_file"`
+	Score        int      `json:"score"`
+	MinScore     int      `json:"min_score"`
 	Improvements []string `json:"improvements,omitempty"`
+}
+
+// TriageBlock is a ready work item whose policy selection requires intake.
+type TriageBlock struct {
+	WorkitemID     string `json:"workitem_id"`
+	Recommended    string `json:"recommended"`
+	SelectedPolicy string `json:"selected_policy,omitempty"`
+	Detail         string `json:"detail"`
 }
 
 // PolicySource reports the policy governing one work item: its id ("" when no
@@ -229,6 +243,9 @@ func Evaluate(in Input) Report {
 				qb.policyName(), qb.Score, qb.MinScore),
 		})
 	}
+	for _, tb := range in.TriageBlocks {
+		rep.Risks = append(rep.Risks, Risk{Kind: RiskWorkflowTriage, WorkitemID: tb.WorkitemID, Detail: tb.Detail})
+	}
 	for _, wi := range retryQueue(in) {
 		rep.Risks = append(rep.Risks, Risk{Kind: RiskRetryPending, WorkitemID: wi.ID, Detail: retryDetail(wi, in.Now)})
 	}
@@ -252,7 +269,7 @@ func Evaluate(in Input) Report {
 	if in.emptyProject() {
 		detail := "no work items yet; create one with `" + CreateWorkitemCommand + "`"
 		if !in.HasBlueprint {
-			detail = "no blueprint declared; create and bind a blueprint before creating work items (then use `" + CreateWorkitemCommand + "`)"
+			detail = BlueprintGuide + "; then use `" + CreateWorkitemCommand + "`"
 		}
 		rep.Risks = append(rep.Risks, Risk{Kind: RiskEmptyProject, Detail: detail})
 	}
@@ -261,6 +278,14 @@ func Evaluate(in Input) Report {
 	}
 	for _, a := range sortedAttemptRefs(in.InFlight) {
 		rep.Risks = append(rep.Risks, Risk{Kind: RiskInFlight, WorkitemID: a.WorkitemID, Detail: a.Detail})
+	}
+	for _, wi := range sortedWorkItems(in.WorkItems, orderByID) {
+		if wi.Status == domain.StatusDraft {
+			rep.Risks = append(rep.Risks, Risk{
+				Kind: RiskDraftWorkitem, WorkitemID: wi.ID,
+				Detail: "draft work item is not runnable; promote it to ready before claiming",
+			})
+		}
 	}
 
 	switch {
@@ -340,6 +365,14 @@ func recommend(in Input) Recommendation {
 			Reason: "oldest backlog task; promote it to ready first" + in.policyGap(wi),
 		}
 	}
+	if wi := firstWhere(in.WorkItems, func(wi *domain.WorkItem) bool {
+		return wi.Status == domain.StatusDraft
+	}, orderCreated); wi != nil {
+		return Recommendation{
+			Action: ActionPromoteToReady, WorkitemID: wi.ID,
+			Reason: "draft work item is not runnable; promote it to ready with `workloom workitem transition --id " + wi.ID + " --to ready --actor <actor> --reason <reason>`",
+		}
+	}
 	for _, m := range in.Milestones {
 		if !milestoneDone(m.Status) {
 			return Recommendation{
@@ -351,7 +384,7 @@ func recommend(in Input) Recommendation {
 	reason := "no runnable work item remains"
 	if in.emptyProject() {
 		if !in.HasBlueprint {
-			return Recommendation{Action: ActionDeclareBlueprint, Reason: "no blueprint declared; create and bind a blueprint before creating work items"}
+			return Recommendation{Action: ActionDeclareBlueprint, Reason: BlueprintGuide}
 		}
 		reason = "no work items yet; create one with `" + CreateWorkitemCommand + "`"
 	}

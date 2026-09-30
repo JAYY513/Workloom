@@ -57,7 +57,7 @@ func TestRecordCLIAndMCPAgree(t *testing.T) {
 	wi := newWorkitem(t, "sdk adoption task")
 	code, out, errOut := run(t, "--json", "decision", "create",
 		"--title", "adopt the sdk", "--decision", "use the official MCP Go SDK",
-		"--by", "operator", "--related", wi)
+		"--by", "operator", "--actor", "operator", "--reason", "record decision", "--related", wi)
 	if code != CodeOK {
 		t.Fatalf("decision create: code=%d stderr=%q", code, errOut)
 	}
@@ -104,7 +104,7 @@ func TestRecordCLIAndMCPAgree(t *testing.T) {
 		Name: "finding_create",
 		Arguments: map[string]any{
 			"title": "gate evidence window", "description": "evidence is collected outside the transition transaction",
-			"severity": "low", "related_workitems": []string{wi},
+			"severity": "low", "related_workitems": []string{wi}, "actor": "operator", "reason": "record finding",
 		},
 	})
 	if err != nil || res.IsError {
@@ -125,16 +125,15 @@ func TestRecordCLIAndMCPAgree(t *testing.T) {
 	}
 }
 
-// TestContextLocatesRecords proves an agent can find tasks, progress and
-// decisions without reading source.
-func TestContextLocatesRecords(t *testing.T) {
+// TestContextLocatesStageArtifacts proves an agent can find task evidence
+// through context without reading a project-wide decision registry.
+func TestContextLocatesStageArtifacts(t *testing.T) {
 	gatedProject(t)
 	cs, _ := serveSession(t, "--tier", "standard")
 	wi := newWorkitem(t, "context probe task")
 
-	if code, _, errOut := run(t, "decision", "create", "--title", "context probe",
-		"--decision", "recorded for context", "--by", "operator", "--related", wi); code != CodeOK {
-		t.Fatalf("decision create: %d %s", code, errOut)
+	if code, _, errOut := run(t, "artifact", "register", "--type", "decision", "--name", "context probe", "--actor", "operator", "--reason", "context record", "--workitem", wi); code != CodeOK {
+		t.Fatalf("artifact register: %d %s", code, errOut)
 	}
 
 	res, err := cs.CallTool(context.Background(), &mcpsdk.CallToolParams{Name: "context_get", Arguments: map[string]any{}})
@@ -147,9 +146,9 @@ func TestContextLocatesRecords(t *testing.T) {
 			ID string `json:"id"`
 		} `json:"project"`
 		Verdict         string `json:"verdict"`
-		RecentDecisions []struct {
+		RecentArtifacts []struct {
 			Ref string `json:"ref"`
-		} `json:"recent_decisions"`
+		} `json:"recent_artifacts"`
 	}
 	if err := json.Unmarshal(raw, &view); err != nil {
 		t.Fatalf("context payload: %v (%s)", err, raw)
@@ -158,28 +157,24 @@ func TestContextLocatesRecords(t *testing.T) {
 		t.Fatalf("context = %+v", view)
 	}
 	found := false
-	for _, ref := range view.RecentDecisions {
-		if strings.HasPrefix(ref.Ref, "decision://") {
+	for _, ref := range view.RecentArtifacts {
+		if strings.HasPrefix(ref.Ref, "artifact://") {
 			found = true
 		}
 	}
 	if !found {
-		t.Fatalf("context does not reference the decision: %s", raw)
+		t.Fatalf("context does not reference the stage artifact: %s", raw)
 	}
 
-	// context_for_workitem surfaces records that reference the work item.
 	res, err = cs.CallTool(context.Background(), &mcpsdk.CallToolParams{
 		Name: "context_for_workitem", Arguments: map[string]any{"id": wi},
 	})
-	if err != nil {
-		t.Fatalf("context_for_workitem: %v", err)
-	}
-	if res.IsError {
-		t.Fatalf("context_for_workitem failed: %+v", res)
+	if err != nil || res.IsError {
+		t.Fatalf("context_for_workitem: err=%v res=%+v", err, res)
 	}
 	raw, _ = json.Marshal(res.StructuredContent)
-	if !strings.Contains(string(raw), "decision://") {
-		t.Fatalf("work item context lacks the referencing decision: %s", raw)
+	if !strings.Contains(string(raw), "artifact://") {
+		t.Fatalf("work item context lacks the stage artifact: %s", raw)
 	}
 }
 
@@ -231,6 +226,12 @@ func TestRunLifecycleEvidence(t *testing.T) {
 // TestArtifactVersionChain walks register → update → history.
 func TestArtifactVersionChain(t *testing.T) {
 	gatedProject(t)
+	if err := os.MkdirAll("docs", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join("docs", "design.md"), []byte("# design\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	wi := newWorkitem(t, "artifact chain task")
 	if code, _, errOut := run(t, "artifact", "register", "--name", "design.md",
 		"--path", "docs/design.md", "--related", wi, "--actor", "tester", "--reason", "coverage"); code != CodeOK {
@@ -251,7 +252,7 @@ func TestArtifactVersionChain(t *testing.T) {
 	id := listed.Artifacts[0].ID
 	version := cliRecordVersion(t, "artifact", id)
 
-	code, out, errOut := run(t, "--json", "artifact", "update", "--id", id, "--status", "approved", "--expect", version)
+	code, out, errOut := run(t, "--json", "artifact", "update", "--id", id, "--status", "approved", "--actor", "tester", "--reason", "promote blueprint", "--expect", version)
 	if code != CodeOK {
 		t.Fatalf("artifact update: %d %s", code, errOut)
 	}

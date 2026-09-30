@@ -59,6 +59,8 @@ type decisionCreateInput struct {
 	Consequences     []string `json:"consequences,omitempty" jsonschema:"expected consequences"`
 	RelatedWorkItems []string `json:"related_workitems,omitempty" jsonschema:"work items this decision touches"`
 	CreatedBy        string   `json:"created_by" jsonschema:"author identity"`
+	Actor            string   `json:"actor" jsonschema:"operator identity for audit"`
+	Reason           string   `json:"reason" jsonschema:"why this decision is recorded"`
 }
 
 func registerDecisionCreate(s *mcpsdk.Server, cfg Config) {
@@ -69,7 +71,7 @@ func registerDecisionCreate(s *mcpsdk.Server, cfg Config) {
 		view, err := cfg.service().DecisionCreate(ctx, app.CreateDecisionRequest{
 			Title: in.Title, Context: in.Context, Decision: in.Decision, Reasoning: in.Reasoning,
 			Options: in.Options, Consequences: in.Consequences, RelatedWorkItems: in.RelatedWorkItems,
-			CreatedBy: in.CreatedBy,
+			CreatedBy: in.CreatedBy, Actor: in.Actor, Reason: in.Reason,
 		})
 		if err != nil {
 			return fail[app.RecordView](err)
@@ -146,6 +148,8 @@ type findingCreateInput struct {
 	RelatedWorkItems   []string `json:"related_workitems,omitempty" jsonschema:"work items this finding touches"`
 	RecommendedActions []string `json:"recommended_actions,omitempty" jsonschema:"what to do about it"`
 	DiscoveredByRunID  string   `json:"discovered_by_run_id,omitempty" jsonschema:"run that discovered it"`
+	Actor              string   `json:"actor" jsonschema:"operator identity for audit"`
+	Reason             string   `json:"reason" jsonschema:"why this finding is recorded"`
 }
 
 func registerFindingCreate(s *mcpsdk.Server, cfg Config) {
@@ -157,6 +161,7 @@ func registerFindingCreate(s *mcpsdk.Server, cfg Config) {
 			Type: in.Type, Title: in.Title, Description: in.Description, Evidence: in.Evidence,
 			Severity: in.Severity, RelatedWorkItems: in.RelatedWorkItems,
 			RecommendedActions: in.RecommendedActions, DiscoveredByRunID: in.DiscoveredByRunID,
+			Actor: in.Actor, Reason: in.Reason,
 		})
 		if err != nil {
 			return fail[app.RecordView](err)
@@ -309,9 +314,13 @@ type artifactRegisterInput struct {
 	Name             string   `json:"name" jsonschema:"artifact name (gates match on this)"`
 	Path             string   `json:"path,omitempty" jsonschema:"repository path"`
 	Source           string   `json:"source,omitempty" jsonschema:"where it came from"`
+	WorkItemID       string   `json:"workitem_id,omitempty" jsonschema:"primary owner (workitem_id); satisfies that work item's artifact gate"`
+	RunID            string   `json:"run_id,omitempty" jsonschema:"run that produced it"`
+	WorkflowID       string   `json:"workflow_id,omitempty" jsonschema:"workflow instance"`
+	Stage            string   `json:"stage,omitempty" jsonschema:"workflow stage"`
 	CreatedByRunID   string   `json:"created_by_run_id,omitempty" jsonschema:"run that produced it"`
 	Status           string   `json:"status,omitempty" jsonschema:"status (default draft)"`
-	RelatedWorkItems []string `json:"related_workitems,omitempty" jsonschema:"work items this artifact belongs to"`
+	RelatedWorkItems []string `json:"related_workitems,omitempty" jsonschema:"additional associations (related_workitems); each also satisfies that work item's artifact gate"`
 	Actor            string   `json:"actor" jsonschema:"operator identity (required: audit trail)"`
 	Reason           string   `json:"reason" jsonschema:"why the registration happens (required: audit trail)"`
 }
@@ -323,6 +332,7 @@ func registerArtifactRegister(s *mcpsdk.Server, cfg Config) {
 	}, func(ctx context.Context, req *mcpsdk.CallToolRequest, in artifactRegisterInput) (*mcpsdk.CallToolResult, app.RecordView, error) {
 		view, err := cfg.service().ArtifactRegister(ctx, app.RegisterArtifactRequest{
 			Type: in.Type, Name: in.Name, Path: in.Path, Source: in.Source,
+			WorkItemID: in.WorkItemID, RunID: in.RunID, WorkflowID: in.WorkflowID, Stage: in.Stage,
 			CreatedByRunID: in.CreatedByRunID, Status: in.Status, RelatedWorkItems: in.RelatedWorkItems,
 			Actor: in.Actor, Reason: in.Reason,
 		})
@@ -340,6 +350,8 @@ type artifactUpdateInput struct {
 	Path             string   `json:"path,omitempty" jsonschema:"new path"`
 	Source           string   `json:"source,omitempty" jsonschema:"new source"`
 	RelatedWorkItems []string `json:"related_workitems,omitempty" jsonschema:"replaces the related work items"`
+	Actor            string   `json:"actor" jsonschema:"operator identity (required: audit trail)"`
+	Reason           string   `json:"reason" jsonschema:"why the update happens (required: audit trail)"`
 }
 
 func registerArtifactUpdate(s *mcpsdk.Server, cfg Config) {
@@ -349,7 +361,7 @@ func registerArtifactUpdate(s *mcpsdk.Server, cfg Config) {
 	}, func(ctx context.Context, req *mcpsdk.CallToolRequest, in artifactUpdateInput) (*mcpsdk.CallToolResult, app.RecordView, error) {
 		view, err := cfg.service().ArtifactUpdate(ctx, app.UpdateArtifactRequest{
 			ID: in.ID, Expect: in.Expect, Status: in.Status, Path: in.Path, Source: in.Source,
-			RelatedWorkItems: in.RelatedWorkItems,
+			RelatedWorkItems: in.RelatedWorkItems, Actor: in.Actor, Reason: in.Reason,
 		})
 		if err != nil {
 			return fail[app.RecordView](err)

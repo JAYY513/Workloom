@@ -167,3 +167,16 @@ func TestSkillBodyMarker(t *testing.T) {
 		t.Fatal("skill body lacks the marker")
 	}
 }
+
+func TestSkillRequiresMCPForStateOperations(t *testing.T) {
+	body := app.SkillMainBody()
+	for _, phrase := range []string{
+		"MUST use MCP for all Devsys state reads and writes",
+		"verify the project identity with agent_session_start or project_get",
+		"Never edit .devsys/ directly",
+	} {
+		if !strings.Contains(body, phrase) {
+			t.Fatalf("skill body lacks %q", phrase)
+		}
+	}
+}

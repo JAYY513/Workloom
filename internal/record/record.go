@@ -366,3 +366,31 @@ func (s *Store) ArtifactHistory(ctx context.Context, id string) ([]*domain.Artif
 	}
 	return out, nil
 }
+
+// ArtifactLatest resolves the leaf (newest) version reachable from startID by
+// following the forward chain: it scans all artifacts, builds a
+// previous_id → successor map, then walks from startID until no successor
+// exists. If startID is already the leaf the same artifact is returned.
+func (s *Store) ArtifactLatest(ctx context.Context, startID string) (*domain.Artifact, error) {
+	all, err := s.ListArtifacts(ctx)
+	if err != nil {
+		return nil, err
+	}
+	succ := make(map[string]string, len(all))
+	for _, a := range all {
+		if a.PreviousID != nil && *a.PreviousID != "" {
+			succ[*a.PreviousID] = a.ID
+		}
+	}
+	cur := startID
+	seen := map[string]bool{}
+	for !seen[cur] {
+		seen[cur] = true
+		next, ok := succ[cur]
+		if !ok {
+			break
+		}
+		cur = next
+	}
+	return s.GetArtifact(ctx, cur)
+}

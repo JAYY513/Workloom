@@ -117,15 +117,23 @@ func (s *Store) changeStatus(ctx context.Context, id string, req TransitionReque
 				return fmt.Errorf("%w: release claim before repairing status", ErrAlreadyClaimed)
 			}
 			if req.Token == "" || req.Token != lease.Token || req.Actor != lease.Owner || (req.RunID != "" && req.RunID != lease.RunID) {
-				// Fail closed, but name the way out: a leased work item must
-				// be released before its status can move, and `transition` has
-				// no --token flag to supply the lease token.
-				detail := fmt.Sprintf("workitem %s is leased by %q", id, lease.Owner)
+				// Ordinary status commands (transition, block, complete) do
+				// not accept a lease token. Naming this a token mismatch
+				// invites a --token flag that must not exist. A presented
+				// token that does not match stays a token error for callers
+				// that are the holder API.
+				detail := fmt.Sprintf("workitem %s has an active lease held by %q", id, lease.Owner)
 				if lease.RunID != "" {
 					detail += fmt.Sprintf(" (run %s)", lease.RunID)
 				}
-				return fmt.Errorf("%w: %s; release the claim before leaving execution: workloom workitem release --id %s --owner %s --token <token from .devsys/local/leases/%s.token> --actor %s --reason <reason>",
-					ErrLeaseTokenMismatch, detail, id, lease.Owner, id, req.Actor)
+				release := fmt.Sprintf("workloom workitem release --id %s --owner %s --token <token from .devsys/local/leases/%s.token> --actor <you> --reason <why>", id, lease.Owner, id)
+				holder := "or continue through the holder API (`workitem start` and `workflow step-complete|pause|resume|cancel` take --owner and --token)"
+				if req.Token == "" {
+					return fmt.Errorf("%w: %s; this command does not accept a lease token. Release the claim first: %s; %s",
+						ErrAlreadyClaimed, detail, release, holder)
+				}
+				return fmt.Errorf("%w: %s; release the claim: %s; %s",
+					ErrLeaseTokenMismatch, detail, release, holder)
 			}
 			if !now.Before(lease.LeaseUntil) {
 				return ErrLeaseExpired
@@ -156,8 +164,10 @@ func (s *Store) changeStatus(ctx context.Context, id string, req TransitionReque
 		}
 		// An active lease must be released separately before leaving execution.
 		// This prevents business status from contradicting the retained claim.
+		// Matching the token does not authorize transition to drop the lease.
 		if leased && req.TargetStatus != domain.StatusInProgress {
-			return fmt.Errorf("%w: release claim before advancing status", ErrAlreadyClaimed)
+			return fmt.Errorf("%w: workitem %s has an active lease held by %q; release it (`workloom workitem release --id %s --owner %s --token <token from .devsys/local/leases/%s.token> --actor <you> --reason <why>`) before leaving execution. Matching a token does not let transition drop the lease",
+				ErrAlreadyClaimed, id, req.Actor, id, req.Actor, id)
 		}
 		switch req.TargetStatus {
 		case domain.StatusDraft, domain.StatusBacklog, domain.StatusReady, domain.StatusBlocked:
@@ -176,17 +186,6 @@ func (s *Store) changeStatus(ctx context.Context, id string, req TransitionReque
 		}
 		batch := append([]*domain.Event{ev}, guardEvents...)
 		batch = append(batch, invalidated...)
-		// Completing a work item propagates its decision/finding records to
-		// the parent and direct siblings inside this same transaction
-		// (实施计划 M3.3, 方案 §4.7). Propagation events join the batch: one
-		// transaction stages each JSONL shard once.
-		if req.TargetStatus == domain.StatusDone && from != domain.StatusDone {
-			extra, err := propagateRecordsTx(tx, st.DevsysDir(), &wi, now, req.Actor)
-			if err != nil {
-				return err
-			}
-			batch = append(batch, extra...)
-		}
 		return events.AppendBatchTx(tx, batch)
 	})
 	if err != nil {

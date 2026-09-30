@@ -15,6 +15,7 @@ import (
 	"github.com/JAYY513/Workloom/internal/config"
 	"github.com/JAYY513/Workloom/internal/domain"
 	"github.com/JAYY513/Workloom/internal/harness"
+	"github.com/JAYY513/Workloom/internal/workflow"
 )
 
 // runDecision routes the decision family (方案 §8.2 decision_*).
@@ -42,8 +43,9 @@ func runDecision(stdout io.Writer, opts options, rest []string) error {
 		if opts.json {
 			return json.NewEncoder(stdout).Encode(struct {
 				OK        bool               `json:"ok"`
+				Count     int                `json:"count"`
 				Decisions []*domain.Decision `json:"decisions"`
-			}{OK: true, Decisions: items})
+			}{OK: true, Count: len(items), Decisions: items})
 		}
 		if !opts.quiet {
 			if len(items) == 0 {
@@ -74,13 +76,15 @@ func runDecision(stdout io.Writer, opts options, rest []string) error {
 		consequences := fs.String("consequences", "", "comma-separated expected consequences")
 		related := fs.String("related", "", "comma-separated related work items")
 		by := fs.String("by", "", "author identity")
-		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *title == "" || *decision == "" || *by == "" {
-			return errUsage("decision create --title T --decision D --by <author> [--context C] [--reasoning R] [--options a,b] [--consequences a,b] [--related WLM-1,WLM-2]")
+		actor := fs.String("actor", "", "operator identity for audit")
+		reason := fs.String("reason", "", "why this decision is recorded")
+		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *title == "" || *decision == "" || *by == "" || *actor == "" || *reason == "" {
+			return errUsage("decision create --title T --decision D --by <author> --actor <actor> --reason <reason>")
 		}
 		view, err := svc.DecisionCreate(ctx, app.CreateDecisionRequest{
 			Title: *title, Context: *contextText, Decision: *decision, Reasoning: *reasoning,
 			Options: splitList(*optionsList), Consequences: splitList(*consequences),
-			RelatedWorkItems: splitList(*related), CreatedBy: *by,
+			RelatedWorkItems: splitList(*related), CreatedBy: *by, Actor: *actor, Reason: *reason,
 		})
 		if err != nil {
 			return err
@@ -134,8 +138,9 @@ func runFinding(stdout io.Writer, opts options, rest []string) error {
 		if opts.json {
 			return json.NewEncoder(stdout).Encode(struct {
 				OK       bool              `json:"ok"`
+				Count    int               `json:"count"`
 				Findings []*domain.Finding `json:"findings"`
-			}{OK: true, Findings: items})
+			}{OK: true, Count: len(items), Findings: items})
 		}
 		if !opts.quiet {
 			if len(items) == 0 {
@@ -165,12 +170,14 @@ func runFinding(stdout io.Writer, opts options, rest []string) error {
 		severity := fs.String("severity", "", "severity label")
 		related := fs.String("related", "", "comma-separated related work items")
 		runID := fs.String("run", "", "run that discovered it")
-		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *title == "" || *description == "" {
-			return errUsage("finding create --title T --description D [--type issue] [--evidence a,b] [--severity high] [--related WLM-1] [--run <run-id>]")
+		actor := fs.String("actor", "", "operator identity for audit")
+		reason := fs.String("reason", "", "why this finding is recorded")
+		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *title == "" || *description == "" || *actor == "" || *reason == "" {
+			return errUsage("finding create --title T --description D --actor <actor> --reason <reason> [--type issue] [--evidence a,b] [--severity high] [--related WLM-1] [--run <run-id>]")
 		}
 		view, err := svc.FindingCreate(ctx, app.CreateFindingRequest{
 			Type: *kind, Title: *title, Description: *description, Evidence: splitList(*evidence),
-			Severity: *severity, RelatedWorkItems: splitList(*related), DiscoveredByRunID: *runID,
+			Severity: *severity, RelatedWorkItems: splitList(*related), DiscoveredByRunID: *runID, Actor: *actor, Reason: *reason,
 		})
 		if err != nil {
 			return err
@@ -232,8 +239,9 @@ func runEvent(stdout io.Writer, opts options, rest []string) error {
 		if opts.json {
 			return json.NewEncoder(stdout).Encode(struct {
 				OK     bool            `json:"ok"`
+				Count  int             `json:"count"`
 				Events []*domain.Event `json:"events"`
-			}{OK: true, Events: items})
+			}{OK: true, Count: len(items), Events: items})
 		}
 		if !opts.quiet {
 			if len(items) == 0 {
@@ -290,27 +298,47 @@ func runArtifact(stdout io.Writer, opts options, rest []string) error {
 	ctx := context.Background()
 	switch rest[0] {
 	case "list":
-		if len(rest) != 1 {
-			return errUsage("`workloom artifact list` takes no arguments")
+		fs := flag.NewFlagSet("artifact list", flag.ContinueOnError)
+		fs.SetOutput(io.Discard)
+		history := fs.Bool("history", false, "include superseded versions")
+		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 {
+			return errUsage("artifact list [--history]")
 		}
 		items, err := svc.ArtifactList(ctx)
 		if err != nil {
 			return err
 		}
+		if items == nil {
+			items = []*domain.Artifact{}
+		}
+		latest := app.ArtifactHeads(items)
+		// --json and --jsonl keep every immutable version in artifacts / the
+		// stream. Scripts that already read those fields must not lose rows.
+		// latest is the additive head set. --history changes only the human view.
 		if opts.jsonl {
 			return writeJSONL(stdout, items)
 		}
 		if opts.json {
 			return json.NewEncoder(stdout).Encode(struct {
-				OK        bool               `json:"ok"`
-				Artifacts []*domain.Artifact `json:"artifacts"`
-			}{OK: true, Artifacts: items})
+				OK          bool               `json:"ok"`
+				Count       int                `json:"count"`
+				LatestCount int                `json:"latest_count"`
+				Artifacts   []*domain.Artifact `json:"artifacts"`
+				Latest      []*domain.Artifact `json:"latest"`
+			}{OK: true, Count: len(items), LatestCount: len(latest), Artifacts: items, Latest: latest})
+		}
+		shown := latest
+		if *history {
+			shown = items
 		}
 		if !opts.quiet {
-			if len(items) == 0 {
+			switch {
+			case len(shown) == 0 && len(items) == 0:
 				fmt.Fprintln(stdout, "no artifacts")
+			case !*history && len(items) > len(latest):
+				fmt.Fprintf(stdout, "%d current artifact(s); %d superseded hidden — `workloom artifact list --history`\n", len(latest), len(items)-len(latest))
 			}
-			for _, a := range items {
+			for _, a := range shown {
 				fmt.Fprintf(stdout, "%s\t%s\tv%d\t%s\n", a.ID, a.Status, a.Version, a.Name)
 			}
 		}
@@ -332,16 +360,19 @@ func runArtifact(stdout io.Writer, opts options, rest []string) error {
 		path := fs.String("path", "", "repository path")
 		source := fs.String("source", "", "where it came from")
 		runID := fs.String("run", "", "run that produced it")
+		workitemID := fs.String("workitem", "", "primary owner (workitem_id); satisfies that work item's artifact gate")
+		workflowID := fs.String("workflow", "", "workflow instance that produced it")
+		stage := fs.String("stage", "", "workflow stage that produced it")
 		status := fs.String("status", "draft", "status")
-		related := fs.String("related", "", "comma-separated related work items")
+		related := fs.String("related", "", "comma-separated associations (related_workitems); each also satisfies that work item's artifact gate")
 		actor := fs.String("actor", "", "operator (audit trail)")
 		reason := fs.String("reason", "", "registration reason (audit trail)")
-		const registerUsage = "artifact register --name N --actor <a> --reason <r> [--type document] [--path P] [--source S] [--run <run-id>] [--status draft] [--related WLM-1]"
 		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *name == "" {
-			return errUsage("%s", registerUsage)
+			return errUsage("%s", workflow.ArtifactRegisterUsage)
 		}
 		view, err := svc.ArtifactRegister(ctx, app.RegisterArtifactRequest{
 			Type: *kind, Name: *name, Path: *path, Source: *source,
+			WorkItemID: *workitemID, RunID: *runID, WorkflowID: *workflowID, Stage: *stage,
 			CreatedByRunID: *runID, Status: *status, RelatedWorkItems: splitList(*related),
 			Actor: *actor, Reason: *reason,
 		})
@@ -357,15 +388,18 @@ func runArtifact(stdout io.Writer, opts options, rest []string) error {
 		path := fs.String("path", "", "new path")
 		source := fs.String("source", "", "new source")
 		related := fs.String("related", "", "comma-separated related work items (replaces)")
+		actor := fs.String("actor", "", "operator (audit trail)")
+		reason := fs.String("reason", "", "update reason (audit trail)")
 		expect := fs.String("expect", "", "version hash from artifact get")
 		latest := latestFlag(fs)
-		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *id == "" {
-			return errUsage("artifact update --id <artifact-id> [--status S] [--path P] [--source S] [--related a,b] [--expect <hash> | --latest]")
+		const updateUsage = "artifact update --id <artifact-id> [--status S] [--path P] [--source S] [--related a,b] --actor <a> --reason <r> [--expect <hash> | --latest]"
+		if err := fs.Parse(rest[1:]); err != nil || fs.NArg() != 0 || *id == "" || *actor == "" || *reason == "" {
+			return errUsage(updateUsage)
 		}
-		if err := checkLatest(*latest, *expect, "artifact update --id <artifact-id> [--status S] [--path P] [--source S] [--related a,b] [--expect <hash> | --latest]"); err != nil {
+		if err := checkLatest(*latest, *expect, updateUsage); err != nil {
 			return err
 		}
-		req := app.UpdateArtifactRequest{ID: *id, Expect: *expect, Status: *status, Path: *path, Source: *source}
+		req := app.UpdateArtifactRequest{ID: *id, Expect: *expect, Status: *status, Path: *path, Source: *source, Actor: *actor, Reason: *reason}
 		fs.Visit(func(f *flag.Flag) {
 			if f.Name == "related" {
 				req.RelatedWorkItems = splitList(*related)
@@ -387,8 +421,9 @@ func runArtifact(stdout io.Writer, opts options, rest []string) error {
 		if opts.json {
 			return json.NewEncoder(stdout).Encode(struct {
 				OK        bool               `json:"ok"`
+				Count     int                `json:"count"`
 				Artifacts []*domain.Artifact `json:"artifacts"`
-			}{OK: true, Artifacts: items})
+			}{OK: true, Count: len(items), Artifacts: items})
 		}
 		if !opts.quiet {
 			for _, a := range items {
@@ -462,8 +497,9 @@ func runRun(stdout io.Writer, opts options, rest []string) error {
 		if opts.json {
 			return json.NewEncoder(stdout).Encode(struct {
 				OK   bool          `json:"ok"`
+				Count int          `json:"count"`
 				Runs []*domain.Run `json:"runs"`
-			}{OK: true, Runs: items})
+			}{OK: true, Count: len(items), Runs: items})
 		}
 		if !opts.quiet {
 			if len(items) == 0 {
@@ -841,14 +877,11 @@ func runContext(stdout io.Writer, opts options, rest []string) error {
 		}
 		if !opts.quiet {
 			fmt.Fprintf(stdout, "project: %s (%s)\nphase: %s\nreadiness: %s\n", view.Project.Name, view.Project.ID, view.Project.CurrentPhase, view.Verdict)
-			for _, ref := range view.RecentDecisions {
-				fmt.Fprintf(stdout, "  decision: %s\t%s\n", ref.Ref, ref.Title)
-			}
-			for _, ref := range view.RecentFindings {
-				fmt.Fprintf(stdout, "  finding: %s\t%s\n", ref.Ref, ref.Title)
-			}
 			for _, ref := range view.RecentArtifacts {
 				fmt.Fprintf(stdout, "  artifact: %s\t%s\n", ref.Ref, ref.Title)
+				for _, ev := range view.RecentEvents {
+					fmt.Fprintf(stdout, "  timeline: %s\t%s\n", ev.ID, ev.Type)
+				}
 			}
 			for _, n := range view.Notices {
 				fmt.Fprintf(stdout, "  notice: %s\n", n)
@@ -894,17 +927,11 @@ func runContext(stdout io.Writer, opts options, rest []string) error {
 		}
 		if !opts.quiet {
 			fmt.Fprintf(stdout, "%s\t%s\t%s\nversion: %s\n", view.WorkItem.ID, view.WorkItem.Status, view.WorkItem.Title, view.Version)
-			for _, ref := range view.Decisions {
-				fmt.Fprintf(stdout, "  decision: %s\t%s\n", ref.Ref, ref.Title)
-			}
-			for _, ref := range view.Findings {
-				fmt.Fprintf(stdout, "  finding: %s\t%s\n", ref.Ref, ref.Title)
-			}
 			for _, ref := range view.Artifacts {
 				fmt.Fprintf(stdout, "  artifact: %s\t%s\n", ref.Ref, ref.Title)
 			}
 			for _, c := range view.Comments {
-				fmt.Fprintf(stdout, "  comment: %s\t%s\n", c.ID, c.Actor)
+				fmt.Fprintf(stdout, "  timeline: %s\t%s\n", c.ID, c.Type)
 			}
 		}
 		return nil
@@ -931,14 +958,11 @@ func runContextTask(stdout io.Writer, opts options, svc *app.Service, ctx contex
 		fmt.Fprintf(stdout, "project: %s (%s)\nphase: %s\nreadiness: %s\n",
 			view.Summary.Project.Name, view.Summary.Project.ID, view.Summary.Project.CurrentPhase, view.Summary.Verdict)
 		fmt.Fprintf(stdout, "task: %s\t%s\t%s\t%s\n", view.Task.WorkItem.ID, view.Task.WorkItem.Status, view.Task.WorkItem.Type, view.Task.WorkItem.Title)
-		for _, ref := range view.Task.Decisions {
-			fmt.Fprintf(stdout, "  decision: %s\t%s\n", ref.Ref, ref.Title)
-		}
-		for _, ref := range view.Task.Findings {
-			fmt.Fprintf(stdout, "  finding: %s\t%s\n", ref.Ref, ref.Title)
-		}
 		for _, ref := range view.Task.Artifacts {
 			fmt.Fprintf(stdout, "  artifact: %s\t%s\n", ref.Ref, ref.Title)
+			for _, c := range view.Task.Comments {
+				fmt.Fprintf(stdout, "  timeline: %s\t%s\n", c.ID, c.Type)
+			}
 		}
 		for _, n := range view.Summary.Notices {
 			fmt.Fprintf(stdout, "  notice: %s\n", n)

@@ -11,6 +11,7 @@
   },
   "files": [
     "bin/workloom.js",
+    "bin/workloom.ps1",
     "README.md"
   ],
   "keywords": [

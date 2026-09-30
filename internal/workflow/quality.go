@@ -1,6 +1,7 @@
 package workflow
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 	"unicode"
@@ -15,11 +16,14 @@ type QualityInput struct {
 	AcceptanceCriteria []string
 }
 
-// QualityResult is the deterministic quality score with the scored-zero
-// components named as improvements.
+// QualityResult is the deterministic quality score. Improvements name the
+// components that scored zero. Components always lists every item with its
+// current value, earned weight and threshold so a blocked claim can be
+// diagnosed without re-scoring.
 type QualityResult struct {
 	Score        int
 	Improvements []string
+	Components   []string
 }
 
 // referencePattern matches concrete references (paths or file names with a
@@ -48,55 +52,80 @@ func weightedLen(s string) int {
 // so a blocked claim can tell the caller what to add.
 func ScoreQuality(in QualityInput) QualityResult {
 	var res QualityResult
-
-	switch titleLen := weightedLen(strings.TrimSpace(in.Title)); {
-	case titleLen >= 16:
-		res.Score += 20
-	case titleLen >= 8:
-		res.Score += 10
-	default:
-		res.Improvements = append(res.Improvements, "标题过短：补充一个可辨识的任务标题（≥8 字符，中日韩文字按双倍计）")
+	note := func(name, current string, weight, max int, threshold, zero string) {
+		res.Components = append(res.Components, fmt.Sprintf("%s: 当前 %s / 权重 %d/%d / 阈值 %s", name, current, weight, max, threshold))
+		if weight == 0 && zero != "" {
+			res.Improvements = append(res.Improvements, zero+"（"+res.Components[len(res.Components)-1]+"）")
+		}
 	}
+
+	titleLen := weightedLen(strings.TrimSpace(in.Title))
+	titleWeight := 0
+	switch {
+	case titleLen >= 16:
+		titleWeight = 20
+	case titleLen >= 8:
+		titleWeight = 10
+	}
+	res.Score += titleWeight
+	note("标题", fmt.Sprintf("%d", titleLen), titleWeight, 20, "8 得 10、16 得 20",
+		"标题过短：补充一个可辨识的任务标题（≥8 字符，中日韩文字按双倍计）")
 
 	desc := strings.TrimSpace(in.Description)
-	switch descLen := weightedLen(desc); {
+	descLen := weightedLen(desc)
+	descWeight := 0
+	switch {
 	case descLen >= 120:
-		res.Score += 30
+		descWeight = 30
 	case descLen >= 40:
-		res.Score += 15
-	default:
-		res.Improvements = append(res.Improvements, "描述过短：补充背景、范围与做法（≥40 字符，中日韩文字按双倍计）")
+		descWeight = 15
 	}
+	res.Score += descWeight
+	note("描述长度", fmt.Sprintf("%d", descLen), descWeight, 30, "40 得 15、120 得 30",
+		"描述过短：补充背景、范围与做法（≥40 字符，中日韩文字按双倍计）")
 
-	if nonEmptyLines(desc) >= 2 {
-		res.Score += 15
-	} else {
-		res.Improvements = append(res.Improvements, "描述缺少结构：用分点或步骤组织描述")
+	lines := nonEmptyLines(desc)
+	lineWeight := 0
+	if lines >= 2 {
+		lineWeight = 15
 	}
+	res.Score += lineWeight
+	note("描述结构", fmt.Sprintf("%d 非空行", lines), lineWeight, 15, "≥2 非空行得 15",
+		"描述缺少结构：用分点或步骤组织描述")
 
+	acceptWeight := 0
 	if len(in.AcceptanceCriteria) > 0 {
-		res.Score += 15
-	} else {
-		res.Improvements = append(res.Improvements, "缺少验收标准：用 `workloom workitem update --id <id> --acceptance a,b --actor <you> --reason <why>` 补充验收条件")
+		acceptWeight = 15
 	}
+	res.Score += acceptWeight
+	note("验收标准", fmt.Sprintf("%d 条", len(in.AcceptanceCriteria)), acceptWeight, 15, "≥1 条得 15",
+		"缺少验收标准：用 `workloom workitem update --id <id> --acceptance a,b --actor <you> --reason <why>` 补充验收条件")
 
 	text := in.Title + "\n" + in.Description + "\n" + strings.Join(in.AcceptanceCriteria, "\n")
+	refWeight := 0
 	if referencePattern.MatchString(text) {
-		res.Score += 10
-	} else {
-		res.Improvements = append(res.Improvements, "缺少具体引用：补充文件路径、命令或标识符")
+		refWeight = 10
 	}
+	res.Score += refWeight
+	note("具体引用", fmt.Sprintf("命中=%t", refWeight > 0), refWeight, 10, "路径或已知扩展名得 10",
+		"缺少具体引用：补充文件路径、命令或标识符")
+
 	// Acceptance language: structured criteria satisfy this component (they
 	// already say how completion is verified); otherwise the keyword check
 	// runs. Demanding the keyword on top of criteria double-counted the same
 	// evidence and read as if --acceptance had been ignored (#342).
+	langWeight := 0
+	langCurrent := "无验收条件且无验收语言"
 	if len(in.AcceptanceCriteria) > 0 {
-		res.Score += 10
+		langWeight = 10
+		langCurrent = fmt.Sprintf("%d 条验收条件", len(in.AcceptanceCriteria))
 	} else if strings.Contains(text, "验收") || strings.Contains(strings.ToLower(text), "acceptance") {
-		res.Score += 10
-	} else {
-		res.Improvements = append(res.Improvements, "缺少验收语言：写明如何验收（「验收」或 acceptance），或直接 --acceptance 给出验收条件")
+		langWeight = 10
+		langCurrent = "含验收语言"
 	}
+	res.Score += langWeight
+	note("验收语言", langCurrent, langWeight, 10, "验收条件或「验收」/acceptance 得 10",
+		"缺少验收语言：写明如何验收（「验收」或 acceptance），或直接 --acceptance 给出验收条件")
 	return res
 }
 

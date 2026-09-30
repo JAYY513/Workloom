@@ -16,6 +16,7 @@ import (
 	"github.com/JAYY513/Workloom/internal/events"
 	"github.com/JAYY513/Workloom/internal/record"
 	"github.com/JAYY513/Workloom/internal/storage"
+	"github.com/JAYY513/Workloom/internal/workflow"
 	"github.com/JAYY513/Workloom/internal/workitem"
 )
 
@@ -687,6 +688,138 @@ func TestTransitionGateBlocksUntilEvidence(t *testing.T) {
 	got, err := items.Get(ctx, id)
 	if err != nil || got.Status != domain.StatusVerification {
 		t.Fatalf("status = %+v err=%v", got, err)
+	}
+}
+
+const doneGatePolicy = `---
+id: done-gate
+name: done gate
+version: 1
+steps:
+  - id: implement
+    type: execute
+gates:
+  stages:
+    verification:
+      require_comment: true
+    done:
+      require_artifacts:
+        - release-notes
+---
+body
+`
+
+func TestTransitionGateAcceptsWorkitemOwnership(t *testing.T) {
+	repo, items := gatedProject(t)
+	owner := createGatedWorkitem(t, items, "owner gate task", "owner fixture")
+	foreign := createGatedWorkitem(t, items, "foreign gate task", "foreign fixture")
+	related := createGatedWorkitem(t, items, "related gate task", "related fixture")
+
+	code, _, errOut := run(t, "workitem", "transition", "--id", owner, "--to", "verification",
+		"--actor", "test", "--reason", "try", "--expect", expectOf(t, items, owner))
+	if code != CodeInvalid {
+		t.Fatalf("blocked verification: code=%d stderr=%q", code, errOut)
+	}
+	for _, want := range []string{
+		owner,
+		"primary ownership is --workitem (workitem_id)",
+		"association is --related (related_workitems)",
+		workflow.ArtifactRegisterUsage,
+		"workloom artifact register --name test-results --path <file> --workitem " + owner,
+		"workitem comment --id " + owner,
+	} {
+		if !strings.Contains(errOut, want) {
+			t.Errorf("stderr = %q, want %q", errOut, want)
+		}
+	}
+
+	if code, _, errOut = run(t, "artifact", "register", "--name", "test-results", "--workitem", foreign,
+		"--actor", "test", "--reason", "foreign owner"); code != CodeOK {
+		t.Fatalf("foreign register: code=%d stderr=%q", code, errOut)
+	}
+	code, _, errOut = run(t, "workitem", "transition", "--id", owner, "--to", "verification",
+		"--actor", "test", "--reason", "still blocked", "--expect", expectOf(t, items, owner))
+	if code != CodeInvalid || !strings.Contains(errOut, "test-results") {
+		t.Fatalf("foreign owner satisfied the gate: code=%d stderr=%q", code, errOut)
+	}
+
+	if code, _, errOut = run(t, "artifact", "register", "--name", "test-results", "--workitem", owner,
+		"--actor", "test", "--reason", "primary owner"); code != CodeOK {
+		t.Fatalf("owner register: code=%d stderr=%q", code, errOut)
+	}
+	if code, _, errOut = run(t, "workitem", "comment", "--id", owner, "--text", "verified", "--actor", "test"); code != CodeOK {
+		t.Fatalf("comment: code=%d stderr=%q", code, errOut)
+	}
+	code, _, errOut = run(t, "workitem", "transition", "--id", owner, "--to", "verification",
+		"--actor", "test", "--reason", "go", "--expect", expectOf(t, items, owner))
+	if code != CodeOK {
+		t.Fatalf("verification via --workitem: code=%d stderr=%q", code, errOut)
+	}
+	code, _, errOut = run(t, "workitem", "transition", "--id", owner, "--to", "done",
+		"--actor", "test", "--reason", "finish", "--expect", expectOf(t, items, owner))
+	if code != CodeOK {
+		t.Fatalf("done via --workitem: code=%d stderr=%q", code, errOut)
+	}
+
+	if code, _, errOut = run(t, "artifact", "register", "--name", "test-results", "--related", related,
+		"--actor", "test", "--reason", "association only"); code != CodeOK {
+		t.Fatalf("related register: code=%d stderr=%q", code, errOut)
+	}
+	if code, _, errOut = run(t, "workitem", "comment", "--id", related, "--text", "associated", "--actor", "test"); code != CodeOK {
+		t.Fatalf("related comment: code=%d stderr=%q", code, errOut)
+	}
+	code, _, errOut = run(t, "workitem", "transition", "--id", related, "--to", "verification",
+		"--actor", "test", "--reason", "go", "--expect", expectOf(t, items, related))
+	if code != CodeOK {
+		t.Fatalf("verification via --related: code=%d stderr=%q", code, errOut)
+	}
+	code, _, errOut = run(t, "workitem", "transition", "--id", related, "--to", "done",
+		"--actor", "test", "--reason", "finish", "--expect", expectOf(t, items, related))
+	if code != CodeOK {
+		t.Fatalf("done via --related: code=%d stderr=%q", code, errOut)
+	}
+
+	writeWorkflow(t, repo, "done-gate.md", doneGatePolicy)
+	now := time.Now().UTC()
+	doneID, err := items.Create(context.Background(), &domain.WorkItem{
+		ProjectID: "demo", Type: "task", Title: "done gate task", Description: "done fixture",
+		Status: domain.StatusReady, CreatedAt: now, UpdatedAt: now,
+		Workflow: &domain.WorkflowInstance{ID: "done-gate", Step: "implement", StepEnteredAt: now},
+	}, "WLM")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code, _, errOut = run(t, "workitem", "comment", "--id", doneID, "--text", "ready", "--actor", "test"); code != CodeOK {
+		t.Fatalf("done-gate comment: code=%d stderr=%q", code, errOut)
+	}
+	code, _, errOut = run(t, "workitem", "transition", "--id", doneID, "--to", "verification",
+		"--actor", "test", "--reason", "enter", "--expect", expectOf(t, items, doneID))
+	if code != CodeOK {
+		t.Fatalf("enter verification: code=%d stderr=%q", code, errOut)
+	}
+	code, _, errOut = run(t, "workitem", "transition", "--id", doneID, "--to", "done",
+		"--actor", "test", "--reason", "try", "--expect", expectOf(t, items, doneID))
+	if code != CodeInvalid {
+		t.Fatalf("done gate did not block: code=%d stderr=%q", code, errOut)
+	}
+	for _, want := range []string{
+		doneID,
+		"release-notes",
+		workflow.ArtifactRegisterUsage,
+		"workloom artifact register --name release-notes --path <file> --workitem " + doneID,
+	} {
+		if !strings.Contains(errOut, want) {
+			t.Errorf("done stderr = %q, want %q", errOut, want)
+		}
+	}
+	if code, _, errOut = run(t, "artifact", "register", "--name", "release-notes", "--workitem", doneID,
+		"--actor", "test", "--reason", "done evidence"); code != CodeOK {
+		t.Fatalf("release-notes register: code=%d stderr=%q", code, errOut)
+	}
+	code, _, errOut = run(t, "workitem", "transition", "--id", doneID, "--to", "done",
+		"--actor", "test", "--reason", "finish", "--expect", expectOf(t, items, doneID))
+	if code != CodeOK {
+		t.Fatalf("done via --workitem after missing prompt: code=%d stderr=%q", code, errOut)
 	}
 }
 
@@ -1465,5 +1598,105 @@ func TestNextReportsAllFourRisksAndRecoversFirst(t *testing.T) {
 	}
 	if !strings.Contains(out, "readiness: CONCERNS") || !strings.Contains(out, "next: recover_claim") {
 		t.Errorf("stdout = %q", out)
+	}
+}
+
+func TestWorkitemCreateRejectsDuplicateDescription(t *testing.T) {
+	requireGit(t)
+	repo := filepath.Join(t.TempDir(), "proj")
+	if err := os.MkdirAll(repo, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	initRepo(t, repo)
+	t.Setenv("DEVSYS_CONFIG_DIR", t.TempDir())
+	t.Chdir(repo)
+	if code, _, errOut := run(t, "init"); code != CodeOK {
+		t.Fatalf("init: code=%d stderr=%q", code, errOut)
+	}
+
+	code, _, errOut := run(t, "workitem", "create", "--title", "dup-title",
+		"--description", "first value", "--description", "second value",
+		"--actor", "test", "--reason", "duplicate")
+	if code != CodeUsage {
+		t.Fatalf("duplicate description: code=%d stderr=%q", code, errOut)
+	}
+	for _, want := range []string{"more than once", "--description-file", workitemCreateUsage} {
+		if !strings.Contains(errOut, want) {
+			t.Errorf("stderr = %q, want %q", errOut, want)
+		}
+	}
+	if code, out, errOut := run(t, "--json", "workitem", "list"); code != CodeOK || strings.Contains(out, "dup-title") {
+		t.Fatalf("duplicate create left a work item: code=%d out=%s stderr=%q", code, out, errOut)
+	}
+
+	if err := os.WriteFile(filepath.Join(repo, "desc.txt"), []byte("from file"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	code, _, errOut = run(t, "workitem", "create", "--title", "both-title",
+		"--description", "inline", "--description-file", "desc.txt",
+		"--actor", "test", "--reason", "both")
+	if code != CodeUsage || !strings.Contains(errOut, "not both") {
+		t.Fatalf("both sources: code=%d stderr=%q", code, errOut)
+	}
+	if code, out, errOut := run(t, "--json", "workitem", "list"); code != CodeOK || strings.Contains(out, "both-title") {
+		t.Fatalf("both-sources create left a work item: code=%d out=%s stderr=%q", code, out, errOut)
+	}
+
+	code, out, errOut := run(t, "--json", "workitem", "create", "--title", "file-title",
+		"--description-file", "desc.txt", "--actor", "test", "--reason", "file")
+	if code != CodeOK {
+		t.Fatalf("description-file: code=%d stderr=%q", code, errOut)
+	}
+	var created struct {
+		Item struct {
+			ID          string `json:"id"`
+			Description string `json:"description"`
+		} `json:"item"`
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal([]byte(out), &created); err != nil {
+		t.Fatal(err)
+	}
+	if created.Item.Description != "from file" {
+		t.Fatalf("description = %q", created.Item.Description)
+	}
+
+	code, out, errOut = run(t, "workitem", "update", "--id", created.Item.ID,
+		"--description", "replaced once", "--actor", "test", "--reason", "replace",
+		"--expect", created.Version)
+	if code != CodeOK {
+		t.Fatalf("update replace: code=%d stderr=%q", code, errOut)
+	}
+	code, out, errOut = run(t, "--json", "workitem", "get", created.Item.ID)
+	if code != CodeOK {
+		t.Fatalf("get: code=%d stderr=%q", code, errOut)
+	}
+	var got struct {
+		Item struct {
+			Description string `json:"description"`
+		} `json:"item"`
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Item.Description != "replaced once" {
+		t.Fatalf("update did not replace description: %q", got.Item.Description)
+	}
+	code, _, errOut = run(t, "workitem", "update", "--id", created.Item.ID,
+		"--description", "first", "--description", "second",
+		"--actor", "test", "--reason", "last wins", "--expect", got.Version)
+	if code != CodeOK {
+		t.Fatalf("update duplicate description changed semantics: code=%d stderr=%q", code, errOut)
+	}
+	code, out, errOut = run(t, "--json", "workitem", "get", created.Item.ID)
+	if code != CodeOK {
+		t.Fatalf("get after duplicate update: code=%d stderr=%q", code, errOut)
+	}
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Item.Description != "second" {
+		t.Fatalf("update last-wins replace = %q, want second", got.Item.Description)
 	}
 }

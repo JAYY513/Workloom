@@ -61,6 +61,30 @@ func TestCreateAssignsPerKindSequences(t *testing.T) {
 	}
 }
 
+func TestArtifactPreservesExecutionOwnership(t *testing.T) {
+	ctx := context.Background()
+	s := newStore(t)
+	want := &domain.Artifact{
+		ProjectID:  "demo",
+		Type:       "verification",
+		Name:       "验证报告",
+		WorkItemID: "WLM-7",
+		RunID:      "run-1",
+		WorkflowID: "feature-development",
+		Stage:      "verify",
+	}
+	id, err := s.CreateArtifact(ctx, want)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.GetArtifact(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.WorkItemID != want.WorkItemID || got.RunID != want.RunID || got.WorkflowID != want.WorkflowID || got.Stage != want.Stage {
+		t.Fatalf("ownership = %q/%q/%q/%q", got.WorkItemID, got.RunID, got.WorkflowID, got.Stage)
+	}
+}
 func TestArtifactThreeVersionsTraverseHistory(t *testing.T) {
 	ctx := context.Background()
 	s := newStore(t)
@@ -129,6 +153,48 @@ func TestBrokenHistoryLinkReported(t *testing.T) {
 	}
 	if _, err := s.ArtifactHistory(ctx, id); err == nil {
 		t.Fatal("broken previous link accepted")
+	}
+}
+
+// TestArtifactLatestResolvesForwardFromAnyVersion pins that a caller holding
+// an older ID — exactly what project.yaml keeps after `artifact update`
+// appends a version — reaches the newest version, and that an ID already at
+// the leaf is returned unchanged.
+func TestArtifactLatestResolvesForwardFromAnyVersion(t *testing.T) {
+	ctx := context.Background()
+	s := newStore(t)
+	now := time.Now().UTC()
+	v1, err := s.CreateArtifact(ctx, &domain.Artifact{
+		SchemaVersion: domain.SchemaVersion, ProjectID: "demo", Type: "blueprint",
+		Name: "蓝图", Status: "draft", CreatedAt: now, UpdatedAt: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	v2, err := s.NewArtifactVersion(ctx, v1, &domain.Artifact{Status: "active"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	v3, err := s.NewArtifactVersion(ctx, v2, &domain.Artifact{Status: "active"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, start := range []string{v1, v2, v3} {
+		got, err := s.ArtifactLatest(ctx, start)
+		if err != nil {
+			t.Fatalf("latest from %s: %v", start, err)
+		}
+		if got.ID != v3 {
+			t.Fatalf("latest from %s = %s, want %s", start, got.ID, v3)
+		}
+		if got.Version != 3 {
+			t.Fatalf("latest from %s = v%d, want v3", start, got.Version)
+		}
+	}
+
+	if _, err := s.ArtifactLatest(ctx, "artifact-999"); err == nil {
+		t.Fatal("unknown id resolved instead of failing")
 	}
 }
 

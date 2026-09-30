@@ -26,17 +26,19 @@ description: Devsys/Workloom 项目状态与工作追踪纪律（.devsys/ 是唯
 ` + skillMarker + `
 # Devsys Skill
 
-This project uses Devsys for tracked work. Prefer Devsys MCP tools when
-available; otherwise use ` + "`workloom --json`" + ` through the shell.
+When Devsys MCP tools are available and identify the current project correctly, MUST use MCP for all Devsys state reads and writes, including project, blueprint, context, knowledge status, workitems, workflows, artifacts, decisions, findings, events, runs, claims, leases, approvals, and completion.
+Use the CLI only when MCP is unavailable, the required operation is not exposed by the active MCP tier, or a local build, test, server, installation, or diagnostic command is required. Before the first MCP write, verify the project identity with agent_session_start or project_get; if MCP and CLI report different project IDs, stop and resolve the working-directory mismatch before writing state. Never edit .devsys/ directly.
 
 ## Start
 
-1. Run workloom prime (or workloom session start) at the start of a new session — one call: project facts, work in flight, recommended action.
-2. For a new project, handle “no blueprint declared” before “no work items”: ask for confirmed goals, create and bind the blueprint, then create the first work item.
-3. A newly created work item starts as draft; read it, transition it to ready, then claim it. Never claim draft directly.
-4. Read the recommended work item with workitem get or context get --task <id>.
-5. If the item carries a workflow, read its steps with workloom workflow get --id <workitem>.
-
+1. Run ` + "`workloom prime`" + ` (or ` + "`workloom session start`" + `) at the start of a new session — one call: project facts, available workflow policies, default policy, and recommended action.
+2. Work autonomously by default when the goal is clear and the action is low-risk, reversible, and within the stated scope. Chain reads, diagnosis, tests, routine edits, and other explicitly authorized mechanical steps without asking after each step.
+3. Pause only at a decision gate: missing or ambiguous goals, product scope, architecture, inferred blueprint content, approval, destructive or external-impact action, or a choice with materially different outcomes. State the options and the exact decision needed.
+4. A missing blueprint is a planning boundary, not a reason to invent one: ask for project goals before drafting it. If the user supplied the goals and explicitly authorized the full onboarding chain, draft/review/activate/bind may continue; otherwise stop after the draft for review. Do not create tasks or implement work merely because a blueprint was created.
+5. Before choosing a workflow, inspect the available policies with ` + "`workloom workflow list`" + ` (or MCP ` + "`workflow_list`" + `) and inspect the deterministic task recommendation with MCP ` + "`workflow_recommend`" + `. Unknown or low-confidence work must enter ` + "`intake`" + ` for specification and classification before execution; never use ` + "`quick-fix`" + ` as a generic fallback. Choose ` + "`quick-fix`" + ` only for a confirmed small correction, ` + "`feature-development`" + ` for a normal feature, and ` + "`architecture-change`" + ` for architectural work.
+6. Start a chosen workflow instance explicitly with ` + "`workflow start --policy <id>`" + `; never create an instance implicitly. If the user explicitly requested task creation and implementation and the acceptance scope is clear, create and implement without an extra confirmation; otherwise show the plan and pause at the unresolved decision.
+7. For a new project, run ` + "`workloom setup`" + `: it installs intake, quick-fix, feature-development, and architecture-change; intake is the neutral default, while reference-template is opt-in and does not become the default policy.
+8. Read the recommended work item with workitem get or context get --task <id>; if it carries a workflow, read its steps with ` + "`workloom workflow get --id <workitem>`" + `.
 ## Claim
 
 Claim before tracked implementation (` + "`workitem claim --expect <version>`" + `);
@@ -72,7 +74,7 @@ carry a version guard: ` + "`--expect <hash>`" + ` or ` + "`--latest`" + `).
 
 ` + "```sh" + `
 workloom init                                 # [w] create .devsys/ in the current directory
-workloom setup                                # [w] one-command onboarding (init + starter workflow + wire + checks); idempotent, existing files win
+workloom setup                                # [w] onboarding + quick-fix + safe new-project default_policy + wire/checks; existing choices win
 workloom wire [--dry-run]                     # [w] inject the AGENTS.md discipline block
 workloom wire --skill | --check | --print-mcp <codex|claude|opencode>
 workloom mcp install [--scope user|project] [--client codex|claude|opencode] [--apply] [--force] [--dry-run]  # [w] register devsys; default dry-run, --apply writes, --force replaces an existing entry
@@ -81,9 +83,11 @@ workloom session start [--compact]            # same, full context payload
 workloom next                                 # readiness verdict (always exit 0); judges ready items with claim's quality gate
 workloom project status                       # counts + risks + next
 workloom project blueprint                    # exit 0 when no blueprint is declared
+workloom project import-blueprint --artifact <id> --actor A --reason R [--expect <hash> | --latest]  # [w] import declared fields and bind
+workloom project update --blueprint-artifact <id> --actor A --reason R [--expect <hash> | --latest]  # [w] bind only; does not import fields
 workloom workitem list [--jsonl]              # one JSON record per line
 workloom workitem get <id>                    # includes version: <64-hex>
-workloom workitem create --title T --actor A --reason R [--description D --acceptance a,b]  # [w] set acceptance criteria up front
+workloom workitem create --title T --actor A --reason R [--description D | --description-file <path>] [--acceptance a,b]  # [w] one description source; a repeated --description is a usage error
 workloom workitem update --id <id> --acceptance a,b                     # [w] acceptance criteria (replaces the list)
 workloom workitem transition --id <id> --to <status> --actor A --reason R --expect <hash>   # [w]
 workloom workitem claim --id <id> --owner O --reason R [--expect <hash>]                    # [w] warns when no policy gates the item
@@ -91,7 +95,7 @@ workloom workitem release/start/block/complete --id <id> --actor A --reason R [-
 workloom workflow check                       # validate policy files (read-only)
 workloom workflow list|get|start|next|step-complete|pause|resume|cancel --id <workitem>   # [w] instance writes
 workloom approval list|get|request|approve|reject     # [w] request/approve/reject write
-workloom decision/finding/event/artifact list|get|create ...    # [w] create writes
+workloom event/artifact list|get|record|register|update ... # [w] timeline and durable stage evidence
 workloom run list|get|log|create|update|heartbeat|verify|complete|fail|cancel   # [w] except list/get/log/verify
 workloom context get [--task <id>] [--limit N]   # read-only aggregation
 workloom knowledge status                     # 0 fresh / 10 stale / 11 missing

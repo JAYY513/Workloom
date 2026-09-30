@@ -153,8 +153,8 @@ const noPolicyBody = "（未挂工作流策略：按任务简报、验收标准�
 // harness's own transcript (方案 §8/§9.2).
 const protocol = `- 通过 CLI 或 MCP 汇报（两者同一实现）：` + "`workloom ...`" + ` 与同名 MCP 工具等价。
 - 进度：` + "`workloom run update --id $DEVSYS_RUN_ID --log <一行说明>`" + `（可多次）。
-- 产物：` + "`workloom artifact register --name <名称> --path <路径> --run $DEVSYS_RUN_ID --related $DEVSYS_WORKITEM --actor <身份> --reason <原因>`" + `。
-- 决策：` + "`workloom decision create --title <标题> --decision <结论> --by <身份>`" + `；发现：` + "`workloom finding create --title <标题> --description <说明>`" + `。
+- 产物：` + "`workloom artifact register --name <名称> --path <路径> --run $DEVSYS_RUN_ID --workitem $DEVSYS_WORKITEM --actor <身份> --reason <原因>`" + `（主归属 workitem_id；已有主归属时用 ` + "`--related $DEVSYS_WORKITEM`" + ` 追加关联 related_workitems。门禁认名称，主归属或关联任一命中即算证据）；类型按阶段填写 spec/plan/decision/research/verification/review/finding-report。
+- 发现：先记录为当前 Run 的 timeline event；需要行动时创建 follow-up work item，需要长期保留时登记 finding-report Artifact。
 - 受阻：` + "`workloom workitem block --id $DEVSYS_WORKITEM --actor <身份> --reason <原因>`" + `；需要人工放行时按策略请求审批（` + "`workloom approval request --id $DEVSYS_WORKITEM --stage <阶段> --actor <身份> --reason <原因>`" + `）。
 - 完成：` + "`workloom run complete --id $DEVSYS_RUN_ID --actor <身份> --reason <原因>`" + `；失败：` + "`workloom run fail ...`" + `。
 - 退出码 0 表示本轮成功，非零表示失败（失败原因写 stderr）。`

@@ -54,9 +54,15 @@ func TestMalformedWorkitemIDIsUsageError(t *testing.T) {
 }
 
 func TestLeasedTransitionNamesTheReleaseCommand(t *testing.T) {
-	_, items := gatedProject(t)
+	repo, items := gatedProject(t)
+	if code, _, errOut := run(t, "workflow", "init", "--template", "intake"); code != CodeOK {
+		t.Fatalf("init intake: code=%d stderr=%q", code, errOut)
+	}
+	setDefaultPolicy(t, repo, "intake")
 	code, out, errOut := run(t, "workitem", "create",
-		"--title", "租约提示验证任务", "--actor", "dev", "--reason", "fixture")
+		"--title", "租约提示验证任务", "--actor", "dev", "--reason", "fixture",
+		"--description", "- 背景：验证租约提示。- 做法：执行测试。- 验收：测试通过。",
+		"--acceptance", "测试通过")
 	if code != CodeOK {
 		t.Fatalf("create: code=%d stderr=%q", code, errOut)
 	}
@@ -70,10 +76,13 @@ func TestLeasedTransitionNamesTheReleaseCommand(t *testing.T) {
 	if code != CodeInvalid {
 		t.Fatalf("leased transition: code=%d stderr=%q", code, errOut)
 	}
-	for _, want := range []string{"lease token mismatch", "leased by \"dev\"", "workloom workitem release --id " + id} {
+	for _, want := range []string{"active lease held by \"dev\"", "does not accept a lease token", "workloom workitem release --id " + id, "holder API"} {
 		if !strings.Contains(errOut, want) {
 			t.Errorf("stderr = %q, want %q", errOut, want)
 		}
+	}
+	if strings.Contains(errOut, "lease token mismatch") {
+		t.Errorf("stderr = %q, transition must not be framed as a token mismatch", errOut)
 	}
 }
 

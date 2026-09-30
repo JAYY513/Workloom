@@ -89,6 +89,34 @@ func registerWorkitemNext(s *mcpsdk.Server, cfg Config) {
 	})
 }
 
+// --- workitem_follow_up --------------------------------------------------
+
+type workitemFollowUpInput struct {
+	ParentID           string   `json:"parent_id" jsonschema:"source work item id"`
+	Type               string   `json:"type" jsonschema:"registered type: research, decision, feature, bug, or follow-up"`
+	Title              string   `json:"title" jsonschema:"follow-up title"`
+	Description        string   `json:"description,omitempty" jsonschema:"what needs follow-up"`
+	AcceptanceCriteria []string `json:"acceptance_criteria,omitempty" jsonschema:"follow-up acceptance criteria"`
+	Actor              string   `json:"actor" jsonschema:"operator identity"`
+	Reason             string   `json:"reason" jsonschema:"why this follow-up is proposed"`
+}
+
+func registerWorkitemFollowUp(s *mcpsdk.Server, cfg Config) {
+	mcpsdk.AddTool(s, &mcpsdk.Tool{
+		Name:        "workitem_follow_up",
+		Description: "Create a controlled draft follow-up work item with provenance; arbitrary workflow YAML is not accepted.",
+	}, func(ctx context.Context, req *mcpsdk.CallToolRequest, in workitemFollowUpInput) (*mcpsdk.CallToolResult, app.WorkItemView, error) {
+		view, err := cfg.service().CreateFollowUpWorkitem(ctx, app.CreateFollowUpRequest{
+			ParentID: in.ParentID, Type: in.Type, Title: in.Title, Description: in.Description,
+			AcceptanceCriteria: in.AcceptanceCriteria, Actor: in.Actor, Reason: in.Reason,
+		})
+		if err != nil {
+			return fail[app.WorkItemView](err)
+		}
+		return nil, view, nil
+	})
+}
+
 // --- workitem_create -----------------------------------------------------
 
 type workitemCreateInput struct {

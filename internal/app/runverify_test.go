@@ -252,12 +252,13 @@ func TestRunVerifyDoesNotWrite(t *testing.T) {
 	}
 }
 
-// A claim head without a workspace is still no evidence: the check must not
-// fall back to the project root's head and call that an advance.
-func TestCompletionRefusedWithoutWorkspace(t *testing.T) {
+// A claim head without an explicit workspace now uses the project root for
+// comparison: WorkitemClaim on a Git project records the root HEAD and sets
+// Workspace.Path = root. If nothing was committed the completion is refused.
+func TestCompletionRefusedWhenProjectRootNotAdvanced(t *testing.T) {
 	_, svc, _, runID := verifyFixture(t)
-	// Strip the workspace but keep the claim head, as a hand-edited or
-	// partially bound run would have it.
+	// Strip the workspace to simulate a direct WorkitemClaim run (no worktree).
+	// Keep the claim head so we exercise the project-root fallback path.
 	view, err := svc.RunGet(context.Background(), runID)
 	if err != nil {
 		t.Fatal(err)
@@ -266,7 +267,7 @@ func TestCompletionRefusedWithoutWorkspace(t *testing.T) {
 		t.Fatal("the fixture has no claim head to keep")
 	}
 	stripped := view.Run
-	stripped.Workspace = domain.Workspace{}
+	stripped.Workspace = domain.Workspace{Path: svc.Root}
 	if err := svc.runUpdateRaw(stripped, view.Version); err != nil {
 		t.Fatalf("strip workspace: %v", err)
 	}
@@ -274,8 +275,13 @@ func TestCompletionRefusedWithoutWorkspace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if check.Advanced || !strings.Contains(check.Reason, "no workspace") {
-		t.Fatalf("check = %+v, want a refusal because there is no workspace", check)
+	// The project root HEAD equals the claim head (nothing was committed after
+	// the fixture claim), so the completion must be refused.
+	if check.Advanced {
+		t.Fatalf("check = %+v, want refused because nothing was committed", check)
+	}
+	if check.Skipped {
+		t.Fatalf("check = %+v, want a refusal, not a skip", check)
 	}
 	after, err := svc.RunGet(context.Background(), runID)
 	if err != nil {
@@ -284,7 +290,53 @@ func TestCompletionRefusedWithoutWorkspace(t *testing.T) {
 	if _, err := svc.RunFinish(context.Background(), RunFinishRequest{
 		RunID: runID, Expect: after.Version, Outcome: RunSucceeded, Actor: "agent", Reason: "done",
 	}); err == nil {
-		t.Fatal("a run without a workspace was marked succeeded")
+		t.Fatal("a run without any new commits was marked succeeded")
+	}
+}
+
+// After committing on the project root (no worktree), the completion succeeds.
+func TestCompletionVerifiedOnProjectRootAdvance(t *testing.T) {
+	root, svc, _, runID := verifyFixture(t)
+	// Move the HEAD forward by committing directly in the project root.
+	for _, args := range [][]string{
+		{"add", "-A"},
+		{"-c", "user.email=a@b.c", "-c", "user.name=agent", "commit", "-q", "--allow-empty", "-m", "root work"},
+	} {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = root
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, out)
+		}
+	}
+	// Simulate the WorkitemClaim scenario: workspace path = root, no branch.
+	view, err := svc.RunGet(context.Background(), runID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	patched := view.Run
+	patched.Workspace = domain.Workspace{Path: root}
+	if err := svc.runUpdateRaw(patched, view.Version); err != nil {
+		t.Fatalf("patch workspace: %v", err)
+	}
+	check, err := svc.RunVerify(context.Background(), runID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !check.Advanced {
+		t.Fatalf("check = %+v, want advanced after root commit", check)
+	}
+	after, err := svc.RunGet(context.Background(), runID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	done, err := svc.RunFinish(context.Background(), RunFinishRequest{
+		RunID: runID, Expect: after.Version, Outcome: RunSucceeded, Actor: "agent", Reason: "done",
+	})
+	if err != nil {
+		t.Fatalf("complete: %v", err)
+	}
+	if done.Run.Status != RunSucceeded {
+		t.Fatalf("status = %s, want succeeded", done.Run.Status)
 	}
 }
 

@@ -24,11 +24,14 @@ func TestSetupInstallsAndKeepsExistingPolicy(t *testing.T) {
 	}
 	for _, want := range []string{
 		"[v] init:",
+		"[v] workflow: installed intake",
 		"[v] workflow: installed quick-fix",
+		"[v] workflow: installed feature-development",
+		"[v] workflow: installed architecture-change",
 		"[v] wire:",
 		"[v] wire-check:",
 		"[v] config:",
-		"[x] mcp:",
+		"[v] mcp:",
 		"[v] prime:",
 		"[x] blueprint: no blueprint declared",
 		"[v] doctor:",
@@ -36,17 +39,24 @@ func TestSetupInstallsAndKeepsExistingPolicy(t *testing.T) {
 		"project update --blueprint-artifact",
 	} {
 		if !strings.Contains(out, want) {
-			t.Errorf("stdout missing %q:\n%s", want, out)
+			t.Errorf("stdout missing %q (stderr=%s):\n%s", want, errOut, out)
 		}
 	}
 	for _, rel := range []string{
+		".devsys/workflows/intake.md",
 		".devsys/workflows/quick-fix.md",
+		".devsys/workflows/feature-development.md",
+		".devsys/workflows/architecture-change.md",
 		"AGENTS.md",
 		".agents/skills/devsys/SKILL.md",
 	} {
 		if _, err := os.Stat(filepath.Join(repo, filepath.FromSlash(rel))); err != nil {
 			t.Errorf("missing %s: %v", rel, err)
 		}
+	}
+	config, err := os.ReadFile(filepath.Join(repo, ".devsys", "config.yaml"))
+	if err != nil || !strings.Contains(string(config), "default_policy: intake") {
+		t.Fatalf("setup did not enable intake default policy: err=%v config=%s", err, config)
 	}
 	policy := filepath.Join(repo, ".devsys", "workflows", "quick-fix.md")
 	custom := []byte("# custom policy — do not reset\n")

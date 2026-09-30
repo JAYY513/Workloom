@@ -22,6 +22,11 @@ the release script or `go install`
 cold starts need the network and the version follows the npx cache. For MCP
 clients, register the installed binary (`workloom mcp install`), not npx.
 
+On Windows, Git Bash without `node` on `PATH` cannot start the npm shim
+(`#!/usr/bin/env node`). Set `WORKLOOM_BIN` to the platform `workloom.exe`, or
+run `bin/workloom.ps1` (no Node required). The `bin` field stays `workloom.js`
+so MCP registration is unchanged. WSL `bash` is a different PATH from Git Bash.
+
 ---
 
 中文：本包是 `workloom` CLI 的 **npm 分发层**——按平台调用已构建的 Go 二进制，

@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/JAYY513/Workloom/internal/config"
@@ -13,10 +14,11 @@ import (
 // WorkflowView is one work item's workflow instance plus, for read
 // operations, the evaluated step candidates.
 type WorkflowView struct {
-	WorkitemID string                   `json:"workitem_id"`
-	Workflow   *domain.WorkflowInstance `json:"workflow"`
-	Candidates []workflow.StepCandidate `json:"candidates,omitempty"`
-	Notice     string                   `json:"notice,omitempty"`
+	WorkitemID  string                   `json:"workitem_id"`
+	Workflow    *domain.WorkflowInstance `json:"workflow"`
+	Candidates  []workflow.StepCandidate `json:"candidates,omitempty"`
+	Notice      string                   `json:"notice,omitempty"`
+	NextCommand string                   `json:"next_command,omitempty"`
 }
 
 // PolicySummary is the JSON view of one valid policy file.
@@ -27,8 +29,48 @@ type PolicySummary struct {
 	Version int    `json:"version"`
 }
 
-// WorkflowList scans the policy files (the data behind `workflow check`):
-// valid policies plus every located issue, errors and warnings apart.
+// WorkflowList scans the policy files (the data behind `workflow check`).
+
+// WorkflowRecommendationView explains the policy selected for a work item
+// without mutating its workflow instance.
+type WorkflowRecommendationView struct {
+	WorkitemID     string                  `json:"workitem_id"`
+	Recommendation workflow.Recommendation `json:"recommendation"`
+	SelectedPolicy string                  `json:"selected_policy,omitempty"`
+	Mismatch       bool                    `json:"mismatch,omitempty"`
+}
+
+// WorkflowRecommendation returns the deterministic recommendation and the
+// policy currently selected by an explicit instance or project default.
+func (s *Service) WorkflowRecommendation(ctx context.Context, id string) (WorkflowRecommendationView, error) {
+	view, err := s.WorkitemGet(ctx, id)
+	if err != nil {
+		return WorkflowRecommendationView{}, err
+	}
+	md, problems := config.Load(s.Root)
+	for _, p := range problems {
+		if p.File == config.ConfigFile {
+			return WorkflowRecommendationView{}, fmt.Errorf("%s is invalid: %s", config.ConfigFile, p.String())
+		}
+	}
+	defaultPolicy := ""
+	if md != nil && md.Config != nil {
+		defaultPolicy = md.Config.DefaultPolicy
+	}
+	rec := workflow.Recommend(view.Item, defaultPolicy)
+	selected := ""
+	if view.Item.Workflow != nil {
+		selected = view.Item.Workflow.ID
+	} else {
+		selected = defaultPolicy
+	}
+	return WorkflowRecommendationView{
+		WorkitemID: id, Recommendation: rec, SelectedPolicy: selected,
+		Mismatch: rec.RequiresTriage && selected != "intake" || (!rec.RequiresTriage && selected != "" && rec.Source == workflow.RecommendationSourceRule && selected != rec.PolicyID),
+	}, nil
+}
+
+// Valid policies plus every located issue, errors and warnings are returned separately.
 func (s *Service) WorkflowList(ctx context.Context) ([]PolicySummary, []workflow.Issue, error) {
 	if !dirExists(s.Root + "/.devsys") {
 		return nil, nil, Preconditionf("no .devsys/ in %s: run `workloom init` first", s.Root)
@@ -53,7 +95,7 @@ func (s *Service) WorkflowList(ctx context.Context) ([]PolicySummary, []workflow
 		}
 	}
 	if len(problems) > 0 {
-		return nil, warnings, Invalidf(KindInvalid, problems, "invalid workflow policies (%d problems)", len(problems))
+		return summaries, warnings, Invalidf(KindInvalid, problems, "invalid workflow policies (%d problems)", len(problems))
 	}
 	return summaries, warnings, nil
 }
@@ -82,6 +124,7 @@ func (s *Service) WorkflowGet(ctx context.Context, id string) (WorkflowView, err
 		return view, s.mapWorkflowError(err, pol.File)
 	}
 	view.Candidates = candidates
+	view.NextCommand = workflowNextCommand(id, wi.Item, pol, candidates)
 	return view, nil
 }
 
@@ -122,7 +165,7 @@ func (s *Service) WorkflowStepNext(ctx context.Context, id string) (WorkflowView
 	if err != nil {
 		return WorkflowView{}, s.mapWorkflowError(err, pol.File)
 	}
-	return WorkflowView{WorkitemID: updated.ID, Workflow: updated.Workflow, Candidates: candidates, Notice: notice}, nil
+	return WorkflowView{WorkitemID: updated.ID, Workflow: updated.Workflow, Candidates: candidates, Notice: notice, NextCommand: workflowNextCommand(updated.ID, updated, pol, candidates)}, nil
 }
 
 // WorkflowStepComplete advances the instance (declaration order unless a
@@ -143,11 +186,18 @@ func (s *Service) WorkflowStepComplete(ctx context.Context, id, to, actor, reaso
 		Policy: pol, To: to, Actor: actor, Reason: reason, Owner: owner, Token: token, Expected: expected,
 	})
 	if err != nil {
-		// The caller still sees the last-known-good fallback: a refusal on a
-		// policy that is not currently valid must say so (M3.5).
-		return WorkflowView{WorkitemID: id, Notice: notice}, s.mapWorkflowError(err, pol.File)
+		cands := stepErrorCandidates(err)
+		cmd := workflowNextCommand(id, wi, pol, cands)
+		return WorkflowView{WorkitemID: id, Notice: notice, NextCommand: cmd}, withNextCommand(s.mapWorkflowError(err, pol.File), cmd)
 	}
-	return WorkflowView{WorkitemID: updated.ID, Workflow: updated.Workflow, Notice: notice}, nil
+	_, candidates, nerr := s.items().WorkflowNext(ctx, updated.ID, pol)
+	if nerr != nil {
+		candidates = nil
+	}
+	return WorkflowView{
+		WorkitemID: updated.ID, Workflow: updated.Workflow, Candidates: candidates, Notice: notice,
+		NextCommand: workflowNextCommand(updated.ID, updated, pol, candidates),
+	}, nil
 }
 
 // WorkflowSignal pauses, resumes or cancels an instance.
@@ -214,4 +264,55 @@ func (s *Service) resolvePolicy(ctx context.Context, wi *domain.WorkItem, policy
 		}
 	}
 	return res.Policy, notice, nil
+}
+
+func stepErrorCandidates(err error) []workflow.StepCandidate {
+	var se *workitem.WorkflowStepError
+	if errors.As(err, &se) {
+		return se.Allowed
+	}
+	return nil
+}
+
+func withNextCommand(err error, cmd string) error {
+	if err == nil || cmd == "" {
+		return err
+	}
+	var ae *Error
+	if errors.As(err, &ae) {
+		ae.Message += "\nnext: " + cmd
+		return ae
+	}
+	return err
+}
+
+// workflowNextCommand is the one executable follow-up. It never recommends
+// step-complete toward an unsatisfied edge or a step whose required status
+// the work item has not reached — those were the contradictory prompts.
+func workflowNextCommand(id string, wi *domain.WorkItem, pol *workflow.Policy, candidates []workflow.StepCandidate) string {
+	if wi == nil || wi.Workflow == nil {
+		return fmt.Sprintf("workloom workflow start --id %s --policy <id> --actor <you> --reason <why> [--expect <hash> | --latest]", id)
+	}
+	inst := wi.Workflow
+	if inst.Step == "done" || inst.Step == "cancelled" {
+		return ""
+	}
+	if inst.Paused {
+		return fmt.Sprintf("workloom workflow resume --id %s --actor <you> --reason <why> [--expect <hash> | --latest]", id)
+	}
+	for _, c := range candidates {
+		if !c.Satisfied {
+			continue
+		}
+		if pol != nil {
+			if target, ok := pol.StepByID(c.To); ok && target.Status != "" && target.Status != wi.Status {
+				return fmt.Sprintf("workloom workitem transition --id %s --to %s --actor <you> --reason <why> [--expect <hash> | --latest]", id, target.Status)
+			}
+		}
+		return fmt.Sprintf("workloom workflow step-complete --id %s --to %s --actor <you> --reason <why> [--expect <hash> | --latest]", id, c.To)
+	}
+	if len(candidates) > 0 && candidates[0].When != "" {
+		return fmt.Sprintf("satisfy `%s` before step-complete; inspect with `workloom workflow next --id %s`", candidates[0].When, id)
+	}
+	return fmt.Sprintf("workloom workflow next --id %s", id)
 }

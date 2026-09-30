@@ -166,6 +166,9 @@ func runDoctor(stdout io.Writer, opts options, rest []string) error {
 				}
 			}
 		}
+		if rep.InspectionOK && len(rep.PendingTransactions) == 0 && len(rep.ExpiredLeases) == 0 && len(rep.OrphanLeases) == 0 && len(rep.InvalidFiles) == 0 && len(rep.Orphans) == 0 {
+			fmt.Fprintln(stdout, "doctor: clean")
+		}
 	}
 	if len(rep.InvalidFiles) > 0 {
 		// The report is on stdout; the code carries "untrusted managed

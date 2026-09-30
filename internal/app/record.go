@@ -3,6 +3,8 @@ package app
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -53,12 +55,14 @@ type CreateDecisionRequest struct {
 	Consequences     []string
 	RelatedWorkItems []string
 	CreatedBy        string
+	Actor            string
+	Reason           string
 }
 
 // DecisionCreate stores a decision (一记录一文件, ID assigned by the store).
 func (s *Service) DecisionCreate(ctx context.Context, req CreateDecisionRequest) (RecordView, error) {
-	if strings.TrimSpace(req.Title) == "" || strings.TrimSpace(req.Decision) == "" || req.CreatedBy == "" {
-		return RecordView{}, Usagef("decision create requires title, decision and created_by")
+	if strings.TrimSpace(req.Title) == "" || strings.TrimSpace(req.Decision) == "" || req.CreatedBy == "" || req.Actor == "" || req.Reason == "" {
+		return RecordView{}, Usagef("decision create requires title, decision, created_by, actor and reason")
 	}
 	md, err := s.project()
 	if err != nil {
@@ -79,6 +83,9 @@ func (s *Service) DecisionCreate(ctx context.Context, req CreateDecisionRequest)
 	}
 	id, err := record.New(s.Root).CreateDecision(ctx, d)
 	if err != nil {
+		return RecordView{}, s.storeError(err)
+	}
+	if err := events.New(s.Root).Append(ctx, &domain.Event{Type: "decision_created", Subject: domain.Reference{Type: "decision", ID: id}, Actor: req.Actor, Content: req.Reason, Time: s.now()}); err != nil {
 		return RecordView{}, s.storeError(err)
 	}
 	return s.DecisionGet(ctx, id)
@@ -142,12 +149,14 @@ type CreateFindingRequest struct {
 	RelatedWorkItems   []string
 	RecommendedActions []string
 	DiscoveredByRunID  string
+	Actor              string
+	Reason             string
 }
 
 // FindingCreate stores a finding.
 func (s *Service) FindingCreate(ctx context.Context, req CreateFindingRequest) (RecordView, error) {
-	if strings.TrimSpace(req.Title) == "" || strings.TrimSpace(req.Description) == "" {
-		return RecordView{}, Usagef("finding create requires title and description")
+	if strings.TrimSpace(req.Title) == "" || strings.TrimSpace(req.Description) == "" || req.Actor == "" || req.Reason == "" {
+		return RecordView{}, Usagef("finding create requires title, description, actor and reason")
 	}
 	md, err := s.project()
 	if err != nil {
@@ -171,6 +180,9 @@ func (s *Service) FindingCreate(ctx context.Context, req CreateFindingRequest) (
 	}
 	id, err := record.New(s.Root).CreateFinding(ctx, f)
 	if err != nil {
+		return RecordView{}, s.storeError(err)
+	}
+	if err := events.New(s.Root).Append(ctx, &domain.Event{Type: "finding_created", Subject: domain.Reference{Type: "finding", ID: id}, Actor: req.Actor, Content: req.Reason, Time: s.now()}); err != nil {
 		return RecordView{}, s.storeError(err)
 	}
 	return s.FindingGet(ctx, id)
@@ -213,6 +225,24 @@ func (s *Service) ArtifactList(ctx context.Context) ([]*domain.Artifact, error) 
 	return items, nil
 }
 
+// ArtifactHeads returns artifacts that no later version supersedes, in the
+// same order as items. The immutable chain stays on disk; this is a read filter.
+func ArtifactHeads(items []*domain.Artifact) []*domain.Artifact {
+	superseded := map[string]bool{}
+	for _, a := range items {
+		if a != nil && a.PreviousID != nil && *a.PreviousID != "" {
+			superseded[*a.PreviousID] = true
+		}
+	}
+	out := make([]*domain.Artifact, 0, len(items))
+	for _, a := range items {
+		if a != nil && !superseded[a.ID] {
+			out = append(out, a)
+		}
+	}
+	return out
+}
+
 // ArtifactGet reads one artifact with its version hash.
 func (s *Service) ArtifactGet(ctx context.Context, id string) (RecordView, error) {
 	a, raw, err := record.New(s.Root).ReadArtifact(ctx, id)
@@ -231,12 +261,15 @@ func (s *Service) ArtifactHistory(ctx context.Context, id string) ([]*domain.Art
 	return items, nil
 }
 
-// RegisterArtifactRequest is the input to ArtifactRegister.
 type RegisterArtifactRequest struct {
 	Type             string
 	Name             string
 	Path             string
 	Source           string
+	WorkItemID       string
+	RunID            string
+	WorkflowID       string
+	Stage            string
 	CreatedByRunID   string
 	Status           string
 	RelatedWorkItems []string
@@ -245,7 +278,6 @@ type RegisterArtifactRequest struct {
 	Reason string
 }
 
-// ArtifactRegister stores a new artifact record (version 1).
 func (s *Service) ArtifactRegister(ctx context.Context, req RegisterArtifactRequest) (RecordView, error) {
 	if strings.TrimSpace(req.Name) == "" {
 		return RecordView{}, Usagef("artifact register requires a name")
@@ -253,9 +285,25 @@ func (s *Service) ArtifactRegister(ctx context.Context, req RegisterArtifactRequ
 	if strings.TrimSpace(req.Actor) == "" || strings.TrimSpace(req.Reason) == "" {
 		return RecordView{}, Usagef("artifact register requires --actor and --reason (audit trail)")
 	}
+	if p := strings.TrimSpace(req.Path); p != "" {
+		info, err := os.Stat(filepath.Join(s.Root, filepath.FromSlash(p)))
+		if err != nil {
+			if os.IsNotExist(err) {
+				return RecordView{}, Preconditionf("artifact source %q does not exist", p)
+			}
+			return RecordView{}, Internalf("inspect artifact source %q: %v", p, err)
+		}
+		if info.IsDir() {
+			return RecordView{}, Usagef("artifact source %q must be a file", p)
+		}
+	}
 	md, err := s.project()
 	if err != nil {
 		return RecordView{}, err
+	}
+	source := strings.TrimSpace(req.Source)
+	if source == "" && strings.TrimSpace(req.Path) != "" {
+		source = strings.TrimSpace(req.Path)
 	}
 	kind := req.Type
 	if kind == "" {
@@ -271,7 +319,11 @@ func (s *Service) ArtifactRegister(ctx context.Context, req RegisterArtifactRequ
 		Type:             kind,
 		Name:             req.Name,
 		Path:             req.Path,
-		Source:           req.Source,
+		Source:           source,
+		WorkItemID:       req.WorkItemID,
+		RunID:            req.RunID,
+		WorkflowID:       req.WorkflowID,
+		Stage:            req.Stage,
 		CreatedByRunID:   req.CreatedByRunID,
 		Status:           status,
 		Version:          1,
@@ -305,11 +357,16 @@ type UpdateArtifactRequest struct {
 	Path             string
 	Source           string
 	RelatedWorkItems []string
+	Actor            string
+	Reason           string
 }
 
 // ArtifactUpdate appends a new version linked to the previous one (records
 // are immutable: the old file is never rewritten).
 func (s *Service) ArtifactUpdate(ctx context.Context, req UpdateArtifactRequest) (RecordView, error) {
+	if strings.TrimSpace(req.Actor) == "" || strings.TrimSpace(req.Reason) == "" {
+		return RecordView{}, Usagef("artifact update requires --actor and --reason (audit trail)")
+	}
 	store := record.New(s.Root)
 	current, raw, err := store.ReadArtifact(ctx, req.ID)
 	if err != nil {
@@ -338,6 +395,12 @@ func (s *Service) ArtifactUpdate(ctx context.Context, req UpdateArtifactRequest)
 		next.UpdatedAt = now
 	})
 	if err != nil {
+		return RecordView{}, s.storeError(err)
+	}
+	if err := events.New(s.Root).Append(ctx, &domain.Event{
+		Type: "artifact_updated", Subject: domain.Reference{Type: "artifact", ID: id},
+		Actor: req.Actor, Content: fmt.Sprintf("artifact updated: %s", req.Reason), Time: s.now(),
+	}); err != nil {
 		return RecordView{}, s.storeError(err)
 	}
 	return s.ArtifactGet(ctx, id)

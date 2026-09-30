@@ -148,19 +148,34 @@ func (s *Service) staleSkillFiles() []string {
 	return stale
 }
 
-// checkMCPConfig reports whether a known MCP client config in the project
-// already points at devsys. Configuring a client is the operator's call, so a
-// missing entry is reported with the command that prints a snippet rather than
-// treated as an environment failure.
+// checkMCPConfig reports whether a known MCP client config in either the
+// default user scope (the scope used by `mcp install`) or this project scope
+// already mentions devsys. Configuring a client is the operator's call, so a
+// missing entry remains informational rather than an environment failure.
 func (s *Service) checkMCPConfig() WireCheckLine {
-	for _, rel := range []string{".mcp.json", "opencode.json", ".codex/config.toml"} {
-		data, err := os.ReadFile(filepath.Join(s.Root, filepath.FromSlash(rel)))
-		if err != nil {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		home = ""
+	}
+	paths := []struct {
+		scope string
+		path  string
+	}{
+		{"user", filepath.Join(home, ".codex", "config.toml")},
+		{"user", filepath.Join(home, ".claude.json")},
+		{"user", filepath.Join(home, ".config", "opencode", "opencode.json")},
+		{"project", filepath.Join(s.Root, ".mcp.json")},
+		{"project", filepath.Join(s.Root, "opencode.json")},
+		{"project", filepath.Join(s.Root, ".codex", "config.toml")},
+	}
+	for _, candidate := range paths {
+		if candidate.path == "" {
 			continue
 		}
-		if strings.Contains(string(data), "devsys") {
-			return WireCheckLine{Name: "mcp", OK: true, Detail: rel + " mentions devsys"}
+		data, err := os.ReadFile(candidate.path)
+		if err == nil && strings.Contains(string(data), "devsys") {
+			return WireCheckLine{Name: "mcp", OK: true, Detail: candidate.scope + " config " + candidate.path + " mentions devsys"}
 		}
 	}
-	return WireCheckLine{Name: "mcp", Detail: "no MCP client config in the project mentions devsys; `workloom wire --print-mcp <codex|claude|opencode>` prints a pasteable snippet"}
+	return WireCheckLine{Name: "mcp", Detail: "no MCP client config in user or project scope mentions devsys; `workloom mcp install` registers user scope, `--scope project` registers this project"}
 }

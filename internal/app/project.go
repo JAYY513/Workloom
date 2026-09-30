@@ -13,6 +13,7 @@ import (
 
 	"github.com/JAYY513/Workloom/internal/config"
 	"github.com/JAYY513/Workloom/internal/domain"
+	"github.com/JAYY513/Workloom/internal/events"
 	"github.com/JAYY513/Workloom/internal/next"
 	"github.com/JAYY513/Workloom/internal/project"
 	"github.com/JAYY513/Workloom/internal/record"
@@ -49,6 +50,8 @@ type UpdateProjectRequest struct {
 	CurrentPhase        *string
 	BlueprintArtifactID *string
 	Expect              string
+	Actor               string
+	Reason              string
 }
 
 // ProjectUpdate applies a metadata patch under the version guard.
@@ -116,8 +119,123 @@ func (s *Service) ProjectUpdate(ctx context.Context, req UpdateProjectRequest) (
 	}); err != nil {
 		return ProjectView{}, s.classifyWrite(err)
 	}
+	if strings.TrimSpace(req.Actor) != "" && strings.TrimSpace(req.Reason) != "" {
+		md, err := s.project()
+		if err != nil {
+			return ProjectView{}, err
+		}
+		if err := events.New(s.Root).Append(ctx, &domain.Event{Type: "project_updated", Subject: domain.Reference{Type: "project", ID: md.Project.ID}, ProjectID: md.Project.ID, Actor: req.Actor, Content: fmt.Sprintf("project updated: %s", req.Reason), Time: s.now()}); err != nil {
+			return ProjectView{}, s.storeError(err)
+		}
+	}
 	return s.ProjectGet(ctx)
 }
+
+// ImportBlueprintRequest imports the declared blueprint document into project.yaml.
+type ImportBlueprintRequest struct {
+	ArtifactID string
+	Expect     string
+	Actor      string
+	Reason     string
+}
+
+// ImportBlueprint reads a strict product-blueprint.yaml document and applies
+// only fields explicitly present in it. The project write is one transaction.
+func (s *Service) ImportBlueprint(ctx context.Context, req ImportBlueprintRequest) (ProjectView, error) {
+	if strings.TrimSpace(req.ArtifactID) == "" || strings.TrimSpace(req.Actor) == "" || strings.TrimSpace(req.Reason) == "" {
+		return ProjectView{}, Usagef("project blueprint-import requires artifact, actor and reason")
+	}
+	art, err := record.New(s.Root).ArtifactLatest(ctx, req.ArtifactID)
+	if err != nil {
+		return ProjectView{}, s.storeError(err)
+	}
+	blueprintPath := filepath.Clean(filepath.Join(s.Root, filepath.FromSlash(art.Path)))
+	rootAbs, err := filepath.Abs(s.Root)
+	if err != nil {
+		return ProjectView{}, s.storeError(err)
+	}
+	pathAbs, err := filepath.Abs(blueprintPath)
+	if err != nil {
+		return ProjectView{}, s.storeError(err)
+	}
+	rel, err := filepath.Rel(rootAbs, pathAbs)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return ProjectView{}, Preconditionf("artifact %q path must stay inside the project", art.Path)
+	}
+	rawBlueprint, err := os.ReadFile(pathAbs)
+	if err != nil {
+		return ProjectView{}, Preconditionf("read blueprint %q: %v", art.Path, err)
+	}
+	var blueprint struct {
+		Name        *string             `yaml:"name"`
+		Description *string             `yaml:"description"`
+		Goals       *[]string           `yaml:"goals"`
+		Scope       *domain.Scope       `yaml:"scope"`
+		Constraints *[]string           `yaml:"constraints"`
+		TechStack   *[]string           `yaml:"tech_stack"`
+		Milestones  *[]domain.Milestone `yaml:"milestones"`
+	}
+	if err := storage.DecodeYAML(rawBlueprint, &blueprint); err != nil {
+		return ProjectView{}, Invalidf(KindInvalid, nil, "invalid blueprint %q: %v", art.Path, err)
+	}
+	st, err := storage.Open(s.Root, storage.Options{})
+	if err != nil {
+		return ProjectView{}, s.storeError(err)
+	}
+	now := s.now()
+	if err := st.Write(ctx, func(tx *storage.Tx) error {
+		data, ok, err := tx.ReadForExpect("project.yaml")
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return fmt.Errorf("project.yaml is missing")
+		}
+		if err := checkExpect(req.Expect, data, "project"); err != nil {
+			return err
+		}
+		var proj domain.Project
+		if err := storage.DecodeYAML(data, &proj); err != nil {
+			return err
+		}
+		if blueprint.Name != nil {
+			proj.Name = *blueprint.Name
+		}
+		if blueprint.Description != nil {
+			proj.Description = *blueprint.Description
+		}
+		if blueprint.Goals != nil {
+			proj.Goals = *blueprint.Goals
+		}
+		if blueprint.Scope != nil {
+			proj.Scope = *blueprint.Scope
+		}
+		if blueprint.Constraints != nil {
+			proj.Constraints = *blueprint.Constraints
+		}
+		if blueprint.TechStack != nil {
+			proj.TechStack = *blueprint.TechStack
+		}
+		if blueprint.Milestones != nil {
+			proj.Milestones = *blueprint.Milestones
+		}
+		proj.BlueprintArtifactID = art.ID
+		proj.UpdatedAt = now
+		return tx.PutYAML("project.yaml", &proj, storage.ExpectHash(storage.HashBytes(data)))
+	}); err != nil {
+		return ProjectView{}, s.classifyWrite(err)
+	}
+	md, err := s.project()
+	if err != nil {
+		return ProjectView{}, err
+	}
+	if err := events.New(s.Root).Append(ctx, &domain.Event{Type: "blueprint_imported", Subject: domain.Reference{Type: "artifact", ID: art.ID}, ProjectID: md.Project.ID, Actor: req.Actor, Content: req.Reason, Time: s.now()}); err != nil {
+		return ProjectView{}, s.storeError(err)
+	}
+	return s.ProjectGet(ctx)
+}
+
+// UpdateStateRequest patches state/current.yaml. Nil/empty collections stay
 
 // UpdateStateRequest patches state/current.yaml. Nil/empty collections stay
 // untouched; Expect is the version hash from ProjectStateGet.
@@ -197,24 +315,68 @@ func (s *Service) ProjectStateUpdate(ctx context.Context, req UpdateStateRequest
 	return s.ProjectStateGet(ctx)
 }
 
-// ProjectBlueprint returns the artifact the project declares as its blueprint.
-// A project that declares none is a normal state, not a failure: the caller
-// gets (nil, nil) and reports "no blueprint declared" as a result, so a
-// read-only query exits 0 the way `project status` and `next` do.
-func (s *Service) ProjectBlueprint(ctx context.Context) (*domain.Artifact, error) {
+// BlueprintWarnings reports provenance and review gaps without rejecting an
+// otherwise valid blueprint reference or imposing a document format.
+func BlueprintWarnings(art *domain.Artifact) []string {
+	if art == nil {
+		return nil
+	}
+	var warnings []string
+	if art.Status == "draft" {
+		warnings = append(warnings, "blueprint is draft; review its goals, scope and acceptance before relying on it")
+	}
+	if strings.TrimSpace(art.Source) == "" && strings.TrimSpace(art.CreatedByRunID) == "" {
+		warnings = append(warnings, "blueprint has no source or creating run; confirm its origin with the project owner")
+	}
+	return warnings
+}
+
+// BlueprintResult is the blueprint a project declares together with the ID the
+// declaration actually names. BoundID differs from Artifact.ID when the bound
+// version has since been superseded by an appended version: artifacts are
+// immutable, so `artifact update` writes a new artifact-<N> linked by
+// previous_id and leaves project.yaml pointing at the old one.
+type BlueprintResult struct {
+	// BoundID is project.yaml's blueprint_artifact_id, verbatim.
+	BoundID string
+	// Artifact is the newest version reachable from BoundID, or nil when the
+	// project declares no blueprint.
+	Artifact *domain.Artifact
+}
+
+// Stale reports whether the declaration points at a superseded version.
+func (r BlueprintResult) Stale() bool {
+	return r.Artifact != nil && r.BoundID != "" && r.BoundID != r.Artifact.ID
+}
+
+// BlueprintStaleNotice names the command that re-points the declaration at the
+// newest version. It is empty unless the declaration is stale.
+func (r BlueprintResult) BlueprintStaleNotice() string {
+	if !r.Stale() {
+		return ""
+	}
+	return fmt.Sprintf("project.yaml still binds %s, which was superseded by %s; run `workloom project update --blueprint-artifact %s` to follow the latest version",
+		r.BoundID, r.Artifact.ID, r.Artifact.ID)
+}
+
+// ProjectBlueprint returns the artifact the project declares as its blueprint,
+// resolved through the version chain to the newest version. A project that
+// declares none is a normal state: the caller gets a zero BoundID and a nil
+// Artifact. Read-only queries exit 0 like `project status` and `next` do.
+func (s *Service) ProjectBlueprint(ctx context.Context) (BlueprintResult, error) {
 	md, err := s.project()
 	if err != nil {
-		return nil, err
+		return BlueprintResult{}, err
 	}
 	id := md.Project.BlueprintArtifactID
 	if id == "" {
-		return nil, nil
+		return BlueprintResult{}, nil
 	}
-	art, err := record.New(s.Root).GetArtifact(ctx, id)
+	art, err := record.New(s.Root).ArtifactLatest(ctx, id)
 	if err != nil {
-		return nil, s.storeError(err)
+		return BlueprintResult{}, s.storeError(err)
 	}
-	return art, nil
+	return BlueprintResult{BoundID: id, Artifact: art}, nil
 }
 
 // ProjectCreate initializes a project at path (default: the service root)
