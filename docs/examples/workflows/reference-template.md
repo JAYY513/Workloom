@@ -130,7 +130,7 @@ on_reject: block
 ## 上报协议
 
 - 进度：`workloom run update --id $DEVSYS_RUN_ID --log <一行说明>`（可多次）。
-- 产物：`workloom artifact register --name <名称> --path <路径> --run $DEVSYS_RUN_ID --related $DEVSYS_WORKITEM`。
+- 产物：`workloom artifact register --name <名称> --path <路径> --run $DEVSYS_RUN_ID --workitem $DEVSYS_WORKITEM --actor <身份> --reason <原因>`（主归属 workitem_id；已有主归属时用 `--related` 追加关联）。
 - 决策 / 发现：`workloom decision create --title <标题> --decision <结论> --by <身份>`、`workloom finding create --title <标题> --description <说明>`。
 - 完成 / 失败：`workloom run complete|fail --id $DEVSYS_RUN_ID --actor <身份> --reason <原因>`。
 - 步骤推进：`workloom workflow step-complete --id $DEVSYS_WORKITEM --actor <身份> --reason <原因>`。

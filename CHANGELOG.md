@@ -2,6 +2,12 @@
 
 格式参照 Keep a Changelog；pre-release 阶段遵循语义化版本。发版步骤与回退见 [docs/发布流程.md](docs/发布流程.md)。
 
+## Unreleased
+
+### Fixed
+
+- Windows Git Bash 在 PATH 里没有 `node` 时，npm shim（`#!/usr/bin/env node`）起不来，JavaScript wrapper 无法诊断。包装包新增不依赖 Node 的 `bin/workloom.ps1`，并认 `WORKLOOM_BIN`；npm `bin` 字段仍是 `workloom.js`，MCP 注册不变。`session start` 在没有 `.devsys/` 的目录不会隐式 `init`。
+
 ## v0.1.13 — 2026-09-22
 
 ### Fixed

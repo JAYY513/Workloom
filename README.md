@@ -162,11 +162,11 @@ Windows x64；macOS / Linux / Windows ARM64，以及 Release 脚本、`go instal
 ```bash
 workloom setup
 ```
-
-它按顺序完成 `init`（幂等）→ 安装 `quick-fix` 起手工作流（已有文件不动）→
-`wire`（AGENTS.md 纪律块 + Agent Skill）→ 配置校验 → 环境检查 → `prime` →
-蓝图检查（未声明只报告，不猜）→ `doctor`，任一步硬失败即停。重跑安全：
-已存在的文件一律保留。
+它按顺序完成 `init`（幂等）→ 安装中性的 `intake` 与 `quick-fix`、`feature-development`、
+`architecture-change` 执行工作流（已有文件不动）→ 在全新接入且配置未显式指定时写入
+项目默认策略 `.devsys/config.yaml: default_policy: intake` → `wire`（AGENTS.md 纪律块 + Agent Skill）→
+配置校验 → 环境检查 → `prime` → 蓝图检查（未声明只报告，不猜；已声明但为 draft/无来源会给出告警）→
+`doctor`，任一步硬失败即停。重跑安全：已存在的文件与显式策略一律保留。未知或低置信度任务先走 intake 分流；不要把 quick-fix 当通用兜底。
 
 装好二进制后，`workloom mcp install` 把 devsys 注册进检测到的 MCP 客户端（服务器名仍为 `devsys`，兼容既有客户端配置）
 （Codex / Claude Code / OpenCode；显式 `--client` 可强制）。默认只预览不写；`--apply` 才写入，

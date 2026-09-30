@@ -172,9 +172,10 @@ Run one command in any directory (a Git repository root is best; a non-Git direc
 workloom setup
 ```
 
-It runs `init` (idempotent) → installs the `quick-fix` starter workflow (an
-existing file is never overwritten) → `wire` (AGENTS.md discipline block +
-agent skill) → config validation → environment checks → `prime` → blueprint
+It runs `init` (idempotent) → installs the neutral `intake` workflow plus the
+`quick-fix`, `feature-development`, and `architecture-change` execution
+workflows (existing files are never overwritten) → `wire` (AGENTS.md discipline
+block + agent skill) → config validation → environment checks → `prime` → blueprint
 check (a missing blueprint is reported, never guessed) → `doctor`, and stops
 at the first hard failure. Re-running is safe: existing files always win.
 

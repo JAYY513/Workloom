@@ -80,6 +80,15 @@ workloom --version
 安装时不下载 exe——平台二进制随平台包一起装（`optionalDependencies`）。
 **当前只发布了 `win32-x64`**：macOS / Linux / Windows ARM64 上安装会缺少平台二进制、运行时被明确拒绝（不会去下载），这些平台先用 1a–1c，等对应平台包发布后同一条命令即可用。`npx` 不作为主安装路径（冷启动要联网、版本随 npx 缓存漂移）。
 
+Windows npm wrapper 按参数数组原样转发参数，多行 `--description`、`--acceptance` 不需要额外转义；PowerShell 中建议使用 here-string 传入多行文本，例如 `@"` … `"@`。若终端仍改变换行，优先使用 MCP 的结构化字段传递同一内容。
+
+Git Bash 若报 `node: No such file or directory`，是 npm 生成的 shim（`#!/usr/bin/env node`）在 **node 不在该 PATH** 时失败，JavaScript wrapper 根本没启动。不要改 npm 的 `bin` 字段（MCP 注册仍是 `node <wrapper>/bin/workloom.js`）。两条出路：
+
+1. 设 `WORKLOOM_BIN` 指向平台 `workloom.exe`（npm 可选包 `@kaki317/workloom-win32-x64`，或 Release / `go install` 的二进制），再跑 `workloom`。
+2. 直接跑包装包里的原生入口（不需要 Node）：`powershell -NoProfile -File <npm-prefix>/node_modules/@kaki317/workloom/bin/workloom.ps1 <args>`。脚本会找同级平台包；找不到时提示 `WORKLOOM_BIN`，不会下载。
+
+`bash.exe` 若解析到 **WSL**，那是另一套 PATH，Windows 的 `node`/`npm` 通常不在里面。用 Git Bash，或在 PowerShell 里设 `WORKLOOM_BIN` 后跑 `workloom.ps1`。`session start` 不会在没有 `.devsys/` 的目录里隐式 `init`。
+
 
 ## §2 接入项目（每个项目一次）
 
@@ -96,11 +105,14 @@ workloom setup                                  # 一条命令完成整段接入
 
 ```bash
 workloom init                                   # 创建 .devsys/ + 项目级 .gitattributes（幂等）
-workloom workflow init --template quick-fix     # 起步工作流；完整模板列表见该命令的用法输出
+workloom workflow init --template quick-fix     # 起步工作流；已有文件不动
 workloom wire                                   # AGENTS.md 纪律块 + .agents 技能文件（默认含 skill）
 workloom wire --check                           # 接入检查，预期全绿
 workloom prime                                  # 读取项目状态：事实 + 在飞工作 + 推荐下一步
 ```
+
+`setup` 仅在首次接入、配置没有显式 `default_policy` 时写入
+`default_policy: quick-fix`；已有项目或显式空值不会被覆盖。
 
 `setup` 不写 MCP 客户端配置。注册是另一步，默认只预览：
 
@@ -119,7 +131,7 @@ workloom mcp install --apply --force             # 只替换已有 devsys 条目
 （报告写 `skipped`，不会被当成通过）。
 
 之后检查项目蓝图：已配置则继续；**未配置则询问项目目标，不要假设**——
-蓝图写入命令是 `workloom project update --blueprint-artifact <artifact-id>`。
+蓝图写入命令是 `workloom project update --blueprint-artifact <artifact-id>`；已有 `product-blueprint.yaml` 时，可用 `workloom project import-blueprint --artifact <artifact-id> --actor <a> --reason <r> --latest` 严格导入已声明字段。
 
 ## 给 Agent 的提示词
 
