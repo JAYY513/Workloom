@@ -3,13 +3,258 @@
   "partition": {
     "locale": "zh"
   },
-  "generated_at": "2026-09-24T00:15:16.007Z",
+  "generated_at": "2026-09-30T07:10:07.597Z",
   "git": {
-    "commit": "d07638c553fca54e609cb9cc5ab7c4ea659c3fb9",
+    "commit": "9d7ed6c6518781e2d15288de947672785137fa57",
     "branch": "master"
   },
   "citation_index_version": 1,
   "pages": {
+    "content/内容关系与归属.md": {
+      "sources": [
+        "internal/domain/models.go",
+        "internal/domain/state.go",
+        "internal/storage/store.go",
+        "internal/workflow/gate.go",
+        "internal/workflow/policy.go",
+        "internal/app/followup.go",
+        "cmd/**",
+        "internal/cli/**",
+        "internal/config/**",
+        "internal/project/**",
+        "internal/registry/**",
+        "internal/version/**",
+        "internal/domain/**",
+        "README.md",
+        "internal/cli/records.go",
+        "internal/cli/diagnostics.go",
+        "internal/cli/mcp.go",
+        "internal/cli/worktree.go",
+        "internal/cli/dispatch.go",
+        "scripts/m4helper",
+        "scripts/smoke-m4.sh",
+        "scripts/smoke-m4.ps1",
+        "scripts/exchange-demo.sh",
+        "scripts/smoke-m5.sh",
+        "scripts/smoke-m6.sh",
+        "scripts/smoke-m6.ps1",
+        "scripts/smoke-m7.sh",
+        "scripts/smoke-m7.ps1",
+        "internal/syncstatus/**",
+        "internal/archive/**",
+        "scripts/smoke-m8.sh",
+        "scripts/smoke-m8.ps1",
+        "scripts/contrabass/**",
+        "INSTALL.md",
+        "CHANGELOG.md",
+        "Makefile",
+        ".github/workflows/release.yml",
+        "npm/**",
+        ".agents/skills/devsys/**",
+        "docs/hub-v1.md",
+        "docs/hub-v1-prototype.html",
+        "internal/storage/**",
+        "internal/workitem/**",
+        "internal/events/**",
+        "internal/run/**",
+        "internal/record/**",
+        "internal/search/**",
+        "internal/reconcile/**",
+        "internal/workflow/**",
+        "internal/approval/**",
+        "internal/next/**",
+        "scripts/**",
+        "docs/examples/m1-devsys/**",
+        "docs/examples/workflows/**",
+        "go.mod",
+        "go.sum",
+        "internal/app/**",
+        "internal/mcp/**",
+        "internal/harness/**",
+        "internal/workspace/**",
+        "internal/dispatch/**",
+        "internal/retry/**",
+        "internal/prompt/**",
+        "internal/knowledge/**",
+        ".devsys/knowledge/**",
+        ".repowikiignore",
+        "internal/knowledge/syncgit.go",
+        "internal/view/**",
+        "internal/sitestatic/**",
+        "internal/hubstatic/**"
+      ],
+      "content_hash": "61f3b84a920dc3d659d695899872e1ebd2ff99abdcfa64f6089f93963b71123b",
+      "citations": [
+        {
+          "source": "internal/view/build.go",
+          "line_start": 33,
+          "line_end": 115,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/run.go",
+          "line_start": 80,
+          "line_end": 81,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/approval.go",
+          "line_start": 57,
+          "line_end": 57,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/record.go",
+          "line_start": 282,
+          "line_end": 283,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/record.go",
+          "line_start": 64,
+          "line_end": 64,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/record.go",
+          "line_start": 158,
+          "line_end": 158,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/record.go",
+          "line_start": 426,
+          "line_end": 427,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/events/events.go",
+          "line_start": 89,
+          "line_end": 91,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/events/events.go",
+          "line_start": 323,
+          "line_end": 329,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/domain/models.go",
+          "line_start": 153,
+          "line_end": 153,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/domain/models.go",
+          "line_start": 203,
+          "line_end": 216,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/workflow/gate.go",
+          "line_start": 71,
+          "line_end": 77,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/workflow/gate.go",
+          "line_start": 75,
+          "line_end": 75,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/domain/models.go",
+          "line_start": 203,
+          "line_end": 206,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/domain/models.go",
+          "line_start": 60,
+          "line_end": 94,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/domain/models.go",
+          "line_start": 29,
+          "line_end": 32,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/next/evaluate.go",
+          "line_start": 376,
+          "line_end": 380,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/build.go",
+          "line_start": 408,
+          "line_end": 408,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/build.go",
+          "line_start": 475,
+          "line_end": 475,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/workflow/gate.go",
+          "line_start": 53,
+          "line_end": 97,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/followup.go",
+          "line_start": 34,
+          "line_end": 77,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/followup.go",
+          "line_start": 12,
+          "line_end": 18,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/followup.go",
+          "line_start": 62,
+          "line_end": 62,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/followup.go",
+          "line_start": 69,
+          "line_end": 76,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/prompt/prompt.go",
+          "line_start": 157,
+          "line_end": 157,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/domain/models.go",
+          "line_start": 140,
+          "line_end": 147,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/prompt/prompt.go",
+          "line_start": 107,
+          "line_end": 113,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/project/tree.go",
+          "line_start": 34,
+          "line_end": 34,
+          "occurrences": 1
+        }
+      ]
+    },
     "content/开发与故障诊断.md": {
       "sources": [
         ".gitattributes",
@@ -47,6 +292,8 @@
         ".github/workflows/release.yml",
         "npm/**",
         ".agents/skills/devsys/**",
+        "docs/hub-v1.md",
+        "docs/hub-v1-prototype.html",
         "internal/storage/**",
         "internal/workitem/**",
         "internal/events/**",
@@ -74,9 +321,10 @@
         ".repowikiignore",
         "internal/knowledge/syncgit.go",
         "internal/view/**",
-        "internal/sitestatic/**"
+        "internal/sitestatic/**",
+        "internal/hubstatic/**"
       ],
-      "content_hash": "94b150f68e07db5285b32e39f7f8e8d81f997a60b4c2257e420598269240793a",
+      "content_hash": "48a95e465215fba1482e6b8b7854e42f5f560bae811381d0baada230cdaae0d7",
       "citations": [
         {
           "source": "README.md",
@@ -86,14 +334,14 @@
         },
         {
           "source": "README.md",
-          "line_start": 269,
-          "line_end": 276,
+          "line_start": 303,
+          "line_end": 310,
           "occurrences": 2
         },
         {
           "source": "README.md",
-          "line_start": 280,
-          "line_end": 288,
+          "line_start": 314,
+          "line_end": 322,
           "occurrences": 1
         },
         {
@@ -199,12 +447,6 @@
           "occurrences": 1
         },
         {
-          "source": "internal/workitem/propagate.go",
-          "line_start": 28,
-          "line_end": 225,
-          "occurrences": 2
-        },
-        {
           "source": "internal/workitem/workflow_instance.go",
           "line_start": 108,
           "line_end": 381,
@@ -230,14 +472,14 @@
         },
         {
           "source": "internal/workflow/gate.go",
-          "line_start": 38,
-          "line_end": 73,
+          "line_start": 35,
+          "line_end": 97,
           "occurrences": 1
         },
         {
           "source": "internal/workflow/quality.go",
-          "line_start": 33,
-          "line_end": 96,
+          "line_start": 13,
+          "line_end": 140,
           "occurrences": 1
         },
         {
@@ -332,8 +574,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 126,
-          "line_end": 135,
+          "line_start": 149,
+          "line_end": 158,
           "occurrences": 2
         },
         {
@@ -362,8 +604,8 @@
         },
         {
           "source": "internal/mcp/tools.go",
-          "line_start": 108,
-          "line_end": 156,
+          "line_start": 111,
+          "line_end": 159,
           "occurrences": 1
         },
         {
@@ -392,8 +634,8 @@
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 33,
-          "line_end": 115,
+          "line_start": 70,
+          "line_end": 152,
           "occurrences": 1
         },
         {
@@ -518,32 +760,32 @@
         },
         {
           "source": "internal/app/workitem.go",
-          "line_start": 447,
-          "line_end": 485,
+          "line_start": 466,
+          "line_end": 504,
           "occurrences": 1
         },
         {
           "source": "internal/app/skill.go",
-          "line_start": 100,
-          "line_end": 130,
+          "line_start": 106,
+          "line_end": 136,
           "occurrences": 1
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 957,
-          "line_end": 1009,
+          "line_start": 1095,
+          "line_end": 1147,
           "occurrences": 1
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 1398,
-          "line_end": 1442,
+          "line_start": 1540,
+          "line_end": 1584,
           "occurrences": 1
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 632,
-          "line_end": 657,
+          "line_start": 711,
+          "line_end": 736,
           "occurrences": 2
         },
         {
@@ -583,9 +825,21 @@
           "occurrences": 1
         },
         {
+          "source": "npm/workloom/package.json",
+          "line_start": 12,
+          "line_end": 16,
+          "occurrences": 1
+        },
+        {
+          "source": "npm/workloom/package.json",
+          "line_start": 9,
+          "line_end": 11,
+          "occurrences": 1
+        },
+        {
           "source": "README.md",
-          "line_start": 269,
-          "line_end": 288,
+          "line_start": 303,
+          "line_end": 322,
           "occurrences": 1
         },
         {
@@ -597,7 +851,13 @@
         {
           "source": ".gitattributes",
           "line_start": 1,
-          "line_end": 4,
+          "line_end": 7,
+          "occurrences": 1
+        },
+        {
+          "source": ".gitattributes",
+          "line_start": 5,
+          "line_end": 7,
           "occurrences": 1
         },
         {
@@ -704,8 +964,8 @@
         },
         {
           "source": "README.md",
-          "line_start": 276,
-          "line_end": 276,
+          "line_start": 310,
+          "line_end": 310,
           "occurrences": 1
         },
         {
@@ -806,8 +1066,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 495,
-          "line_end": 513,
+          "line_start": 574,
+          "line_end": 592,
           "occurrences": 1
         },
         {
@@ -831,25 +1091,37 @@
         {
           "source": "internal/workitem/state.go",
           "line_start": 66,
-          "line_end": 188,
+          "line_end": 195,
           "occurrences": 1
         },
         {
           "source": "internal/workitem/state.go",
-          "line_start": 128,
-          "line_end": 134,
+          "line_start": 145,
+          "line_end": 150,
           "occurrences": 1
         },
         {
           "source": "internal/workitem/state.go",
-          "line_start": 136,
-          "line_end": 141,
+          "line_start": 187,
+          "line_end": 189,
           "occurrences": 1
         },
         {
           "source": "internal/workitem/state.go",
-          "line_start": 175,
-          "line_end": 181,
+          "line_start": 152,
+          "line_end": 157,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/workitem/state.go",
+          "line_start": 118,
+          "line_end": 137,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/workitem/state.go",
+          "line_start": 165,
+          "line_end": 171,
           "occurrences": 1
         },
         {
@@ -866,14 +1138,14 @@
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 435,
-          "line_end": 443,
+          "line_start": 516,
+          "line_end": 524,
           "occurrences": 2
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 750,
-          "line_end": 755,
+          "line_start": 775,
+          "line_end": 780,
           "occurrences": 1
         },
         {
@@ -890,8 +1162,8 @@
         },
         {
           "source": "scripts/smoke-m1.ps1",
-          "line_start": 52,
-          "line_end": 52,
+          "line_start": 53,
+          "line_end": 53,
           "occurrences": 1
         },
         {
@@ -968,8 +1240,8 @@
         },
         {
           "source": "internal/app/workitem.go",
-          "line_start": 460,
-          "line_end": 477,
+          "line_start": 479,
+          "line_end": 496,
           "occurrences": 2
         },
         {
@@ -1016,14 +1288,14 @@
         },
         {
           "source": "internal/app/session.go",
-          "line_start": 160,
-          "line_end": 185,
+          "line_start": 150,
+          "line_end": 175,
           "occurrences": 1
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 76,
-          "line_end": 80,
+          "line_start": 113,
+          "line_end": 117,
           "occurrences": 1
         },
         {
@@ -1112,20 +1384,20 @@
         },
         {
           "source": "scripts/smoke-m8.ps1",
-          "line_start": 205,
-          "line_end": 205,
+          "line_start": 206,
+          "line_end": 206,
           "occurrences": 1
         },
         {
           "source": "scripts/smoke-m8.ps1",
-          "line_start": 104,
-          "line_end": 116,
+          "line_start": 105,
+          "line_end": 117,
           "occurrences": 1
         },
         {
           "source": "scripts/smoke-m8.ps1",
-          "line_start": 163,
-          "line_end": 165,
+          "line_start": 164,
+          "line_end": 166,
           "occurrences": 1
         },
         {
@@ -1142,8 +1414,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 306,
-          "line_end": 306,
+          "line_start": 383,
+          "line_end": 383,
           "occurrences": 1
         },
         {
@@ -1310,8 +1582,8 @@
         },
         {
           "source": "INSTALL.md",
-          "line_start": 111,
-          "line_end": 114,
+          "line_start": 128,
+          "line_end": 131,
           "occurrences": 1
         },
         {
@@ -1334,32 +1606,32 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 968,
-          "line_end": 968,
+          "line_start": 1106,
+          "line_end": 1106,
           "occurrences": 1
         },
         {
           "source": "internal/next/evaluate.go",
-          "line_start": 355,
-          "line_end": 359,
+          "line_start": 392,
+          "line_end": 396,
           "occurrences": 1
         },
         {
           "source": "internal/workflow/gate.go",
-          "line_start": 18,
-          "line_end": 21,
+          "line_start": 23,
+          "line_end": 26,
           "occurrences": 1
         },
         {
           "source": "internal/workflow/gate_test.go",
-          "line_start": 89,
-          "line_end": 96,
+          "line_start": 114,
+          "line_end": 121,
           "occurrences": 1
         },
         {
           "source": "internal/app/skill.go",
-          "line_start": 61,
-          "line_end": 61,
+          "line_start": 65,
+          "line_end": 65,
           "occurrences": 1
         },
         {
@@ -1376,8 +1648,8 @@
         },
         {
           "source": "CHANGELOG.md",
-          "line_start": 30,
-          "line_end": 34,
+          "line_start": 36,
+          "line_end": 40,
           "occurrences": 1
         }
       ]
@@ -1417,6 +1689,8 @@
         ".github/workflows/release.yml",
         "npm/**",
         ".agents/skills/devsys/**",
+        "docs/hub-v1.md",
+        "docs/hub-v1-prototype.html",
         "internal/storage/**",
         "internal/workitem/**",
         "internal/events/**",
@@ -1444,9 +1718,10 @@
         ".repowikiignore",
         "internal/knowledge/syncgit.go",
         "internal/view/**",
-        "internal/sitestatic/**"
+        "internal/sitestatic/**",
+        "internal/hubstatic/**"
       ],
-      "content_hash": "eefbd08efdec246d6709a1cb97d5b34ef3f0257a1befe2940ab3418f16113b08",
+      "content_hash": "8a9c6f786447f24406572ba8bea1b5d5a7fea446e0250350544d602e6aafe7bd",
       "citations": [
         {
           "source": "internal/cli/mcp.go",
@@ -1462,8 +1737,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 437,
-          "line_end": 597,
+          "line_start": 516,
+          "line_end": 676,
           "occurrences": 1
         },
         {
@@ -1474,20 +1749,20 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 1208,
-          "line_end": 1260,
+          "line_start": 1346,
+          "line_end": 1398,
           "occurrences": 1
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 1503,
-          "line_end": 1527,
+          "line_start": 1645,
+          "line_end": 1669,
           "occurrences": 1
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 241,
-          "line_end": 241,
+          "line_start": 315,
+          "line_end": 315,
           "occurrences": 1
         },
         {
@@ -1504,8 +1779,8 @@
         },
         {
           "source": "CHANGELOG.md",
-          "line_start": 30,
-          "line_end": 34,
+          "line_start": 36,
+          "line_end": 40,
           "occurrences": 1
         }
       ]
@@ -1545,6 +1820,8 @@
         ".github/workflows/release.yml",
         "npm/**",
         ".agents/skills/devsys/**",
+        "docs/hub-v1.md",
+        "docs/hub-v1-prototype.html",
         "internal/storage/**",
         "internal/workitem/**",
         "internal/events/**",
@@ -1572,9 +1849,10 @@
         ".repowikiignore",
         "internal/knowledge/syncgit.go",
         "internal/view/**",
-        "internal/sitestatic/**"
+        "internal/sitestatic/**",
+        "internal/hubstatic/**"
       ],
-      "content_hash": "a4381643fd206acd6ed9baebeeba91269488593b814ca7b37d474d7bfea2654b",
+      "content_hash": "878cd593d6f0d57c1f5e77d8fde4d9659b077fa51fe443a86fc4763ca1720be1",
       "citations": [
         {
           "source": "README.md",
@@ -1716,8 +1994,8 @@
         },
         {
           "source": "README.md",
-          "line_start": 269,
-          "line_end": 276,
+          "line_start": 303,
+          "line_end": 310,
           "occurrences": 1
         },
         {
@@ -1758,14 +2036,14 @@
         },
         {
           "source": "internal/app/workitem.go",
-          "line_start": 47,
-          "line_end": 65,
+          "line_start": 48,
+          "line_end": 66,
           "occurrences": 1
         },
         {
           "source": "internal/app/workitem.go",
-          "line_start": 490,
-          "line_end": 525,
+          "line_start": 509,
+          "line_end": 544,
           "occurrences": 2
         },
         {
@@ -1812,14 +2090,14 @@
         },
         {
           "source": "internal/app/skill.go",
-          "line_start": 118,
-          "line_end": 118,
+          "line_start": 124,
+          "line_end": 124,
           "occurrences": 1
         },
         {
           "source": "internal/app/skill.go",
-          "line_start": 100,
-          "line_end": 130,
+          "line_start": 106,
+          "line_end": 136,
           "occurrences": 1
         },
         {
@@ -1872,8 +2150,8 @@
         },
         {
           "source": "internal/app/context.go",
-          "line_start": 283,
-          "line_end": 372,
+          "line_start": 273,
+          "line_end": 362,
           "occurrences": 2
         },
         {
@@ -1938,14 +2216,14 @@
         },
         {
           "source": "internal/workflow/gate.go",
-          "line_start": 18,
-          "line_end": 75,
+          "line_start": 7,
+          "line_end": 97,
           "occurrences": 1
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 636,
-          "line_end": 650,
+          "line_start": 715,
+          "line_end": 729,
           "occurrences": 1
         },
         {
@@ -1986,14 +2264,14 @@
         },
         {
           "source": "CHANGELOG.md",
-          "line_start": 59,
-          "line_end": 66,
+          "line_start": 65,
+          "line_end": 72,
           "occurrences": 2
         },
         {
           "source": "CHANGELOG.md",
-          "line_start": 36,
-          "line_end": 50,
+          "line_start": 42,
+          "line_end": 56,
           "occurrences": 1
         },
         {
@@ -2004,14 +2282,14 @@
         },
         {
           "source": "CHANGELOG.md",
-          "line_start": 30,
-          "line_end": 34,
+          "line_start": 36,
+          "line_end": 40,
           "occurrences": 2
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 468,
-          "line_end": 468,
+          "line_start": 547,
+          "line_end": 547,
           "occurrences": 1
         },
         {
@@ -2052,8 +2330,8 @@
         },
         {
           "source": "INSTALL.md",
-          "line_start": 112,
-          "line_end": 112,
+          "line_start": 129,
+          "line_end": 129,
           "occurrences": 1
         },
         {
@@ -2106,8 +2384,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 146,
-          "line_end": 182,
+          "line_start": 220,
+          "line_end": 256,
           "occurrences": 1
         },
         {
@@ -2118,8 +2396,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 126,
-          "line_end": 135,
+          "line_start": 149,
+          "line_end": 158,
           "occurrences": 2
         },
         {
@@ -2130,8 +2408,8 @@
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 33,
-          "line_end": 115,
+          "line_start": 70,
+          "line_end": 152,
           "occurrences": 1
         },
         {
@@ -2142,14 +2420,14 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 320,
-          "line_end": 330,
+          "line_start": 399,
+          "line_end": 409,
           "occurrences": 1
         },
         {
           "source": "internal/mcp/tools.go",
-          "line_start": 104,
-          "line_end": 107,
+          "line_start": 107,
+          "line_end": 110,
           "occurrences": 1
         },
         {
@@ -2198,7 +2476,7 @@
     },
     "index.md": {
       "sources": [],
-      "content_hash": "778e3f8bf9278228e493732ae6bfc736a2feee8c06c5118ef3181440990062e4",
+      "content_hash": "48bb452c78e8ee1372935ea9062d7d19852042a2c0bf9027f2138fa6d7bb327b",
       "citations": []
     },
     "knowledge/共享应用与MCP/_module.yaml": {
@@ -2208,7 +2486,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "5d1e04dae29fd1e718364f862173f67cf8f87233d99901f2eb73fa9ffe4cd2f6",
+      "content_hash": "c7c02ff9612c8e00186f9d321fa35bc13bf53e625d2ebf73eda4bfb93c9213a5",
       "citations": []
     },
     "knowledge/共享应用与MCP/完成校验与人工复核.md": {
@@ -2218,7 +2496,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "559a98d7554d45f6a76596194e3649607a803a74280aa914341ac59e56102373",
+      "content_hash": "c17e04fd35a0100ddb01193313040fe4c3c3952704de3a0220e065aa660ef703",
       "citations": [
         {
           "source": "internal/app/runverify.go",
@@ -2229,7 +2507,7 @@
         {
           "source": "internal/app/runverify.go",
           "line_start": 45,
-          "line_end": 80,
+          "line_end": 125,
           "occurrences": 1
         },
         {
@@ -2258,26 +2536,38 @@
         },
         {
           "source": "internal/app/runverify_test.go",
-          "line_start": 339,
-          "line_end": 339,
+          "line_start": 391,
+          "line_end": 391,
           "occurrences": 1
         },
         {
           "source": "internal/app/runverify.go",
-          "line_start": 87,
-          "line_end": 180,
+          "line_start": 127,
+          "line_end": 226,
           "occurrences": 1
         },
         {
           "source": "internal/app/runverify.go",
-          "line_start": 87,
-          "line_end": 114,
+          "line_start": 127,
+          "line_end": 155,
           "occurrences": 1
         },
         {
           "source": "internal/app/runverify.go",
-          "line_start": 116,
-          "line_end": 180,
+          "line_start": 157,
+          "line_end": 226,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/workitem.go",
+          "line_start": 321,
+          "line_end": 345,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/runverify.go",
+          "line_start": 106,
+          "line_end": 124,
           "occurrences": 1
         }
       ]
@@ -2289,8 +2579,98 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "7bdcff2cc29c6763ca2df666a1fadb322539aa9047114851fa48c12bc5a297a6",
+      "content_hash": "15a3fd3a191950bf5ecac6af16deda6fdda4829b585fee4fb06c972107ce3eb4",
       "citations": [
+        {
+          "source": "internal/mcp/tools.go",
+          "line_start": 47,
+          "line_end": 47,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/mcp/tools_workitem.go",
+          "line_start": 104,
+          "line_end": 118,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/mcp/tools_workitem.go",
+          "line_start": 94,
+          "line_end": 102,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/mcp/tools_workitem.go",
+          "line_start": 107,
+          "line_end": 107,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/followup.go",
+          "line_start": 12,
+          "line_end": 18,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/mcp/tools.go",
+          "line_start": 63,
+          "line_end": 63,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/mcp/tools_workflow.go",
+          "line_start": 15,
+          "line_end": 27,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/mcp/tools_workflow.go",
+          "line_start": 19,
+          "line_end": 19,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/mcp/tools.go",
+          "line_start": 38,
+          "line_end": 38,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/mcp/tools_project.go",
+          "line_start": 140,
+          "line_end": 151,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/mcp/tools_project.go",
+          "line_start": 52,
+          "line_end": 72,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/app/project.go",
+          "line_start": 320,
+          "line_end": 332,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/project.go",
+          "line_start": 352,
+          "line_end": 360,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/mcp/server_test.go",
+          "line_start": 405,
+          "line_end": 406,
+          "occurrences": 3
+        },
+        {
+          "source": "internal/mcp/server_test.go",
+          "line_start": 492,
+          "line_end": 493,
+          "occurrences": 3
+        },
         {
           "source": "internal/mcp/server.go",
           "line_start": 196,
@@ -2298,10 +2678,40 @@
           "occurrences": 1
         },
         {
+          "source": "internal/mcp/tools_project.go",
+          "line_start": 52,
+          "line_end": 56,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/project.go",
+          "line_start": 347,
+          "line_end": 350,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/mcp/tools_project.go",
+          "line_start": 68,
+          "line_end": 71,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/mcp/tools_workflow.go",
+          "line_start": 15,
+          "line_end": 19,
+          "occurrences": 1
+        },
+        {
           "source": "internal/mcp/tools_health.go",
           "line_start": 52,
           "line_end": 72,
           "occurrences": 1
+        },
+        {
+          "source": "internal/mcp/server_test.go",
+          "line_start": 422,
+          "line_end": 423,
+          "occurrences": 2
         },
         {
           "source": "internal/cli/mcp.go",
@@ -2372,8 +2782,98 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "53fabc589ca95e5d4151fbb7d3c859612bacd7ff92f916eccd445baa2ed69c13",
+      "content_hash": "1e151eb9a80f03a8cf48c1089f5ba95f694442300fe02d632c2ce56ca4d0a205",
       "citations": [
+        {
+          "source": "internal/app/followup.go",
+          "line_start": 34,
+          "line_end": 81,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/followup.go",
+          "line_start": 12,
+          "line_end": 18,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/followup.go",
+          "line_start": 22,
+          "line_end": 30,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/workflow.go",
+          "line_start": 45,
+          "line_end": 71,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/workitem.go",
+          "line_start": 590,
+          "line_end": 616,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/workitem.go",
+          "line_start": 754,
+          "line_end": 754,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/next.go",
+          "line_start": 118,
+          "line_end": 132,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/project.go",
+          "line_start": 144,
+          "line_end": 256,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/project.go",
+          "line_start": 320,
+          "line_end": 332,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/setup.go",
+          "line_start": 25,
+          "line_end": 25,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/setup.go",
+          "line_start": 77,
+          "line_end": 87,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/setup.go",
+          "line_start": 238,
+          "line_end": 241,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/app/workitem.go",
+          "line_start": 321,
+          "line_end": 345,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/record.go",
+          "line_start": 281,
+          "line_end": 300,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/record.go",
+          "line_start": 230,
+          "line_end": 244,
+          "occurrences": 1
+        },
         {
           "source": "internal/app/dispatch.go",
           "line_start": 493,
@@ -2437,7 +2937,7 @@
         {
           "source": "internal/app/runverify.go",
           "line_start": 45,
-          "line_end": 80,
+          "line_end": 125,
           "occurrences": 1
         },
         {
@@ -2478,20 +2978,26 @@
         },
         {
           "source": "internal/app/runverify.go",
-          "line_start": 87,
-          "line_end": 114,
+          "line_start": 127,
+          "line_end": 155,
           "occurrences": 1
         },
         {
           "source": "internal/app/runverify.go",
-          "line_start": 116,
-          "line_end": 180,
+          "line_start": 157,
+          "line_end": 226,
           "occurrences": 1
         },
         {
           "source": "internal/app/setup.go",
-          "line_start": 43,
-          "line_end": 198,
+          "line_start": 50,
+          "line_end": 236,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/setup.go",
+          "line_start": 61,
+          "line_end": 64,
           "occurrences": 1
         },
         {
@@ -2569,18 +3075,222 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "618e87eecf804a3253bf60320ebad96c20b7af4c375587ecf57a98dc165f57a2",
+      "content_hash": "2a4485d2bd2adfd2d1a0495797c1e8b887ba1044c4c18b8c1860490b3fa13a37",
       "citations": [
         {
-          "source": "internal/cli/cli.go",
-          "line_start": 156,
+          "source": "internal/app/followup.go",
+          "line_start": 12,
+          "line_end": 18,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/app/followup.go",
+          "line_start": 22,
+          "line_end": 30,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/followup.go",
+          "line_start": 34,
+          "line_end": 81,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/app/workflow.go",
+          "line_start": 36,
+          "line_end": 71,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/workitem.go",
+          "line_start": 590,
+          "line_end": 616,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/app/workitem.go",
+          "line_start": 754,
+          "line_end": 754,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/app/workitem.go",
+          "line_start": 321,
+          "line_end": 345,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/app/next.go",
+          "line_start": 118,
+          "line_end": 132,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/app/project.go",
+          "line_start": 144,
+          "line_end": 256,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/project.go",
+          "line_start": 163,
+          "line_end": 163,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/project.go",
+          "line_start": 179,
+          "line_end": 179,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/project.go",
+          "line_start": 320,
+          "line_end": 332,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/setup.go",
+          "line_start": 25,
+          "line_end": 25,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/setup.go",
+          "line_start": 77,
+          "line_end": 87,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/record.go",
+          "line_start": 230,
+          "line_end": 244,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/record.go",
+          "line_start": 292,
+          "line_end": 292,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/record.go",
+          "line_start": 297,
+          "line_end": 297,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/context.go",
+          "line_start": 26,
+          "line_end": 26,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/context.go",
+          "line_start": 35,
+          "line_end": 39,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/context.go",
+          "line_start": 163,
           "line_end": 175,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/context.go",
+          "line_start": 240,
+          "line_end": 250,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/mcp/tools.go",
+          "line_start": 47,
+          "line_end": 47,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/mcp/tools.go",
+          "line_start": 63,
+          "line_end": 63,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/mcp/tools.go",
+          "line_start": 38,
+          "line_end": 38,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/mcp/tools_project.go",
+          "line_start": 52,
+          "line_end": 72,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/cli/cli.go",
+          "line_start": 230,
+          "line_end": 249,
           "occurrences": 1
         },
         {
           "source": "internal/mcp/server.go",
           "line_start": 196,
           "line_end": 198,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/mcp/tools_workitem.go",
+          "line_start": 104,
+          "line_end": 118,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/mcp/tools_workitem.go",
+          "line_start": 94,
+          "line_end": 102,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/mcp/tools_workflow.go",
+          "line_start": 15,
+          "line_end": 27,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/mcp/tools_project.go",
+          "line_start": 140,
+          "line_end": 151,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/workflow.go",
+          "line_start": 45,
+          "line_end": 71,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/followup.go",
+          "line_start": 65,
+          "line_end": 65,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/followup.go",
+          "line_start": 69,
+          "line_end": 79,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/followup.go",
+          "line_start": 46,
+          "line_end": 49,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/followup.go",
+          "line_start": 43,
+          "line_end": 45,
           "occurrences": 1
         },
         {
@@ -2599,6 +3309,18 @@
           "source": "internal/app/runexec.go",
           "line_start": 469,
           "line_end": 547,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/setup.go",
+          "line_start": 238,
+          "line_end": 241,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/setup.go",
+          "line_start": 61,
+          "line_end": 64,
           "occurrences": 1
         },
         {
@@ -2640,7 +3362,7 @@
         {
           "source": "internal/app/runverify.go",
           "line_start": 45,
-          "line_end": 80,
+          "line_end": 125,
           "occurrences": 1
         },
         {
@@ -2669,9 +3391,9 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 468,
-          "line_end": 468,
-          "occurrences": 1
+          "line_start": 547,
+          "line_end": 547,
+          "occurrences": 2
         },
         {
           "source": "internal/app/mcpsnippets.go",
@@ -2712,7 +3434,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "533bfb77ede6322247f56f4eb57baad3c04da2c7ee1e14df19fa165b8a95d7d4",
+      "content_hash": "fbe62597c97d574b6d6c51874d5e3bb1160be850d49c246200b1286f0ed4b03d",
       "citations": [
         {
           "source": "internal/app/knowledge.go",
@@ -2811,9 +3533,183 @@
           "occurrences": 1
         },
         {
+          "source": "internal/app/followup.go",
+          "line_start": 12,
+          "line_end": 18,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/followup.go",
+          "line_start": 22,
+          "line_end": 30,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/followup.go",
+          "line_start": 34,
+          "line_end": 81,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/workflow.go",
+          "line_start": 36,
+          "line_end": 71,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/app/workflow.go",
+          "line_start": 69,
+          "line_end": 69,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/workitem.go",
+          "line_start": 590,
+          "line_end": 616,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/app/next.go",
+          "line_start": 118,
+          "line_end": 132,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/app/project.go",
+          "line_start": 144,
+          "line_end": 256,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/app/project.go",
+          "line_start": 201,
+          "line_end": 216,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/project.go",
+          "line_start": 163,
+          "line_end": 163,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/project.go",
+          "line_start": 179,
+          "line_end": 179,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/project.go",
+          "line_start": 320,
+          "line_end": 332,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/app/setup.go",
+          "line_start": 25,
+          "line_end": 25,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/app/setup.go",
+          "line_start": 77,
+          "line_end": 87,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/record.go",
+          "line_start": 230,
+          "line_end": 244,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/app/record.go",
+          "line_start": 281,
+          "line_end": 300,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/context.go",
+          "line_start": 26,
+          "line_end": 26,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/context.go",
+          "line_start": 35,
+          "line_end": 39,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/context.go",
+          "line_start": 163,
+          "line_end": 175,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/context.go",
+          "line_start": 240,
+          "line_end": 250,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/mcp/tools.go",
+          "line_start": 47,
+          "line_end": 47,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/mcp/tools_workitem.go",
+          "line_start": 94,
+          "line_end": 118,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/mcp/tools.go",
+          "line_start": 63,
+          "line_end": 63,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/mcp/tools_workflow.go",
+          "line_start": 15,
+          "line_end": 27,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/mcp/tools.go",
+          "line_start": 38,
+          "line_end": 38,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/mcp/tools_project.go",
+          "line_start": 140,
+          "line_end": 151,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/mcp/tools_project.go",
+          "line_start": 52,
+          "line_end": 72,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/workitem.go",
+          "line_start": 321,
+          "line_end": 345,
+          "occurrences": 2
+        },
+        {
           "source": "internal/app/skill.go",
           "line_start": 64,
           "line_end": 104,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/mcp/tools.go",
+          "line_start": 120,
+          "line_end": 131,
           "occurrences": 1
         }
       ]
@@ -2825,8 +3721,140 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "0965d0ae9c63c05b502daad5d26cbd7e8a3bf43325e11532c387a54bee942a09",
+      "content_hash": "6770a4dcda10165286ad87e7690fd2af0e8c90934379a7c8ef9c498c8bafd3f9",
       "citations": [
+        {
+          "source": "internal/app/followup.go",
+          "line_start": 37,
+          "line_end": 39,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/followup.go",
+          "line_start": 40,
+          "line_end": 42,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/followup.go",
+          "line_start": 43,
+          "line_end": 45,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/project.go",
+          "line_start": 145,
+          "line_end": 147,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/project.go",
+          "line_start": 161,
+          "line_end": 164,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/project.go",
+          "line_start": 167,
+          "line_end": 167,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/project.go",
+          "line_start": 178,
+          "line_end": 180,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/record.go",
+          "line_start": 290,
+          "line_end": 293,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/record.go",
+          "line_start": 295,
+          "line_end": 297,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/record.go",
+          "line_start": 368,
+          "line_end": 368,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/workitem.go",
+          "line_start": 590,
+          "line_end": 616,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/app/workitem.go",
+          "line_start": 754,
+          "line_end": 754,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/followup.go",
+          "line_start": 34,
+          "line_end": 49,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/project.go",
+          "line_start": 144,
+          "line_end": 180,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/record.go",
+          "line_start": 281,
+          "line_end": 300,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/record.go",
+          "line_start": 366,
+          "line_end": 368,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/workitem.go",
+          "line_start": 594,
+          "line_end": 599,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/workflow.go",
+          "line_start": 50,
+          "line_end": 55,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/record.go",
+          "line_start": 230,
+          "line_end": 244,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/mcp/tools_workitem.go",
+          "line_start": 113,
+          "line_end": 115,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/mcp/tools_workflow.go",
+          "line_start": 22,
+          "line_end": 24,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/mcp/tools_project.go",
+          "line_start": 146,
+          "line_end": 148,
+          "occurrences": 1
+        },
         {
           "source": "internal/app/setup.go",
           "line_start": 43,
@@ -2873,7 +3901,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "e5e347a217648cea76bcceb4a5a85de36d340db2d0e854197eda9741fd1ed192",
+      "content_hash": "534adbec36a5f3ae091a3fbc64586b2c6aeda959a197fa8d85f2e582de5c16b8",
       "citations": []
     },
     "knowledge/可靠文本存储/事务与恢复.md": {
@@ -2896,7 +3924,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "b3dce45070ad2b4aed8f31f1330cd4ebcdb60875b54a0bdb9f12aca6b3f1084f",
+      "content_hash": "e12f0f75bb4f817ee5555208c62448db08d2b9ce857e4a8c64373cd6d01d8a7c",
       "citations": [
         {
           "source": "internal/storage/store.go",
@@ -2956,7 +3984,7 @@
           "source": "internal/events/events.go",
           "line_start": 108,
           "line_end": 144,
-          "occurrences": 1
+          "occurrences": 2
         },
         {
           "source": "internal/storage/txn.go",
@@ -3011,6 +4039,18 @@
           "line_start": 54,
           "line_end": 54,
           "occurrences": 1
+        },
+        {
+          "source": "internal/workitem/state.go",
+          "line_start": 187,
+          "line_end": 189,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/record/record.go",
+          "line_start": 370,
+          "line_end": 396,
+          "occurrences": 1
         }
       ]
     },
@@ -3034,7 +4074,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "fd9ffb755770f6110756b5c635b2015450161d2d3a22477a037c134343bd3c52",
+      "content_hash": "a2c4c2b614246bec0b10dabbd997ec0aa16131f7e63dae923852ec955e67e03e",
       "citations": [
         {
           "source": "internal/app/workitem.go",
@@ -3116,8 +4156,8 @@
         },
         {
           "source": "internal/next/evaluate.go",
-          "line_start": 265,
-          "line_end": 278,
+          "line_start": 291,
+          "line_end": 303,
           "occurrences": 1
         },
         {
@@ -3215,6 +4255,42 @@
           "line_start": 184,
           "line_end": 184,
           "occurrences": 1
+        },
+        {
+          "source": "internal/app/workitem.go",
+          "line_start": 605,
+          "line_end": 609,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/workitem.go",
+          "line_start": 610,
+          "line_end": 615,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/next/evaluate.go",
+          "line_start": 282,
+          "line_end": 289,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/next/evaluate.go",
+          "line_start": 368,
+          "line_end": 375,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/next/draft_test.go",
+          "line_start": 11,
+          "line_end": 27,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/record/record.go",
+          "line_start": 386,
+          "line_end": 395,
+          "occurrences": 1
         }
       ]
     },
@@ -3238,7 +4314,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "333119fb79cc2d87082374660431294e0eb7544eeec5630b74f3c09e654717f8",
+      "content_hash": "c2d482d7e020b89e22e452d36e4a597cd1f41d5962af32e51948ceaee8c2a074",
       "citations": [
         {
           "source": "internal/reconcile/reconcile.go",
@@ -3320,15 +4396,15 @@
         },
         {
           "source": "internal/workitem/state.go",
-          "line_start": 142,
-          "line_end": 147,
-          "occurrences": 1
+          "line_start": 144,
+          "line_end": 150,
+          "occurrences": 2
         },
         {
           "source": "internal/workitem/state.go",
-          "line_start": 167,
-          "line_end": 190,
-          "occurrences": 1
+          "line_start": 187,
+          "line_end": 189,
+          "occurrences": 2
         },
         {
           "source": "internal/syncstatus/syncstatus.go",
@@ -3473,6 +4549,12 @@
           "line_start": 368,
           "line_end": 373,
           "occurrences": 1
+        },
+        {
+          "source": "internal/next/evaluate.go",
+          "line_start": 368,
+          "line_end": 375,
+          "occurrences": 1
         }
       ]
     },
@@ -3496,7 +4578,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "7803dd805512a92b64c316bc30d0c6a6a21428641083a0bb25803957cb85ed86",
+      "content_hash": "b0d88c23ad7173da776eb16d2c64de91932f57628b4733ed571babe3716aeaea",
       "citations": [
         {
           "source": "internal/syncstatus/syncstatus.go",
@@ -3531,7 +4613,7 @@
         {
           "source": "internal/domain/models.go",
           "line_start": 1,
-          "line_end": 221,
+          "line_end": 286,
           "occurrences": 1
         },
         {
@@ -3555,13 +4637,13 @@
         {
           "source": "internal/workitem/state.go",
           "line_start": 1,
-          "line_end": 229,
+          "line_end": 228,
           "occurrences": 1
         },
         {
           "source": "internal/workitem/claim.go",
           "line_start": 1,
-          "line_end": 1119,
+          "line_end": 1131,
           "occurrences": 1
         },
         {
@@ -3579,7 +4661,7 @@
         {
           "source": "internal/record/record.go",
           "line_start": 1,
-          "line_end": 368,
+          "line_end": 396,
           "occurrences": 1
         },
         {
@@ -3603,7 +4685,7 @@
         {
           "source": "internal/next/evaluate.go",
           "line_start": 1,
-          "line_end": 534,
+          "line_end": 571,
           "occurrences": 1
         },
         {
@@ -3686,8 +4768,8 @@
         },
         {
           "source": "internal/workitem/claim.go",
-          "line_start": 1041,
-          "line_end": 1043,
+          "line_start": 1052,
+          "line_end": 1055,
           "occurrences": 1
         },
         {
@@ -3800,8 +4882,8 @@
         },
         {
           "source": "internal/workitem/state.go",
-          "line_start": 167,
-          "line_end": 190,
+          "line_start": 187,
+          "line_end": 189,
           "occurrences": 2
         },
         {
@@ -3812,8 +4894,8 @@
         },
         {
           "source": "internal/record/record.go",
-          "line_start": 244,
-          "line_end": 260,
+          "line_start": 243,
+          "line_end": 258,
           "occurrences": 1
         },
         {
@@ -3824,14 +4906,14 @@
         },
         {
           "source": "internal/workitem/claim.go",
-          "line_start": 192,
-          "line_end": 346,
+          "line_start": 199,
+          "line_end": 355,
           "occurrences": 3
         },
         {
           "source": "internal/workitem/claim.go",
-          "line_start": 317,
-          "line_end": 317,
+          "line_start": 329,
+          "line_end": 329,
           "occurrences": 1
         },
         {
@@ -3842,8 +4924,8 @@
         },
         {
           "source": "internal/workitem/claim.go",
-          "line_start": 308,
-          "line_end": 309,
+          "line_start": 331,
+          "line_end": 334,
           "occurrences": 1
         },
         {
@@ -3866,26 +4948,20 @@
         },
         {
           "source": "internal/workitem/state.go",
-          "line_start": 112,
-          "line_end": 137,
+          "line_start": 111,
+          "line_end": 143,
           "occurrences": 1
         },
         {
           "source": "internal/workitem/state.go",
-          "line_start": 142,
-          "line_end": 147,
+          "line_start": 144,
+          "line_end": 150,
           "occurrences": 1
         },
         {
           "source": "internal/workitem/state.go",
-          "line_start": 143,
-          "line_end": 149,
-          "occurrences": 1
-        },
-        {
-          "source": "internal/workitem/propagate.go",
-          "line_start": 28,
-          "line_end": 59,
+          "line_start": 151,
+          "line_end": 157,
           "occurrences": 1
         },
         {
@@ -3893,12 +4969,6 @@
           "line_start": 516,
           "line_end": 559,
           "occurrences": 2
-        },
-        {
-          "source": "internal/workitem/propagate.go",
-          "line_start": 28,
-          "line_end": 225,
-          "occurrences": 1
         },
         {
           "source": "internal/events/events.go",
@@ -3992,8 +5062,20 @@
         },
         {
           "source": "internal/next/evaluate.go",
-          "line_start": 197,
-          "line_end": 364,
+          "line_start": 212,
+          "line_end": 314,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/next/evaluate.go",
+          "line_start": 282,
+          "line_end": 289,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/next/evaluate.go",
+          "line_start": 368,
+          "line_end": 375,
           "occurrences": 1
         },
         {
@@ -4063,6 +5145,12 @@
           "occurrences": 1
         },
         {
+          "source": "internal/workflow/recommend.go",
+          "line_start": 30,
+          "line_end": 70,
+          "occurrences": 1
+        },
+        {
           "source": "internal/app/workitem.go",
           "line_start": 60,
           "line_end": 66,
@@ -4076,14 +5164,14 @@
         },
         {
           "source": "internal/workflow/gate.go",
-          "line_start": 18,
-          "line_end": 21,
+          "line_start": 19,
+          "line_end": 22,
           "occurrences": 1
         },
         {
           "source": "internal/workflow/gate.go",
-          "line_start": 69,
-          "line_end": 77,
+          "line_start": 72,
+          "line_end": 78,
           "occurrences": 1
         },
         {
@@ -4094,32 +5182,32 @@
         },
         {
           "source": "internal/workitem/claim.go",
-          "line_start": 100,
-          "line_end": 122,
+          "line_start": 99,
+          "line_end": 118,
           "occurrences": 1
         },
         {
           "source": "internal/workitem/claim.go",
-          "line_start": 448,
-          "line_end": 563,
+          "line_start": 456,
+          "line_end": 628,
           "occurrences": 1
         },
         {
           "source": "internal/workflow/quality.go",
-          "line_start": 29,
-          "line_end": 46,
+          "line_start": 33,
+          "line_end": 47,
           "occurrences": 1
         },
         {
           "source": "internal/workflow/quality.go",
-          "line_start": 77,
-          "line_end": 98,
+          "line_start": 113,
+          "line_end": 129,
           "occurrences": 1
         },
         {
           "source": "internal/workflow/gate.go",
-          "line_start": 59,
-          "line_end": 77,
+          "line_start": 48,
+          "line_end": 97,
           "occurrences": 1
         },
         {
@@ -4132,6 +5220,12 @@
           "source": "internal/app/runverify.go",
           "line_start": 45,
           "line_end": 56,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/workitem.go",
+          "line_start": 649,
+          "line_end": 653,
           "occurrences": 1
         }
       ]
@@ -4156,7 +5250,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "15797f590fa8ac3dff7bad1eb7ecf4e2d8d5fbef73d226e98187666d5f84f492",
+      "content_hash": "66add3ea1a217dd29d6953f273ec6ce8cfb4ddfca1243acc9d4bf981a0c0f312",
       "citations": [
         {
           "source": "internal/reconcile/reconcile.go",
@@ -4208,8 +5302,8 @@
         },
         {
           "source": "internal/workitem/claim.go",
-          "line_start": 286,
-          "line_end": 318,
+          "line_start": 295,
+          "line_end": 330,
           "occurrences": 1
         },
         {
@@ -4232,26 +5326,26 @@
         },
         {
           "source": "internal/workitem/claim.go",
-          "line_start": 448,
-          "line_end": 563,
+          "line_start": 456,
+          "line_end": 628,
           "occurrences": 1
         },
         {
           "source": "internal/workflow/quality.go",
-          "line_start": 29,
-          "line_end": 46,
+          "line_start": 33,
+          "line_end": 47,
           "occurrences": 1
         },
         {
           "source": "internal/workflow/quality.go",
-          "line_start": 77,
-          "line_end": 98,
+          "line_start": 113,
+          "line_end": 129,
           "occurrences": 1
         },
         {
           "source": "internal/workflow/gate.go",
-          "line_start": 59,
-          "line_end": 77,
+          "line_start": 48,
+          "line_end": 97,
           "occurrences": 1
         },
         {
@@ -4307,6 +5401,30 @@
           "line_start": 358,
           "line_end": 372,
           "occurrences": 1
+        },
+        {
+          "source": "internal/workitem/state.go",
+          "line_start": 187,
+          "line_end": 189,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/workflow/recommend.go",
+          "line_start": 30,
+          "line_end": 70,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/record/record.go",
+          "line_start": 370,
+          "line_end": 396,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/domain/models.go",
+          "line_start": 199,
+          "line_end": 216,
+          "occurrences": 1
         }
       ]
     },
@@ -4330,12 +5448,24 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "e8d2eacba9f055e666375d2930cd688cbb93af973af2fa05a0042e8c9833d3e8",
+      "content_hash": "07482b0759592bafda79dedebc0edca938282c5de339bb599eadf0953dd11196",
       "citations": [
         {
           "source": "internal/version/version.go",
           "line_start": 27,
           "line_end": 62,
+          "occurrences": 1
+        },
+        {
+          "source": "docs/examples/workflows/intake.md",
+          "line_start": 1,
+          "line_end": 64,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/workitem.go",
+          "line_start": 605,
+          "line_end": 609,
           "occurrences": 1
         },
         {
@@ -4648,7 +5778,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "bb73ef5ac3c463a0b359742a5a45184b9a64b0f9b3fd0df13b0b521d4f42b374",
+      "content_hash": "6ab3321579a2aad8c3c40935485db334cf7b9c681988688388a9e0184cc6705d",
       "citations": [
         {
           "source": "internal/workitem/state.go",
@@ -4658,8 +5788,8 @@
         },
         {
           "source": "internal/workitem/state.go",
-          "line_start": 207,
-          "line_end": 210,
+          "line_start": 206,
+          "line_end": 217,
           "occurrences": 1
         },
         {
@@ -4676,20 +5806,20 @@
         },
         {
           "source": "internal/workitem/state.go",
-          "line_start": 162,
-          "line_end": 175,
+          "line_start": 172,
+          "line_end": 177,
           "occurrences": 1
         },
         {
           "source": "internal/workitem/state.go",
-          "line_start": 159,
-          "line_end": 161,
+          "line_start": 165,
+          "line_end": 171,
           "occurrences": 1
         },
         {
           "source": "internal/workitem/state.go",
           "line_start": 119,
-          "line_end": 128,
+          "line_end": 137,
           "occurrences": 1
         },
         {
@@ -4707,43 +5837,31 @@
         {
           "source": "internal/workitem/state.go",
           "line_start": 23,
-          "line_end": 36,
-          "occurrences": 1
-        },
-        {
-          "source": "internal/workitem/state.go",
-          "line_start": 167,
-          "line_end": 190,
-          "occurrences": 1
-        },
-        {
-          "source": "internal/workitem/state.go",
-          "line_start": 143,
-          "line_end": 149,
-          "occurrences": 1
-        },
-        {
-          "source": "internal/workitem/state.go",
-          "line_start": 183,
-          "line_end": 189,
-          "occurrences": 1
-        },
-        {
-          "source": "internal/workitem/propagate.go",
-          "line_start": 28,
-          "line_end": 59,
-          "occurrences": 1
-        },
-        {
-          "source": "internal/workitem/propagate.go",
-          "line_start": 32,
           "line_end": 34,
           "occurrences": 1
         },
         {
+          "source": "internal/workitem/state.go",
+          "line_start": 187,
+          "line_end": 189,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/workitem/state.go",
+          "line_start": 151,
+          "line_end": 157,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/workitem/m3_propagation_test.go",
+          "line_start": 75,
+          "line_end": 93,
+          "occurrences": 1
+        },
+        {
           "source": "internal/workitem/claim.go",
-          "line_start": 1031,
-          "line_end": 1037,
+          "line_start": 1043,
+          "line_end": 1050,
           "occurrences": 1
         },
         {
@@ -4766,32 +5884,38 @@
         },
         {
           "source": "internal/workitem/claim.go",
-          "line_start": 192,
-          "line_end": 346,
+          "line_start": 199,
+          "line_end": 355,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/workitem/claim.go",
+          "line_start": 331,
+          "line_end": 334,
           "occurrences": 1
         },
         {
           "source": "internal/workitem/claim.go",
-          "line_start": 308,
-          "line_end": 309,
+          "line_start": 234,
+          "line_end": 236,
           "occurrences": 1
         },
         {
           "source": "internal/workitem/claim.go",
-          "line_start": 448,
-          "line_end": 563,
+          "line_start": 456,
+          "line_end": 628,
           "occurrences": 1
         },
         {
           "source": "internal/workitem/claim.go",
-          "line_start": 488,
-          "line_end": 490,
+          "line_start": 499,
+          "line_end": 502,
           "occurrences": 1
         },
         {
           "source": "internal/workitem/claim.go",
-          "line_start": 100,
-          "line_end": 122,
+          "line_start": 99,
+          "line_end": 118,
           "occurrences": 1
         },
         {
@@ -4831,6 +5955,54 @@
           "occurrences": 1
         },
         {
+          "source": "internal/workflow/recommend.go",
+          "line_start": 9,
+          "line_end": 28,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/workflow/recommend.go",
+          "line_start": 30,
+          "line_end": 70,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/workflow/recommend.go",
+          "line_start": 72,
+          "line_end": 88,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/next.go",
+          "line_start": 125,
+          "line_end": 131,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/workflow.go",
+          "line_start": 60,
+          "line_end": 70,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/workitem.go",
+          "line_start": 604,
+          "line_end": 615,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/workitem.go",
+          "line_start": 572,
+          "line_end": 578,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/workflow/recommend_test.go",
+          "line_start": 1,
+          "line_end": 44,
+          "occurrences": 1
+        },
+        {
           "source": "internal/cli/cli.go",
           "line_start": 127,
           "line_end": 147,
@@ -4838,8 +6010,8 @@
         },
         {
           "source": "internal/workflow/gate.go",
-          "line_start": 73,
-          "line_end": 77,
+          "line_start": 72,
+          "line_end": 78,
           "occurrences": 1
         },
         {
@@ -4850,20 +6022,26 @@
         },
         {
           "source": "internal/workitem/claim.go",
-          "line_start": 489,
-          "line_end": 489,
+          "line_start": 501,
+          "line_end": 501,
           "occurrences": 1
         },
         {
           "source": "internal/workitem/state.go",
-          "line_start": 127,
-          "line_end": 127,
+          "line_start": 129,
+          "line_end": 129,
           "occurrences": 1
         },
         {
           "source": "internal/workitem/workitem.go",
           "line_start": 184,
           "line_end": 184,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/workitem/claim.go",
+          "line_start": 192,
+          "line_end": 197,
           "occurrences": 1
         }
       ]
@@ -4888,24 +6066,24 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "c6d19ddf7d46a1da5793e6f429ee5ccde5e0a1859a075f6fbc82104383a78ba8",
+      "content_hash": "6c33f927608a68ebf6ef3fbb33d9dece391822fe0deb701d4372e802ecb5f311",
       "citations": [
         {
           "source": "internal/workitem/claim.go",
-          "line_start": 100,
-          "line_end": 122,
+          "line_start": 99,
+          "line_end": 118,
           "occurrences": 1
         },
         {
           "source": "internal/workitem/claim.go",
-          "line_start": 448,
-          "line_end": 563,
+          "line_start": 456,
+          "line_end": 628,
           "occurrences": 1
         },
         {
           "source": "internal/workitem/claim.go",
-          "line_start": 1031,
-          "line_end": 1037,
+          "line_start": 1043,
+          "line_end": 1050,
           "occurrences": 1
         },
         {
@@ -4928,26 +6106,26 @@
         },
         {
           "source": "internal/workflow/gate.go",
-          "line_start": 18,
-          "line_end": 21,
+          "line_start": 19,
+          "line_end": 22,
           "occurrences": 1
         },
         {
           "source": "internal/workflow/gate.go",
-          "line_start": 73,
-          "line_end": 77,
+          "line_start": 72,
+          "line_end": 78,
           "occurrences": 1
         },
         {
           "source": "internal/workflow/quality.go",
-          "line_start": 29,
-          "line_end": 46,
+          "line_start": 33,
+          "line_end": 47,
           "occurrences": 1
         },
         {
           "source": "internal/workflow/quality.go",
-          "line_start": 77,
-          "line_end": 98,
+          "line_start": 113,
+          "line_end": 129,
           "occurrences": 2
         },
         {
@@ -4994,8 +6172,8 @@
         },
         {
           "source": "internal/workflow/gate.go",
-          "line_start": 59,
-          "line_end": 77,
+          "line_start": 48,
+          "line_end": 97,
           "occurrences": 1
         },
         {
@@ -5024,8 +6202,14 @@
         },
         {
           "source": "internal/workflow/gate_test.go",
-          "line_start": 59,
-          "line_end": 64,
+          "line_start": 60,
+          "line_end": 65,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/workflow/gate_test.go",
+          "line_start": 68,
+          "line_end": 91,
           "occurrences": 1
         },
         {
@@ -5038,6 +6222,42 @@
           "source": "internal/config/config.go",
           "line_start": 143,
           "line_end": 143,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/workflow/recommend.go",
+          "line_start": 1,
+          "line_end": 7,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/workitem.go",
+          "line_start": 572,
+          "line_end": 578,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/workitem/m3_propagation_test.go",
+          "line_start": 75,
+          "line_end": 93,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/next/draft_test.go",
+          "line_start": 11,
+          "line_end": 27,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/workitem/claim.go",
+          "line_start": 192,
+          "line_end": 197,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/workitem/claim.go",
+          "line_start": 199,
+          "line_end": 199,
           "occurrences": 1
         }
       ]
@@ -5062,7 +6282,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "97ff17b91365c5672ea6e88df5e509455d3a652df93a4da76e41057b35e84378",
+      "content_hash": "22265f94f6062a385f7fcc64420d987e1a5ae284dd3101031795289dd1c4d65b",
       "citations": [
         {
           "source": "internal/workitem/workitem.go",
@@ -5080,6 +6300,24 @@
           "source": "internal/workitem/workitem.go",
           "line_start": 181,
           "line_end": 184,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/record/record.go",
+          "line_start": 370,
+          "line_end": 396,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/domain/models.go",
+          "line_start": 172,
+          "line_end": 216,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/workitem.go",
+          "line_start": 649,
+          "line_end": 653,
           "occurrences": 1
         }
       ]
@@ -5104,7 +6342,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "03317b5fff98107c7ed8a4a4ea92ac2efa0f5b66e0a906f39763659c43ddfc1a",
+      "content_hash": "d25650c2a655a9ef6b858b58fd7a64eb85e55432eccdaa8e65b4464c43a68f10",
       "citations": [
         {
           "source": "internal/app/runexec.go",
@@ -5302,7 +6540,7 @@
         "internal/syncstatus/**",
         "internal/archive/**"
       ],
-      "content_hash": "b65a3b3d219a39f43b1aee20b022562a244ed57c26979f4e104b75ce3ceca93e",
+      "content_hash": "8f8cc90802af5908eca0e23f1bf5b2c0d860f96c386a4fff74e7427085578b64",
       "citations": [
         {
           "source": "internal/workitem/workitem.go",
@@ -5330,8 +6568,8 @@
         },
         {
           "source": "internal/record/record.go",
-          "line_start": 244,
-          "line_end": 260,
+          "line_start": 243,
+          "line_end": 258,
           "occurrences": 1
         },
         {
@@ -5341,9 +6579,63 @@
           "occurrences": 1
         },
         {
-          "source": "internal/workitem/propagate.go",
-          "line_start": 62,
-          "line_end": 99,
+          "source": "internal/record/record.go",
+          "line_start": 370,
+          "line_end": 396,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/record/record_test.go",
+          "line_start": 159,
+          "line_end": 199,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/project.go",
+          "line_start": 148,
+          "line_end": 148,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/project.go",
+          "line_start": 375,
+          "line_end": 375,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/domain/models.go",
+          "line_start": 172,
+          "line_end": 197,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/domain/models.go",
+          "line_start": 199,
+          "line_end": 216,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/app/workitem.go",
+          "line_start": 649,
+          "line_end": 653,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/app/context.go",
+          "line_start": 242,
+          "line_end": 246,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/domain/models.go",
+          "line_start": 176,
+          "line_end": 176,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/domain/models.go",
+          "line_start": 217,
+          "line_end": 246,
           "occurrences": 1
         },
         {
@@ -5419,9 +6711,15 @@
           "occurrences": 1
         },
         {
-          "source": "internal/workitem/propagate.go",
-          "line_start": 28,
-          "line_end": 57,
+          "source": "internal/workitem/state.go",
+          "line_start": 187,
+          "line_end": 189,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/workitem/m3_propagation_test.go",
+          "line_start": 75,
+          "line_end": 93,
           "occurrences": 1
         },
         {
@@ -5488,7 +6786,7 @@
         "internal/retry/**",
         "internal/prompt/**"
       ],
-      "content_hash": "ae478890774ddf145c9a71d4461b12954a5273466bd87f004733593ea157be07",
+      "content_hash": "fa8b2e0d12fd9da783f92311adc04e0fdb7b8f6918685489b66fe0493976f513",
       "citations": []
     },
     "knowledge/执行层/技术栈.md": {
@@ -5499,7 +6797,7 @@
         "internal/retry/**",
         "internal/prompt/**"
       ],
-      "content_hash": "ed1d73f2cb60ae86a84b2f678ffdff4fb05e3fa469cd288baec1ce1ce1ad7230",
+      "content_hash": "baea0790813af6302f25566615f9dee7a9019f321945716dbbb1a7cf7f946c90",
       "citations": [
         {
           "source": "internal/harness/shell.go",
@@ -5533,8 +6831,8 @@
         },
         {
           "source": "internal/workspace/git.go",
-          "line_start": 38,
-          "line_end": 46,
+          "line_start": 42,
+          "line_end": 48,
           "occurrences": 1
         },
         {
@@ -5553,12 +6851,24 @@
           "source": "internal/harness/cli.go",
           "line_start": 12,
           "line_end": 14,
-          "occurrences": 1
+          "occurrences": 2
         },
         {
           "source": "internal/workspace/hook.go",
           "line_start": 28,
           "line_end": 32,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/workspace/git.go",
+          "line_start": 55,
+          "line_end": 70,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/workspace/git.go",
+          "line_start": 50,
+          "line_end": 50,
           "occurrences": 1
         }
       ]
@@ -5571,7 +6881,7 @@
         "internal/retry/**",
         "internal/prompt/**"
       ],
-      "content_hash": "63a51d3ea8853592115b8ec579743e1ba89150558af50d4a6f090551a298f50a",
+      "content_hash": "fed8366372f2674abe3dbc2def6f2e8a26da6a2178fb1a72936b67d3dbbc32bd",
       "citations": [
         {
           "source": "internal/harness/cli.go",
@@ -5625,6 +6935,18 @@
           "source": "internal/prompt/prompt.go",
           "line_start": 154,
           "line_end": 160,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/prompt/prompt.go",
+          "line_start": 156,
+          "line_end": 156,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/prompt/prompt.go",
+          "line_start": 157,
+          "line_end": 157,
           "occurrences": 1
         },
         {
@@ -5692,6 +7014,18 @@
           "line_start": 151,
           "line_end": 160,
           "occurrences": 1
+        },
+        {
+          "source": "internal/workspace/git.go",
+          "line_start": 50,
+          "line_end": 70,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/workspace/git.go",
+          "line_start": 50,
+          "line_end": 50,
+          "occurrences": 1
         }
       ]
     },
@@ -5703,8 +7037,14 @@
         "internal/retry/**",
         "internal/prompt/**"
       ],
-      "content_hash": "c704161a7ac269365dad64e01ea445bc4396b882da672acca8674c08355a8f3a",
+      "content_hash": "55b6795d839a3b69ad254f111e75a57b8887c0d1f4778fe52ad4719555556ced",
       "citations": [
+        {
+          "source": "internal/workspace/git.go",
+          "line_start": 42,
+          "line_end": 48,
+          "occurrences": 2
+        },
         {
           "source": "internal/workspace/workspace.go",
           "line_start": 73,
@@ -5712,15 +7052,15 @@
           "occurrences": 2
         },
         {
-          "source": "internal/prompt/prompt.go",
-          "line_start": 154,
-          "line_end": 160,
+          "source": "internal/workspace/git.go",
+          "line_start": 50,
+          "line_end": 70,
           "occurrences": 1
         },
         {
-          "source": "internal/workspace/git.go",
-          "line_start": 38,
-          "line_end": 46,
+          "source": "internal/prompt/prompt.go",
+          "line_start": 154,
+          "line_end": 160,
           "occurrences": 1
         },
         {
@@ -5770,6 +7110,18 @@
           "line_start": 214,
           "line_end": 214,
           "occurrences": 1
+        },
+        {
+          "source": "internal/workspace/git.go",
+          "line_start": 50,
+          "line_end": 50,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/workspace/git.go",
+          "line_start": 55,
+          "line_end": 70,
+          "occurrences": 1
         }
       ]
     },
@@ -5781,7 +7133,7 @@
         "internal/retry/**",
         "internal/prompt/**"
       ],
-      "content_hash": "f73fab985b1c14efc096dfba65312914787a8284211582cae0f82c51c9232620",
+      "content_hash": "05b9978527251caec0c7f57c4e7e9319878ef815a1d1b40716e1b5ca8870ae52",
       "citations": [
         {
           "source": "internal/config/validate.go",
@@ -5793,6 +7145,12 @@
           "source": "internal/config/config.go",
           "line_start": 96,
           "line_end": 102,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/workspace/git.go",
+          "line_start": 50,
+          "line_end": 50,
           "occurrences": 1
         },
         {
@@ -5901,12 +7259,24 @@
           "source": "internal/prompt/prompt.go",
           "line_start": 151,
           "line_end": 160,
-          "occurrences": 1
+          "occurrences": 2
         },
         {
           "source": "internal/harness/shell.go",
           "line_start": 170,
           "line_end": 178,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/workspace/git.go",
+          "line_start": 50,
+          "line_end": 70,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/prompt/prompt.go",
+          "line_start": 156,
+          "line_end": 157,
           "occurrences": 1
         }
       ]
@@ -5919,7 +7289,7 @@
         "internal/retry/**",
         "internal/prompt/**"
       ],
-      "content_hash": "770e57e5824dbe16f20ddbbc61a4d5256782adf2cb63c22cb5465a98dc383055",
+      "content_hash": "6829a1bb45f2a8569d089a9ed95206ecba1e3c823d159c8c9d0e44bf33d8c1b6",
       "citations": [
         {
           "source": "internal/harness/harness.go",
@@ -6019,8 +7389,14 @@
         },
         {
           "source": "internal/workspace/git.go",
-          "line_start": 31,
-          "line_end": 46,
+          "line_start": 33,
+          "line_end": 48,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/workspace/git.go",
+          "line_start": 50,
+          "line_end": 70,
           "occurrences": 1
         },
         {
@@ -6037,9 +7413,15 @@
         },
         {
           "source": "internal/workspace/git.go",
-          "line_start": 38,
-          "line_end": 46,
+          "line_start": 42,
+          "line_end": 48,
           "occurrences": 1
+        },
+        {
+          "source": "internal/workspace/git.go",
+          "line_start": 55,
+          "line_end": 70,
+          "occurrences": 2
         },
         {
           "source": "internal/workspace/workspace.go",
@@ -6093,6 +7475,24 @@
           "source": "internal/prompt/prompt.go",
           "line_start": 151,
           "line_end": 160,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/workspace/git.go",
+          "line_start": 50,
+          "line_end": 50,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/prompt/prompt.go",
+          "line_start": 156,
+          "line_end": 156,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/prompt/prompt.go",
+          "line_start": 157,
+          "line_end": 157,
           "occurrences": 1
         }
       ]
@@ -6502,21 +7902,273 @@
       "content_hash": "0dc07fd9b594041f64345bd4d97c75260465c31a68ae88e913bdcd7af3378fed",
       "citations": []
     },
-    "knowledge/视图层/_module.yaml": {
+    "knowledge/视图层/Hub静态资源.md": {
       "sources": [
+        "internal/hubstatic/assets.go",
+        "internal/hubstatic/index.html",
+        "internal/hubstatic/app.js",
+        "internal/hubstatic/style.css",
+        "internal/hubstatic/**",
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "5d1031aae1f729620fc0533934f4d733cf2fea825c49316c36e02925f32bbec6",
+      "content_hash": "797d7a78ccae26e5cc0ece2f09f89153b2f8a4d1c91b62352731171ac327d98d",
+      "citations": [
+        {
+          "source": "internal/sitestatic/static.go",
+          "line_start": 439,
+          "line_end": 443,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 448,
+          "line_end": 472,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/sitestatic/static.go",
+          "line_start": 13,
+          "line_end": 13,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/sitestatic/static.go",
+          "line_start": 25,
+          "line_end": 32,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 406,
+          "line_end": 441,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/index.html",
+          "line_start": 7,
+          "line_end": 7,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/hubstatic/index.html",
+          "line_start": 16,
+          "line_end": 16,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/assets.go",
+          "line_start": 1,
+          "line_end": 8,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/index.html",
+          "line_start": 9,
+          "line_end": 27,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 1,
+          "line_end": 2,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/style.css",
+          "line_start": 1,
+          "line_end": 3,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/hubstatic/assets.go",
+          "line_start": 5,
+          "line_end": 5,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/index.html",
+          "line_start": 26,
+          "line_end": 26,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 86,
+          "line_end": 107,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/view.go",
+          "line_start": 128,
+          "line_end": 150,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/view.go",
+          "line_start": 152,
+          "line_end": 161,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 280,
+          "line_end": 280,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 97,
+          "line_end": 97,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 345,
+          "line_end": 345,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/view.go",
+          "line_start": 68,
+          "line_end": 68,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 93,
+          "line_end": 94,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 362,
+          "line_end": 373,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 562,
+          "line_end": 577,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 64,
+          "line_end": 73,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 486,
+          "line_end": 491,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 459,
+          "line_end": 459,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 465,
+          "line_end": 465,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 89,
+          "line_end": 92,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 412,
+          "line_end": 425,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 551,
+          "line_end": 561,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 93,
+          "line_end": 93,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 23,
+          "line_end": 23,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 150,
+          "line_end": 194,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/cli.go",
+          "line_start": 394,
+          "line_end": 395,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 32,
+          "line_end": 33,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 122,
+          "line_end": 130,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/sitestatic/static.go",
+          "line_start": 266,
+          "line_end": 284,
+          "occurrences": 1
+        }
+      ]
+    },
+    "knowledge/视图层/_module.yaml": {
+      "sources": [
+        "internal/hubstatic/assets.go",
+        "internal/hubstatic/index.html",
+        "internal/hubstatic/app.js",
+        "internal/hubstatic/style.css",
+        "internal/hubstatic/**",
+        "internal/view/**",
+        "internal/sitestatic/**"
+      ],
+      "content_hash": "44addcbe81572aa639efb277a0b26c17f111906604c4e1169f4df6ba890ff5b8",
       "citations": []
     },
     "knowledge/视图层/技术栈.md": {
       "sources": [
+        "internal/hubstatic/assets.go",
+        "internal/hubstatic/index.html",
+        "internal/hubstatic/app.js",
+        "internal/hubstatic/style.css",
+        "internal/hubstatic/**",
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "dd4d1bd13241f3d4a2661914d74659b9926aed165f8480c453c1c8c03c8eecfc",
+      "content_hash": "3e3e63f7203eef0b2671872612a6da6dd8cf5bea5ffd8c5b3bc6d56049e76972",
       "citations": [
+        {
+          "source": "internal/hubstatic/assets.go",
+          "line_start": 1,
+          "line_end": 6,
+          "occurrences": 2
+        },
         {
           "source": "go.mod",
           "line_start": 1,
@@ -6701,21 +8353,26 @@
     },
     "knowledge/视图层/架构设计.md": {
       "sources": [
+        "internal/hubstatic/assets.go",
+        "internal/hubstatic/index.html",
+        "internal/hubstatic/app.js",
+        "internal/hubstatic/style.css",
+        "internal/hubstatic/**",
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "1600f8e5d150c4a9dbdf89af746daacd5d62066d004712ad1fe03371490c90df",
+      "content_hash": "ede0dfc70c0972765f55213af25952d64e84ee076d4e7f6f54f0a94aeb255197",
       "citations": [
         {
           "source": "internal/view/build.go",
-          "line_start": 117,
-          "line_end": 140,
+          "line_start": 154,
+          "line_end": 177,
           "occurrences": 1
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 159,
-          "line_end": 165,
+          "line_start": 197,
+          "line_end": 203,
           "occurrences": 1
         },
         {
@@ -6732,38 +8389,80 @@
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 51,
-          "line_end": 66,
+          "line_start": 83,
+          "line_end": 100,
           "occurrences": 1
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 199,
-          "line_end": 248,
+          "line_start": 238,
+          "line_end": 300,
           "occurrences": 1
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 250,
-          "line_end": 305,
+          "line_start": 264,
+          "line_end": 278,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/view/build.go",
+          "line_start": 32,
+          "line_end": 65,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/view/build.go",
+          "line_start": 33,
+          "line_end": 36,
           "occurrences": 1
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 425,
-          "line_end": 455,
+          "line_start": 37,
+          "line_end": 49,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/view/build.go",
+          "line_start": 50,
+          "line_end": 56,
           "occurrences": 1
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 542,
-          "line_end": 635,
+          "line_start": 57,
+          "line_end": 59,
           "occurrences": 1
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 637,
-          "line_end": 740,
+          "line_start": 301,
+          "line_end": 329,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/view/build.go",
+          "line_start": 331,
+          "line_end": 384,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/build.go",
+          "line_start": 506,
+          "line_end": 536,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/build.go",
+          "line_start": 623,
+          "line_end": 660,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/view/build.go",
+          "line_start": 662,
+          "line_end": 762,
           "occurrences": 1
         },
         {
@@ -6816,8 +8515,8 @@
         },
         {
           "source": "internal/sitestatic/static.go",
-          "line_start": 427,
-          "line_end": 436,
+          "line_start": 428,
+          "line_end": 437,
           "occurrences": 1
         },
         {
@@ -6846,8 +8545,8 @@
         },
         {
           "source": "internal/sitestatic/static.go",
-          "line_start": 442,
-          "line_end": 483,
+          "line_start": 443,
+          "line_end": 484,
           "occurrences": 2
         },
         {
@@ -6878,7 +8577,7 @@
           "source": "internal/cli/workspace_serve.go",
           "line_start": 46,
           "line_end": 54,
-          "occurrences": 2
+          "occurrences": 3
         },
         {
           "source": "internal/cli/workspace_serve.go",
@@ -6899,6 +8598,54 @@
           "occurrences": 1
         },
         {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 94,
+          "line_end": 120,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 122,
+          "line_end": 130,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 98,
+          "line_end": 102,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 341,
+          "line_end": 371,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 64,
+          "line_end": 73,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 486,
+          "line_end": 491,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 463,
+          "line_end": 466,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 32,
+          "line_end": 33,
+          "occurrences": 1
+        },
+        {
           "source": "internal/sitestatic/static.go",
           "line_start": 147,
           "line_end": 154,
@@ -6909,6 +8656,12 @@
           "line_start": 99,
           "line_end": 105,
           "occurrences": 2
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 86,
+          "line_end": 107,
+          "occurrences": 1
         },
         {
           "source": "internal/cli/workspace.go",
@@ -6978,8 +8731,8 @@
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 321,
-          "line_end": 400,
+          "line_start": 397,
+          "line_end": 479,
           "occurrences": 1
         },
         {
@@ -7002,8 +8755,8 @@
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 844,
-          "line_end": 849,
+          "line_start": 869,
+          "line_end": 874,
           "occurrences": 1
         },
         {
@@ -7050,8 +8803,8 @@
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 214,
-          "line_end": 214,
+          "line_start": 253,
+          "line_end": 253,
           "occurrences": 1
         },
         {
@@ -7067,25 +8820,42 @@
           "occurrences": 1
         },
         {
-          "source": "internal/cli/cli.go",
-          "line_start": 315,
-          "line_end": 316,
+          "source": "internal/sitestatic/static.go",
+          "line_start": 335,
+          "line_end": 336,
           "occurrences": 1
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 357,
-          "line_end": 380,
+          "line_start": 392,
+          "line_end": 393,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/cli.go",
+          "line_start": 394,
+          "line_end": 395,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/cli.go",
+          "line_start": 436,
+          "line_end": 467,
           "occurrences": 1
         }
       ]
     },
     "knowledge/视图层/概述.md": {
       "sources": [
+        "internal/hubstatic/assets.go",
+        "internal/hubstatic/index.html",
+        "internal/hubstatic/app.js",
+        "internal/hubstatic/style.css",
+        "internal/hubstatic/**",
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "07f9193a26054f4b7b9e16922d7130d401b5ac9bfc894572ac9f20f5d0b9b3e4",
+      "content_hash": "8836eca9a268821313b10e3dc9ec1b82c4066043d19e0f0adee37daef0e193e9",
       "citations": [
         {
           "source": "internal/sitestatic/static.go",
@@ -7118,6 +8888,60 @@
           "occurrences": 1
         },
         {
+          "source": "internal/view/build.go",
+          "line_start": 32,
+          "line_end": 65,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/build.go",
+          "line_start": 30,
+          "line_end": 30,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/build.go",
+          "line_start": 301,
+          "line_end": 329,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/build.go",
+          "line_start": 623,
+          "line_end": 660,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/assets.go",
+          "line_start": 1,
+          "line_end": 8,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 486,
+          "line_end": 491,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 64,
+          "line_end": 73,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 463,
+          "line_end": 466,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 23,
+          "line_end": 23,
+          "occurrences": 1
+        },
+        {
           "source": "scripts/install.sh",
           "line_start": 92,
           "line_end": 98,
@@ -7146,15 +8970,26 @@
           "line_start": 84,
           "line_end": 84,
           "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 74,
+          "line_end": 83,
+          "occurrences": 1
         }
       ]
     },
     "knowledge/视图层/特殊配置与命令.md": {
       "sources": [
+        "internal/hubstatic/assets.go",
+        "internal/hubstatic/index.html",
+        "internal/hubstatic/app.js",
+        "internal/hubstatic/style.css",
+        "internal/hubstatic/**",
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "6af14beea28fd50be27a1013925e25098ac6de05ae02730bd61eef12f2e333fa",
+      "content_hash": "81ba3fd0e6d32a1516e13f7b72470be6593874fc88b912459ae4750635dd67f5",
       "citations": [
         {
           "source": "internal/cli/cli.go",
@@ -7574,21 +9409,38 @@
     },
     "knowledge/视图层/编码规范.md": {
       "sources": [
+        "internal/hubstatic/assets.go",
+        "internal/hubstatic/index.html",
+        "internal/hubstatic/app.js",
+        "internal/hubstatic/style.css",
+        "internal/hubstatic/**",
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "515116ca90ec1effcf9bd523be8969cdc3b69542dc0b14e585c599607b97a11b",
+      "content_hash": "b49490a738f48230e3960f221f951043e98f60c6b2ce79ba97392120b464101d",
       "citations": [
         {
           "source": "internal/view/build.go",
-          "line_start": 844,
-          "line_end": 849,
+          "line_start": 869,
+          "line_end": 874,
           "occurrences": 1
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 448,
-          "line_end": 450,
+          "line_start": 645,
+          "line_end": 645,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/build.go",
+          "line_start": 528,
+          "line_end": 531,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/build.go",
+          "line_start": 326,
+          "line_end": 326,
           "occurrences": 1
         },
         {
@@ -7887,8 +9739,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 315,
-          "line_end": 316,
+          "line_start": 392,
+          "line_end": 393,
           "occurrences": 1
         },
         {
@@ -7896,20 +9748,49 @@
           "line_start": 84,
           "line_end": 84,
           "occurrences": 1
+        },
+        {
+          "source": "internal/sitestatic/static.go",
+          "line_start": 335,
+          "line_end": 336,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 23,
+          "line_end": 23,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/assets.go",
+          "line_start": 1,
+          "line_end": 8,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 74,
+          "line_end": 83,
+          "occurrences": 1
         }
       ]
     },
     "knowledge/视图层/视图数据模型.md": {
       "sources": [
+        "internal/hubstatic/assets.go",
+        "internal/hubstatic/index.html",
+        "internal/hubstatic/app.js",
+        "internal/hubstatic/style.css",
+        "internal/hubstatic/**",
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "489e4ff722a616b6c366f73d35e0de3c30337d91312d27f97887c1e7110c702e",
+      "content_hash": "41b9412636ad0ba7e75a68b4bb896b62407cb68b17081da74a65b9a5413a3af8",
       "citations": [
         {
           "source": "internal/view/view.go",
           "line_start": 62,
-          "line_end": 80,
+          "line_end": 74,
           "occurrences": 1
         },
         {
@@ -7920,8 +9801,14 @@
         },
         {
           "source": "internal/view/view.go",
-          "line_start": 82,
-          "line_end": 86,
+          "line_start": 68,
+          "line_end": 68,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/view.go",
+          "line_start": 104,
+          "line_end": 106,
           "occurrences": 1
         },
         {
@@ -7938,50 +9825,128 @@
         },
         {
           "source": "internal/view/view.go",
-          "line_start": 107,
-          "line_end": 130,
+          "line_start": 128,
+          "line_end": 150,
           "occurrences": 1
         },
         {
           "source": "internal/view/view.go",
-          "line_start": 132,
-          "line_end": 143,
+          "line_start": 152,
+          "line_end": 161,
           "occurrences": 1
         },
         {
-          "source": "internal/view/view.go",
-          "line_start": 145,
-          "line_end": 167,
+          "source": "internal/hubstatic/app.js",
+          "line_start": 280,
+          "line_end": 280,
           "occurrences": 1
         },
         {
-          "source": "internal/view/view.go",
-          "line_start": 169,
-          "line_end": 199,
+          "source": "internal/sitestatic/static.go",
+          "line_start": 335,
+          "line_end": 336,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/view/build.go",
+          "line_start": 32,
+          "line_end": 65,
           "occurrences": 1
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 441,
-          "line_end": 450,
+          "line_start": 30,
+          "line_end": 30,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/view.go",
+          "line_start": 165,
+          "line_end": 174,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/view.go",
+          "line_start": 177,
+          "line_end": 198,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 345,
+          "line_end": 345,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 150,
+          "line_end": 194,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/view/view.go",
+          "line_start": 76,
+          "line_end": 100,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/build.go",
+          "line_start": 326,
+          "line_end": 326,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/build.go",
+          "line_start": 321,
+          "line_end": 321,
           "occurrences": 1
         },
         {
           "source": "internal/view/view.go",
           "line_start": 201,
-          "line_end": 221,
+          "line_end": 230,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/build.go",
+          "line_start": 522,
+          "line_end": 531,
           "occurrences": 1
         },
         {
           "source": "internal/view/view.go",
-          "line_start": 210,
-          "line_end": 221,
+          "line_start": 235,
+          "line_end": 257,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/build.go",
+          "line_start": 623,
+          "line_end": 660,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 325,
+          "line_end": 325,
           "occurrences": 1
         },
         {
           "source": "internal/view/view.go",
-          "line_start": 223,
-          "line_end": 244,
+          "line_start": 244,
+          "line_end": 257,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/view.go",
+          "line_start": 260,
+          "line_end": 280,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/view.go",
+          "line_start": 49,
+          "line_end": 49,
           "occurrences": 1
         },
         {
@@ -7992,37 +9957,31 @@
         },
         {
           "source": "internal/view/view.go",
-          "line_start": 51,
-          "line_end": 51,
+          "line_start": 108,
+          "line_end": 117,
           "occurrences": 1
         },
         {
           "source": "internal/view/view.go",
-          "line_start": 88,
-          "line_end": 97,
+          "line_start": 119,
+          "line_end": 125,
           "occurrences": 1
         },
         {
           "source": "internal/view/view.go",
-          "line_start": 99,
-          "line_end": 105,
-          "occurrences": 1
-        },
-        {
-          "source": "internal/view/view.go",
-          "line_start": 32,
+          "line_start": 33,
           "line_end": 42,
           "occurrences": 1
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 104,
-          "line_end": 107,
+          "line_start": 142,
+          "line_end": 146,
           "occurrences": 1
         },
         {
           "source": "internal/view/view.go",
-          "line_start": 44,
+          "line_start": 46,
           "line_end": 51,
           "occurrences": 1
         },
@@ -8034,20 +9993,20 @@
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 321,
-          "line_end": 400,
+          "line_start": 397,
+          "line_end": 479,
           "occurrences": 2
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 501,
-          "line_end": 522,
+          "line_start": 582,
+          "line_end": 603,
           "occurrences": 1
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 524,
-          "line_end": 540,
+          "line_start": 605,
+          "line_end": 621,
           "occurrences": 1
         },
         {
@@ -8072,10 +10031,15 @@
     },
     "knowledge/视图层/读取纪律与信任语义.md": {
       "sources": [
+        "internal/hubstatic/assets.go",
+        "internal/hubstatic/index.html",
+        "internal/hubstatic/app.js",
+        "internal/hubstatic/style.css",
+        "internal/hubstatic/**",
         "internal/view/**",
         "internal/sitestatic/**"
       ],
-      "content_hash": "ea5eff6fce3a7451258a784306b68bad7d9af05232038a662032800b93d893fa",
+      "content_hash": "a7fecd0cb6d834709238bdf5cf59929f1819519aa30685d7a23bcb1c4cf0667a",
       "citations": [
         {
           "source": "internal/view/view.go",
@@ -8091,32 +10055,86 @@
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 159,
-          "line_end": 165,
+          "line_start": 197,
+          "line_end": 203,
           "occurrences": 1
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 489,
-          "line_end": 499,
+          "line_start": 570,
+          "line_end": 578,
           "occurrences": 1
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 742,
-          "line_end": 759,
+          "line_start": 767,
+          "line_end": 784,
           "occurrences": 1
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 321,
-          "line_end": 400,
-          "occurrences": 2
+          "line_start": 397,
+          "line_end": 479,
+          "occurrences": 1
         },
         {
           "source": "internal/cli/workspace_serve.go",
           "line_start": 30,
           "line_end": 37,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/build.go",
+          "line_start": 32,
+          "line_end": 65,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/build.go",
+          "line_start": 301,
+          "line_end": 329,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/hubstatic/assets.go",
+          "line_start": 1,
+          "line_end": 8,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/build.go",
+          "line_start": 37,
+          "line_end": 49,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/build.go",
+          "line_start": 57,
+          "line_end": 59,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/build.go",
+          "line_start": 30,
+          "line_end": 30,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/build.go",
+          "line_start": 33,
+          "line_end": 36,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/build.go",
+          "line_start": 50,
+          "line_end": 65,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/sitestatic/static.go",
+          "line_start": 336,
+          "line_end": 336,
           "occurrences": 1
         },
         {
@@ -8127,13 +10145,13 @@
         },
         {
           "source": "internal/view/view.go",
-          "line_start": 32,
+          "line_start": 33,
           "line_end": 42,
           "occurrences": 1
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 94,
+          "line_start": 102,
           "line_end": 108,
           "occurrences": 1
         },
@@ -8151,14 +10169,14 @@
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 75,
-          "line_end": 82,
+          "line_start": 112,
+          "line_end": 118,
           "occurrences": 1
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 145,
-          "line_end": 154,
+          "line_start": 182,
+          "line_end": 192,
           "occurrences": 1
         },
         {
@@ -8193,8 +10211,8 @@
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 680,
-          "line_end": 733,
+          "line_start": 684,
+          "line_end": 755,
           "occurrences": 1
         },
         {
@@ -8211,8 +10229,8 @@
         },
         {
           "source": "internal/sitestatic/static.go",
-          "line_start": 402,
-          "line_end": 402,
+          "line_start": 403,
+          "line_end": 403,
           "occurrences": 1
         },
         {
@@ -8223,14 +10241,14 @@
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 699,
-          "line_end": 702,
-          "occurrences": 1
+          "line_start": 724,
+          "line_end": 728,
+          "occurrences": 2
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 690,
-          "line_end": 694,
+          "line_start": 714,
+          "line_end": 718,
           "occurrences": 1
         },
         {
@@ -8249,6 +10267,12 @@
           "source": "internal/workflow/cache.go",
           "line_start": 93,
           "line_end": 108,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/build.go",
+          "line_start": 321,
+          "line_end": 400,
           "occurrences": 1
         },
         {
@@ -8283,8 +10307,8 @@
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 276,
-          "line_end": 297,
+          "line_start": 357,
+          "line_end": 377,
           "occurrences": 1
         },
         {
@@ -8295,8 +10319,26 @@
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 501,
-          "line_end": 540,
+          "line_start": 582,
+          "line_end": 621,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/view.go",
+          "line_start": 76,
+          "line_end": 83,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/build.go",
+          "line_start": 623,
+          "line_end": 660,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/hubstatic/app.js",
+          "line_start": 325,
+          "line_end": 325,
           "occurrences": 1
         },
         {
@@ -8319,50 +10361,50 @@
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 117,
-          "line_end": 140,
+          "line_start": 154,
+          "line_end": 177,
           "occurrences": 1
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 269,
-          "line_end": 269,
+          "line_start": 350,
+          "line_end": 350,
           "occurrences": 1
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 441,
-          "line_end": 447,
+          "line_start": 326,
+          "line_end": 326,
           "occurrences": 1
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 560,
-          "line_end": 565,
+          "line_start": 522,
+          "line_end": 527,
           "occurrences": 1
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 590,
-          "line_end": 590,
+          "line_start": 639,
+          "line_end": 644,
           "occurrences": 1
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 613,
-          "line_end": 618,
+          "line_start": 859,
+          "line_end": 866,
           "occurrences": 1
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 834,
-          "line_end": 841,
+          "line_start": 869,
+          "line_end": 874,
           "occurrences": 1
         },
         {
           "source": "internal/view/build.go",
-          "line_start": 844,
-          "line_end": 849,
+          "line_start": 528,
+          "line_end": 531,
           "occurrences": 1
         },
         {
@@ -8419,9 +10461,11 @@
         "Makefile",
         ".github/workflows/release.yml",
         "npm/**",
-        ".agents/skills/devsys/**"
+        ".agents/skills/devsys/**",
+        "docs/hub-v1.md",
+        "docs/hub-v1-prototype.html"
       ],
-      "content_hash": "ddef0fec5c78a866d4f3dc4a0e8540657591e384dc72e25176fc1046b4901989",
+      "content_hash": "d8fd4d277a6cbc8eac8f7ffa60df7ce37b74881cdafdcf399bbbd5e2d08384e5",
       "citations": [
         {
           "source": "internal/app/wire.go",
@@ -8449,8 +10493,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 468,
-          "line_end": 468,
+          "line_start": 546,
+          "line_end": 547,
           "occurrences": 2
         },
         {
@@ -8560,6 +10604,24 @@
           "line_start": 22,
           "line_end": 23,
           "occurrences": 1
+        },
+        {
+          "source": "internal/cli/help_contract_test.go",
+          "line_start": 34,
+          "line_end": 48,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/cli.go",
+          "line_start": 183,
+          "line_end": 186,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/cli.go",
+          "line_start": 188,
+          "line_end": 213,
+          "occurrences": 1
         }
       ]
     },
@@ -8597,9 +10659,11 @@
         "Makefile",
         ".github/workflows/release.yml",
         "npm/**",
-        ".agents/skills/devsys/**"
+        ".agents/skills/devsys/**",
+        "docs/hub-v1.md",
+        "docs/hub-v1-prototype.html"
       ],
-      "content_hash": "2c96bbce910cf711407a72084b13a9ef72931467dfae6e4251046d1de6db1da2",
+      "content_hash": "70b50d87e427ba9fb06109ef2ffb1495bd35b403b5257aef083e90eb112f1122",
       "citations": [
         {
           "source": "internal/cli/workspace.go",
@@ -8825,14 +10889,14 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 688,
-          "line_end": 713,
+          "line_start": 767,
+          "line_end": 799,
           "occurrences": 1
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 1510,
-          "line_end": 1519,
+          "line_start": 1650,
+          "line_end": 1661,
           "occurrences": 1
         },
         {
@@ -8849,14 +10913,14 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 861,
-          "line_end": 863,
+          "line_start": 979,
+          "line_end": 981,
           "occurrences": 1
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 1294,
-          "line_end": 1296,
+          "line_start": 1401,
+          "line_end": 1403,
           "occurrences": 1
         },
         {
@@ -8897,8 +10961,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 1212,
-          "line_end": 1243,
+          "line_start": 1346,
+          "line_end": 1375,
           "occurrences": 1
         },
         {
@@ -8909,8 +10973,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 431,
-          "line_end": 437,
+          "line_start": 510,
+          "line_end": 515,
           "occurrences": 1
         },
         {
@@ -8921,8 +10985,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 241,
-          "line_end": 241,
+          "line_start": 314,
+          "line_end": 316,
           "occurrences": 1
         },
         {
@@ -9056,6 +11120,114 @@
           "line_start": 112,
           "line_end": 112,
           "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 401,
+          "line_end": 403,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 334,
+          "line_end": 339,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 100,
+          "line_end": 102,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 36,
+          "line_end": 48,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 156,
+          "line_end": 163,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 377,
+          "line_end": 392,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 95,
+          "line_end": 96,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 186,
+          "line_end": 189,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 193,
+          "line_end": 193,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/records.go",
+          "line_start": 46,
+          "line_end": 46,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/records.go",
+          "line_start": 141,
+          "line_end": 141,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/records.go",
+          "line_start": 242,
+          "line_end": 242,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/records.go",
+          "line_start": 324,
+          "line_end": 324,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/records.go",
+          "line_start": 424,
+          "line_end": 424,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/records.go",
+          "line_start": 317,
+          "line_end": 328,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/records.go",
+          "line_start": 330,
+          "line_end": 341,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/records.go",
+          "line_start": 876,
+          "line_end": 903,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/diagnostics.go",
+          "line_start": 169,
+          "line_end": 172,
+          "occurrences": 1
         }
       ]
     },
@@ -9093,9 +11265,11 @@
         "Makefile",
         ".github/workflows/release.yml",
         "npm/**",
-        ".agents/skills/devsys/**"
+        ".agents/skills/devsys/**",
+        "docs/hub-v1.md",
+        "docs/hub-v1-prototype.html"
       ],
-      "content_hash": "40b4a30a33dfb01082470369fe9ed3f22f3906fd2c1a5cf0504a2087d393daf0",
+      "content_hash": "13feba6ae64e25088d6e1bf04343649f0a389412049f5caef3c781ef5de2e0e3",
       "citations": [
         {
           "source": "internal/config/config.go",
@@ -9280,7 +11454,7 @@
         {
           "source": "internal/cli/cli.go",
           "line_start": 44,
-          "line_end": 56,
+          "line_end": 57,
           "occurrences": 2
         },
         {
@@ -9297,8 +11471,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 156,
-          "line_end": 175,
+          "line_start": 228,
+          "line_end": 249,
           "occurrences": 4
         },
         {
@@ -9435,8 +11609,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 1212,
-          "line_end": 1243,
+          "line_start": 1346,
+          "line_end": 1375,
           "occurrences": 1
         },
         {
@@ -9555,8 +11729,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 180,
-          "line_end": 188,
+          "line_start": 251,
+          "line_end": 262,
           "occurrences": 1
         },
         {
@@ -9681,6 +11855,12 @@
         },
         {
           "source": "internal/cli/setup.go",
+          "line_start": 20,
+          "line_end": 22,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/setup.go",
           "line_start": 17,
           "line_end": 58,
           "occurrences": 1
@@ -9750,6 +11930,198 @@
           "line_start": 48,
           "line_end": 48,
           "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 395,
+          "line_end": 397,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 398,
+          "line_end": 400,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 401,
+          "line_end": 403,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 410,
+          "line_end": 412,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 413,
+          "line_end": 415,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 416,
+          "line_end": 418,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 419,
+          "line_end": 422,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 423,
+          "line_end": 425,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 426,
+          "line_end": 432,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 431,
+          "line_end": 431,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 439,
+          "line_end": 441,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 436,
+          "line_end": 441,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 334,
+          "line_end": 339,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 377,
+          "line_end": 392,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 204,
+          "line_end": 246,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 200,
+          "line_end": 203,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 74,
+          "line_end": 79,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 100,
+          "line_end": 102,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 252,
+          "line_end": 264,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 361,
+          "line_end": 369,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 148,
+          "line_end": 181,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/domain/models.go",
+          "line_start": 178,
+          "line_end": 197,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/domain/models.go",
+          "line_start": 172,
+          "line_end": 177,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/domain/models.go",
+          "line_start": 199,
+          "line_end": 215,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/records.go",
+          "line_start": 46,
+          "line_end": 46,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/records.go",
+          "line_start": 141,
+          "line_end": 141,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/records.go",
+          "line_start": 242,
+          "line_end": 242,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/records.go",
+          "line_start": 324,
+          "line_end": 324,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/records.go",
+          "line_start": 424,
+          "line_end": 424,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/records.go",
+          "line_start": 324,
+          "line_end": 328,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/records.go",
+          "line_start": 330,
+          "line_end": 341,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/records.go",
+          "line_start": 317,
+          "line_end": 318,
+          "occurrences": 1
         }
       ]
     },
@@ -9787,9 +12159,11 @@
         "Makefile",
         ".github/workflows/release.yml",
         "npm/**",
-        ".agents/skills/devsys/**"
+        ".agents/skills/devsys/**",
+        "docs/hub-v1.md",
+        "docs/hub-v1-prototype.html"
       ],
-      "content_hash": "7c7e377f6c8ea0b59c4db11771af08a0a613b7a1239b1bd3440899926fc22395",
+      "content_hash": "971f50601b154e5d95ed37c11b3d62616ff41cb6f88399082550b8dfa47392a9",
       "citations": []
     },
     "knowledge/项目接入与配置/执行命令与DEVSYS_PROJECT_ROOT.md": {
@@ -9826,9 +12200,11 @@
         "Makefile",
         ".github/workflows/release.yml",
         "npm/**",
-        ".agents/skills/devsys/**"
+        ".agents/skills/devsys/**",
+        "docs/hub-v1.md",
+        "docs/hub-v1-prototype.html"
       ],
-      "content_hash": "0fe91ecc11469ce8d2af2b23cf9ef35f422a717bf96c155503f5c7e1ae72f0b2",
+      "content_hash": "d0b3ff75100fa3361e263c8ec57a5c203b144439075ac511776e92869518bf87",
       "citations": [
         {
           "source": "internal/app/dispatch.go",
@@ -9892,8 +12268,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 1212,
-          "line_end": 1243,
+          "line_start": 1346,
+          "line_end": 1375,
           "occurrences": 1
         },
         {
@@ -9940,8 +12316,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 431,
-          "line_end": 437,
+          "line_start": 510,
+          "line_end": 515,
           "occurrences": 1
         },
         {
@@ -10021,6 +12397,42 @@
           "line_start": 403,
           "line_end": 414,
           "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 394,
+          "line_end": 443,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 159,
+          "line_end": 159,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 361,
+          "line_end": 361,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 409,
+          "line_end": 409,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/view/view.go",
+          "line_start": 30,
+          "line_end": 30,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 361,
+          "line_end": 369,
+          "occurrences": 1
         }
       ]
     },
@@ -10058,9 +12470,11 @@
         "Makefile",
         ".github/workflows/release.yml",
         "npm/**",
-        ".agents/skills/devsys/**"
+        ".agents/skills/devsys/**",
+        "docs/hub-v1.md",
+        "docs/hub-v1-prototype.html"
       ],
-      "content_hash": "f28bb8dea2f242253c67687ba90acc1ad499db7f6b247e70e612509a6adafd33",
+      "content_hash": "4b70492ece128d59821008e2a23758d7b875b9b4008aa90870cacaf1c821d9ed",
       "citations": [
         {
           "source": "internal/mcp/server.go",
@@ -10163,6 +12577,24 @@
           "line_start": 50,
           "line_end": 50,
           "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 1,
+          "line_end": 22,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 122,
+          "line_end": 130,
+          "occurrences": 1
+        },
+        {
+          "source": "npm/workloom/package.json",
+          "line_start": 12,
+          "line_end": 24,
+          "occurrences": 1
         }
       ]
     },
@@ -10200,14 +12632,16 @@
         "Makefile",
         ".github/workflows/release.yml",
         "npm/**",
-        ".agents/skills/devsys/**"
+        ".agents/skills/devsys/**",
+        "docs/hub-v1.md",
+        "docs/hub-v1-prototype.html"
       ],
-      "content_hash": "0c996cea0d0f1e6fe52f38f3542c699f23433453b7d6a461288d53c0a21acfff",
+      "content_hash": "e0f703ceb2b6837d7465edb857f744c94ca34503b2a26d20ea56dc68f301c7fc",
       "citations": [
         {
           "source": "internal/cli/cli.go",
-          "line_start": 267,
-          "line_end": 329,
+          "line_start": 396,
+          "line_end": 401,
           "occurrences": 1
         },
         {
@@ -10248,8 +12682,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 196,
-          "line_end": 198,
+          "line_start": 264,
+          "line_end": 272,
           "occurrences": 2
         },
         {
@@ -10314,8 +12748,8 @@
         },
         {
           "source": "internal/cli/records.go",
-          "line_start": 1297,
-          "line_end": 1326,
+          "line_start": 1290,
+          "line_end": 1320,
           "occurrences": 2
         },
         {
@@ -10374,8 +12808,8 @@
         },
         {
           "source": "internal/cli/records.go",
-          "line_start": 1241,
-          "line_end": 1265,
+          "line_start": 1265,
+          "line_end": 1288,
           "occurrences": 2
         },
         {
@@ -10398,8 +12832,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 468,
-          "line_end": 468,
+          "line_start": 546,
+          "line_end": 547,
           "occurrences": 2
         },
         {
@@ -10620,20 +13054,20 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 586,
-          "line_end": 598,
+          "line_start": 662,
+          "line_end": 676,
           "occurrences": 1
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 1510,
-          "line_end": 1519,
+          "line_start": 1650,
+          "line_end": 1661,
           "occurrences": 1
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 688,
-          "line_end": 713,
+          "line_start": 767,
+          "line_end": 799,
           "occurrences": 1
         },
         {
@@ -10659,6 +13093,18 @@
           "line_start": 17,
           "line_end": 58,
           "occurrences": 2
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 394,
+          "line_end": 443,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/cli/cli.go",
+          "line_start": 394,
+          "line_end": 395,
+          "occurrences": 1
         },
         {
           "source": "internal/app/setup.go",
@@ -10794,8 +13240,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 241,
-          "line_end": 241,
+          "line_start": 314,
+          "line_end": 316,
           "occurrences": 1
         },
         {
@@ -10845,6 +13291,30 @@
           "line_start": 136,
           "line_end": 137,
           "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 94,
+          "line_end": 120,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 55,
+          "line_end": 70,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 265,
+          "line_end": 271,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 148,
+          "line_end": 163,
+          "occurrences": 1
         }
       ]
     },
@@ -10882,9 +13352,11 @@
         "Makefile",
         ".github/workflows/release.yml",
         "npm/**",
-        ".agents/skills/devsys/**"
+        ".agents/skills/devsys/**",
+        "docs/hub-v1.md",
+        "docs/hub-v1-prototype.html"
       ],
-      "content_hash": "8fcbe63458e85f0745c3a84cd10fca2bc10453367d3b99a4e70afc262610918b",
+      "content_hash": "59188f8b5321a25039eab530f48945d2a625550ebb6ae1260ff954312012262c",
       "citations": [
         {
           "source": "cmd/workloom/main.go",
@@ -10911,6 +13383,12 @@
           "occurrences": 1
         },
         {
+          "source": "internal/cli/cli.go",
+          "line_start": 264,
+          "line_end": 272,
+          "occurrences": 2
+        },
+        {
           "source": "internal/config/validate.go",
           "line_start": 73,
           "line_end": 76,
@@ -10927,6 +13405,24 @@
           "line_start": 490,
           "line_end": 530,
           "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 55,
+          "line_end": 70,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 24,
+          "line_end": 29,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 122,
+          "line_end": 130,
+          "occurrences": 2
         },
         {
           "source": "internal/syncstatus/syncstatus.go",
@@ -10990,20 +13486,20 @@
         },
         {
           "source": "internal/cli/records.go",
-          "line_start": 1241,
-          "line_end": 1265,
+          "line_start": 1265,
+          "line_end": 1288,
           "occurrences": 1
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 586,
-          "line_end": 598,
+          "line_start": 662,
+          "line_end": 676,
           "occurrences": 2
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 1510,
-          "line_end": 1519,
+          "line_start": 1650,
+          "line_end": 1661,
           "occurrences": 2
         },
         {
@@ -11026,8 +13522,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 688,
-          "line_end": 713,
+          "line_start": 767,
+          "line_end": 799,
           "occurrences": 3
         },
         {
@@ -11038,8 +13534,8 @@
         },
         {
           "source": "internal/cli/records.go",
-          "line_start": 978,
-          "line_end": 1220,
+          "line_start": 1002,
+          "line_end": 1243,
           "occurrences": 1
         },
         {
@@ -11050,8 +13546,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 336,
-          "line_end": 341,
+          "line_start": 411,
+          "line_end": 420,
           "occurrences": 1
         },
         {
@@ -11061,9 +13557,93 @@
           "occurrences": 2
         },
         {
+          "source": "internal/cli/setup.go",
+          "line_start": 17,
+          "line_end": 26,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/cli.go",
+          "line_start": 800,
+          "line_end": 829,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/help_contract_test.go",
+          "line_start": 34,
+          "line_end": 48,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/diagnostics.go",
+          "line_start": 168,
+          "line_end": 172,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/records.go",
+          "line_start": 300,
+          "line_end": 341,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/records.go",
+          "line_start": 876,
+          "line_end": 970,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/cli.go",
+          "line_start": 546,
+          "line_end": 547,
+          "occurrences": 2
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 394,
+          "line_end": 443,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/registry/registry.go",
+          "line_start": 48,
+          "line_end": 55,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 148,
+          "line_end": 163,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 401,
+          "line_end": 403,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 426,
+          "line_end": 432,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 199,
+          "line_end": 272,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 317,
+          "line_end": 334,
+          "occurrences": 1
+        },
+        {
           "source": "internal/cli/cli.go",
           "line_start": 44,
-          "line_end": 56,
+          "line_end": 57,
           "occurrences": 1
         },
         {
@@ -11080,8 +13660,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 156,
-          "line_end": 175,
+          "line_start": 228,
+          "line_end": 249,
           "occurrences": 2
         },
         {
@@ -11122,32 +13702,26 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 196,
-          "line_end": 198,
+          "line_start": 510,
+          "line_end": 515,
           "occurrences": 1
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 431,
-          "line_end": 437,
+          "line_start": 979,
+          "line_end": 981,
           "occurrences": 1
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 861,
-          "line_end": 863,
+          "line_start": 1401,
+          "line_end": 1403,
           "occurrences": 1
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 1294,
-          "line_end": 1296,
-          "occurrences": 1
-        },
-        {
-          "source": "internal/cli/cli.go",
-          "line_start": 1212,
-          "line_end": 1243,
+          "line_start": 1346,
+          "line_end": 1375,
           "occurrences": 1
         },
         {
@@ -11266,8 +13840,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 267,
-          "line_end": 329,
+          "line_start": 396,
+          "line_end": 401,
           "occurrences": 1
         },
         {
@@ -11278,8 +13852,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 180,
-          "line_end": 188,
+          "line_start": 251,
+          "line_end": 262,
           "occurrences": 1
         },
         {
@@ -11350,8 +13924,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 241,
-          "line_end": 241,
+          "line_start": 314,
+          "line_end": 316,
           "occurrences": 1
         },
         {
@@ -11406,12 +13980,6 @@
           "source": "internal/cli/cli.go",
           "line_start": 83,
           "line_end": 83,
-          "occurrences": 1
-        },
-        {
-          "source": "internal/cli/cli.go",
-          "line_start": 468,
-          "line_end": 468,
           "occurrences": 1
         },
         {
@@ -11492,9 +14060,11 @@
         "Makefile",
         ".github/workflows/release.yml",
         "npm/**",
-        ".agents/skills/devsys/**"
+        ".agents/skills/devsys/**",
+        "docs/hub-v1.md",
+        "docs/hub-v1-prototype.html"
       ],
-      "content_hash": "82a2601161bb520ff7c26816976a6b5b59037712bfeb01fdf318d0b926230358",
+      "content_hash": "3303823fff0ddfb683f018236b3214dc783644019fef41722df867702a93ad17",
       "citations": [
         {
           "source": "internal/project/init.go",
@@ -11510,8 +14080,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 586,
-          "line_end": 598,
+          "line_start": 662,
+          "line_end": 676,
           "occurrences": 2
         },
         {
@@ -11522,8 +14092,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 1510,
-          "line_end": 1519,
+          "line_start": 1650,
+          "line_end": 1661,
           "occurrences": 2
         },
         {
@@ -11582,8 +14152,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 241,
-          "line_end": 241,
+          "line_start": 314,
+          "line_end": 316,
           "occurrences": 2
         },
         {
@@ -11723,6 +14293,12 @@
           "line_start": 22,
           "line_end": 41,
           "occurrences": 1
+        },
+        {
+          "source": "internal/cli/setup.go",
+          "line_start": 20,
+          "line_end": 22,
+          "occurrences": 2
         },
         {
           "source": "internal/app/mcpinstall.go",
@@ -11954,8 +14530,8 @@
         },
         {
           "source": "internal/cli/records.go",
-          "line_start": 1241,
-          "line_end": 1265,
+          "line_start": 1265,
+          "line_end": 1288,
           "occurrences": 1
         },
         {
@@ -11966,8 +14542,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 688,
-          "line_end": 713,
+          "line_start": 767,
+          "line_end": 799,
           "occurrences": 1
         },
         {
@@ -11996,14 +14572,14 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 1212,
-          "line_end": 1243,
+          "line_start": 1346,
+          "line_end": 1375,
           "occurrences": 1
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 431,
-          "line_end": 437,
+          "line_start": 510,
+          "line_end": 515,
           "occurrences": 1
         },
         {
@@ -12038,14 +14614,14 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 861,
-          "line_end": 863,
+          "line_start": 979,
+          "line_end": 981,
           "occurrences": 1
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 1294,
-          "line_end": 1296,
+          "line_start": 1401,
+          "line_end": 1403,
           "occurrences": 1
         },
         {
@@ -12197,6 +14773,114 @@
           "line_start": 5,
           "line_end": 14,
           "occurrences": 1
+        },
+        {
+          "source": "internal/registry/registry.go",
+          "line_start": 48,
+          "line_end": 55,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 55,
+          "line_end": 70,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 31,
+          "line_end": 34,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 394,
+          "line_end": 443,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 401,
+          "line_end": 403,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 234,
+          "line_end": 238,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 419,
+          "line_end": 425,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 265,
+          "line_end": 271,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 334,
+          "line_end": 339,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 94,
+          "line_end": 120,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 122,
+          "line_end": 130,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 426,
+          "line_end": 432,
+          "occurrences": 1
+        },
+        {
+          "source": "npm/workloom/package.json",
+          "line_start": 12,
+          "line_end": 24,
+          "occurrences": 1
+        },
+        {
+          "source": "npm/workloom/bin/workloom.js",
+          "line_start": 58,
+          "line_end": 74,
+          "occurrences": 1
+        },
+        {
+          "source": "npm/workloom/bin/workloom.ps1",
+          "line_start": 13,
+          "line_end": 19,
+          "occurrences": 1
+        },
+        {
+          "source": "npm/workloom/bin/workloom.js",
+          "line_start": 76,
+          "line_end": 95,
+          "occurrences": 1
+        },
+        {
+          "source": "npm/workloom/bin/workloom.ps1",
+          "line_start": 43,
+          "line_end": 53,
+          "occurrences": 1
+        },
+        {
+          "source": "npm/workloom/bin/workloom.ps1",
+          "line_start": 57,
+          "line_end": 59,
+          "occurrences": 1
         }
       ]
     },
@@ -12234,20 +14918,22 @@
         "Makefile",
         ".github/workflows/release.yml",
         "npm/**",
-        ".agents/skills/devsys/**"
+        ".agents/skills/devsys/**",
+        "docs/hub-v1.md",
+        "docs/hub-v1-prototype.html"
       ],
-      "content_hash": "815fbe0745d307e55999f3a783012cf0c11e4a7c983e8749ae98bdead01da59b",
+      "content_hash": "aad5829e04d4063eacc8350d31ac888c7465a6a15289843a6cb187d49c9f6640",
       "citations": [
         {
           "source": "internal/cli/cli.go",
-          "line_start": 156,
-          "line_end": 175,
+          "line_start": 228,
+          "line_end": 249,
           "occurrences": 1
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 180,
-          "line_end": 188,
+          "line_start": 251,
+          "line_end": 262,
           "occurrences": 1
         },
         {
@@ -12258,14 +14944,14 @@
         },
         {
           "source": "internal/cli/records.go",
-          "line_start": 1297,
-          "line_end": 1326,
+          "line_start": 1290,
+          "line_end": 1320,
           "occurrences": 1
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 586,
-          "line_end": 598,
+          "line_start": 662,
+          "line_end": 676,
           "occurrences": 1
         },
         {
@@ -12276,8 +14962,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 1510,
-          "line_end": 1519,
+          "line_start": 1650,
+          "line_end": 1661,
           "occurrences": 1
         },
         {
@@ -12287,15 +14973,81 @@
           "occurrences": 1
         },
         {
-          "source": "internal/cli/cli.go",
-          "line_start": 861,
-          "line_end": 863,
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 334,
+          "line_end": 339,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 94,
+          "line_end": 120,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 74,
+          "line_end": 79,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 199,
+          "line_end": 272,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 318,
+          "line_end": 332,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 252,
+          "line_end": 264,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 274,
+          "line_end": 296,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 298,
+          "line_end": 316,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 377,
+          "line_end": 392,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/hub_serve.go",
+          "line_start": 95,
+          "line_end": 96,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/help_contract_test.go",
+          "line_start": 34,
+          "line_end": 48,
           "occurrences": 1
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 1294,
-          "line_end": 1296,
+          "line_start": 979,
+          "line_end": 981,
+          "occurrences": 1
+        },
+        {
+          "source": "internal/cli/cli.go",
+          "line_start": 1401,
+          "line_end": 1403,
           "occurrences": 1
         },
         {
@@ -12408,8 +15160,8 @@
         },
         {
           "source": "internal/cli/cli.go",
-          "line_start": 468,
-          "line_end": 468,
+          "line_start": 546,
+          "line_end": 547,
           "occurrences": 1
         },
         {
@@ -12456,13 +15208,13 @@
       "citations": []
     }
   },
-  "snapshot_digest": "5dbbab1788ab006580859dc29ad3d8dc488838f10698c8ffbeed3580c90fbc51",
+  "snapshot_digest": "258d93382e9d067193584606c470eee6c18cd4907ead14635047acd26d97993d",
   "snapshot_file": ".repowiki/snapshot.json",
   "last_run": {
     "status": "success",
     "phase": "finalize",
-    "started_at": "2026-09-24T00:15:16.007Z",
-    "finished_at": "2026-09-24T00:15:16.007Z",
+    "started_at": "2026-09-30T06:11:38.5605436Z",
+    "finished_at": "2026-09-30T07:10:07.597Z",
     "error": ""
   }
 }
