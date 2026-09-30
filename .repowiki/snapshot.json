@@ -1,7 +1,98 @@
 {
   "schema": 1,
-  "generated_at": "2026-09-22T12:44:10.032Z",
+  "generated_at": "2026-09-24T00:15:15.618Z",
   "files": [
+    {
+      "path": ".agents/skills/design-visual-frontend/.gitattributes",
+      "size": 166,
+      "hash": "62b5f2965d6176c7de3fb09064555cc31c93f0eb441bd1d26b8eaaf75fc21d5b",
+      "language": "other",
+      "lines": 12
+    },
+    {
+      "path": ".agents/skills/design-visual-frontend/.gitignore",
+      "size": 61,
+      "hash": "23717827dee20878d5f67584ada57ea2f479a687a70c4f81c04fc7657ed9c29f",
+      "language": "other",
+      "lines": 7
+    },
+    {
+      "path": ".agents/skills/design-visual-frontend/agents/openai.yaml",
+      "size": 270,
+      "hash": "575c77568f0db9e17091352abd346ecb876233b8391b003d581461b69996fa35",
+      "language": "yaml",
+      "lines": 4
+    },
+    {
+      "path": ".agents/skills/design-visual-frontend/CONTRIBUTING.md",
+      "size": 1341,
+      "hash": "2a28528f6f24fdfc5c06ab63b9de588557f6cf548e0354bd0504d377b5ec6aa7",
+      "language": "markdown",
+      "lines": 31
+    },
+    {
+      "path": ".agents/skills/design-visual-frontend/LICENSE",
+      "size": 1088,
+      "hash": "07390ce83e9e07711d203f91bcb5a8e7c3c15a91d2f6d9e7aa47d6f9c419fe2c",
+      "language": "other",
+      "lines": 21
+    },
+    {
+      "path": ".agents/skills/design-visual-frontend/README.md",
+      "size": 8487,
+      "hash": "1fd7dc0c2c9bb90e314fee6dcbfb9ee0331829f3b2089498a9a6d4efd58d8a80",
+      "language": "markdown",
+      "lines": 182
+    },
+    {
+      "path": ".agents/skills/design-visual-frontend/references/components-content.md",
+      "size": 3140,
+      "hash": "3af249fd92d313ca5ae2aa27ab33f13e647c172dbc1f18dbca848c5829d26ce0",
+      "language": "markdown",
+      "lines": 83
+    },
+    {
+      "path": ".agents/skills/design-visual-frontend/references/core-design.md",
+      "size": 5013,
+      "hash": "820855a8309d8e5dcebce89e0e779e42a5ed1b75d846d331f1ac7a4b299115a5",
+      "language": "markdown",
+      "lines": 119
+    },
+    {
+      "path": ".agents/skills/design-visual-frontend/references/domain-guidance.md",
+      "size": 2786,
+      "hash": "aaab0c67a9ae788bf4348ca3ca01a9d6f139a890243167c334c5b050fafe1a2e",
+      "language": "markdown",
+      "lines": 52
+    },
+    {
+      "path": ".agents/skills/design-visual-frontend/references/frontend-implementation.md",
+      "size": 2854,
+      "hash": "38aa5b8292981d711ec75e3898daf05539ee35492e3bc9da05dfb9dc942118d7",
+      "language": "markdown",
+      "lines": 56
+    },
+    {
+      "path": ".agents/skills/design-visual-frontend/references/review-gates.md",
+      "size": 5351,
+      "hash": "d719504af09ccce7fa1561b89a5cbb6b8d81038e0d26c96dbb781fb24289d795",
+      "language": "markdown",
+      "lines": 127
+    },
+    {
+      "path": ".agents/skills/design-visual-frontend/references/surface-archetypes.md",
+      "size": 4235,
+      "hash": "0d96d9f9554600a5118348550c16924c62a96f12a5d44a841876187e2315c593",
+      "language": "markdown",
+      "lines": 109
+    },
+    {
+      "path": ".agents/skills/design-visual-frontend/SKILL.md",
+      "size": 7203,
+      "hash": "77e594feae9e8f26d25a5e50707db65d60d6bd5f38377fb598d026990a886281",
+      "language": "markdown",
+      "lines": 103
+    },
     {
       "path": ".agents/skills/devsys/references/cli.md",
       "size": 3208,
@@ -241,11 +332,25 @@
       "lines": 141
     },
     {
-      "path": "docs/README.en.md",
-      "size": 18858,
-      "hash": "d98736d2c0b6b801410d69081ac1e5074568ea6a4cb7a7b3be6761f6c4377a22",
+      "path": "docs/hub-v1-prototype.html",
+      "size": 43518,
+      "hash": "5bcee8318951ae19e3ff738430e2b0adffeb62f828d3628298b761daf0d564d0",
+      "language": "html",
+      "lines": 478
+    },
+    {
+      "path": "docs/hub-v1.md",
+      "size": 16783,
+      "hash": "349d71a02d44a8574de4a54a31d136c0b059cfb07cda50a25d1c333c7e9a4563",
       "language": "markdown",
-      "lines": 367
+      "lines": 271
+    },
+    {
+      "path": "docs/README.en.md",
+      "size": 16350,
+      "hash": "83c031f3a1cec45f912f00c3ac9569f8f861f5f02f793a4f8b75a24ae8db8b58",
+      "language": "markdown",
+      "lines": 315
     },
     {
       "path": "go.mod",
@@ -263,10 +368,10 @@
     },
     {
       "path": "INSTALL.md",
-      "size": 6835,
-      "hash": "1a14b9963d0c2984b6591448e6cc067a47cdb1c69d4033d4a3c6cfee6c6eca59",
+      "size": 6912,
+      "hash": "03abd4ef2361f3e6bf55ee113ba3d9b16895c95296b2ba7aff48771212898c11",
       "language": "markdown",
-      "lines": 132
+      "lines": 133
     },
     {
       "path": "installmd_test.go",
@@ -627,10 +732,10 @@
     },
     {
       "path": "internal/cli/cli.go",
-      "size": 63044,
-      "hash": "ad6dce1cacb55440d8c32ea4caebc1cc72578f53903a8262a6ff298cfb3b056e",
+      "size": 63126,
+      "hash": "5cce184369d6ba5c9a4a8943e660d6985a7caacddc5b8e4cb160ad3d9c195555",
       "language": "go",
-      "lines": 1728
+      "lines": 1730
     },
     {
       "path": "internal/cli/diagnostics.go",
@@ -673,6 +778,20 @@
       "hash": "ffbb2887d27a087220440cf375c4ef807d02ff669a436718a9b6dd7d2ca112a4",
       "language": "go",
       "lines": 115
+    },
+    {
+      "path": "internal/cli/hub_serve_test.go",
+      "size": 3177,
+      "hash": "33cea6b2b71e8095f25f5671979f6a1670d4504186db3c8aba4a22a89591f7cf",
+      "language": "go",
+      "lines": 94
+    },
+    {
+      "path": "internal/cli/hub_serve.go",
+      "size": 7704,
+      "hash": "015cdeefac5b819b85cf5adbd89aee08b306f75ce5b3104d1c228c0d1f89fc27",
+      "language": "go",
+      "lines": 246
     },
     {
       "path": "internal/cli/knowledge_test.go",
@@ -1016,6 +1135,34 @@
       "hash": "12679b6ff1e88bceb939df5f6179e43eefe1cc70549535bd4a74745c13f71a1a",
       "language": "go",
       "lines": 361
+    },
+    {
+      "path": "internal/hubstatic/app.js",
+      "size": 8596,
+      "hash": "58b3596269df3218dd4d2623a77e8343ae827a9a442d0e462360eb35a9427f28",
+      "language": "javascript",
+      "lines": 47
+    },
+    {
+      "path": "internal/hubstatic/assets.go",
+      "size": 183,
+      "hash": "dbfa46ee327e6446d9c6bc8dda12f0170aa301bf59322e1bc524c6563f5a2d4e",
+      "language": "go",
+      "lines": 8
+    },
+    {
+      "path": "internal/hubstatic/index.html",
+      "size": 627,
+      "hash": "85d55f869b8fa493e9d2d9ace79f3900ac07ed77a177d86668b99dcbcc657db5",
+      "language": "html",
+      "lines": 15
+    },
+    {
+      "path": "internal/hubstatic/style.css",
+      "size": 3746,
+      "hash": "8e6754b35debd8a56e767314d704ce99a2e876fa6b54fe0755940589497517ec",
+      "language": "css",
+      "lines": 3
     },
     {
       "path": "internal/knowledge/adapter_test.go",
@@ -1670,10 +1817,10 @@
     },
     {
       "path": "internal/view/build.go",
-      "size": 28780,
-      "hash": "9734f6492613e8972ff02e29edbb67cbb5e2a98909eacfbf363b4c1b8ab02c70",
+      "size": 30135,
+      "hash": "3216d3617ebfcdbb19a2da4807b171b2c4ecb54b161989392dcfd66801ae3c67",
       "language": "go",
-      "lines": 904
+      "lines": 933
     },
     {
       "path": "internal/view/collect.go",
@@ -1691,10 +1838,10 @@
     },
     {
       "path": "internal/view/view.go",
-      "size": 11025,
-      "hash": "020cc816ace907c845e8391bfa91b37a13488e0c507c0227c6befbd916082e14",
+      "size": 11495,
+      "hash": "b662917d677fd45c71330c86f356794428ff45159a6fdabfd6c2007d86012865",
       "language": "go",
-      "lines": 256
+      "lines": 276
     },
     {
       "path": "internal/workflow/cache_test.go",
@@ -2048,17 +2195,17 @@
     },
     {
       "path": "README.md",
-      "size": 17095,
-      "hash": "bcf4b3c419a5f0a03ae7ea77b194047ed6b74cc35adabf4266cfc07c4e3879fd",
+      "size": 14789,
+      "hash": "b3cab6b815bf4db159161e14647787f88436bc7f2270fd990ab955bdc2dcf3d4",
       "language": "markdown",
-      "lines": 324
+      "lines": 294
     },
     {
       "path": "readmemd_test.go",
-      "size": 1730,
-      "hash": "f5f1c2a4b037210ffad5b8c1f058f6b1e6366a6b5ebabe61dab2d806dcacde8a",
+      "size": 1696,
+      "hash": "0c6a91893ac3a004fed820569471de2f9d5807cf0dafcaeb20c3619bdf119dc4",
       "language": "go",
-      "lines": 62
+      "lines": 60
     },
     {
       "path": "scripts/build-release.ps1",
@@ -2272,21 +2419,23 @@
     }
   ],
   "stats": {
-    "total_files": 324,
-    "total_size": 2372928,
-    "total_lines": 67360,
+    "total_files": 345,
+    "total_size": 2496393,
+    "total_lines": 69396,
     "languages": {
-      "other": 7,
-      "markdown": 19,
-      "go": 250,
+      "other": 10,
+      "markdown": 29,
+      "go": 253,
       "makefile": 1,
+      "html": 2,
       "powershell": 10,
       "shell": 13,
-      "yaml": 12,
+      "yaml": 13,
       "xml": 2,
+      "javascript": 2,
+      "css": 1,
       "json": 7,
-      "python": 2,
-      "javascript": 1
+      "python": 2
     }
   },
   "excluded": {
@@ -2295,7 +2444,12 @@
       "vendor",
       "dist"
     ],
-    "files": [],
+    "files": [
+      {
+        "path": ".agents/skills/design-visual-frontend/微信.jpg",
+        "reason": "binary"
+      }
+    ],
     "size_limit": "1MB"
   }
 }
