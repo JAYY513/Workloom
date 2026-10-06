@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workloom 内容关系图 · 原型</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #efece6; --rail: #f5f2ec; --card: #fffdf9; --soft: #f3eee6;
+    --ink: #1c1915; --ink-2: #3d3832; --muted: #6e675e;
+    --line: #e3dccd; --line-strong: #cfc6b7;
+    --on: #1c1915; --on-ink: #f7f4ee;
+    --wait: #8a4b08; --wait-bg: #faf0dd; --wait-line: #ecd9b4;
+    --bad: #9b2c2c; --bad-bg: #f8e7e5;
+    --ok: #567a39; --ok-bg: #eef2e4;
+    --accent: #2050c0; --accent-bg: #e9eefb;
+    --focus: var(--accent);
+    --shadow-1: 0 1px 2px rgba(28,25,21,.05);
+    --r-sm: 6px; --r-md: 8px; --r-lg: 10px;
+    --dur: 140ms; --ease: cubic-bezier(.2,.6,.2,1);
+    --sans: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    /* 归属三档（对齐 wiki 全景图三底色） */
+    --tg: #567a39; --tg-bg: #eef2e4; --tg-line: #dfe6cf;
+    --tt: #2050c0; --tt-bg: #e9eefb; --tt-line: #d7e0f2;
+    --ts: #8a4b08; --ts-bg: #faf0dd; --ts-line: #efe0c2;
+    /* 关系强度（线型） */
+    --e-hard: #3d3832; --e-soft: #a89f8f; --e-none: #b9b0a1;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { font-family: var(--sans); color: var(--ink); background: var(--bg); font-size: 14px; line-height: 1.55; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  ::selection { background: #e7dfd2; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  @media (prefers-reduced-motion: no-preference) {
+    button { transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease), border-color var(--dur) var(--ease); }
+    .edge, .node { transition: opacity var(--dur) var(--ease); }
+  }
+  .proto-note { padding: 6px 12px; background: #e6dfd2; color: var(--ink-2); font-size: 11px; text-align: center; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 22px 28px 72px; }
+
+  /* header */
+  .eyebrow { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 11.5px; font-weight: 650; letter-spacing: .07em; color: var(--muted); }
+  .eyebrow .rid { letter-spacing: 0; }
+  h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+  .lead { margin: 8px 0 0; max-width: 760px; font-size: 14.5px; color: var(--ink-2); line-height: 1.65; }
+  .lead b { color: var(--ink); }
+  .src-meta { margin: 12px 0 0; color: var(--muted); font-size: 12px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+  .src-meta code, .rid { font-family: var(--mono); }
+  .rid { font-size: 11.5px; color: var(--muted); background: var(--soft); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 1px 6px; white-space: nowrap; line-height: 1.5; }
+
+  /* legend */
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 18px 0 14px; padding: 12px 16px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-1); }
+  .legend .lg-group { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; flex-shrink: 0; max-width: 100%; }
+  .legend .lg-label { font-size: 11px; font-weight: 650; letter-spacing: .05em; color: var(--muted); }
+  .lg-item { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); white-space: nowrap; }
+  .swatch { width: 14px; height: 14px; border-radius: 4px; border: 1px solid; flex: none; }
+  .swatch.g { background: var(--tg-bg); border-color: var(--tg); }
+  .swatch.t { background: var(--tt-bg); border-color: var(--tt); }
+  .swatch.s { background: var(--ts-bg); border-color: var(--ts); }
+  .lsample { width: 30px; flex: none; border-top: 2.6px solid var(--e-hard); }
+  .lsample.soft { border-top-width: 1.4px; border-top-color: var(--e-soft); }
+  .lsample.none { border-top-width: 1.3px; border-top-style: dashed; border-top-color: var(--e-none); }
+
+  /* graph zone */
+  .graph-zone { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 14px; align-items: start; }
+  .graph-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-1); padding: 10px 8px 4px; overflow-x: auto; }
+  .graph-card svg { display: block; width: 100%; height: auto; min-width: 856px; }
+  .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 10px; }
+  .toolbar[hidden] { display: none; }
+  .toolbar .tb-label { font-size: 11px; font-weight: 650; letter-spacing: .05em; color: var(--muted); margin-right: 2px; }
+  .tb-btn { height: 28px; padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--card); font-size: 12.5px; font-weight: 550; color: var(--ink-2); box-shadow: var(--shadow-1); }
+  .tb-btn:hover { border-color: var(--line-strong); background: var(--soft); }
+  .tb-btn[aria-pressed="true"] { background: var(--on); color: var(--on-ink); border-color: var(--on); }
+  .graph-note { margin: 6px 4px 10px; font-size: 11.5px; color: var(--muted); line-height: 1.6; }
+
+  /* svg elements */
+  .band-label { font-size: 11.5px; font-weight: 650; letter-spacing: .05em; fill: var(--muted); }
+  .node { cursor: pointer; }
+  .node .box { fill: var(--card); stroke: var(--line-strong); stroke-width: 1.2; }
+  .node .tierbar { stroke: none; }
+  .node text { fill: var(--ink); pointer-events: none; }
+  .node .n-name { font-size: 13px; font-weight: 650; }
+  .node .n-sub { font-family: var(--mono); font-size: 10px; fill: var(--muted); }
+  .node .n-sub2 { font-size: 9.5px; fill: var(--muted); }
+  .node.n-hub .box { fill: var(--on); stroke: var(--on); }
+  .node.n-hub text { fill: var(--on-ink); }
+  .node.n-hub .n-sub, .node.n-hub .n-sub2 { fill: #c8c0b4; }
+  .node:hover .box, .node.hover .box { stroke: var(--ink-2); }
+  .node:focus-visible { outline: none; }
+  .node:focus-visible .box { stroke: var(--focus); stroke-width: 2.4; }
+  .node[aria-pressed="true"] .box { stroke: var(--focus); stroke-width: 2.2; }
+  .edge path { fill: none; }
+  .edge .elabel { font-family: var(--mono); font-size: 10.5px; fill: var(--ink-2); paint-order: stroke; stroke: var(--card); stroke-width: 3.5px; stroke-linejoin: round; }
+  .edge .elabel.dim2 { fill: var(--muted); font-size: 10px; }
+  .edge.e-hard path { stroke: var(--e-hard); stroke-width: 2.6; }
+  .edge.e-soft path { stroke: var(--e-soft); stroke-width: 1.4; }
+  .edge.e-none path { stroke: var(--e-none); stroke-width: 1.3; stroke-dasharray: 5 4; }
+  .dim { opacity: .14; }
+  .edge.hl.e-hard path { stroke: var(--accent); }
+  .edge.hl.e-soft path { stroke: var(--accent); stroke-width: 2; }
+  .edge.hl.e-none path { stroke: var(--accent); }
+  .edge.hl .elabel { fill: var(--accent); font-weight: 650; }
+
+  /* detail panel */
+  .panel { position: sticky; top: 16px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-1); padding: 16px; }
+  .panel h2 { margin: 0; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .tier-pill { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 99px; font-size: 11px; font-weight: 650; border: 1px solid; }
+  .tier-pill.g { color: var(--tg); background: var(--tg-bg); border-color: var(--tg-line); }
+  .tier-pill.t { color: var(--tt); background: var(--tt-bg); border-color: var(--tt-line); }
+  .tier-pill.s { color: var(--ts); background: var(--ts-bg); border-color: var(--ts-line); }
+  .panel .p-sub { margin: 4px 0 0; font-family: var(--mono); font-size: 11.5px; color: var(--muted); overflow-wrap: anywhere; }
+  .pfacts { margin: 12px 0 0; border-top: 1px solid var(--line); }
+  .pfacts .prow { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+  .pfacts .pk { color: var(--muted); font-size: 11.5px; padding-top: 1px; }
+  .pfacts .pv { overflow-wrap: anywhere; }
+  .pfacts .pv code { font-family: var(--mono); font-size: 11.5px; }
+  .pnote { margin: 12px 0 0; font-size: 12.5px; color: var(--ink-2); line-height: 1.65; }
+  .pedges { margin: 12px 0 0; }
+  .pedges h3 { margin: 0 0 6px; font-size: 11px; font-weight: 650; letter-spacing: .05em; color: var(--muted); }
+  .pedges li { font-size: 12px; margin: 4px 0; font-family: var(--mono); color: var(--ink-2); overflow-wrap: anywhere; }
+  .pedges ul { margin: 0; padding-left: 16px; }
+
+  /* sections */
+  section { margin-top: 30px; }
+  .sec-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+  .sec-head h2 { margin: 0; font-size: 17px; font-weight: 700; }
+  .sec-head .meta { color: var(--muted); font-size: 12px; }
+  .tbl-wrap { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-1); }
+  table.tbl { width: 100%; border-collapse: collapse; min-width: 760px; font-size: 12.5px; }
+  .tbl th { text-align: left; font-size: 11px; font-weight: 650; letter-spacing: .05em; color: var(--muted); padding: 9px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  .tbl td { padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; line-height: 1.5; }
+  .tbl tr:last-child td { border-bottom: 0; }
+  .tbl tbody tr:hover { background: var(--soft); }
+  .tbl td code { font-family: var(--mono); font-size: 11.5px; overflow-wrap: anywhere; }
+  .tbl .c-name { font-weight: 650; white-space: nowrap; }
+  .tier-cell { border-left: 3px solid transparent; }
+  tr.tr-g .tier-cell { border-left-color: var(--tg); }
+  tr.tr-t .tier-cell { border-left-color: var(--tt); }
+  tr.tr-s .tier-cell { border-left-color: var(--ts); }
+  .req { font-weight: 650; }
+  .req.must { color: var(--bad); }
+  .req.opt { color: var(--muted); font-weight: 450; }
+  .req.tmp { color: var(--wait); }
+
+  /* topic cards */
+  .topics { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .tcard { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-1); padding: 14px 16px; }
+  .tcard h3 { margin: 0 0 8px; font-size: 13px; font-weight: 650; display: flex; align-items: center; gap: 8px; }
+  .tcard h3 .tier-pill { margin-left: auto; }
+  .tcard p { margin: 6px 0; font-size: 12.5px; color: var(--ink-2); line-height: 1.65; }
+  .tcard ul { margin: 6px 0; padding-left: 18px; font-size: 12.5px; color: var(--ink-2); line-height: 1.7; }
+  .tcard code { font-family: var(--mono); font-size: 11.5px; }
+  .codeblk { margin: 8px 0; padding: 10px 12px; background: var(--soft); border: 1px solid var(--line); border-radius: var(--r-md); font-family: var(--mono); font-size: 11.5px; line-height: 1.7; overflow-x: auto; }
+  .codeblk .c { color: var(--muted); }
+  .flowline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0; font-family: var(--mono); font-size: 11.5px; }
+  .flowline .stp { background: var(--soft); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 2px 8px; white-space: nowrap; }
+  .flowline .arr { color: var(--muted); }
+
+  /* pitfalls */
+  .pitfalls { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--wait); border-radius: var(--r-lg); box-shadow: var(--shadow-1); padding: 14px 18px; }
+  .pitfalls ol { margin: 0; padding-left: 20px; }
+  .pitfalls li { margin: 7px 0; font-size: 13px; line-height: 1.65; }
+  .pitfalls li b { font-weight: 650; }
+  .pitfalls code { font-family: var(--mono); font-size: 11.5px; }
+
+  footer { margin-top: 36px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11.5px; display: flex; flex-wrap: wrap; gap: 4px 16px; }
+  footer code { font-family: var(--mono); }
+
+  @media (max-width: 1250px) {
+    .graph-zone { grid-template-columns: 1fr; }
+    .panel { position: static; }
+  }
+  @media (max-width: 800px) {
+    .wrap { padding: 16px 14px 56px; }
+    .topics { grid-template-columns: 1fr; }
+    h1 { font-size: 19px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="proto-note">静态原型 · 内容来自 <code>internal/domain/models.go</code> 与 <code>docs/repowiki/content/内容关系与归属.md</code>，不连接本机项目状态</div>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">workloom · docs 原型 <span class="rid">relations-v1</span></div>
+    <h1>内容关系图：什么挂任务，什么是全局</h1>
+    <p class="lead">Workloom 生成的全部内容按<b>归属三档</b>组织——项目级全局、任务级强绑定、任务级可选关联；关系按<b>强度三类</b>表达——硬外键、软关联、纯状态汇总。点击图中节点查看该实体的档案；图例下方的筛选可按强度隔离边。</p>
+    <div class="src-meta">
+      <span>数据来源 <code>internal/domain/models.go</code></span>
+      <span>文档 <code>docs/repowiki/content/内容关系与归属.md</code></span>
+      <span>commit <code>4da1c9f</code></span>
+    </div>
+  </header>
+
+  <div class="legend" aria-label="图例">
+    <div class="lg-group">
+      <span class="lg-label">归属三档</span>
+      <span class="lg-item"><span class="swatch g"></span>项目级全局（不挂任务）</span>
+      <span class="lg-item"><span class="swatch t"></span>任务级强绑定（缺任务不成立）</span>
+      <span class="lg-item"><span class="swatch s"></span>任务级可选关联（可挂可不挂）</span>
+    </div>
+    <div class="lg-group">
+      <span class="lg-label">关系强度</span>
+      <span class="lg-item"><span class="lsample"></span>硬外键 · 必填</span>
+      <span class="lg-item"><span class="lsample soft"></span>软关联 · 指针 · 记录</span>
+      <span class="lg-item"><span class="lsample none"></span>无外键 · 回落 · 冗余</span>
+    </div>
+    <div class="lg-group">
+      <span class="lg-label">符号</span>
+      <span class="lg-item">● 必填字段</span>
+      <span class="lg-item">○ 可选字段</span>
+      <span class="lg-item">✗ 不存在该关系</span>
+    </div>
+  </div>
+
+  <div class="toolbar" id="toolbar" hidden>
+    <span class="tb-label">按强度筛选</span>
+    <button type="button" class="tb-btn" data-f="all" aria-pressed="true">全部</button>
+    <button type="button" class="tb-btn" data-f="hard" aria-pressed="false">硬外键</button>
+    <button type="button" class="tb-btn" data-f="soft" aria-pressed="false">软关联 / 指针</button>
+    <button type="button" class="tb-btn" data-f="none" aria-pressed="false">无外键 / 回落</button>
+  </div>
+
+  <div class="graph-zone">
+    <div class="graph-card">
+      <svg viewBox="0 0 1180 810" role="img" aria-label="Workloom 内容关系全景图：项目级全局层、任务核心层、记录层与事件流，WorkItem 为中心枢纽" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', sans-serif">
+        <defs>
+          <marker id="ar-hard" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#3d3832"></path>
+          </marker>
+          <marker id="ar-soft" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#a89f8f"></path>
+          </marker>
+          <marker id="ar-none" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#b9b0a1"></path>
+          </marker>
+        </defs>
+
+        <!-- 层带 -->
+        <rect x="16" y="20" width="1148" height="110" rx="10" fill="#eef2e4" stroke="#dfe6cf"></rect>
+        <text class="band-label" x="34" y="40">① 项目级全局层 — 不挂任务，天然共享</text>
+        <rect x="16" y="286" width="1148" height="280" rx="10" fill="#e9eefb" stroke="#d7e0f2"></rect>
+        <text class="band-label" x="34" y="308">② 任务核心层 — 强绑定（缺任务不成立）</text>
+        <rect x="16" y="580" width="1148" height="106" rx="10" fill="#faf0dd" stroke="#efe0c2"></rect>
+        <text class="band-label" x="34" y="600">③ 记录层 — 可选关联（挂了才算证据 / 上下文）</text>
+        <rect x="16" y="706" width="1148" height="86" rx="10" fill="#f3eee6" stroke="#e3dccd"></rect>
+
+        <!-- ======== 边（先画线，节点后盖） ======== -->
+        <!-- e1 Project -> WorkItem : project_id 必填 -->
+        <g class="edge e-soft" data-s="soft" data-n="project workitem">
+          <path d="M102,98 L545,322" marker-end="url(#ar-soft)"></path>
+          <text class="elabel" x="300" y="196" text-anchor="middle">project_id ●</text>
+        </g>
+        <!-- e2 WorkflowPolicy -> WorkItem : 实例绑定 -->
+        <g class="edge e-soft" data-s="soft" data-n="policy workitem">
+          <path d="M330,98 L520,322" marker-end="url(#ar-soft)"></path>
+          <text class="elabel" x="425" y="196" text-anchor="middle">workflow 实例绑定 ○</text>
+        </g>
+        <!-- e3 WorkItem -> KnowledgePage : context_refs -->
+        <g class="edge e-soft" data-s="soft" data-n="workitem knowledge">
+          <path d="M600,322 L580,104" marker-end="url(#ar-soft)"></path>
+          <text class="elabel" x="614" y="196" text-anchor="middle">context_refs ○</text>
+        </g>
+        <!-- e4 WorkItem -> config : 回落 -->
+        <g class="edge e-none" data-s="none" data-n="workitem config policy">
+          <path d="M672,322 L1024,104" marker-end="url(#ar-none)"></path>
+          <text class="elabel" x="920" y="248" text-anchor="middle">未绑定 → default_policy 回落</text>
+        </g>
+        <!-- e5 Milestone -x-> WorkItem -->
+        <g class="edge e-none" data-s="none" data-n="milestone workitem">
+          <path d="M806,98 L688,322" marker-end="url(#ar-none)"></path>
+          <text class="elabel" x="755" y="176" text-anchor="middle">✗ 无外键 · 仅状态汇总</text>
+        </g>
+        <!-- e6 Project -> Artifact : blueprint_artifact_id 折线 -->
+        <g class="edge e-soft" data-s="soft" data-n="project artifact">
+          <path d="M36,71 L14,71 L14,635 L216,635" marker-end="url(#ar-soft)"></path>
+          <text class="elabel" x="30" y="360" text-anchor="middle" transform="rotate(-90 30 360)">blueprint_artifact_id ○</text>
+        </g>
+        <!-- e7 Run -> WorkItem 硬外键 -->
+        <g class="edge e-hard" data-s="hard" data-n="run workitem">
+          <path d="M208,368 L498,355" marker-end="url(#ar-hard)"></path>
+          <text class="elabel" x="350" y="344" text-anchor="middle">workitem_id ●</text>
+        </g>
+        <!-- e8 WorkItem -> Run active_run_id -->
+        <g class="edge e-soft" data-s="soft" data-n="workitem run">
+          <path d="M498,385 L208,395" marker-end="url(#ar-soft)"></path>
+          <text class="elabel" x="350" y="408" text-anchor="middle">active_run_id ○</text>
+        </g>
+        <!-- e9 Approval -> WorkItem 硬外键 -->
+        <g class="edge e-hard" data-s="hard" data-n="approval workitem">
+          <path d="M208,489 L498,418" marker-end="url(#ar-hard)"></path>
+          <text class="elabel" x="336" y="442" text-anchor="middle">workitem_id ●</text>
+        </g>
+        <!-- e10 Approval -> Run run_id -->
+        <g class="edge e-soft" data-s="soft" data-n="approval run">
+          <path d="M132,472 L132,410" marker-end="url(#ar-soft)"></path>
+          <text class="elabel" x="142" y="445">run_id ○</text>
+        </g>
+        <!-- e11 SchedulingLease -> WorkItem 硬（生命周期绑定） -->
+        <g class="edge e-hard" data-s="hard" data-n="lease workitem">
+          <path d="M964,359 L694,359" marker-end="url(#ar-hard)"></path>
+          <text class="elabel" x="829" y="344" text-anchor="middle">workitem_id ●（文件名）</text>
+        </g>
+        <!-- e12 WorkItem - -> Lease 冗余 -->
+        <g class="edge e-none" data-s="none" data-n="workitem lease">
+          <path d="M694,381 L964,381" marker-end="url(#ar-none)"></path>
+          <text class="elabel" x="829" y="402" text-anchor="middle">lease_* 冗余副本 ○</text>
+        </g>
+        <!-- e13 Artifact -> WorkItem 归属双通道 -->
+        <g class="edge e-soft" data-s="soft" data-n="artifact workitem">
+          <path d="M298,606 L545,398" marker-end="url(#ar-soft)"></path>
+          <text class="elabel" x="385" y="486" text-anchor="middle">workitem_id 主 / related 关联</text>
+          <text class="elabel dim2" x="385" y="500" text-anchor="middle">（均算门禁证据）</text>
+        </g>
+        <!-- e14 Decision -> WorkItem -->
+        <g class="edge e-soft" data-s="soft" data-n="decision workitem">
+          <path d="M528,606 L585,398" marker-end="url(#ar-soft)"></path>
+          <text class="elabel" x="585" y="545" text-anchor="middle">related ○</text>
+        </g>
+        <!-- e15 Finding -> WorkItem -->
+        <g class="edge e-soft" data-s="soft" data-n="finding workitem">
+          <path d="M752,606 L645,398" marker-end="url(#ar-soft)"></path>
+          <text class="elabel" x="742" y="545" text-anchor="middle">related ○</text>
+        </g>
+        <!-- e18 Event -> any 多态 -->
+        <g class="edge e-none" data-s="none" data-n="event workitem">
+          <path d="M630,720 L630,398" marker-end="url(#ar-none)"></path>
+          <text class="elabel" x="646" y="700">Subject / Related 多态 → 任意实体</text>
+        </g>
+        <!-- e19 Run - -> WorkflowPolicy 冗余 -->
+        <g class="edge e-none" data-s="none" data-n="run policy">
+          <path d="M120,352 C70,230 150,130 240,92" marker-end="url(#ar-none)"></path>
+          <text class="elabel" x="60" y="216">workflow_id 冗余</text>
+          <text class="elabel dim2" x="60" y="230">（不参与判定）</text>
+        </g>
+
+        <!-- ======== 节点 ======== -->
+        <!-- 全局层 -->
+        <g class="node" data-id="project" tabindex="0" role="button" aria-pressed="false" aria-label="Project：查看档案">
+          <rect class="box" x="36" y="44" width="132" height="60" rx="8"></rect>
+          <rect x="37" y="46" width="3.5" height="56" rx="1.5" fill="#567a39"></rect>
+          <text class="n-name" x="104" y="72" text-anchor="middle">Project</text>
+          <text class="n-sub" x="104" y="89" text-anchor="middle">project.yaml</text>
+        </g>
+        <g class="node" data-id="policy" tabindex="0" role="button" aria-pressed="false" aria-label="WorkflowPolicy：查看档案">
+          <rect class="box" x="240" y="44" width="180" height="60" rx="8"></rect>
+          <rect x="241" y="46" width="3.5" height="56" rx="1.5" fill="#567a39"></rect>
+          <text class="n-name" x="332" y="72" text-anchor="middle">WorkflowPolicy</text>
+          <text class="n-sub" x="332" y="89" text-anchor="middle">workflows/&lt;id&gt;.md</text>
+        </g>
+        <g class="node" data-id="knowledge" tabindex="0" role="button" aria-pressed="false" aria-label="KnowledgePage：查看档案">
+          <rect class="box" x="492" y="44" width="172" height="60" rx="8"></rect>
+          <rect x="493" y="46" width="3.5" height="56" rx="1.5" fill="#567a39"></rect>
+          <text class="n-name" x="580" y="72" text-anchor="middle">KnowledgePage</text>
+          <text class="n-sub" x="580" y="89" text-anchor="middle">knowledge/ + 配置根</text>
+        </g>
+        <g class="node" data-id="milestone" tabindex="0" role="button" aria-pressed="false" aria-label="Milestone：查看档案">
+          <rect class="box" x="736" y="44" width="140" height="60" rx="8"></rect>
+          <rect x="737" y="46" width="3.5" height="56" rx="1.5" fill="#567a39"></rect>
+          <text class="n-name" x="808" y="72" text-anchor="middle">Milestone</text>
+          <text class="n-sub" x="808" y="89" text-anchor="middle">project + state yaml</text>
+        </g>
+        <g class="node" data-id="config" tabindex="0" role="button" aria-pressed="false" aria-label="config.yaml：查看档案">
+          <rect class="box" x="948" y="44" width="152" height="60" rx="8"></rect>
+          <rect x="949" y="46" width="3.5" height="56" rx="1.5" fill="#567a39"></rect>
+          <text class="n-name" x="1026" y="72" text-anchor="middle">config.yaml</text>
+          <text class="n-sub" x="1026" y="89" text-anchor="middle">default_policy 等</text>
+        </g>
+
+        <!-- 任务层 -->
+        <g class="node" data-id="run" tabindex="0" role="button" aria-pressed="false" aria-label="Run：查看档案">
+          <rect class="box" x="56" y="352" width="152" height="58" rx="8"></rect>
+          <rect x="57" y="354" width="3.5" height="54" rx="1.5" fill="#2050c0"></rect>
+          <text class="n-name" x="134" y="378" text-anchor="middle">Run</text>
+          <text class="n-sub" x="134" y="396" text-anchor="middle">runs/*.yaml + .jsonl</text>
+        </g>
+        <g class="node" data-id="approval" tabindex="0" role="button" aria-pressed="false" aria-label="Approval：查看档案">
+          <rect class="box" x="56" y="472" width="152" height="58" rx="8"></rect>
+          <rect x="57" y="474" width="3.5" height="54" rx="1.5" fill="#2050c0"></rect>
+          <text class="n-name" x="134" y="498" text-anchor="middle">Approval</text>
+          <text class="n-sub" x="134" y="516" text-anchor="middle">approvals/&lt;id&gt;.yaml</text>
+        </g>
+        <g class="node n-hub" data-id="workitem" tabindex="0" role="button" aria-pressed="false" aria-label="WorkItem：查看档案">
+          <rect class="box" x="498" y="322" width="196" height="76" rx="8"></rect>
+          <text class="n-name" x="597" y="350" text-anchor="middle" style="font-size:15px">WorkItem</text>
+          <text class="n-sub" x="597" y="367" text-anchor="middle">workitems/WLM-N.yaml</text>
+          <text class="n-sub2" x="597" y="383" text-anchor="middle">自引用 ○ parent / created_from / deps</text>
+        </g>
+        <g class="node" data-id="lease" tabindex="0" role="button" aria-pressed="false" aria-label="SchedulingLease：查看档案">
+          <rect class="box" x="964" y="326" width="176" height="66" rx="8"></rect>
+          <rect x="965" y="328" width="3.5" height="62" rx="1.5" fill="#2050c0"></rect>
+          <text class="n-name" x="1054" y="350" text-anchor="middle">SchedulingLease</text>
+          <text class="n-sub" x="1054" y="366" text-anchor="middle">scheduling/&lt;id&gt;.yaml</text>
+          <text class="n-sub2" x="1054" y="382" text-anchor="middle">瞬时：claim 写 · release 删</text>
+        </g>
+
+        <!-- 记录层 -->
+        <g class="node" data-id="artifact" tabindex="0" role="button" aria-pressed="false" aria-label="Artifact：查看档案">
+          <rect class="box" x="216" y="606" width="164" height="64" rx="8"></rect>
+          <rect x="217" y="608" width="3.5" height="60" rx="1.5" fill="#8a4b08"></rect>
+          <text class="n-name" x="300" y="630" text-anchor="middle">Artifact</text>
+          <text class="n-sub" x="300" y="646" text-anchor="middle">artifacts/&lt;id&gt;.yaml</text>
+          <text class="n-sub2" x="300" y="660" text-anchor="middle">previous_id 版本链 ○</text>
+        </g>
+        <g class="node" data-id="decision" tabindex="0" role="button" aria-pressed="false" aria-label="Decision：查看档案">
+          <rect class="box" x="452" y="606" width="152" height="64" rx="8"></rect>
+          <rect x="453" y="608" width="3.5" height="60" rx="1.5" fill="#8a4b08"></rect>
+          <text class="n-name" x="530" y="632" text-anchor="middle">Decision</text>
+          <text class="n-sub" x="530" y="650" text-anchor="middle">decisions/&lt;id&gt;.yaml</text>
+        </g>
+        <g class="node" data-id="finding" tabindex="0" role="button" aria-pressed="false" aria-label="Finding：查看档案">
+          <rect class="box" x="676" y="606" width="152" height="64" rx="8"></rect>
+          <rect x="677" y="608" width="3.5" height="60" rx="1.5" fill="#8a4b08"></rect>
+          <text class="n-name" x="754" y="632" text-anchor="middle">Finding</text>
+          <text class="n-sub" x="754" y="650" text-anchor="middle">findings/&lt;id&gt;.yaml</text>
+        </g>
+
+        <!-- 事件层 -->
+        <g class="node" data-id="event" tabindex="0" role="button" aria-pressed="false" aria-label="Event：查看档案">
+          <rect class="box" x="36" y="720" width="1104" height="46" rx="8"></rect>
+          <rect x="37" y="722" width="3.5" height="42" rx="1.5" fill="#8a4b08"></rect>
+          <text class="band-label" x="56" y="740">④ 事件流</text>
+          <text class="n-sub" x="56" y="757">自动写 + event record</text>
+          <text class="n-name" x="660" y="745" text-anchor="middle" style="font-weight:550">Event · <tspan class="n-sub" style="font-size:11px">events/YYYY-MM.jsonl</tspan> · Subject / Related 多态</text>
+        </g>
+      </svg>
+      <p class="graph-note">为保持可读性，记录性 / 反向边（<code>artifact_refs</code>、<code>follow_up_workitems</code>、<code>discovered_by_run_id</code>、<code>Lease.run_id</code> 等）未绘制——完整 27 条关系见下方「全量关系明细表」。</p>
+    </div>
+
+    <aside class="panel" id="panel" aria-live="polite">
+      <h2>实体档案 <span class="tier-pill g" id="p-tier">点击节点</span></h2>
+      <p class="p-sub" id="p-sub">全景图可静态阅读；点选任一节点后，此处显示它的磁盘位置、字段与写入入口。</p>
+      <div class="pfacts" id="p-facts" hidden></div>
+      <p class="pnote" id="p-note" hidden></p>
+      <div class="pedges" id="p-edges" hidden></div>
+      <noscript><p class="pnote">当前未启用 JavaScript：交互档案不可用，请查阅下方「逐实体档案表」，信息完整一致。</p></noscript>
+    </aside>
+  </div>
+
+  <section aria-labelledby="sec-entities">
+    <div class="sec-head"><h2 id="sec-entities">逐实体档案表</h2><span class="meta">14 类内容 · 「必填性」为命令层校验，非数据库约束</span></div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>实体</th><th>档位</th><th>磁盘位置</th><th>ID 格式</th><th>指向任务的字段</th><th>必填性</th><th>写入入口</th></tr></thead>
+        <tbody>
+          <tr class="tr-g"><td class="tier-cell c-name">Project</td><td>全局</td><td><code>.devsys/project.yaml</code></td><td>自由文本</td><td>—</td><td class="req opt">全局</td><td><code>workloom init</code></td></tr>
+          <tr class="tr-g"><td class="tier-cell c-name">CurrentState</td><td>全局</td><td><code>.devsys/state/current.yaml</code></td><td>无</td><td>—</td><td class="req opt">全局</td><td><code>project state-update</code></td></tr>
+          <tr class="tr-g"><td class="tier-cell c-name">Milestone</td><td>全局</td><td><code>project.yaml</code> + <code>state/milestones.yaml</code></td><td>自由文本</td><td><b>无字段</b></td><td class="req opt">全局</td><td><code>project state-update</code></td></tr>
+          <tr class="tr-g"><td class="tier-cell c-name">WorkflowPolicy</td><td>全局</td><td><code>.devsys/workflows/&lt;id&gt;.md</code></td><td>front matter <code>id</code></td><td>被 WorkItem 引用</td><td class="req opt">全局模板</td><td><code>workflow init --template</code></td></tr>
+          <tr class="tr-g"><td class="tier-cell c-name">KnowledgePage</td><td>全局</td><td><code>.devsys/knowledge/</code> + <code>knowledge_pages</code> 根</td><td>路径</td><td>被 <code>context_refs</code> 引用</td><td class="req opt">全局</td><td>知识层生成器 / <code>knowledge refresh</code></td></tr>
+          <tr class="tr-g"><td class="tier-cell c-name">config.yaml</td><td>全局</td><td><code>.devsys/config.yaml</code></td><td>—</td><td><code>default_policy</code> 回落源</td><td class="req opt">全局</td><td><code>init</code> 生成 / <code>config check</code> 校验</td></tr>
+          <tr class="tr-t"><td class="tier-cell c-name">WorkItem</td><td>任务本体</td><td><code>.devsys/workitems/&lt;id&gt;.yaml</code></td><td><code>WLM-N</code></td><td>自身即任务</td><td>—</td><td><code>workitem create</code> / <code>follow-up</code></td></tr>
+          <tr class="tr-t"><td class="tier-cell c-name">Run</td><td>强绑定</td><td><code>.devsys/runs/&lt;id&gt;.yaml</code> + <code>.jsonl</code></td><td><code>run-YYYYMMDD-N</code></td><td><code>WorkItemID</code></td><td class="req must">● 必填</td><td><code>run exec</code> / <code>dispatch</code></td></tr>
+          <tr class="tr-t"><td class="tier-cell c-name">Approval</td><td>强绑定</td><td><code>.devsys/approvals/&lt;id&gt;.yaml</code></td><td><code>approval-N</code></td><td><code>WorkItemID</code></td><td class="req must">● 必填</td><td><code>approval request</code></td></tr>
+          <tr class="tr-t"><td class="tier-cell c-name">SchedulingLease</td><td>强绑定 · 瞬时</td><td><code>.devsys/scheduling/&lt;workitem_id&gt;.yaml</code></td><td>文件名即 workitem id</td><td><code>WorkItemID</code> + <code>RunID</code></td><td class="req tmp">● 必填但瞬时</td><td><code>workitem claim</code> / <code>release</code></td></tr>
+          <tr class="tr-s"><td class="tier-cell c-name">Artifact</td><td>可选关联</td><td><code>.devsys/artifacts/&lt;id&gt;.yaml</code></td><td><code>artifact-N</code></td><td><code>WorkItemID</code>（主）/ <code>RelatedWorkItems</code></td><td class="req opt">○ 均可选</td><td><code>artifact register</code> / <code>update</code></td></tr>
+          <tr class="tr-s"><td class="tier-cell c-name">Decision</td><td>可选关联</td><td><code>.devsys/decisions/&lt;id&gt;.yaml</code></td><td><code>decision-N</code></td><td><b>只有</b> <code>RelatedWorkItems</code></td><td class="req opt">○ 关联可选</td><td><code>decision create</code></td></tr>
+          <tr class="tr-s"><td class="tier-cell c-name">Finding</td><td>可选关联</td><td><code>.devsys/findings/&lt;id&gt;.yaml</code></td><td><code>finding-N</code></td><td><code>RelatedWorkItems</code> + <code>DiscoveredByRunID</code></td><td class="req opt">○ 均可选</td><td><code>finding create</code></td></tr>
+          <tr class="tr-s"><td class="tier-cell c-name">Event</td><td>可选关联</td><td><code>.devsys/events/YYYY-MM.jsonl</code></td><td>时间派生</td><td><code>Subject</code> / <code>Related</code>（多态）</td><td class="req must">Subject ● 必填</td><td>全流程自动写 + <code>event record</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="sec-edges">
+    <div class="sec-head"><h2 id="sec-edges">全量关系明细表</h2><span class="meta">27 条 · 含图中未绘制的记录性 / 反向边</span></div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>#</th><th>起点 → 终点</th><th>字段</th><th>强度</th><th>必填</th><th>语义</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td class="c-name">WorkItem → Project</td><td><code>project_id</code></td><td>记录</td><td class="req must">●</td><td>所属项目</td></tr>
+          <tr><td>2</td><td class="c-name">Project → Artifact</td><td><code>blueprint_artifact_id</code></td><td>记录</td><td class="req opt">○</td><td>蓝图，项目级，不挂任务</td></tr>
+          <tr><td>3</td><td class="c-name">WorkItem → WorkflowPolicy</td><td><code>workflow.ID</code>（内嵌实例）</td><td>绑定</td><td class="req opt">○</td><td>任务自己声明的策略</td></tr>
+          <tr><td>4</td><td class="c-name">WorkItem → WorkflowPolicy</td><td><code>default_policy</code>（回落）</td><td>回落</td><td class="req opt">○</td><td>未声明时回落；失效 fail closed</td></tr>
+          <tr><td>5</td><td class="c-name">WorkItem → KnowledgePage</td><td><code>context_refs</code></td><td>指针</td><td class="req opt">○</td><td>知识页引用</td></tr>
+          <tr><td>6</td><td class="c-name">WorkItem → Artifact</td><td><code>artifact_refs</code></td><td>指针</td><td class="req opt">○</td><td>声明依赖的产物</td></tr>
+          <tr><td>7</td><td class="c-name">WorkItem → Run</td><td><code>active_run_id</code></td><td>指针</td><td class="req opt">○</td><td>当前活跃运行</td></tr>
+          <tr><td>8</td><td class="c-name">WorkItem → WorkItem</td><td><code>parent_id</code></td><td>自引用</td><td class="req opt">○</td><td>层级拆分，<b>不参与</b>调度</td></tr>
+          <tr><td>9</td><td class="c-name">WorkItem → WorkItem</td><td><code>created_from</code></td><td>自引用</td><td class="req opt">○</td><td>多态来源 <code>Reference{Type,ID}</code></td></tr>
+          <tr><td>10</td><td class="c-name">WorkItem → WorkItem</td><td><code>dependencies</code></td><td>自引用</td><td class="req opt">○</td><td>前置任务，<b>参与</b>调度就绪判定</td></tr>
+          <tr><td>11</td><td class="c-name">Run → WorkItem</td><td><code>workitem_id</code></td><td><b>硬外键</b></td><td class="req must">●</td><td>执行面，缺了无法创建</td></tr>
+          <tr><td>12</td><td class="c-name">Run → WorkflowPolicy</td><td><code>workflow_id</code></td><td>记录</td><td class="req opt">○</td><td>冗余记录，不参与判定</td></tr>
+          <tr><td>13</td><td class="c-name">Run → WorkItem</td><td><code>result.follow_up_workitems</code></td><td>记录</td><td class="req opt">○</td><td>运行派生的跟进任务</td></tr>
+          <tr><td>14</td><td class="c-name">Approval → WorkItem</td><td><code>workitem_id</code></td><td><b>硬外键</b></td><td class="req must">●</td><td>人工放行面，缺了无法创建</td></tr>
+          <tr><td>15</td><td class="c-name">Approval → Run</td><td><code>run_id</code></td><td>记录</td><td class="req opt">○</td><td>关联的运行</td></tr>
+          <tr><td>16</td><td class="c-name">SchedulingLease → WorkItem</td><td><code>workitem_id</code>（即文件名）</td><td><b>强绑定 · 瞬时</b></td><td class="req must">●</td><td>claim 事务内原子写入，release / 过期删除</td></tr>
+          <tr><td>17</td><td class="c-name">SchedulingLease → Run</td><td><code>run_id</code></td><td>记录</td><td class="req opt">○</td><td>本次 claim 创建的运行</td></tr>
+          <tr><td>18</td><td class="c-name">WorkItem ⇢ SchedulingLease</td><td><code>lease_*</code> 字段</td><td>冗余</td><td class="req opt">○</td><td>WorkItem 上的副本，随 lease 同步清掉</td></tr>
+          <tr><td>19</td><td class="c-name">Artifact → WorkItem</td><td><code>workitem_id</code></td><td>软关联</td><td class="req opt">○</td><td>主归属，<b>算门禁证据</b></td></tr>
+          <tr><td>20</td><td class="c-name">Artifact → WorkItem</td><td><code>related_workitems</code></td><td>软关联</td><td class="req opt">○</td><td>关联，<b>也算门禁证据</b></td></tr>
+          <tr><td>21</td><td class="c-name">Artifact → Run</td><td><code>run_id</code> / <code>created_by_run_id</code></td><td>记录</td><td class="req opt">○</td><td>产出它的运行</td></tr>
+          <tr><td>22</td><td class="c-name">Artifact → Artifact</td><td><code>previous_id</code></td><td>版本链</td><td class="req opt">○</td><td>不可变版本，逐版链接</td></tr>
+          <tr><td>23</td><td class="c-name">Decision → WorkItem</td><td><code>related_workitems</code></td><td>软关联</td><td class="req opt">○</td><td>只有关联，无 <code>workitem_id</code> 字段</td></tr>
+          <tr><td>24</td><td class="c-name">Finding → WorkItem</td><td><code>related_workitems</code></td><td>软关联</td><td class="req opt">○</td><td>只有关联，无 <code>workitem_id</code> 字段</td></tr>
+          <tr><td>25</td><td class="c-name">Finding → Run</td><td><code>discovered_by_run_id</code></td><td>记录</td><td class="req opt">○</td><td>发现它的运行</td></tr>
+          <tr><td>26</td><td class="c-name">Event → 任意实体</td><td><code>subject</code> / <code>related</code></td><td>多态</td><td class="req must">● subject</td><td>可指向 workitem / run / artifact / decision / finding / approval / project</td></tr>
+          <tr><td>27</td><td class="c-name">Milestone ✗ WorkItem</td><td>—</td><td><b>无外键</b></td><td class="req opt">—</td><td>仅状态汇总，不是任务分组标签</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="sec-topics">
+    <div class="sec-head"><h2 id="sec-topics">四个关键专题</h2><span class="meta">最容易误解的关系机制</span></div>
+    <div class="topics">
+      <div class="tcard">
+        <h3>Artifact 的两条归属通道 <span class="tier-pill s">可选关联</span></h3>
+        <div class="codeblk">artifact register --workitem WLM-1  <span class="c">→ 主归属 workitem_id</span><br>artifact register --related WLM-1   <span class="c">→ 关联 related_workitems</span></div>
+        <p>阶段门禁对两者<b>等价</b>：<code>BelongsTo(id)</code> 主归属或关联任一命中即算证据，且门禁按 <code>Name</code> 匹配、不看 <code>Type</code>。空 id 恒不匹配——「没填归属」不会成为对所有任务成立的万能证据。语义上该用 <code>--workitem</code> 时，不要图省事用 <code>--related</code>。</p>
+      </div>
+      <div class="tcard">
+        <h3>「工作流」是三个东西 <span class="tier-pill g">模板全局</span></h3>
+        <ul>
+          <li><b>Policy 模板</b>（<code>workflows/&lt;id&gt;.md</code>，项目全局）：steps / gates / 质量门，正文兼作 prompt 模板</li>
+          <li><b>实例</b>（内嵌 WorkItem）：只存 <code>{ID, Step, StepEnteredAt, Paused}</code>——任务走到哪一步</li>
+          <li><b>Run.WorkflowID</b>：冗余记录，<b>不参与判定</b></li>
+        </ul>
+        <p>绑定两条路：任务声明实例 → 用它；未声明 → 回落 <code>config.yaml</code> 的 <code>default_policy</code>。回落失效会被报配置问题，且门禁 <b>fail closed</b>。</p>
+      </div>
+      <div class="tcard">
+        <h3>Run 生命周期与快照 <span class="tier-pill t">强绑定</span></h3>
+        <div class="flowline"><span class="stp">claim（lease）</span><span class="arr">→</span><span class="stp">Run running</span><span class="arr">→</span><span class="stp">run complete</span><span class="arr">→</span><span class="stp">workitem transition</span></div>
+        <p><code>ContextSnapshot</code> 是全图<b>唯一「按值冻结」</b>的一环：<code>ProjectStateVersion</code> / <code>WorkItemVersion</code> / <code>ArtifactVersions</code> / <code>KnowledgeRevision</code> / <code>WorkspaceHead</code> / <code>DecisionIDs</code>。其余关系都是实时读当前文件；只有快照能重建「启动时看到的是什么」。</p>
+      </div>
+      <div class="tcard">
+        <h3>调度租约：被追踪的瞬时态 <span class="tier-pill t">强绑定 · 瞬时</span></h3>
+        <ul>
+          <li><code>claim</code> 在<b>同一事务</b>原子写 lease + workitem + 一条 claimed 事件</li>
+          <li><code>release</code> / 过期清理时删除；不是历史记录，只表达「现在谁持有」</li>
+          <li><code>scheduling/</code> <b>会被 git 追踪</b>（不在排除清单）——<code>sync status</code> 接力前由 <code>reconcile.LeaseAudit</code> 审计有效性</li>
+          <li>fencing token：16 字节随机 hex，每次 claim 重生成、绝不复用</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="sec-pitfalls">
+    <div class="sec-head"><h2 id="sec-pitfalls">七条容易搞错的关系</h2></div>
+    <div class="pitfalls">
+      <ol>
+        <li><b>Milestone ↔ WorkItem 没有外键。</b>只有状态汇总，别把它当任务分组标签用。</li>
+        <li><b>Decision / Finding 没有主归属字段。</b>结构体里根本没有 <code>workitem_id</code>，不填 <code>related</code> 就是项目级。</li>
+        <li><b>Artifact 主归属与关联是等价证据。</b>门禁不区分「属于」和「关系到」，但语义上该用 <code>--workitem</code> 时不要用 <code>--related</code>。</li>
+        <li><b><code>require_artifacts</code> 匹配的是 <code>Name</code> 不是 <code>Type</code>。</b>产物类型（spec / plan / verification…）不参与门禁判定。</li>
+        <li><b><code>Run.WorkflowID</code> 不决定策略。</b>策略来自 WorkItem 的实例或 <code>default_policy</code> 回落。</li>
+        <li><b>蓝图是项目级产物。</b><code>Project.BlueprintArtifactID</code> 指向的 Artifact 通常不挂任何任务——它是项目入口，不是某个任务的交付物。</li>
+        <li><b><code>scheduling/</code> 的 lease 会被 git 追踪，但只是瞬时状态。</b>跨设备接力看到残留 lease 不等于任务仍被持有——以 <code>reconcile.LeaseAudit</code> 的过期判定为准。</li>
+      </ol>
+    </div>
+  </section>
+
+  <footer>
+    <span>原型 <code>docs/relations-v1-prototype.html</code>（单文件 · 内联 CSS/JS · 零外部依赖）</span>
+    <span>内容来源 <code>docs/repowiki/content/内容关系与归属.md</code> · <code>internal/domain/models.go</code></span>
+    <span>commit <code>4da1c9f</code> · 2026-09-30</span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var esc = function (s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); };
+
+  var TIER = { g: ["项目级全局", "g"], t: ["任务级强绑定", "t"], s: ["可选关联", "s"] };
+
+  var ENTITY = {
+    project: { name: "Project", tier: "g", sub: ".devsys/project.yaml",
+      facts: [["ID 格式", "自由文本"], ["指向任务", "—"], ["必填性", "全局"], ["写入入口", "workloom init"]],
+      note: "项目元数据。blueprint_artifact_id 指向一条通常不挂任何任务的 Artifact——蓝图是整个项目的入口，不是某个任务的交付物。",
+      edges: ["→ WorkItem · project_id ●", "→ Artifact · blueprint_artifact_id ○"] },
+    policy: { name: "WorkflowPolicy", tier: "g", sub: ".devsys/workflows/<id>.md",
+      facts: [["ID 格式", "front matter id"], ["指向任务", "被 WorkItem 引用"], ["必填性", "全局模板"], ["写入入口", "workflow init --template"]],
+      note: "声明 steps / gates / 质量门，正文兼作本轮 prompt 模板。未绑定任务时由 config.yaml 的 default_policy 回落；回落失效则门禁 fail closed。",
+      edges: ["⇐ WorkItem · workflow 实例绑定 ○", "⇐ WorkItem · default_policy 回落", "⇐ Run · workflow_id 冗余 ○（不判定）"] },
+    knowledge: { name: "KnowledgePage", tier: "g", sub: ".devsys/knowledge/ + knowledge_pages 根",
+      facts: [["ID 格式", "路径"], ["指向任务", "被 context_refs 引用"], ["必填性", "全局"], ["写入入口", "知识层生成器 / knowledge refresh"]],
+      note: "项目级全局共享；任务通过 context_refs 按需引用，页面根由 config.yaml 的 knowledge_pages 决定。",
+      edges: ["⇐ WorkItem · context_refs ○"] },
+    milestone: { name: "Milestone", tier: "g", sub: "project.yaml + state/milestones.yaml",
+      facts: [["ID 格式", "自由文本"], ["指向任务", "无字段"], ["必填性", "全局"], ["写入入口", "project state-update"]],
+      note: "与 WorkItem 没有任何外键。next 只判断「有没有未完成的里程碑」给出 milestone_review 推荐，不检查任务归属——它是时间/阶段维度的汇总视图，不是分组标签。",
+      edges: ["✗ WorkItem · 无外键，仅状态汇总"] },
+    config: { name: "config.yaml", tier: "g", sub: ".devsys/config.yaml",
+      facts: [["指向任务", "default_policy 回落源"], ["必填性", "全局"], ["写入入口", "init 生成 / config check 校验"]],
+      note: "default_policy 是未绑定任务的策略回落源；knowledge_pages 决定知识页根。配置非法或默认策略缺失时，claim 与门禁 fail closed。",
+      edges: ["→ WorkflowPolicy · default_policy 回落"] },
+    workitem: { name: "WorkItem", tier: "t", sub: ".devsys/workitems/WLM-N.yaml",
+      facts: [["ID 格式", "WLM-N（^[A-Z][A-Z0-9_]*-[0-9]+$）"], ["必填性", "任务本体"], ["写入入口", "workitem create / follow-up"]],
+      note: "全图枢纽。内嵌 workflow 实例 {ID, Step, StepEnteredAt, Paused}；三种自引用——parent_id（层级，不参与调度）、created_from（多态来源）、dependencies（参与调度就绪判定）。",
+      edges: ["⇐ Project · project_id ●", "→ WorkflowPolicy · 实例绑定 ○ / 回落", "→ KnowledgePage · context_refs ○", "→ Artifact · artifact_refs ○", "→ Run · active_run_id ○", "⇐ Run / Approval / Lease · workitem_id ●", "⇐ Artifact / Decision / Finding · 归属与关联 ○", "自引用 ○ parent_id / created_from / dependencies"] },
+    run: { name: "Run", tier: "t", sub: ".devsys/runs/run-YYYYMMDD-N.yaml + .jsonl",
+      facts: [["指向任务", "WorkItemID"], ["必填性", "● 必填（硬外键）"], ["写入入口", "run exec / dispatch"]],
+      note: "执行面，缺任务不成立。ContextSnapshot 按值冻结启动时看到的全部版本，用于追查陈旧上下文；workflow_id 是冗余记录，不参与判定。",
+      edges: ["→ WorkItem · workitem_id ●", "→ WorkflowPolicy · workflow_id 冗余 ○", "→ WorkItem · result.follow_up_workitems ○", "⇐ Approval · run_id ○", "⇐ Artifact · run_id / created_by_run_id ○", "⇐ Finding · discovered_by_run_id ○"] },
+    approval: { name: "Approval", tier: "t", sub: ".devsys/approvals/approval-N.yaml",
+      facts: [["指向任务", "WorkItemID"], ["必填性", "● 必填（硬外键）"], ["写入入口", "approval request"]],
+      note: "人工放行面，缺任务不成立。RequestedStatus 绑定请求时的任务状态：离开该阶段即失效（InvalidatedAt），重新进入需重新申请。",
+      edges: ["→ WorkItem · workitem_id ●", "→ Run · run_id ○"] },
+    lease: { name: "SchedulingLease", tier: "t", sub: ".devsys/scheduling/<workitem_id>.yaml",
+      facts: [["ID 格式", "文件名即 workitem id"], ["指向任务", "WorkItemID + RunID"], ["必填性", "● 必填但瞬时"], ["写入入口", "workitem claim / release"]],
+      note: "claim 在同一事务原子写 lease + workitem + claimed 事件；release / 过期清理时删除。会被 git 追踪（不在 .gitignore 排除清单），sync 接力前由 reconcile.LeaseAudit 审计；fencing token 每次 claim 重新生成。",
+      edges: ["→ WorkItem · workitem_id ●（文件名）", "→ Run · run_id ○", "⇐ WorkItem · lease_* 冗余副本 ○"] },
+    artifact: { name: "Artifact", tier: "s", sub: ".devsys/artifacts/artifact-N.yaml",
+      facts: [["指向任务", "WorkItemID（主）/ RelatedWorkItems（关联）"], ["必填性", "○ 均可选，只强制 name"], ["写入入口", "artifact register / update"]],
+      note: "主归属与关联对门禁等价（BelongsTo，按 Name 匹配）；空 id 恒不匹配。previous_id 串起不可变版本链。蓝图等项目级产物通常不挂任何任务。",
+      edges: ["→ WorkItem · workitem_id 主 ○ / related_workitems 关联 ○", "→ Run · run_id / created_by_run_id ○", "→ Artifact · previous_id 版本链 ○", "⇐ Project · blueprint_artifact_id ○", "⇐ WorkItem · artifact_refs ○"] },
+    decision: { name: "Decision", tier: "s", sub: ".devsys/decisions/decision-N.yaml",
+      facts: [["指向任务", "只有 RelatedWorkItems"], ["必填性", "○ 关联可选"], ["写入入口", "decision create"]],
+      note: "结构体里没有 workitem_id 字段——默认就是项目级；要说清服务于哪个任务，必须显式填 related。设计意图：先记录，事后关联。",
+      edges: ["→ WorkItem · related_workitems ○"] },
+    finding: { name: "Finding", tier: "s", sub: ".devsys/findings/finding-N.yaml",
+      facts: [["指向任务", "RelatedWorkItems + DiscoveredByRunID"], ["必填性", "○ 均可选"], ["写入入口", "finding create"]],
+      note: "与 Decision 一样只有关联写法；discovered_by_run_id 记录发现它的运行。需要行动时应派生 follow-up work item，而不是只留 finding。",
+      edges: ["→ WorkItem · related_workitems ○", "→ Run · discovered_by_run_id ○"] },
+    event: { name: "Event", tier: "s", sub: ".devsys/events/YYYY-MM.jsonl",
+      facts: [["ID 格式", "时间派生"], ["指向任务", "Subject / Related（多态）"], ["必填性", "Subject ● 必填"], ["写入入口", "全流程自动写 + event record"]],
+      note: "Subject 可指向 workitem / run / artifact / decision / finding / approval / project；subject_id 存在时 subject_type 必填。reply_to 只允许 comment 事件、且仅同 subject 的一级评论。",
+      edges: ["→ 任意实体 · subject / related 多态"] }
+  };
+
+  var panel = document.getElementById("panel");
+  var pTier = document.getElementById("p-tier");
+  var pSub = document.getElementById("p-sub");
+  var pFacts = document.getElementById("p-facts");
+  var pNote = document.getElementById("p-note");
+  var pEdges = document.getElementById("p-edges");
+  var nodes = Array.prototype.slice.call(document.querySelectorAll(".node"));
+  var edges = Array.prototype.slice.call(document.querySelectorAll(".edge"));
+  var selected = null;
+
+  function render(id) {
+    var e = ENTITY[id];
+    if (!e) { return; }
+    var t = TIER[e.tier];
+    pTier.textContent = t[0];
+    pTier.className = "tier-pill " + t[1];
+    pSub.textContent = e.sub;
+    pFacts.innerHTML = e.facts.map(function (f) {
+      return '<div class="prow"><span class="pk">' + esc(f[0]) + '</span><span class="pv"><code>' + esc(f[1]) + "</code></span></div>";
+    }).join("");
+    pFacts.hidden = false;
+    pNote.textContent = e.note;
+    pNote.hidden = false;
+    pEdges.innerHTML = "<h3>图中关系</h3><ul>" + e.edges.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>";
+    pEdges.hidden = false;
+    panel.querySelector("h2").childNodes[0].textContent = e.name + " ";
+  }
+
+  function paint(focusId) {
+    edges.forEach(function (g) {
+      var ids = (g.getAttribute("data-n") || "").split(" ");
+      var on = !focusId || ids.indexOf(focusId) !== -1;
+      g.classList.toggle("hl", !!focusId && on);
+      g.classList.toggle("dim", !on);
+    });
+    nodes.forEach(function (n) {
+      var on = !focusId || n.getAttribute("data-id") === focusId ||
+        edges.some(function (g) {
+          var ids = (g.getAttribute("data-n") || "").split(" ");
+          return ids.indexOf(focusId) !== -1 && ids.indexOf(n.getAttribute("data-id")) !== -1;
+        });
+      n.classList.toggle("dim", !on);
+    });
+  }
+
+  function select(id) {
+    selected = id;
+    nodes.forEach(function (n) { n.setAttribute("aria-pressed", n.getAttribute("data-id") === id ? "true" : "false"); });
+    render(id);
+    paint(id);
+  }
+
+  nodes.forEach(function (n) {
+    var id = n.getAttribute("data-id");
+    n.addEventListener("click", function () { select(id); });
+    n.addEventListener("keydown", function (ev) {
+      if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); select(id); }
+    });
+    n.addEventListener("mouseover", function () { paint(id); });
+    n.addEventListener("mouseout", function () { paint(selected); });
+    n.addEventListener("focus", function () { paint(id); });
+    n.addEventListener("blur", function () { paint(selected); });
+  });
+
+  var toolbar = document.getElementById("toolbar");
+  toolbar.hidden = false;
+  toolbar.addEventListener("click", function (ev) {
+    var btn = ev.target.closest(".tb-btn");
+    if (!btn) { return; }
+    var f = btn.getAttribute("data-f");
+    toolbar.querySelectorAll(".tb-btn").forEach(function (b) { b.setAttribute("aria-pressed", b === btn ? "true" : "false"); });
+    edges.forEach(function (g) {
+      g.classList.toggle("dim", f !== "all" && g.getAttribute("data-s") !== f);
+    });
+    if (f !== "all") { nodes.forEach(function (n) { n.classList.remove("dim"); }); }
+  });
+})();
+</script>
+</body>
+</html>
